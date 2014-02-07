@@ -1,0 +1,12 @@
+
+
+"GALMOD BOX= CDENS= CMODE= DENS=file(leop_ellint_16arcsec.txt, 4, :)*1.e20
+DRVAL3=1.419351555040E+09 EMPTY=N INCL=60
+INSET=/d/bip3/ezbc/leop/data/hi/gipsy/leop.fluxRescale.16arcsec.vel.bin velo LTYPE=1 NRESTR= NV=
+OUTSET=/d/bip3/ezbc/leop/data/hi/gipsy/leop_beamSmear_model PA=335.000 POS=* 10 21 45 * 18 05 25.80
+RADII=file(profiles/profile_1.txt,1,:) VDISP=8.40000 VROT=2 4 6 8 VSYS=260
+Z0=8" "SMOOTH AUTO=NO BOX= DECIM= INSET=/d/bip3/ezbc/leop/data/hi/gipsy/leop_beamSmear_model velo NEWBEAM=16 16
+NEWPOSANG=0 OLDBEAM= OLDPOSANG= OUTSET=/d/bip3/ezbc/leop/data/hi/gipsy/leop_beamSmear_model_smooth ; scale=;"
+
+
+
