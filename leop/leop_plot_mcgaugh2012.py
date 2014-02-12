@@ -51,7 +51,7 @@ golden_mean = (sqrt(5)-1.0)/2.0         # Aesthetic ratio
 fig_width = fig_width_pt*inches_per_pt  # width in inches
 fig_height = fig_width*golden_mean      # height in inches
 #fig_size =  [fig_width,fig_height]
-size = 7
+size = 8
 fig_size = [size*golden_mean,size]
 
 fontScale = 12
@@ -61,7 +61,7 @@ params = {'backend': 'eps',
           'legend.fontsize': fontScale*3/4,
           'xtick.labelsize': fontScale,
           'ytick.labelsize': fontScale,
-          'text.usetex': True,
+          'text.usetex': False,
           'figure.figsize': fig_size
           }
 
@@ -70,7 +70,7 @@ plt.figure(1)
 plt.clf()
 
 plt.subplot(1,2,1)
-
+plt.subplots_adjust(wspace=0.3)
 
 markerSize = 6
 # Spirals
@@ -107,8 +107,8 @@ highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
 plt.plot([0.0001,10**5],[lowPt,highPt],
          color='k',linestyle='dashed',linewidth=2)
 
-plt.ylabel("$M_b$ (M$_{\odot}$)",family='serif')
-plt.xlabel("$V_c$ (km s$^{-1}$)",family='serif')
+plt.ylabel(r"$M_b$ (M$_{\odot}$)",family='serif')
+plt.xlabel(r"$v_c$ (km/s)",family='serif')
 plt.xscale('log')
 plt.yscale('log')
 plt.xlim([1,10**3])
@@ -140,10 +140,10 @@ mtotErrM = 1.35 * np.sqrt((hiErrM/mhi)**2 + (mstarErr / mstar)**2) * mtot
 
 
 # Leo P
-plt.errorbar(6,mtot,
+plt.errorbar(10,mtot,
              #xerr=([15,0]),yerr=([10**6,10**6]),
-             xerr=([1],[1]),yerr=([mtotErrM],[mtotErrP]),
-             xlolims=False,
+             xerr=([5],[1]),yerr=([mtotErrM],[mtotErrP]),
+             xlolims=True,
              marker='s',color='c',ecolor='k',elinewidth=2,capsize=3,
              markersize=markerSize)
 
@@ -187,8 +187,8 @@ plt.errorbar(gasVc,gasMb,
              marker='^',color='g',ecolor='k',linestyle='none',
              markersize=markerSize)
 
-plt.ylabel("$M_b$ ($M_{\odot}$)",family='serif')
-plt.xlabel("$v_c$ (km s$^{-1}$)",family='serif')
+plt.ylabel(r"$M_b$ (M$_{\odot}$)",family='serif')
+plt.xlabel(r"$v_c$ (km/s)",family='serif')
 plt.xscale('log')
 plt.yscale('log')
 plt.xlim([3,10**2.8])
@@ -197,10 +197,10 @@ plt.legend(loc='upper left')
 #plt.savefig('../figures/leop.mcGaughPlot.noLeoP.eps',dpi=600)
 
 # Leo P
-plt.errorbar(5.8,mtot,
+plt.errorbar(10,mtot,
              #xerr=([15,0]),yerr=([10**6,10**6]),
-             xerr=([1],[1]),yerr=([mtotErrM],[mtotErrP]),
-             xlolims=False,
+             xerr=([5],[1]),yerr=([mtotErrM],[mtotErrP]),
+             xlolims=True,
              marker='s',color='c',ecolor='k',elinewidth=2,capsize=3,
              markersize=markerSize)
 
@@ -215,7 +215,8 @@ plt.annotate('(b)',
             ,textcoords='axes fraction',
             xycoords='axes fraction')
 
-plt.savefig('../figures/leop.mcGaughPlot.eps',dpi=600)
+plt.savefig('/d/bip3/ezbc/leop/figures/leop.mcGaughPlot.eps',dpi=600,
+        bbox_inches='tight')
 plt.show()
 
 
