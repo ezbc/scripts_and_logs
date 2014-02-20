@@ -304,9 +304,9 @@ def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
                                 mask=np.isnan(nhi_image_temp))
 
         # Select pixels with Av > 1.0 mag and Av_SNR > 5.0.
-        # Av > 1.0 mag is used to avoid too low Av. 
-        # 1.0 mag corresponds to SNR = 1 / 0.2 ~ 5 
-        # (see Table 2 of Ridge et al. 2006).  
+        # Av > 1.0 mag is used to avoid too low Av.
+        # 1.0 mag corresponds to SNR = 1 / 0.2 ~ 5
+        # (see Table 2 of Ridge et al. 2006).
         indices = np.where((nhi_image == nhi_image) & \
                 (av_image == av_image) & \
                 (av_image > 1))# & \
@@ -371,6 +371,7 @@ def main():
     # make HI velocity axis
     velocity_axis_hi = make_velocity_axis(hi_header)
 
+
     # load CfA CO cube
     co_data,co_header = load_fits(co_dir + 'taurus_cfa_paradis_bin.fits',
             return_header=True)
@@ -400,6 +401,7 @@ def main():
 
     # Adjust scale for ease of plot
     nh_image /= 1e21
+
 
     # Plot correlation, similar to Figure 3 of Paradis et al. (2012)
     plot_nh_vs_av(nh_image,av_image_jouni,

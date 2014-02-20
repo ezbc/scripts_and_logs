@@ -102,10 +102,27 @@ plt.errorbar(gasVc,gasMb,
 
 
 # Plot line for fitting spirals: function = log(M_b) = x log(V_c) + A
+# Mb = V_c + (47 +/- 6)
+
 lowPt = 10 ** ( 4.0 * math.log10(0.0001) + 1.65)
 highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
-plt.plot([0.0001,10**5],[lowPt,highPt],
-         color='k',linestyle='dashed',linewidth=2)
+#plt.plot([0.0001,10**5],[lowPt,highPt],
+#         color='k',linestyle='dashed',linewidth=2)
+
+def line(array, slope):
+    return slope * array**4
+
+vc_array = np.arange(0,1000,0.1)
+mb_array = line(vc_array, 47.)
+sigma = 3
+mb_array_high = line(vc_array,47 + sigma * 6.)
+mb_array_low = line(vc_array, 47 - sigma * 6.)
+
+#plt.plot(vc_array, mb_array_high, linestyle='dashed', color='k')
+#plt.plot(vc_array, mb_array_low, linestyle='dashed', color='k')
+
+plt.fill_between(vc_array, mb_array_low, mb_array_high, color='gray',
+        alpha=0.7)
 
 plt.ylabel(r"$M_b$ (M$_{\odot}$)",family='serif')
 plt.xlabel(r"$v_c$ (km/s)",family='serif')
@@ -140,24 +157,28 @@ mtotErrM = 1.35 * np.sqrt((hiErrM/mhi)**2 + (mstarErr / mstar)**2) * mtot
 
 
 # Leo P
-plt.errorbar(10,mtot,
+plt.errorbar(16,mtot,
              #xerr=([15,0]),yerr=([10**6,10**6]),
-             xerr=([5],[1]),yerr=([mtotErrM],[mtotErrP]),
-             xlolims=True,
+             xerr=([5],[5]),yerr=([mtotErrM],[mtotErrP]),
+             xlolims=False,
              marker='s',color='c',ecolor='k',elinewidth=2,capsize=3,
              markersize=markerSize)
 
+
+distances = ((mb_array - mtot)**2 + (vc_array - 16.5)**2)**0.5
+
+leop_error_distance = (5**2 + (mtotErrP)**2)**0.5
+
+print('Deviation from line = ' + str(distances.min()/leop_error_distance)  \
+        + ' sigma')
+
+
+
 plt.annotate('(a)',
-            (0.9,0.05)
+            (0.9,0.03)
             ,color='k'
             ,textcoords='axes fraction',
             xycoords='axes fraction')
-
-#plt.savefig('../figures/leop.mcGaughPlot.dwarfs.eps',dpi=600)
-#plt.show()
-#
-
-
 
 ################################################################################
 # Include only spirals and gas rich data
@@ -173,6 +194,10 @@ markerSize = 7
 # Spirals
 yMinPos=25
 yMaxPos=82
+
+# line fit
+plt.fill_between(vc_array, mb_array_low, mb_array_high, color='gray',
+        alpha=0.7)
 
 plt.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
              xerr=(Vcerr[0,yMinPos:yMaxPos],Vcerr[1,yMinPos:yMaxPos]),
@@ -197,20 +222,15 @@ plt.legend(loc='upper left')
 #plt.savefig('../figures/leop.mcGaughPlot.noLeoP.eps',dpi=600)
 
 # Leo P
-plt.errorbar(10,mtot,
+plt.errorbar(15,mtot,
              #xerr=([15,0]),yerr=([10**6,10**6]),
-             xerr=([5],[1]),yerr=([mtotErrM],[mtotErrP]),
-             xlolims=True,
+             xerr=([5],[5]),yerr=([mtotErrM],[mtotErrP]),
+             xlolims=False,
              marker='s',color='c',ecolor='k',elinewidth=2,capsize=3,
              markersize=markerSize)
 
-# Plot line for fitting spirals: function = log(M_b) = x log(V_c) + A
-lowPt = 10 ** ( 4.0 * math.log10(0.0001) + 1.65)
-highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
-plt.plot([0.0001,10**5],[lowPt,highPt],
-         color='k',linestyle='dashed',linewidth=2)
 plt.annotate('(b)',
-            (0.9,0.05)
+            (0.9,0.03)
             ,color='k'
             ,textcoords='axes fraction',
             xycoords='axes fraction')
@@ -224,198 +244,3 @@ plt.show()
 
 
 
-
-
-
-
-
-
-
-'''
-plt.rcParams.update(params)
-plt.figure(1)
-plt.clf()
-
-markerSize = 5
-# Spirals
-yMinPos=0
-yMaxPos=81
-plt.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-             xerr=(Vcerr[0,yMinPos:yMaxPos],Vcerr[1,yMinPos:yMaxPos]),
-             yerr=(Mberr[0,yMinPos:yMaxPos],Mberr[1,yMinPos:yMaxPos]),
-             marker='s',color='g',ecolor='k',linestyle='none',
-             markersize=markerSize)
-
-# Dwarfs
-#yMinPos=82
-#yMaxPos=114
-#plt.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-#             xerr=(xerr[0,yMinPos:yMaxPos],xerr[1,yMinPos:yMaxPos]),
-#yerr=(yerr[0,yMinPos:yMaxPos],yerr[1,yMinPos:yMaxPos]),
-#             marker='o',color='r',ecolor='k',linestyle='none',
-#             markersize=markerSize)
-
-# Plot line for fitting spirals: function = log(M_b) = x log(V_c) + A
-lowPt = 10 ** ( 4.0 * math.log10(0.0001) + 1.65)
-highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
-plt.plot([0.0001,10**5],[lowPt,highPt],
-         color='b',linestyle='dashed',linewidth=2)
-
-plt.ylabel("M$_b$ (M$_{\odot}$)",family='serif')
-plt.xlabel("V$_c$ (km s$^{-1}$)",family='serif')
-plt.xscale('log')
-plt.yscale('log')
-plt.xlim([1,10**3])
-plt.ylim([50,10**13])
-plt.legend(loc='upper left')
-#plt.savefig('../figures/leop.mcGaughPlot.noLeoP.nodSph.eps',dpi=600)
-
-# Plot Leo P
-plt.errorbar(15,1.82*10**6,
-             #xerr=([15,0]),yerr=([10**6,10**6]),
-             xerr=5,yerr=0.10**5,
-             xlolims=True,
-             marker='*',color='c',ecolor='k',elinewidth='2',
-             markersize=markerSize*3.5)
-
-plt.savefig('../figures/leop.mcGaughPlot.nodSph.eps',dpi=600)
-plt.show()
-
-############################################################################################
-# Plot all four together
-############################################################################################
-
-
-
-
-
-plt.close('all')
-plt.rcParams.update(params)
-plt.figure(1)
-plt.clf()
-
-
-
-f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2, sharex='col', sharey='row')
-
-##########
-# Plot 1 #
-##########
-# Spirals
-ax1.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-             xerr=(xerr[0,yMinPos:yMaxPos],xerr[1,yMinPos:yMaxPos]),
-             yerr=(yerr[0,yMinPos:yMaxPos],yerr[1,yMinPos:yMaxPos]),
-             marker='s',color='g',ecolor='k',linestyle='none',
-             markersize=markerSize)
-
-# Dwarfs
-yMinPos=82
-yMaxPos=114
-ax1.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-             xerr=(xerr[0,yMinPos:yMaxPos],xerr[1,yMinPos:yMaxPos]),
-yerr=(yerr[0,yMinPos:yMaxPos],yerr[1,yMinPos:yMaxPos]),
-             marker='o',color='r',ecolor='k',linestyle='none',
-             markersize=markerSize)
-
-# Plot line for fitting spirals: function = log(M_b) = x log(V_c) + A
-lowPt = 10 ** ( 4.0 * math.log10(0.0001) + 1.65)
-highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
-ax1.plot([0.0001,10**5],[lowPt,highPt],
-         color='b',linestyle='dashed',linewidth=2)
-
-# Plot Leo P
-ax1.errorbar(15,1.82*10**6,
-             #xerr=([15,0]),yerr=([10**6,10**6]),
-             xerr=5,yerr=0.10**5,
-             xlolims=True,
-             marker='*',color='c',ecolor='k',elinewidth='2',
-             markersize=markerSize*3.5)
-
-##########
-# Plot 2 #
-##########
-
-# Spirals
-ax2.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-             xerr=(xerr[0,yMinPos:yMaxPos],xerr[1,yMinPos:yMaxPos]),
-             yerr=(yerr[0,yMinPos:yMaxPos],yerr[1,yMinPos:yMaxPos]),
-             marker='s',color='g',ecolor='k',linestyle='none',
-             markersize=markerSize)
-
-# Dwarfs
-yMinPos=82
-yMaxPos=114
-ax2.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-             xerr=(xerr[0,yMinPos:yMaxPos],xerr[1,yMinPos:yMaxPos]),
-yerr=(yerr[0,yMinPos:yMaxPos],yerr[1,yMinPos:yMaxPos]),
-             marker='o',color='r',ecolor='k',linestyle='none',
-             markersize=markerSize)
-
-# Plot line for fitting spirals: function = log(M_b) = x log(V_c) + A
-lowPt = 10 ** ( 4.0 * math.log10(0.0001) + 1.65)
-highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
-ax2.plot([0.0001,10**5],[lowPt,highPt],
-         color='b',linestyle='dashed',linewidth=2)
-
-
-##########
-# Plot 3 #
-##########
-# Spirals
-ax3.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-             xerr=(xerr[0,yMinPos:yMaxPos],xerr[1,yMinPos:yMaxPos]),
-             yerr=(yerr[0,yMinPos:yMaxPos],yerr[1,yMinPos:yMaxPos]),
-             marker='s',color='g',ecolor='k',linestyle='none',
-             markersize=markerSize)
-
-# Plot line for fitting spirals: function = log(M_b) = x log(V_c) + A
-lowPt = 10 ** ( 4.0 * math.log10(0.0001) + 1.65)
-highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
-ax3.plot([0.0001,10**5],[lowPt,highPt],
-         color='b',linestyle='dashed',linewidth=2)
-
-# Plot Leo P
-ax3.errorbar(15,1.82*10**6,
-             #xerr=([15,0]),yerr=([10**6,10**6]),
-             xerr=5,yerr=0.10**5,
-             xlolims=True,
-             marker='*',color='c',ecolor='k',elinewidth='2',
-             markersize=markerSize*3.5)
-
-##########
-# Plot 4 #
-##########
-# Spirals
-ax4.errorbar(data[0,yMinPos:yMaxPos],data[1,yMinPos:yMaxPos],
-             xerr=(xerr[0,yMinPos:yMaxPos],xerr[1,yMinPos:yMaxPos]),
-             yerr=(yerr[0,yMinPos:yMaxPos],yerr[1,yMinPos:yMaxPos]),
-             marker='s',color='g',ecolor='k',linestyle='none',
-             markersize=markerSize)
-
-# Plot line for fitting spirals: function = log(M_b) = x log(V_c) + A
-lowPt = 10 ** ( 4.0 * math.log10(0.0001) + 1.65)
-highPt = 10 ** ( 4.0 * math.log10(10**5) + 1.65)
-ax4.plot([0.0001,10**5],[lowPt,highPt],
-         color='b',linestyle='dashed',linewidth=2)
-
-
-
-
-# Fine-tune figure; make subplots close to each other and hide x ticks for
-# all but bottom plot.
-f.subplots_adjust(hspace=0,vspace=0)
-
-#plt.setp([a.get_xticklabels() for a in f.axes[:-1]], visible=False)
-#plt.setp([a.get_yticklabels() for a in f.axes[:-1]], visible=False)
-
-plt.ylabel("M$_b$ (M$_{\odot}$)",family='serif')
-plt.xlabel("V$_c$ (km s$^{-1}$)",family='serif')
-plt.xscale('log')
-plt.yscale('log')
-plt.xlim([1,10**3])
-plt.ylim([50,10**13])
-plt.legend(loc='upper left')
-
-plt.savefig('../figures/leop.mcGaughPlot.allFour.eps',dpi=600)
-plt.show()
-'''
