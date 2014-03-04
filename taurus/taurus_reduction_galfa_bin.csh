@@ -1,5 +1,7 @@
 #!/usr/bin/csh
 
+cd /d/bip3/ezbc/taurus/data/galfa
+
 # relevant cube: taurus.galfa.cube.mir
 # We need to regrid to 4"/pix
 # Cell size is 1"/pix, thus we bin 4 pixels together
@@ -8,9 +10,29 @@ puthd in=taurus.galfa.cube.mir/restfreq value=1.420405752E+09 type='double'
 
 puthd in=taurus.galfa.cube.bin.mir/restfreq value=1.420405752E+09 type='double'
 
-imbin in=/d/bip3/ezbc/taurus/data/galfa/taurus.galfa.cube.mir out=taurus.galfa.cube.bin.4arcmin.mir bin=4,4,4,4,4,4
+-12:00:00.00,-5884,-00:00:14.00,400,\
+     +00:00:00:00,-844.5,00:03:30.00,400,\
+     0,565.5,1,100
 
-#imbin in=taurus.galfa.cube.mir out=taurus.galfa.cube.bin.4arcmin.mir 'bin='
+# bottom-right corner:
+# ra = (05 + 20/60. + 55.951/3600.) * 15 = 80.23312916666666 deg
+# dec = 14 + 0.7/60. + 01/3600. = 14.011944444444444 deg
+# but lets cut off the missing stripe around 18deg dec
+
+# beamsize of cube: 4' x 3.5'
+# geometric mean = (4*3.5)**0.5 = 3.7'
+# degrees: 
+
+regrid in=/d/bip3/ezbc/taurus/data/galfa/taurus.galfa.cube.mir \
+    out=taurus_galfa_cube_bin_3.7arcmin.mir \
+    desc=81.2333,0,-0.0616,400,19.011944,0,0.0616,338,0,100,1,200
+
+fits in=taurus_galfa_cube_bin_3.7arcmin.mir \
+    out=taurus_galfa_cube_bin_3.7arcmin.fits \
+    op=xyout
+
+
+
 
 imbin in=taurus.galfa.cube.mir out=taurus.galfa.cube.bin.16arcmin.mir 'bin=8,8,8,8,4,4'
 

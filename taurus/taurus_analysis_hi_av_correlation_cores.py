@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 ''' Calculates the N(HI) / Av correlation for the Taurus molecular cloud.
-
 '''
 
 def plot_correlations(correlations,velocity_centers,velocity_widths,
@@ -214,6 +213,103 @@ def plot_nhi_vs_av(nhi_image, av_image,
     if returnimage:
         return correlations_image
 
+def plot_hisd_vs_hsd(hi_sd_image, h_sd_image,
+        hi_sd_image_error=None, h_sd_image_error=None, limits=None,
+        savedir='./', filename=None, show=True, scale='linear',
+        returnimage=False, hess_binsize=None, title='', plot_type='hexbin'):
+
+    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
+    and an Av image.
+    '''
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+
+    # Drop the NaNs from the images
+    indices = np.where((hi_sd_image == hi_sd_image) &\
+                       (h_sd_image == h_sd_image)&\
+                       (h_sd_image > 0) &\
+                       (hi_sd_image > -5))
+
+    hi_sd_image_nonans = hi_sd_image[indices]
+    h_sd_image_nonans = h_sd_image[indices]
+
+    if type(hi_sd_image_error) is np.ndarray:
+        hi_sd_image_error_nonans = hi_sd_image_error[indices]
+    else:
+        hi_sd_image_error_nonans = np.array(hi_sd_image_error[indices])
+
+    if type(h_sd_image_error) is np.ndarray:
+        h_sd_image_error_nonans = h_sd_image_error[indices]
+    elif type(h_sd_image_error) is np.ma.core.MaskedArray:
+        #h_sd_image_error_nonans = np.copy(h_sd_image_error[indices])
+        h_sd_image_error_nonans = h_sd_image_error[indices]
+        print 'nope'
+    else:
+        h_sd_image_error_nonans = h_sd_image_error * \
+                np.ones(h_sd_image[indices].shape)
+
+    # Create figure
+    fig = plt.figure(figsize=(8,8))
+    ax = fig.add_subplot(111)
+    if hi_sd_image_error is None:
+        if plot_type is 'hexbin':
+            image = ax.hexbin(h_sd_image_nonans.ravel(),
+                    hi_sd_image_nonans.ravel(),
+                    norm=matplotlib.colors.LogNorm(),
+                    mincnt=1,
+                    yscale='log',
+                    xscale='log')
+            # Adjust color bar of density plot
+            cb = plt.colorbar(image)
+            cb.set_label('Counts')
+        elif plot_type is 'scatter':
+            image = ax.scatter(h_sd_image_nonans.ravel(),
+                    hi_sd_image_nonans.ravel(),
+                    alpha=0.3,
+                    color='k'
+                    )
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+    else:
+        image = ax.errorbar(h_sd_image_nonans.ravel(),
+                hi_sd_image_nonans.ravel(),
+                xerr=(h_sd_image_error_nonans.ravel()),
+                yerr=(hi_sd_image_error_nonans.ravel()),
+                alpha=0.3,
+                color='k',
+                marker='^',ecolor='k',linestyle='none',
+                markersize=2
+                )
+
+        ax.set_xscale(scale)
+        ax.set_yscale(scale)
+
+    if limits is not None:
+    	ax.set_xlim(limits[0],limits[1])
+    	ax.set_ylim(limits[2],limits[3])
+
+    # Adjust asthetics
+    ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',
+              size = 'small',
+              family='serif')
+    ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',
+              size = 'small',
+              family='serif')
+    ax.set_title(title)
+    ax.grid(True)
+
+    if filename is not None:
+        plt.savefig(savedir + filename,bbox_inches='tight')
+    if show:
+        fig.show()
+    if returnimage:
+        return correlations_image
+
 def plot_sd_vs_av(sd_image, av_image,
         sd_image_error=None, av_image_error=None, limits=None,
         savedir='./', filename=None, show=True, scale='linear',
@@ -362,9 +458,9 @@ def calculate_noise_cube(cube=None, velocity_axis=None,
     for i in range(cube.shape[1]):
         for j in range(cube.shape[2]):
             profile = cube[:,i,j]
-            #noise = calculate_noise(profile, velocity_axis,
-            #        velocity_noise_range)
-            noise = 0.1 # measured in line free region
+            noise = calculate_noise(profile, velocity_axis,
+                    velocity_noise_range)
+            #noise = 0.1 # measured in line free region
             noise_cube[:,i,j] = calculate_noise_scale(Tsys,
                     profile, noise=noise)
 
@@ -378,16 +474,19 @@ def calculate_noise(profile, velocity_axis, velocity_range):
     """
     import numpy as np
 
-    velMin = [velocity_range[0],velocity_range[2]]
-    velMax = [velocity_range[1],velocity_range[3]]
-
     std = 0
-    for k in xrange(len(velMin)):
-        noise_region = np.where((velocity_axis >= velMin[k]) & \
-                        (velocity_axis <= velMax[k]))
+
+    # calculate noises for each individual region
+    for i in range(len(velocity_range) / 2):
+        velMin = velocity_range[2*i + 0]
+        velMax = velocity_range[2*i + 1]
+
+        noise_region = np.where((velocity_axis >= velMin) & \
+                        (velocity_axis <= velMax))
+
         std += np.std(profile[noise_region])
 
-    std /= 2.
+    std /= len(velocity_range) / 2
     return std
 
 def calculate_noise_scale(Tsys, profile, noise=None):
@@ -395,15 +494,11 @@ def calculate_noise_scale(Tsys, profile, noise=None):
     """
     import numpy as np
     n = np.zeros(len(profile))
-    for i, Tb in enumerate(profile):
-        n[i] = (Tsys + Tb) / Tsys * noise
+    n = (Tsys + profile) / Tsys * noise
 
     return n
 
-def calculate_sd(cube=None, velocity_axis=None, SpectralGrid=None,
-        velocity_range=[], return_sd_error=True, noise_cube=None,
-        velocity_noise_range=[-110,-90,90,100],
-        Tsys=30.):
+def calculate_sd(image, sd_factor=1/1.25):
 
     ''' Calculates a surface density image given a velocity range within which
     to include a SpectralGrid's components.
@@ -418,30 +513,25 @@ def calculate_sd(cube=None, velocity_axis=None, SpectralGrid=None,
 
     import numpy as np
 
-    # Calculate NHI from cube if set
-    if cube is not None and velocity_axis is not None:
-        image = np.empty((cube.shape[1],
-                          cube.shape[2]))
-        image[:,:] = np.NaN
-        indices = np.where((velocity_axis > velocity_range[0]) & \
-                (velocity_axis < velocity_range[1]))[0]
-        image[:,:] = cube[indices,:,:].sum(axis=0)
-        # Calculate image error
-        if return_sd_error:
-            image_error = np.empty((cube.shape[1],
-                              cube.shape[2]))
-            image_error[:,:] = np.NaN
-            image_error[:,:] = (noise_cube[indices,:,:]**2).sum(axis=0)**0.5
-
     # NHI in units of 1e20 cm^-2
-    sd_image = np.ma.array(image,mask=np.isnan(image)) * 0.017
+    sd_image = image * sd_factor
 
-    if return_sd_error:
-        sd_image_error = np.ma.array(image_error,
-                mask=np.isnan(image_error)) * 0.017
-        return sd_image, sd_image_error
-    else:
-        return sd_image
+    return sd_image
+
+def calculate_nh2(nhi_image = None, av_image = None, dgr = 1.1e-1):
+
+    ''' Calculates the total gas column density given N(HI), A_v and a
+    dust-to-gas ratio.
+
+    Parameters
+    ----------
+    '''
+
+    import numpy as np
+
+    nh_image = 0.5 * (av_image / dgr - nhi_image)
+
+    return nh_image
 
 def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
         av_image=None, velocity_centers=[], velocity_widths=[],av_noise=0.5,
@@ -519,7 +609,32 @@ def load_fits(filename,return_header=False):
 
 def get_sub_image(image,indices):
 
-    return image[indices[0]:indices[2],indices[1]:indices[3]]
+    return image[indices[1]:indices[3],
+            indices[0]:indices[2]]
+
+def hrs2degs(ra=None, dec=None):
+    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
+    '''
+
+    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
+    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
+
+    return (ra_deg, dec_deg)
+
+def get_pix_coords(ra=None, dec=None, header=None):
+
+    ''' Ra and dec in degrees.
+    '''
+
+    import pywcsgrid2 as wcs
+    import pywcs
+
+    ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+
+    wcs_header = pywcs.WCS(header)
+    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
+
+    return pix_coords
 
 def main():
 
@@ -539,15 +654,13 @@ def main():
     # load 2mass Av and GALFA HI images, on same grid
     av_data, av_header = load_fits(av_dir + 'taurus_av_k09_regrid.fits',
             return_header=True)
-    #av_data = av_data[100:256,114:284]
     # load Av image from goldsmith: Pineda et al. 2010, ApJ, 721, 686
     av_data_goldsmith = load_fits(av_dir + \
             'taurus_av_p10_regrid.fits')
 
     #av_data += - 0.4 # subtracts background of 0.4 mags
-    hi_data,h = load_fits(hi_dir + 'taurus.galfa.cube.bin.4arcmin.fits',
+    hi_data,h = load_fits(hi_dir + 'taurus_galfa_cube_bin_3.7arcmin.fits',
             return_header=True)
-    #hi_data = hi_data[:,100:256,114:284]
 
     # make the velocity axis
     velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
@@ -555,67 +668,130 @@ def main():
     velocity_axis /= 1000.
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus.galfa.cube.bin.4arcmin.noise.fits'
-    if path.isfile(noise_cube_filename):
+    noise_cube_filename = 'taurus_galfa_cube_bin_3.7arcmin_noise.fits'
+    if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
-                velocity_noise_range=[-110,-90,90,110], header=h, Tsys=30.,
+                velocity_noise_range=[90,110], header=h, Tsys=30.,
                 filename=hi_dir + noise_cube_filename)
     else:
-        noise_cube, h = load_fits(hi_dir + noise_cube_filename,
+        noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
             return_header=True)
 
+    # calculate maps
     nhi_image, nhi_image_error = calculate_NHI(cube=hi_data,
         velocity_axis=velocity_axis, noise_cube = noise_cube,
-        velocity_range=[5,20], return_nhi_error=True)
+        velocity_range=[-5,15], return_nhi_error=True)
 
-    sd_image, sd_image_error = calculate_sd(cube=hi_data,
-        velocity_axis=velocity_axis, noise_cube = noise_cube,
-        velocity_range=[5,20], return_sd_error=True)
+    nh2_image = calculate_nh2(nhi_image = nhi_image,
+            av_image = av_data, dgr = 1.1e-1)
+    nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
+            av_image = 0.1, dgr = 1.1e-1)
+
+    hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
+    hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
+
+    h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
+    h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
+
+    h_sd_image = av_data / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
+    h_sd_image_error = 0.1 / (1.25 * 0.11)
+
 
     cores = {'L1495':
                 {'wcs_position': [15*(4+14/60.), 28+11/60., 0],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [206,242,244,287]},
+                 'box': [get_pix_coords(ra=(4,16,30.031),
+                                        dec=(27,44,30),
+                                        header=h),
+                         get_pix_coords(ra=(4,5,20),
+                                        dec=(28,28,33),
+                                        header=h)]
+                 },
              'L1495A':
                 {'wcs_position': [15*(4+18/60.), 28+23/60., 0],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [206,212,236,242]},
+                 'box': [get_pix_coords(ra=(4,28,23),
+                                        dec=(28,12,50),
+                                        header=h),
+                         get_pix_coords(ra=(4,16,23),
+                                        dec=(29,46,5),
+                                        header=h)],
+                 },
              'B213':
                 {'wcs_position': [15*(4+19/60.), 27+15/60., 0],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [177,206,206,242]},
+                 'box': [get_pix_coords(ra=(4,22,27),
+                                        dec=(26,45,47),
+                                        header=h),
+                         get_pix_coords(ra=(4,5,25),
+                                        dec=(27,18,48),
+                                        header=h)],
+                },
              'B220':
                 {'wcs_position': [15*(4+41/60.), 26+7/60., 0],
                  'map': None,
                  'threshold': 7,
-                 'box': [179,131,199,157]},
+                 'box': [get_pix_coords(ra=(4,47,49),
+                                        dec=(25,31,13),
+                                        header=h),
+                         get_pix_coords(ra=(4,40,37),
+                                        dec=(27,31,17),
+                                        header=h)],
+                 },
              'L1527':
                 {'wcs_position': [15*(4+39/60.), 25+47/60., 0],
                  'map': None,
                  'threshold': 7,
-                 'box': [165,152,178,172]},
+                 'box': [get_pix_coords(ra=(4,40,13),
+                                        dec=(24,46,38),
+                                        header=h),
+                         get_pix_coords(ra=(4,34,35),
+                                        dec=(25,56,7),
+                                        header=h)],
+                 },
              'B215':
                 {'wcs_position': [15*(4+23/60.), 25+3/60., 0],
                  'map': None,
                  'threshold': 3,
-                 'box': [143,207,177,243]},
+                 'box': [get_pix_coords(ra=(4,24,51),
+                                        dec=(22,36,7),
+                                        header=h),
+                         get_pix_coords(ra=(4,20,54),
+                                        dec=(25,26,31),
+                                        header=h)],
+                 },
              'L1524':
                 {'wcs_position': [15*(4+29/60.), 24+31/60., 0],
                  'map': None,
                  'threshold': 3,
-                 'box': [138,177,167,209]}}
+                 'box': [get_pix_coords(ra=(4,31,0),
+                                        dec=(22,4,6),
+                                        header=h),
+                         get_pix_coords(ra=(4,25,33),
+                                        dec=(25,0,55),
+                                        header=h)],
+                 }
+                }
+
+    for core in cores:
+    	box = cores[core]['box']
+    	cores[core]['box'] = (int(box[0][0]),int(box[0][1]),
+    	        int(box[1][0]),int(box[1][1]))
 
     # calculate correlation for cores
     if False:
         limits =[1,22,6,16]
 
         for core in cores:
-        	core_map = np.load(core_dir + core + '.npy')
-        	plot_nhi_vs_av(nhi_image,core_map,
+
+            print('Calculating N(HI) vs. Av for core %s' % core)
+
+            core_map = np.load(core_dir + core + '.npy')
+            plot_nhi_vs_av(nhi_image,core_map,
                     nhi_image_error = nhi_image_error,
                     av_image_error = 0.1,
                     limits = limits,
@@ -625,7 +801,7 @@ def main():
                     title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
                     show=False)
 
-        	plot_sd_vs_av(sd_image, core_map,
+            plot_sd_vs_av(sd_image, core_map,
                     sd_image_error = sd_image_error,
                     av_image_error = 0.1,
                     limits = limits,
@@ -633,23 +809,25 @@ def main():
                     plot_type='scatter',
                     filename='taurus_sd_vs_av_' + core + '_small.png',
                     title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
-                    show=False)
+                    show = False)
 
     if True:
-
-        limits =[1,22,1,16]
-        limits = None
+        hsd_limits =[0.1,300]
+        hisd_limits = [2,20]
+        av_limits =[0.01,100]
+        nhi_limits = [2,20]
 
         for core in cores:
+            print('Calculating for core %s' % core)
+
             indices = cores[core]['box']
             nhi_image_sub = get_sub_image(nhi_image, indices)
             nhi_image_error_sub = get_sub_image(nhi_image_error, indices)
             av_data_sub = get_sub_image(av_data, indices)
-            print av_data_sub.max()
             plot_nhi_vs_av(nhi_image_sub,av_data_sub,
                     nhi_image_error = nhi_image_error_sub,
                     av_image_error = 0.1,
-                    limits = limits,
+                    limits = [0.01,100,2,20],
                     savedir=figure_dir,
                     plot_type='scatter',
                     scale='log',
@@ -657,18 +835,35 @@ def main():
                     title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
                     show=False)
 
-            sd_image_sub = get_sub_image(sd_image, indices)
-            sd_image_error_sub = get_sub_image(sd_image_error, indices)
-            plot_sd_vs_av(sd_image_sub, av_data_sub,
-                    sd_image_error = sd_image_error_sub,
+            hi_sd_image_sub = get_sub_image(hi_sd_image, indices)
+            hi_sd_image_error_sub = get_sub_image(hi_sd_image_error, indices)
+            av_limits =[0.01,100]
+
+            plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
+                    sd_image_error = hi_sd_image_error_sub,
                     av_image_error = 0.1,
-                    limits = limits,
+                    limits = [0.01,100,2,20],
                     savedir=figure_dir,
                     plot_type='scatter',
                     scale='log',
                     filename='taurus_sd_vs_av_' + core + '_box.png',
                     title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
                     show=False)
+
+            if True:
+                h_sd_image_sub = get_sub_image(h_sd_image, indices)
+                #h_sd_image_error_sub = get_sub_image(h_sd_image_error, indices)
+                plot_hisd_vs_hsd(hi_sd_image_sub, h_sd_image_sub,
+                        h_sd_image_error = h_sd_image_error,
+                        hi_sd_image_error = hi_sd_image_error_sub,
+                        limits = [0.1,300,2,20],
+                        savedir=figure_dir,
+                        plot_type='scatter',
+                        scale='log',
+                        filename='taurus_hisd_vs_hsd_' + core + '_box.png',
+                        title=r'$\Sigma_{HI}$ vs. $\Sigma_{HI}$ + ' + \
+                                '$\Sigma_{H2}$ of Taurus Core ' + core,
+                        show=False)
 
     # Plot heat map of correlations
     if False:
