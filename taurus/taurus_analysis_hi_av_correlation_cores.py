@@ -607,7 +607,7 @@ def load_fits(filename,return_header=False):
     else:
         return f[0].data
 
-def get_sub_image(image,indices):
+def get_sub_image(image, indices):
 
     return image[indices[1]:indices[3],
             indices[0]:indices[2]]
@@ -681,7 +681,7 @@ def main():
     # calculate maps
     nhi_image, nhi_image_error = calculate_NHI(cube=hi_data,
         velocity_axis=velocity_axis, noise_cube = noise_cube,
-        velocity_range=[-5,15], return_nhi_error=True)
+        velocity_range=[-100,100], return_nhi_error=True)
 
     nh2_image = calculate_nh2(nhi_image = nhi_image,
             av_image = av_data, dgr = 1.1e-1)
@@ -824,33 +824,53 @@ def main():
             nhi_image_sub = get_sub_image(nhi_image, indices)
             nhi_image_error_sub = get_sub_image(nhi_image_error, indices)
             av_data_sub = get_sub_image(av_data, indices)
-            plot_nhi_vs_av(nhi_image_sub,av_data_sub,
-                    nhi_image_error = nhi_image_error_sub,
-                    av_image_error = 0.1,
-                    limits = [0.01,100,2,20],
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    scale='log',
-                    filename='taurus_nhi_vs_av_' + core + '_box.png',
-                    title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
-                    show=False)
-
             hi_sd_image_sub = get_sub_image(hi_sd_image, indices)
             hi_sd_image_error_sub = get_sub_image(hi_sd_image_error, indices)
             av_limits =[0.01,100]
 
-            plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
-                    sd_image_error = hi_sd_image_error_sub,
-                    av_image_error = 0.1,
-                    limits = [0.01,100,2,20],
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    scale='log',
-                    filename='taurus_sd_vs_av_' + core + '_box.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
-                    show=False)
+            if core is 'B213':
+            	import mygeometry as myg
+            	reload(myg)
+            	angle = 40.
+                xy = (115, 223)
+                width = 20
+                height = 40
+
+                # Grab the mask
+                indices = myg.get_rectangular_mask(nhi_image, xy[0], xy[1],
+                        width=width, height=height, angle=angle,
+                        return_indices=True)
+
+                av_data_sub = av_data[indices]
+                hi_sd_image_sub = hi_sd_image[indices]
+                hi_sd_image_error_sub = hi_sd_image_error[indices]
+
+            if False:
+                plot_nhi_vs_av(nhi_image_sub,av_data_sub,
+                        nhi_image_error = nhi_image_error_sub,
+                        av_image_error = 0.1,
+                        limits = [0.01,100,2,20],
+                        savedir=figure_dir,
+                        plot_type='scatter',
+                        scale='log',
+                        filename='taurus_nhi_vs_av_' + core + '_box.png',
+                        title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
+                        show=False)
+
 
             if True:
+                plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
+                        sd_image_error = hi_sd_image_error_sub,
+                        av_image_error = 0.1,
+                        limits = [0.01,100,2,20],
+                        savedir=figure_dir,
+                        plot_type='scatter',
+                        scale='log',
+                        filename='taurus_sd_vs_av_' + core + '_box.png',
+                        title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
+                        show=False)
+
+            if False:
                 h_sd_image_sub = get_sub_image(h_sd_image, indices)
                 #h_sd_image_error_sub = get_sub_image(h_sd_image_error, indices)
                 plot_hisd_vs_hsd(hi_sd_image_sub, h_sd_image_sub,
@@ -864,20 +884,6 @@ def main():
                         title=r'$\Sigma_{HI}$ vs. $\Sigma_{HI}$ + ' + \
                                 '$\Sigma_{H2}$ of Taurus Core ' + core,
                         show=False)
-
-    # Plot heat map of correlations
-    if False:
-        if correlations is not None:
-            correlations_array = plot_correlations(correlations,
-                    velocity_centers, velocity_widths,
-                    returnimage=True,show=False)
-        if False:
-            # Print best-fit characteristics
-            indices = np.where(cube_correlations_array == \
-                    cube_correlations_array.max())
-            print 'Maximum correlation values: '
-            print str(velocity_centers[indices[0]][0]) + ' km/s center'
-            print str(velocity_widths[indices[1]][0]) + ' km/s width'
 
 if __name__ == '__main__':
     main()

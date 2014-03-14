@@ -32,6 +32,29 @@ def calculate_nhi(hi_cube=None, velocity_axis=None, velocity_range=[]):
 
     return nhi_image
 
+def convert_core_coordinates(cores, header):
+
+    for core in cores:
+        cores[core].update({'box_pixel': 0})
+        cores[core].update({'center_pixel': 0})
+
+    	box_wcs = cores[core]['box_wcs']
+    	box_pixel = len(box_wcs) * [0,]
+    	center_wcs = cores[core]['center_wcs']
+
+        # convert centers to pixel coords
+        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
+                                                     dec=center_wcs[1],
+                                                     header=header)
+        # convert box corners to pixel coords
+        for i in range(len(box_wcs)/2):
+        	pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+        	        header=header)
+        	box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
+        cores[core]['box_pixel'] = box_pixel
+
+    return cores
+
 def get_pix_coords(ra=None, dec=None, header=None):
 
     ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec).
@@ -130,20 +153,20 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
 
     # Convert sky to pix coordinates
     wcs_header = pywcs.WCS(header)
-    for key in cores:
-        pix_coords = wcs_header.wcs_sky2pix([cores[key]['wcs_position']], 0)[0]
+    for core in cores:
+        pix_coords = cores[core]['center_pixel']
 
-        ax.scatter(pix_coords[0],pix_coords[1], color='w', s=200, marker='+',
+        ax.scatter(pix_coords[0],pix_coords[1], color='k', s=200, marker='+',
                 linewidths=2)
 
-        ax.annotate(key,
+        ax.annotate(core,
                 xy=[pix_coords[0], pix_coords[1]],
                 xytext=(5,5),
                 textcoords='offset points',
-                color='w')
+                color='k')
 
         if boxes:
-        	box = cores[key]['box']
+        	box = cores[core]['box_pixel']
         	width = box[2] - box[0]
         	height = box[3] - box[1]
         	print width,height
@@ -163,6 +186,8 @@ def main():
     import pyfits as pf
     import numpy as np
     from mycoords import make_velocity_axis
+    import mygeometry as myg
+    reload(myg)
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
@@ -197,89 +222,50 @@ def main():
                 show=True)
 
     cores = {'L1495':
-                {'wcs_position': [15*(4+14/60.), 28+11/60., 0],
+                {'center_wcs': [(4,14,0), (28, 11, 0)],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,16,30.031),
-                                        dec=(27,44,30),
-                                        header=h),
-                         get_pix_coords(ra=(4,5,20),
-                                        dec=(28,28,33),
-                                        header=h)]
+                 'box_wcs': [(4,16,30), (27,44,30), (4,5,20), (28,28,33)]
                  },
              'L1495A':
-                {'wcs_position': [15*(4+18/60.), 28+23/60., 0],
+                {'center_wcs': [(4,18,0), (28,23., 0)],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,28,23),
-                                        dec=(28,12,50),
-                                        header=h),
-                         get_pix_coords(ra=(4,16,23),
-                                        dec=(29,46,5),
-                                        header=h)],
+                 'box_wcs': [(4,28,23),(28,12,50),(4,16,23),(29,46,5)],
                  },
              'B213':
-                {'wcs_position': [15*(4+19/60.), 27+15/60., 0],
+                {'center_wcs': [(4, 19, 0), (27, 15,0)],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,22,27),
-                                        dec=(26,45,47),
-                                        header=h),
-                         get_pix_coords(ra=(4,5,25),
-                                        dec=(27,18,48),
-                                        header=h)],
+                 'box_wcs': [(4,22,27), (26,45,47),(4,5,25),(27,18,48)],
                 },
              'B220':
-                {'wcs_position': [15*(4+41/60.), 26+7/60., 0],
+                {'center_wcs': [(4, 41, 0.), (26,7,0)],
                  'map': None,
                  'threshold': 7,
-                 'box': [get_pix_coords(ra=(4,47,49),
-                                        dec=(25,31,13),
-                                        header=h),
-                         get_pix_coords(ra=(4,40,37),
-                                        dec=(27,31,17),
-                                        header=h)],
+                 'box_wcs': [(4,47,49),(25,31,13),(4,40,37),(27,31,17)],
                  },
              'L1527':
-                {'wcs_position': [15*(4+39/60.), 25+47/60., 0],
+                {'center_wcs': [(4, 39, 0.), (25,47, 0)],
                  'map': None,
                  'threshold': 7,
-                 'box': [get_pix_coords(ra=(4,40,13),
-                                        dec=(24,46,38),
-                                        header=h),
-                         get_pix_coords(ra=(4,34,35),
-                                        dec=(25,56,7),
-                                        header=h)],
+                 'box_wcs': [(4,40,13), (24,46,38), (4,34,35), (25,56,7)],
                  },
              'B215':
-                {'wcs_position': [15*(4+23/60.), 25+3/60., 0],
+                {'center_wcs': [(4, 23, 0), (25, 3, 0)],
                  'map': None,
                  'threshold': 3,
-                 'box': [get_pix_coords(ra=(4,24,51),
-                                        dec=(22,36,7),
-                                        header=h),
-                         get_pix_coords(ra=(4,20,54),
-                                        dec=(25,26,31),
-                                        header=h)],
+                 'box_wcs': [(4,24,51), (22,36,7), (4,20,54), (25,26,31)],
                  },
              'L1524':
-                {'wcs_position': [15*(4+29/60.), 24+31/60., 0],
+                {'center_wcs': [(4,29,0.), (24,31.,0)],
                  'map': None,
                  'threshold': 3,
-                 'box': [get_pix_coords(ra=(4,31,0),
-                                        dec=(22,4,6),
-                                        header=h),
-                         get_pix_coords(ra=(4,25,33),
-                                        dec=(25,0,55),
-                                        header=h)],
+                 'box_wcs': [(4,31,0), (22,4,6), (4,25,33), (25,0,55)],
                  }
                 }
 
-    # write out box parameter into single list
-    for core in cores:
-    	box = cores[core]['box']
-    	cores[core]['box'] = (int(box[0][0]),int(box[0][1]),
-    	        int(box[1][0]),int(box[1][1]))
+    cores = convert_core_coordinates(cores, h)
 
     if False:
         nhi_image = np.zeros(nhi_image.shape)
@@ -301,12 +287,25 @@ def main():
             show=True)
 
     if True:
-        # trim hi_image to av_image size
-        nhi_image_trim = np.ma.array(nhi_image, mask = av_image != av_image)
+        angle = 40.
+        xy = (115, 223)
+        width = 20
+        height = 40
 
+        # Grab the mask
+        mask = myg.get_rectangular_mask(nhi_image, xy[0], xy[1],
+                width=width, height=height, angle=angle)
+
+        nhi_image[mask==0] = np.nan
+
+        # trim hi_image to av_image size
+        nhi_image_trim = np.ma.array(nhi_image,
+                mask = (av_image != av_image))
+
+        # Plot
         plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
                 contour_image=av_image, contours=[5,10,15],
-                boxes=True, cores=cores, limits=[128,37,308,206],
+                boxes=False, cores=cores, limits=[128,37,308,206],
                 title='Taurus: N(HI) map with core boxed-regions.',
                 savedir=figure_dir, filename='taurus_nhi_cores_map.png',
                 show=True)

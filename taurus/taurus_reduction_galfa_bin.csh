@@ -31,9 +31,6 @@ fits in=taurus_galfa_cube_bin_3.7arcmin.mir \
     out=taurus_galfa_cube_bin_3.7arcmin.fits \
     op=xyout
 
-
-
-
 imbin in=taurus.galfa.cube.mir out=taurus.galfa.cube.bin.16arcmin.mir 'bin=8,8,8,8,4,4'
 
 imbin in=taurus.galfa.cube.mir out=taurus.galfa.cube.bin.32arcmin.mir 'bin=16,16,16,16,4,4'

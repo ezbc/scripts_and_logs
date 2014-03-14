@@ -24,11 +24,11 @@ smooth in=$av_dir/taurus_av_k09.mir fwhm=2.816 pa=0 \
 
 regrid in=$av_dir/taurus_av_k09_smooth.mir \
     out=$av_dir/taurus_av_k09_regrid.mir \
-    tin=../taurus_galfa_cube_bin_3.7arcmin.mir \
+    tin=$galfa_dir/taurus_galfa_cube_bin_3.7arcmin.mir \
     axes=1,2
 
 fits in=$av_dir/taurus_av_k09_regrid.mir \
-    out=$av_dir/taurus_av_kainulainen2009_regrid.fits \
+    out=$av_dir/taurus_av_k09_regrid.fits \
     op=xyout
 
 # Pineda, J.~L., Goldsmith, P.~F., Chapman, N., et al.\ 2010, \apj, 721, 686 

@@ -1,244 +1,115 @@
 
 
-if True:
-    import grid
+def main():
+    # Import external modules
     import numpy as np
-    from os import system,path
-    import myclumpfinder as clump_finder
-    reload(clump_finder)
+    import mygeometry as myg
 
-    # define directory locations
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
-    core_dir = output_dir + 'core_arrays/'
+    reload(myg)
 
-    # load 2mass Av and GALFA HI images, on same grid
-    av_data, av_header = load_fits(av_dir + 'taurus_av_k09_regrid.fits',
-            return_header=True)
-    # load Av image from goldsmith: Pineda et al. 2010, ApJ, 721, 686
-    av_data_goldsmith = load_fits(av_dir + \
-            'taurus_av_p10_regrid.fits')
+    image = np.random.random((10,20))
+    angle = 30.
+    xy = (5,10)
+    width = 1
+    height = 5
 
-    #av_data += - 0.4 # subtracts background of 0.4 mags
-    hi_data,h = load_fits(hi_dir + 'taurus_galfa_cube_bin_3.7arcmin.fits',
-            return_header=True)
+    masked_image = myg.get_rectangular_mask(image, xy[0], xy[1], width=width,
+            height=height, angle=angle)
 
-    # make the velocity axis
-    velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
-            h['CRVAL3']
-    velocity_axis /= 1000.
+    #print masked_image
 
-    # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_galfa_cube_bin_3.7arcmin_noise.fits'
-    if not path.isfile(hi_dir + noise_cube_filename):
-        noise_cube = calculate_noise_cube(cube=hi_data,
-                velocity_axis=velocity_axis,
-                velocity_noise_range=[90,110], header=h, Tsys=30.,
-                filename=hi_dir + noise_cube_filename)
-    else:
-        noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
-            return_header=True)
+def get_rect(x, y, width, height, angle):
 
-    nhi_image, nhi_image_error = calculate_NHI(cube=hi_data,
-        velocity_axis=velocity_axis, noise_cube = noise_cube,
-        velocity_range=[-5,15], return_nhi_error=True)
+    ''' Returns four points of a rotated rectangle.
 
-    nh2_image = calculate_nh2(nhi_image = nhi_image,
-            av_image = av_data, dgr = 1.1e-1)
-    nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
-            av_image = 0.1, dgr = 1.1e-1)
+    Author: http://stackoverflow.com/questions/12638790/drawing-a-rectangle-inside-a-2d-numpy-array
 
-    hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
-    hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
+    Parameters
+    ----------
+    x, y : int
+        x and y positions of rectangle
+    width : float
+        Width of rectangle.
+    height : float
+        Height of rectangle.
+    angle : float
+        Angle of rotation in degrees clockwise from East.
+    '''
 
-    h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
-    h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
+    # Create simple rectangle
+    rect = np.array([(0, 0), (width, 0), (width, height), (0, height), (0, 0)])
+    theta = (np.pi / 180.0) * angle
 
-    h_sd_image = hi_sd_image + h2_sd_image
-    h_sd_image_error = (hi_sd_image_error**0.5 + h2_sd_image_error**0.5)**0.5
+    # Define four corners of rotated rectangle
+    R = np.array([[np.cos(theta), -np.sin(theta)],
+                  [np.sin(theta), np.cos(theta)]])
+    offset = np.array([x, y])
+    transformed_rect = np.dot(rect, R) + offset
 
-    cores = {'L1495':
-                {'wcs_position': [15*(4+14/60.), 28+11/60., 0],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,16,30.031),
-                                        dec=(27,44,30),
-                                        header=h),
-                         get_pix_coords(ra=(4,5,20),
-                                        dec=(28,28,33),
-                                        header=h)]
-                 },
-             'L1495A':
-                {'wcs_position': [15*(4+18/60.), 28+23/60., 0],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,28,23),
-                                        dec=(27,52,50),
-                                        header=h),
-                         get_pix_coords(ra=(4,16,23),
-                                        dec=(29,46,5),
-                                        header=h)],
-                 },
-             'B213':
-                {'wcs_position': [15*(4+19/60.), 27+15/60., 0],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,23,27),
-                                        dec=(26,45,47),
-                                        header=h),
-                         get_pix_coords(ra=(4,5,25),
-                                        dec=(27,38,48),
-                                        header=h)],
-                 },
-             'B220':
-                {'wcs_position': [15*(4+41/60.), 26+7/60., 0],
-                 'map': None,
-                 'threshold': 7,
-                 'box': [get_pix_coords(ra=(4,47,49),
-                                        dec=(25,31,13),
-                                        header=h),
-                         get_pix_coords(ra=(4,40,37),
-                                        dec=(27,31,17),
-                                        header=h)],
-                 },
-             'L1527':
-                {'wcs_position': [15*(4+39/60.), 25+47/60., 0],
-                 'map': None,
-                 'threshold': 7,
-                 'box': [get_pix_coords(ra=(4,40,13),
-                                        dec=(24,46,38),
-                                        header=h),
-                         get_pix_coords(ra=(4,34,35),
-                                        dec=(25,56,7),
-                                        header=h)],
-                 },
-             'B215':
-                {'wcs_position': [15*(4+23/60.), 25+3/60., 0],
-                 'map': None,
-                 'threshold': 3,
-                 'box': [get_pix_coords(ra=(4,24,51),
-                                        dec=(22,36,7),
-                                        header=h),
-                         get_pix_coords(ra=(4,20,54),
-                                        dec=(25,26,31),
-                                        header=h)],
-                 },
-             'L1524':
-                {'wcs_position': [15*(4+29/60.), 24+31/60., 0],
-                 'map': None,
-                 'threshold': 3,
-                 'box': [get_pix_coords(ra=(4,30,32),
-                                        dec=(22,4,6),
-                                        header=h),
-                         get_pix_coords(ra=(4,25,33),
-                                        dec=(25,0,55),
-                                        header=h)],
-                 }
-                }
+    return transformed_rect
 
-    # calculate correlation for cores
-    if False:
-        limits =[1,22,6,16]
+def point_in_polygon(target, poly):
 
-        for core in cores:
-        	core_map = np.load(core_dir + core + '.npy')
-        	plot_nhi_vs_av(nhi_image,core_map,
-                    nhi_image_error = nhi_image_error,
-                    av_image_error = 0.1,
-                    limits = limits,
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    filename='taurus_nhi_vs_av_' + core + '_small.png',
-                    title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
-                    show=False)
+    """x,y is the point to test. poly is a list of tuples comprising the
+    polygon."""
 
-        	plot_sd_vs_av(sd_image, core_map,
-                    sd_image_error = sd_image_error,
-                    av_image_error = 0.1,
-                    limits = limits,
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    filename='taurus_sd_vs_av_' + core + '_small.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
-                    show = False)
+    from collections import namedtuple
 
-    if True:
-        limits =[1,22,1,16]
-        limits = None
+    point = namedtuple("Point", ("x", "y"))
+    line = namedtuple("Line", ("p1", "p2"))
+    target = point(*target)
 
-        for core in cores:
-            indices = cores[core]['box']
-            nhi_image_sub = get_sub_image(nhi_image, indices)
-            nhi_image_error_sub = get_sub_image(nhi_image_error, indices)
-            av_data_sub = get_sub_image(av_data, indices)
-            plot_nhi_vs_av(nhi_image_sub,av_data_sub,
-                    nhi_image_error = nhi_image_error_sub,
-                    av_image_error = 0.1,
-                    limits = limits,
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    scale='log',
-                    filename='taurus_nhi_vs_av_' + core + '_box.png',
-                    title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
-                    show=False)
+    inside = False
+    # Build list of coordinate pairs
+    # First, turn it into named tuples
 
-            hi_sd_image_sub = get_sub_image(hi_sd_image, indices)
-            hi_sd_image_error_sub = get_sub_image(hi_sd_image_error, indices)
+    poly = map(lambda p: point(*p), poly)
+
+    # Make two lists, with list2 shifted forward by one and wrapped around
+    list1 = poly
+    list2 = poly[1:] + [poly[0]]
+    poly = map(line, list1, list2)
+
+    for l in poly:
+        p1 = l.p1
+        p2 = l.p2
+
+        if p1.y == p2.y:
+            # This line is horizontal and thus not relevant.
+            continue
+        if max(p1.y, p2.y) < target.y <= min(p1.y, p2.y):
+            # This line is too high or low
+            continue
+        if target.x < max(p1.x, p2.x):
+            # Ignore this line because it's to the right of our point
+            continue
+        # Now, the line still might be to the right of our target point, but
+        # still to the right of one of the line endpoints.
+        rise = p1.y - p2.y
+        run =  p1.x - p2.x
+        try:
+            slope = rise/float(run)
+        except ZeroDivisionError:
+            slope = float('inf')
+
+        # Find the x-intercept, that is, the place where the line we are
+        # testing equals the y value of our target point.
+
+        # Pick one of the line points, and figure out what the run between it
+        # and the target point is.
+        run_to_intercept = target.x - p1.x
+        x_intercept = p1.x + run_to_intercept / slope
+        if target.x < x_intercept:
+            # We almost crossed the line.
+            continue
+
+        inside = not inside
+
+    return inside
 
 
-            x0,x1,y0,y1 = int(indices[0][0]), int(indices[0][1]), \
-                    int(indices[1][0]), int(indices[1][1])
-            hi_sd_image_sub = hi_sd_image[x0:x1,y0:y1]
+if __name__ == '__main__':
+    main()
 
-
-
-            print indices[1][0],indices[1][1]
-            print hi_sd_image_sub.shape
-            print nhi_image_sub.shape
-            print indices
-            print hi_sd_image.shape
-            print hi_sd_image_sub[~np.isnan(hi_sd_image_sub)].max()
-            print av_image_sub[~np.isnan(av_image_sub)].max()
-            plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
-                    sd_image_error = hi_sd_image_error_sub,
-                    av_image_error = 0.1,
-                    limits = limits,
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    scale='log',
-                    filename='taurus_sd_vs_av_' + core + '_box.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
-                    show=False)
-
-            if False:
-                h_sd_image_sub = get_sub_image(h_sd_image, indices)
-                h_sd_image_error_sub = get_sub_image(h_sd_image_error, indices)
-                plot_hisd_vs_hsd(hi_sd_image_sub, h_sd_image_sub,
-                        h_sd_image_error = h_sd_image_error_sub,
-                        hi_sd_image_error = hi_sd_image_error_sub,
-                        limits = limits,
-                        savedir=figure_dir,
-                        plot_type='scatter',
-                        scale='log',
-                        filename='taurus_hisd_vs_hsd_' + core + '_box.png',
-                        title=r'$\Sigma_{HI}$ vs. $\Sigma_{HI}$ + ' + \
-                                '$\Sigma_{H2}$ of Taurus Core ' + core,
-                        show=False)
-
-    # Plot heat map of correlations
-    if False:
-        if correlations is not None:
-            correlations_array = plot_correlations(correlations,
-                    velocity_centers, velocity_widths,
-                    returnimage=True,show=False)
-        if False:
-            # Print best-fit characteristics
-            indices = np.where(cube_correlations_array == \
-                    cube_correlations_array.max())
-            print 'Maximum correlation values: '
-            print str(velocity_centers[indices[0]][0]) + ' km/s center'
-            print str(velocity_widths[indices[1]][0]) + ' km/s width'
 
 
