@@ -4,7 +4,8 @@
 '''
 
 def plot_profile(radii, profile, limits=None, savedir='./', filename=None,
-        show=True, scale='linear', title='', ):
+        show=True, scale='linear', title='', profile_errors=None,
+        profile_fit_params=None, profile_fit_function=None):
 
     ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
     and an Av image.
@@ -17,26 +18,52 @@ def plot_profile(radii, profile, limits=None, savedir='./', filename=None,
     import matplotlib.pyplot as plt
     import matplotlib
 
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    fontScale = 20
+    params = {#'backend': 'png',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (8, 8),
+             }
+    plt.rcParams.update(params)
+
     # Create figure
-    fig = plt.figure(figsize=(8,8))
+    fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(radii, profile,
+    ax.errorbar(radii, profile,
+            yerr=profile_errors,
             color='k',
-            drawstyle='steps')
+            markersize=5,
+            marker='s',
+            linestyle='None',)
+    if profile_fit_params is not None:
+    	profile_fit_radii = np.linspace(limits[0], limits[1], 1000)
+    	profile_fit_data = profile_fit_function(profile_fit_radii,
+    	        *profile_fit_params)
+    	ax.plot(profile_fit_radii, profile_fit_data, color='k')
 
     if limits is not None:
     	ax.set_xlim(limits[0],limits[1])
     	ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_ylabel('A$_v$ (mag)',
-              size = 'large',
-              family='serif')
-    ax.set_xlabel(r'Radius (pc)',
-              size = 'large',
-              family='serif')
+    ax.set_ylabel('A$_V$ (mag)',)
+    ax.set_xlabel(r'Radius (pc)',)
     ax.set_title(title)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
     ax.grid(True)
+
+
 
     if filename is not None:
         plt.savefig(savedir + filename,bbox_inches='tight')
@@ -301,7 +328,7 @@ def get_pix_coords(ra=None, dec=None, header=None):
     return pix_coords
 
 def get_radial_profile(image, center=None, stddev=False, binsize=1,
-        mask=None):
+        mask=None, weights=None):
 
     ''' Calculates radial profiles of an image at the center.
 
@@ -309,10 +336,31 @@ def get_radial_profile(image, center=None, stddev=False, binsize=1,
 
     # import external modules
     import numpy as np
+    from scipy.optimize import curve_fit
     from agpy import azimuthalAverage as radial_average
 
-    return radial_average(image, binsize=binsize, center=center,
-            stddev=stddev, mask=mask, interpnan=True, returnradii=True)
+    if stddev and weights is not None:
+    	weights=None
+
+    result = radial_average(image, binsize=binsize, center=center,
+            stddev=stddev, mask=mask, interpnan=True, returnradii=True,
+            weights=weights)
+
+    return result
+
+def fit_profile(radii, profile, function, sigma=None):
+
+    ''' Fits a radial profile with a power function A * radius**alpha where A
+    and alpha are the fitted constants.
+    '''
+
+    # import external modules
+    from scipy.optimize import curve_fit
+    import numpy as np
+
+    profile_fit = curve_fit(function, radii, profile, sigma=sigma, maxfev=10000)
+
+    return profile_fit
 
 def main():
 
@@ -422,25 +470,57 @@ def main():
     cores = convert_core_coordinates(cores, h)
 
     if True:
-        limits = [0, 10, 0, 20]
+        limits = [0.1, 10, 0.01, 30]
 
         for core in cores:
             print('Calculating for core %s' % core)
 
-            radii, profile = get_radial_profile(av_image, binsize=1,
-                    center=cores[core]['center_pixel'])
+            # plotting radial profiles only within boxes
+            av_image_sub = get_sub_image(av_image, cores[core]['box_pixel'])
+            # change center pixel to correspond to sub image
+            pix = cores[core]['center_pixel']
+            pix = (pix[0] - cores[core]['box_pixel'][0],
+                pix[1] - cores[core]['box_pixel'][1],)
+            cores[core]['center_pixel'] = pix
 
+            # extract radial profile weighted by SNR
+            radii, profile = get_radial_profile(av_image_sub, binsize=3,
+                    center=cores[core]['center_pixel'],
+                    weights=av_image_sub/0.3)
+            # extract std
+            radii, profile_std = get_radial_profile(av_image_sub, binsize=3,
+                    center=cores[core]['center_pixel'], stddev=True,
+                    weights=av_image_sub/0.3)
+
+            # convert radii from degrees to parsecs
             radii_arcmin = radii * h['CDELT2'] * 60 * 60# radii in arcminutes
             radii_pc = radii_arcmin * 140 / 206265. # radii in parsecs
 
+            # extract radii from within the limits
             indices = np.where(radii_pc < limits[1])
             radii_pc = radii_pc[indices]
             profile = profile[indices]
+            profile_std = profile_std[indices]
 
+            # fit profile with power function
+            def function(radius, A_p, pho_c, R_flat, p):
+                return A_p * pho_c * R_flat / \
+                        (1 + (radius / R_flat)**2)**(p/2. - 0.5)
+                #return A_p * radius**p
+
+            profile_fit_params = fit_profile(radii_pc, profile, function,
+                    sigma=profile / profile_std)[0]
+
+            print profile_fit_params
+
+            # plot the radial profile
             plot_profile(radii_pc, profile,
+                    profile_errors = profile_std,
                     limits = limits,
+                    profile_fit_params = profile_fit_params,
+                    profile_fit_function = function,
                     savedir=figure_dir,
-                    filename='taurus_profile_av_' + core + '.png',
+                    filename = 'taurus_profile_av_' + core + '.png',
                     title=r'Radial A$_V$ Profile of Taurus Core ' + core,
                     show = False)
 
