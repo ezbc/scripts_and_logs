@@ -4,6 +4,8 @@
 
 '''
 
+import numpy as np
+
 def calculate_nhi(hi_cube=None, velocity_axis=None, velocity_range=[]):
     ''' Calculates an N(HI) image given a velocity range within which to
     include a SpectralGrid's components.
@@ -64,7 +66,10 @@ def get_pix_coords(ra=None, dec=None, header=None):
     import pywcs
 
     # convert to degrees
-    ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    if type(ra) is tuple and type(dec) is tuple:
+        ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    else:
+    	ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
     pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
@@ -94,10 +99,31 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     import pywcsgrid2 as wcs
     import pywcs
     from pylab import cm # colormaps
-    from matplotlib.patches import Rectangle
+    from matplotlib.patches import Polygon
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (6, 6),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
 
     # Create figure instance
-    fig = plt.figure(figsize=(8,8))
+    fig = plt.figure()
 
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(1,1),
@@ -125,12 +151,8 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     ax.set_display_coord_system("fk4")
     ax.set_ticklabel_type("hms", "dms")
 
-    ax.set_xlabel('Right Ascension (J2000)',
-              size = 'small',
-              family='serif')
-    ax.set_ylabel('Declination (J2000)',
-              size = 'small',
-              family='serif')
+    ax.set_xlabel('Right Ascension (J2000)',)
+    ax.set_ylabel('Declination (J2000)',)
     if title is not None:
     	ax.set_title(title)
 
@@ -147,9 +169,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         ax.contour(contour_image, levels=contours, colors='r')
 
     # Write label to colorbar
-    cb.set_label_text(r'N(HI) $\times$ 10$^{20}$ cm$^{-2}$',
-                   size='small',
-                   family='serif')
+    cb.set_label_text(r'N(HI) $\times$ 10$^{20}$ cm$^{-2}$',)
 
     # Convert sky to pix coordinates
     wcs_header = pywcs.WCS(header)
@@ -166,17 +186,69 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                 color='k')
 
         if boxes:
-        	box = cores[core]['box_pixel']
-        	width = box[2] - box[0]
-        	height = box[3] - box[1]
-        	print width,height
-        	rect = ax.add_patch(Rectangle(box[0:2],
-                width, height, facecolor='none', edgecolor='k' ))
+            rect = ax.add_patch(Polygon(
+                cores[core]['box_vertices'][:, ::-1],
+                    facecolor='none',
+                    edgecolor='k' ))
 
     if filename is not None:
         plt.savefig(savedir + filename)
     if show:
         fig.show()
+
+def read_ds9_region(filename):
+
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
+    '''
+
+    # Import external modules
+    import pyregion as pyr
+
+    # Read region file
+    region = pyr.open(filename)
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    return region[0].coord_list
+
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    for core in cores:
+    	region = read_ds9_region(filename_base + core + '.reg')
+        box_center_pixel = get_pix_coords(ra = region[0],
+                                          dec = region[1],
+                                          header = header)
+        box_center_pixel = (int(box_center_pixel[1]), int(box_center_pixel[0]))
+        box_height = region[2] / header['CDELT1']
+        box_width = region[3] / header['CDELT2']
+        cores[core].update({'box_center_pix': box_center_pixel})
+        cores[core].update({'box_width': box_width})
+        cores[core].update({'box_height': box_height})
+        cores[core].update({'box_angle': region[4]})
+
+    return cores
 
 def main():
     ''' Executes script.
@@ -195,6 +267,7 @@ def main():
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
     core_dir = output_dir + 'core_arrays/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # Load hi fits file
     hi_image, hi_header = pf.getdata(hi_dir + \
@@ -210,7 +283,7 @@ def main():
 
     # create nhi image
     nhi_image = calculate_nhi(hi_cube=hi_image,
-            velocity_axis=velocity_axis, velocity_range=[-5,15])
+            velocity_axis=velocity_axis, velocity_range=[-100,100])
 
     if False:
         # trim hi_image to av_image size
@@ -280,6 +353,8 @@ def main():
 
         nhi_image_trim[nhi_image_trim == 0] = np.NaN
 
+        read_ds9_region(av_dir + 'taurus_av_boxes.reg')
+
         plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
             savedir=figure_dir,
             cores=cores,
@@ -287,16 +362,35 @@ def main():
             show=True)
 
     if True:
-        angle = 40.
-        xy = (115, 223)
-        width = 20
-        height = 40
+        cores = load_ds9_region(cores,
+                filename_base = region_dir + 'taurus_av_boxes_',
+                header = h)
 
         # Grab the mask
-        mask = myg.get_rectangular_mask(nhi_image, xy[0], xy[1],
-                width=width, height=height, angle=angle)
+        mask = np.zeros((nhi_image.shape))
+        for core in cores:
+        	xy = cores[core]['box_center_pix']
+        	box_width = cores[core]['box_width']
+        	box_height = cores[core]['box_height']
+        	box_angle = cores[core]['box_angle']
+        	mask += myg.get_rectangular_mask(nhi_image,
+        	        xy[0], xy[1],
+                    width = box_width,
+                    height = box_height,
+                    angle = box_angle)
 
-        nhi_image[mask==0] = np.nan
+        	cores[core]['box_vertices'] = myg.get_rect(
+                        xy[0], xy[1],
+                        width = box_width,
+                        height = box_height,
+                        angle = box_angle,)
+
+        #print(cores[core]['box_vertices'])
+        #print core, xy, box_width, box_height, box_angle
+
+        mask[mask > 1] = 1
+
+        nhi_image[mask == 0] = np.nan
 
         # trim hi_image to av_image size
         nhi_image_trim = np.ma.array(nhi_image,
@@ -305,7 +399,7 @@ def main():
         # Plot
         plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
                 contour_image=av_image, contours=[5,10,15],
-                boxes=False, cores=cores, limits=[128,37,308,206],
+                boxes=True, cores = cores, limits=[128,37,308,206],
                 title='Taurus: N(HI) map with core boxed-regions.',
                 savedir=figure_dir, filename='taurus_nhi_cores_map.png',
                 show=True)

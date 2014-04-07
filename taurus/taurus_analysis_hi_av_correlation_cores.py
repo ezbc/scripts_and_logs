@@ -157,6 +157,7 @@ def plot_nhi_vs_av(nhi_image, av_image,
                 np.ones(av_image[indices].shape)
 
     # Create figure
+    plt.clf()
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111)
     if nhi_image_error is None:
@@ -254,6 +255,7 @@ def plot_hisd_vs_hsd(hi_sd_image, h_sd_image,
                 np.ones(h_sd_image[indices].shape)
 
     # Create figure
+    plt.clf()
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111)
     if hi_sd_image_error is None:
@@ -345,8 +347,31 @@ def plot_sd_vs_av(sd_image, av_image,
         av_image_error_nonans = av_image_error * \
                 np.ones(av_image[indices].shape)
 
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (6, 6),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+
     # Create figure
-    fig = plt.figure(figsize=(8,8))
+    plt.clf()
+    fig = plt.figure()
     ax = fig.add_subplot(111)
     if sd_image_error is None:
         if plot_type is 'hexbin':
@@ -386,12 +411,8 @@ def plot_sd_vs_av(sd_image, av_image,
     	ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel('A$_v$ (mag)',
-              size = 'small',
-              family='serif')
-    ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',
-              size = 'small',
-              family='serif')
+    ax.set_xlabel('A$_v$ (mag)',)
+    ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
     ax.set_title(title)
     ax.grid(True)
 
@@ -595,6 +616,29 @@ def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
                  print "{0:.2%} processed".format(i/total)
     return correlations
 
+def convert_core_coordinates(cores, header):
+
+    for core in cores:
+        cores[core].update({'box_pixel': 0})
+        cores[core].update({'center_pixel': 0})
+
+    	box_wcs = cores[core]['box_wcs']
+    	box_pixel = len(box_wcs) * [0,]
+    	center_wcs = cores[core]['center_wcs']
+
+        # convert centers to pixel coords
+        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
+                                                     dec=center_wcs[1],
+                                                     header=header)
+        # convert box corners to pixel coords
+        for i in range(len(box_wcs)/2):
+        	pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+        	        header=header)
+        	box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
+        cores[core]['box_pixel'] = box_pixel
+
+    return cores
+
 def load_fits(filename,return_header=False):
     ''' Loads a fits file.
     '''
@@ -612,6 +656,25 @@ def get_sub_image(image, indices):
     return image[indices[1]:indices[3],
             indices[0]:indices[2]]
 
+def get_pix_coords(ra=None, dec=None, header=None):
+
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec).
+    '''
+
+    import pywcsgrid2 as wcs
+    import pywcs
+
+    # convert to degrees
+    if type(ra) is tuple and type(dec) is tuple:
+        ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    else:
+    	ra_deg, dec_deg = ra, dec
+
+    wcs_header = pywcs.WCS(header)
+    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
+
+    return pix_coords
+
 def hrs2degs(ra=None, dec=None):
     ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
     '''
@@ -621,20 +684,59 @@ def hrs2degs(ra=None, dec=None):
 
     return (ra_deg, dec_deg)
 
-def get_pix_coords(ra=None, dec=None, header=None):
+def read_ds9_region(filename):
 
-    ''' Ra and dec in degrees.
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
     '''
 
-    import pywcsgrid2 as wcs
-    import pywcs
+    # Import external modules
+    import pyregion as pyr
 
-    ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    # Read region file
+    region = pyr.open(filename)
 
-    wcs_header = pywcs.WCS(header)
-    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
 
-    return pix_coords
+    return region[0].coord_list
+
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    for core in cores:
+    	region = read_ds9_region(filename_base + core + '.reg')
+        box_center_pixel = get_pix_coords(ra = region[0],
+                                          dec = region[1],
+                                          header = header)
+        box_center_pixel = (int(box_center_pixel[1]), int(box_center_pixel[0]))
+        box_height = region[2] / header['CDELT1']
+        box_width = region[3] / header['CDELT2']
+        cores[core].update({'box_center_pix': box_center_pixel})
+        cores[core].update({'box_width': box_width})
+        cores[core].update({'box_height': box_height})
+        cores[core].update({'box_angle': region[4]})
+
+    return cores
 
 def main():
 
@@ -643,6 +745,9 @@ def main():
     from os import system,path
     import myclumpfinder as clump_finder
     reload(clump_finder)
+    import mygeometry as myg
+    reload(myg)
+
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
@@ -650,6 +755,7 @@ def main():
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
     core_dir = output_dir + 'core_arrays/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load 2mass Av and GALFA HI images, on same grid
     av_data, av_header = load_fits(av_dir + 'taurus_av_k09_regrid.fits',
@@ -697,90 +803,51 @@ def main():
     h_sd_image = av_data / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
     h_sd_image_error = 0.1 / (1.25 * 0.11)
 
-
     cores = {'L1495':
-                {'wcs_position': [15*(4+14/60.), 28+11/60., 0],
+                {'center_wcs': [(4,14,0), (28, 11, 0)],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,16,30.031),
-                                        dec=(27,44,30),
-                                        header=h),
-                         get_pix_coords(ra=(4,5,20),
-                                        dec=(28,28,33),
-                                        header=h)]
+                 'box_wcs': [(4,16,30), (27,44,30), (4,5,20), (28,28,33)]
                  },
              'L1495A':
-                {'wcs_position': [15*(4+18/60.), 28+23/60., 0],
+                {'center_wcs': [(4,18,0), (28,23., 0)],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,28,23),
-                                        dec=(28,12,50),
-                                        header=h),
-                         get_pix_coords(ra=(4,16,23),
-                                        dec=(29,46,5),
-                                        header=h)],
+                 'box_wcs': [(4,28,23),(28,12,50),(4,16,23),(29,46,5)],
                  },
              'B213':
-                {'wcs_position': [15*(4+19/60.), 27+15/60., 0],
+                {'center_wcs': [(4, 19, 0), (27, 15,0)],
                  'map': None,
                  'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(4,22,27),
-                                        dec=(26,45,47),
-                                        header=h),
-                         get_pix_coords(ra=(4,5,25),
-                                        dec=(27,18,48),
-                                        header=h)],
+                 'box_wcs': [(4,22,27), (26,45,47),(4,5,25),(27,18,48)],
                 },
              'B220':
-                {'wcs_position': [15*(4+41/60.), 26+7/60., 0],
+                {'center_wcs': [(4, 41, 0.), (26,7,0)],
                  'map': None,
                  'threshold': 7,
-                 'box': [get_pix_coords(ra=(4,47,49),
-                                        dec=(25,31,13),
-                                        header=h),
-                         get_pix_coords(ra=(4,40,37),
-                                        dec=(27,31,17),
-                                        header=h)],
+                 'box_wcs': [(4,47,49),(25,31,13),(4,40,37),(27,31,17)],
                  },
              'L1527':
-                {'wcs_position': [15*(4+39/60.), 25+47/60., 0],
+                {'center_wcs': [(4, 39, 0.), (25,47, 0)],
                  'map': None,
                  'threshold': 7,
-                 'box': [get_pix_coords(ra=(4,40,13),
-                                        dec=(24,46,38),
-                                        header=h),
-                         get_pix_coords(ra=(4,34,35),
-                                        dec=(25,56,7),
-                                        header=h)],
+                 'box_wcs': [(4,40,13), (24,46,38), (4,34,35), (25,56,7)],
                  },
              'B215':
-                {'wcs_position': [15*(4+23/60.), 25+3/60., 0],
+                {'center_wcs': [(4, 23, 0), (25, 3, 0)],
                  'map': None,
                  'threshold': 3,
-                 'box': [get_pix_coords(ra=(4,24,51),
-                                        dec=(22,36,7),
-                                        header=h),
-                         get_pix_coords(ra=(4,20,54),
-                                        dec=(25,26,31),
-                                        header=h)],
+                 'box_wcs': [(4,24,51), (22,36,7), (4,20,54), (25,26,31)],
                  },
              'L1524':
-                {'wcs_position': [15*(4+29/60.), 24+31/60., 0],
+                {'center_wcs': [(4,29,0.), (24,31.,0)],
                  'map': None,
                  'threshold': 3,
-                 'box': [get_pix_coords(ra=(4,31,0),
-                                        dec=(22,4,6),
-                                        header=h),
-                         get_pix_coords(ra=(4,25,33),
-                                        dec=(25,0,55),
-                                        header=h)],
+                 'box_wcs': [(4,31,0), (22,4,6), (4,25,33), (25,0,55)],
                  }
                 }
 
-    for core in cores:
-    	box = cores[core]['box']
-    	cores[core]['box'] = (int(box[0][0]),int(box[0][1]),
-    	        int(box[1][0]),int(box[1][1]))
+    cores = convert_core_coordinates(cores, h)
 
     # calculate correlation for cores
     if False:
@@ -817,33 +884,38 @@ def main():
         av_limits =[0.01,100]
         nhi_limits = [2,20]
 
+        cores = load_ds9_region(cores,
+                filename_base = region_dir + 'taurus_av_boxes_',
+                header = h)
+
         for core in cores:
             print('Calculating for core %s' % core)
 
-            indices = cores[core]['box']
-            nhi_image_sub = get_sub_image(nhi_image, indices)
-            nhi_image_error_sub = get_sub_image(nhi_image_error, indices)
-            av_data_sub = get_sub_image(av_data, indices)
-            hi_sd_image_sub = get_sub_image(hi_sd_image, indices)
-            hi_sd_image_error_sub = get_sub_image(hi_sd_image_error, indices)
+            #indices = cores[core]['box']
+            #nhi_image_sub = get_sub_image(nhi_image, indices)
+            #nhi_image_error_sub = get_sub_image(nhi_image_error, indices)
+            #av_data_sub = get_sub_image(av_data, indices)
+            #hi_sd_image_sub = get_sub_image(hi_sd_image, indices)
+            #hi_sd_image_error_sub = get_sub_image(hi_sd_image_error, indices)
             av_limits =[0.01,100]
 
-            if core is 'B213':
-            	import mygeometry as myg
-            	reload(myg)
-            	angle = 40.
-                xy = (115, 223)
-                width = 20
-                height = 40
 
-                # Grab the mask
-                indices = myg.get_rectangular_mask(nhi_image, xy[0], xy[1],
-                        width=width, height=height, angle=angle,
-                        return_indices=True)
+            # Grab the mask
+            xy = cores[core]['box_center_pix']
+            box_width = cores[core]['box_width']
+            box_height = cores[core]['box_height']
+            box_angle = cores[core]['box_angle']
+            mask = myg.get_rectangular_mask(nhi_image,
+        	        xy[0], xy[1],
+                    width = box_width,
+                    height = box_height,
+                    angle = box_angle)
 
-                av_data_sub = av_data[indices]
-                hi_sd_image_sub = hi_sd_image[indices]
-                hi_sd_image_error_sub = hi_sd_image_error[indices]
+            indices = np.where(mask == 1)
+
+            av_data_sub = av_data[indices]
+            hi_sd_image_sub = hi_sd_image[indices]
+            hi_sd_image_error_sub = hi_sd_image_error[indices]
 
             if False:
                 plot_nhi_vs_av(nhi_image_sub,av_data_sub,
