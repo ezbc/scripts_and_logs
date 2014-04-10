@@ -16,8 +16,6 @@ def main():
     masked_image = myg.get_rectangular_mask(image, xy[0], xy[1], width=width,
             height=height, angle=angle)
 
-    #print masked_image
-
 def get_rect(x, y, width, height, angle):
 
     ''' Returns four points of a rotated rectangle.

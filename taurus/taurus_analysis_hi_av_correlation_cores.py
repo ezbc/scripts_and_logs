@@ -3,6 +3,9 @@
 ''' Calculates the N(HI) / Av correlation for the Taurus molecular cloud.
 '''
 
+import pyfits as pf
+import numpy as np
+
 def plot_correlations(correlations,velocity_centers,velocity_widths,
         savedir='./', filename=None,show=True, returnimage=False):
     ''' Plots a heat map of correlation values as a function of velocity width
@@ -423,10 +426,11 @@ def plot_sd_vs_av(sd_image, av_image,
     if returnimage:
         return correlations_image
 
-def calculate_NHI(cube=None, velocity_axis=None, SpectralGrid=None,
-        velocity_range=[], return_nhi_error=True, noise_cube=None,
-        velocity_noise_range=[-110,-90,90,100],
-        Tsys=30.):
+def calculate_nhi(cube = None, velocity_axis = None, velocity_range = [],
+        return_nhi_error = True, noise_cube = None,
+        velocity_noise_range=[90,100], Tsys = 30., header = None,
+        fits_filename = None, fits_error_filename = None, verbose = True):
+
     ''' Calculates an N(HI) image given a velocity range within which to
     include a SpectralGrid's components.
 
@@ -436,7 +440,13 @@ def calculate_NHI(cube=None, velocity_axis=None, SpectralGrid=None,
         Three dimensional array with velocity axis as 0th axis. Must specify
         a velocity_axis if cube is used.
     velocity_axis : array-like, optional
-        One dimensional array containing velocities corresponding to '''
+        One dimensional array containing velocities corresponding to
+    fits_filename : str
+        If specified, and a header is provided, the nhi image will be written.
+    header : pyfits.Header
+        Header from cube.
+
+    '''
 
     import numpy as np
 
@@ -457,6 +467,28 @@ def calculate_NHI(cube=None, velocity_axis=None, SpectralGrid=None,
 
     # NHI in units of 1e20 cm^-2
     nhi_image = np.ma.array(image,mask=np.isnan(image)) * 1.823e-2
+
+
+    if fits_filename is not None and header is not None:
+        if verbose:
+        	print('Writing N(HI) image to FITS file %s' % fits_filename)
+        header['BUNIT'] = '1e20 cm^-2'
+        header.remove('CDELT3')
+        header.remove('CRVAL3')
+        header.remove('CRPIX3')
+        header.remove('CTYPE3')
+        header.remove('NAXIS3')
+        header['NAXIS'] = 2
+
+        pf.writeto(fits_filename, image*1.823e-2, header = header, clobber =
+                True, output_verify = 'fix')
+
+    if fits_error_filename is not None and header is not None:
+        if verbose:
+        	print('Writing N(HI) error image to FITS file %s' % fits_filename)
+
+        pf.writeto(fits_error_filename, image_error * 1.823e-2, header =
+                header, clobber = True, output_verify = 'fix')
 
     if return_nhi_error:
         nhi_image_error = np.ma.array(image_error,
@@ -587,7 +619,7 @@ def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
 
     # calc
     for i in range(velocity_ranges.shape[0]):
-        nhi_image_temp = calculate_NHI(SpectralGrid=SpectralGrid,
+        nhi_image_temp = calculate_nhi(SpectralGrid=SpectralGrid,
                 cube=cube,
                 velocity_axis=velocity_axis,
                 velocity_range=velocity_ranges[i])
@@ -784,25 +816,31 @@ def main():
         noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
             return_header=True)
 
-    # calculate maps
-    nhi_image, nhi_image_error = calculate_NHI(cube=hi_data,
-        velocity_axis=velocity_axis, noise_cube = noise_cube,
-        velocity_range=[-100,100], return_nhi_error=True)
+    # calculate nhi and error maps, write nhi map to fits file
+    nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
+        velocity_axis=velocity_axis,
+        noise_cube = noise_cube,
+        velocity_range=[-100,100],
+        return_nhi_error=True,
+        fits_filename = hi_dir + 'taurus_galfa_nhi_3.7arcmin.fits',
+        fits_error_filename = hi_dir + 'taurus_galfa_nhi_error_3.7arcmin.fits',
+        header = h)
 
+    # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image = nhi_image,
             av_image = av_data, dgr = 1.1e-1)
     nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
             av_image = 0.1, dgr = 1.1e-1)
 
+    # convert to column density to surface density
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
-
     h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
     h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
-
     h_sd_image = av_data / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
     h_sd_image_error = 0.1 / (1.25 * 0.11)
 
+    # define core properties
     cores = {'L1495':
                 {'center_wcs': [(4,14,0), (28, 11, 0)],
                  'map': None,

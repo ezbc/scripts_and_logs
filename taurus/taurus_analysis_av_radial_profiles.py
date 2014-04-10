@@ -358,9 +358,32 @@ def fit_profile(radii, profile, function, sigma=None):
     from scipy.optimize import curve_fit
     import numpy as np
 
-    profile_fit = curve_fit(function, radii, profile, sigma=sigma, maxfev=10000)
+    profile_fit = curve_fit(function, radii, profile, sigma=sigma,
+            maxfev=10000)
 
     return profile_fit
+
+
+def print_fit_params(cores, A_p, pho_c, R_flat, p, filename=None):
+
+    ''' Prints statistics about each core.
+    '''
+
+    import os
+
+    #print('A_p\t pho_c\t R_flat\t p ')
+    #print(core_name + ':')
+    #print('%.2f\t %.2f \t %.2f \t %.2f \n' % \
+    #        (A_p, pho_c, R_flat, p))
+
+    if filename is not None:
+        os.system('rm -rf ' + filename)
+        f = open(filename, 'w')
+        f.write('Core\t A_p\t pho_c\t R_flat\t p \n')
+        for i, core in enumerate(cores):
+        	f.write('%s\t %.2f\t %.2f \t %.2f \t %.2f \n' % \
+                    (core, A_p[i], pho_c[i], R_flat[i], p[i]))
+        f.close()
 
 def main():
 
@@ -472,6 +495,11 @@ def main():
     if True:
         limits = [0.1, 10, 0.01, 30]
 
+        A_p = []
+        pho_c = []
+        R_flat = []
+        p = []
+
         for core in cores:
             print('Calculating for core %s' % core)
 
@@ -482,6 +510,7 @@ def main():
             pix = (pix[0] - cores[core]['box_pixel'][0],
                 pix[1] - cores[core]['box_pixel'][1],)
             cores[core]['center_pixel'] = pix
+
 
             # extract radial profile weighted by SNR
             radii, profile = get_radial_profile(av_image_sub, binsize=3,
@@ -494,7 +523,7 @@ def main():
 
             # convert radii from degrees to parsecs
             radii_arcmin = radii * h['CDELT2'] * 60 * 60# radii in arcminutes
-            radii_pc = radii_arcmin * 140 / 206265. # radii in parsecs
+            radii_pc = radii_arcmin * 147 / 206265. # radii in parsecs
 
             # extract radii from within the limits
             indices = np.where(radii_pc < limits[1])
@@ -511,7 +540,6 @@ def main():
             profile_fit_params = fit_profile(radii_pc, profile, function,
                     sigma=profile / profile_std)[0]
 
-            print profile_fit_params
 
             # plot the radial profile
             plot_profile(radii_pc, profile,
@@ -523,6 +551,16 @@ def main():
                     filename = 'taurus_profile_av_' + core + '.png',
                     title=r'Radial A$_V$ Profile of Taurus Core ' + core,
                     show = False)
+
+            A_p.append(profile_fit_params[0])
+            pho_c.append(profile_fit_params[1])
+            R_flat.append(profile_fit_params[2])
+            p.append(profile_fit_params[3])
+
+        print A_p, pho_c, R_flat, p
+
+        print_fit_params(cores, A_p, pho_c, R_flat, p,
+                filename=output_dir + 'core_profile_fit_data.txt')
 
 if __name__ == '__main__':
     main()

@@ -2,9 +2,9 @@
 
 cd /d/bip3/sstanimi/Taurus/data/
 
-foreach filename (GALFA*.fits)
-  set base=`basename ${filename} .fits`
-  fits in=${filename} op=xyin out=${base}.mir
+foreach filename (GALFA*.fits) 
+  set base=`basename ${filename} .fits` 
+  fits in=${filename} op=xyin out=${base}.mir 
 end
 
 foreach mirdata (GALFA_HI*.mir)
@@ -17,10 +17,13 @@ foreach mirdata (GALFA_HI*sub.mir)
   imbin in=${mirdata} 'bin=2,2,2,2,4,4' out=${base}.sub.bin.mir
 end
 
-imcomb "in=*.sub.bin.mir" out=taurus.galfa.cube.bin.mir
-fits in=taurus.galfa.cube.sub.bin.mir op=xyout out=taurus.galfa.cube.sub.bin.fits
+imcomb "in=*.sub.bin.mir" out=taurus_galfa_cube_bin.mir
 
-imcomb "in=*.sub.mir" out=taurus.galfa.cube.mir
+fits in=taurus_galfa_cube_sub_bin.mir \
+out=taurus_galfa_cube_sub_bin.fits \
+op=xyout
+
+#imcomb "in=*.sub.mir" out=taurus.galfa.cube.mir
 
 
 
