@@ -2,21 +2,27 @@
 
 cd /d/bip3/ezbc/perseus/data/galfa/
 
-puthd in=perseus.galfa.cube.mir/restfreq value=1.420405752E+09 type='double'
+puthd in=perseus_galfa_cube.mir/restfreq value=1.420405752E+09 type='double'
 
-imbin in=perseus.galfa.cube.sub.regrid.mir \
-    out=perseus.galfa.cube.bin.4arcmin.mir bin=4,4,4,4,4,4
+# beamsize of cube: 4' x 3.5'
+# geometric mean = (4*3.5)**0.5 = 3.7'
+# degrees: 
 
-imbin in=perseus.galfa.cube.sub.regrid.mir \
-    out=perseus.galfa.cube.bin.8arcmin.mir bin=8,8,8,8,4,4
+regrid in=perseus_galfa_cube_sub.mir \
+    out=perseus_galfa_cube_bin_3.7arcmin.mir \
+    desc=65,0,-0.0616,400,21,0,0.0616,338,0,100,1,200
 
-fits in=perseus.galfa.cube.bin.4arcmin.mir \
-    out=perseus.galfa.cube.bin.4arcmin.fits op=xyout
+imbin in=perseus_galfa_cube_sub.mir \
+    out=perseus_galfa_cube_bin_4arcmin.mir bin=2,2,2,2,2,2
 
-fits in=perseus.galfa.cube.bin.4arcmin.mir \
-    out=perseus.galfa.cube.bin.4arcmin.fits op=xyout
+fits in=perseus_galfa_cube_bin_4arcmin.mir \
+    out=perseus_galfa_cube_bin_4arcmin.fits op=xyout
 
-fits in=perseus.galfa.cube.mir out=perseus.galfa.cube.fits op=xyout
+fits in=perseus_galfa_cube_bin_3.7arcmin.mir \
+    out=perseus_galfa_cube_bin_3.7arcmin.fits op=xyout
+
+
+fits in=perseus_galfa_cube.mir out=perseus_galfa_cube.fits op=xyout
 
 set cfa=../cfa
 set tauruscfa=/d/bip3/ezbc/taurus/data/cfa

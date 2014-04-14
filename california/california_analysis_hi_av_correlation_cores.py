@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the Taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the california molecular cloud.
 '''
 
 import pyfits as pf
@@ -651,23 +651,28 @@ def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
 def convert_core_coordinates(cores, header):
 
     for core in cores:
-        cores[core].update({'box_pixel': 0})
         cores[core].update({'center_pixel': 0})
-
-    	box_wcs = cores[core]['box_wcs']
-    	box_pixel = len(box_wcs) * [0,]
     	center_wcs = cores[core]['center_wcs']
-
         # convert centers to pixel coords
         cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
                                                      dec=center_wcs[1],
                                                      header=header)
-        # convert box corners to pixel coords
-        for i in range(len(box_wcs)/2):
-        	pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
-        	        header=header)
-        	box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
-        cores[core]['box_pixel'] = box_pixel
+
+        try:
+            cores[core].update({'box_pixel': 0})
+
+            box_wcs = cores[core]['box_wcs']
+            box_pixel = len(box_wcs) * [0,]
+
+            # convert box corners to pixel coords
+            for i in range(len(box_wcs)/2):
+                pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+                        header=header)
+                box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), \
+                    int(pixels[1])
+            cores[core]['box_pixel'] = box_pixel
+        except KeyError:
+            print('WARNING: One or more cores do not have boxes.')
 
     return cores
 
@@ -750,7 +755,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'california_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -782,22 +787,19 @@ def main():
 
 
     # define directory locations
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
+    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/california/figures/'
+    av_dir = '/d/bip3/ezbc/california/data/av/'
+    hi_dir = '/d/bip3/ezbc/california/data/galfa/'
     core_dir = output_dir + 'core_arrays/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    region_dir = '/d/bip3/ezbc/california/data/python_output/ds9_regions/'
 
     # load 2mass Av and GALFA HI images, on same grid
-    av_data, av_header = load_fits(av_dir + 'taurus_av_k09_regrid.fits',
+    av_data, av_header = load_fits(av_dir + 'california_planck_av_regrid.fits',
             return_header=True)
-    # load Av image from goldsmith: Pineda et al. 2010, ApJ, 721, 686
-    av_data_goldsmith = load_fits(av_dir + \
-            'taurus_av_p10_regrid.fits')
 
     #av_data += - 0.4 # subtracts background of 0.4 mags
-    hi_data,h = load_fits(hi_dir + 'taurus_galfa_cube_bin_3.7arcmin.fits',
+    hi_data,h = load_fits(hi_dir + 'california_galfa_cube_bin_3.7arcmin.fits',
             return_header=True)
 
     # make the velocity axis
@@ -806,7 +808,7 @@ def main():
     velocity_axis /= 1000.
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_galfa_cube_bin_3.7arcmin_noise.fits'
+    noise_cube_filename = 'california_galfa_cube_bin_3.7arcmin_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -822,8 +824,8 @@ def main():
         noise_cube = noise_cube,
         velocity_range=[-100,100],
         return_nhi_error=True,
-        fits_filename = hi_dir + 'taurus_galfa_nhi_3.7arcmin.fits',
-        fits_error_filename = hi_dir + 'taurus_galfa_nhi_error_3.7arcmin.fits',
+        fits_filename = hi_dir + 'california_galfa_nhi_3.7arcmin.fits',
+        fits_error_filename = hi_dir + 'california_galfa_nhi_error_3.7arcmin.fits',
         header = h)
 
     # calculate N(H2) maps
@@ -841,55 +843,43 @@ def main():
     h_sd_image_error = 0.1 / (1.25 * 0.11)
 
     # define core properties
-    cores = {'L1495':
-                {'center_wcs': [(4,14,0), (28, 11, 0)],
+    cores = {'L1482':
+                {'center_wcs': [(4, 29, 41), (35, 48, 41)],
                  'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,16,30), (27,44,30), (4,5,20), (28,28,33)]
+                 'threshold': None,
                  },
-             'L1495A':
-                {'center_wcs': [(4,18,0), (28,23., 0)],
+              'L1483':
+                {'center_wcs': [(4, 34, 57), (36, 18, 12)],
                  'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,28,23),(28,12,50),(4,16,23),(29,46,5)],
+                 'threshold': None,
                  },
-             'B213':
-                {'center_wcs': [(4, 19, 0), (27, 15,0)],
+              'L1478':
+                {'center_wcs': [(4, 25, 7), (37, 13, 0)],
                  'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,22,27), (26,45,47),(4,5,25),(27,18,48)],
-                },
-             'B220':
-                {'center_wcs': [(4, 41, 0.), (26,7,0)],
-                 'map': None,
-                 'threshold': 7,
-                 'box_wcs': [(4,47,49),(25,31,13),(4,40,37),(27,31,17)],
+                 'threshold': None,
                  },
-             'L1527':
-                {'center_wcs': [(4, 39, 0.), (25,47, 0)],
+              'L1434':
+                {'center_wcs': [(3, 50, 51), (35, 15, 10)],
                  'map': None,
-                 'threshold': 7,
-                 'box_wcs': [(4,40,13), (24,46,38), (4,34,35), (25,56,7)],
+                 'threshold': None,
                  },
-             'B215':
-                {'center_wcs': [(4, 23, 0), (25, 3, 0)],
+              'L1503':
+                {'center_wcs': [(4, 40, 27), (29, 57, 12)],
                  'map': None,
-                 'threshold': 3,
-                 'box_wcs': [(4,24,51), (22,36,7), (4,20,54), (25,26,31)],
+                 'threshold': None,
                  },
-             'L1524':
-                {'center_wcs': [(4,29,0.), (24,31.,0)],
+              'L1507':
+                {'center_wcs': [(4, 42, 51), (29, 44, 47)],
                  'map': None,
-                 'threshold': 3,
-                 'box_wcs': [(4,31,0), (22,4,6), (4,25,33), (25,0,55)],
-                 }
+                 'threshold': None,
+                 },
                 }
 
     cores = convert_core_coordinates(cores, h)
 
     # calculate correlation for cores
     if False:
-        limits =[1,22,6,16]
+        limits =[1,22,6,25]
 
         for core in cores:
 
@@ -902,8 +892,8 @@ def main():
                     limits = limits,
                     savedir=figure_dir,
                     plot_type='scatter',
-                    filename='taurus_nhi_vs_av_' + core + '_small.png',
-                    title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
+                    filename='california_nhi_vs_av_' + core + '_small.png',
+                    title=r'N(HI) vs. A$_v$ of california Core ' + core,
                     show=False)
 
             plot_sd_vs_av(sd_image, core_map,
@@ -912,18 +902,18 @@ def main():
                     limits = limits,
                     savedir=figure_dir,
                     plot_type='scatter',
-                    filename='taurus_sd_vs_av_' + core + '_small.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
+                    filename='california_sd_vs_av_' + core + '_small.png',
+                    title=r'$\Sigma_{HI}$ vs. A$_v$ of california Core ' + core,
                     show = False)
 
     if True:
         hsd_limits =[0.1,300]
-        hisd_limits = [2,20]
-        av_limits =[0.01,100]
+        hisd_limits = [4,50]
+        av_limits =[0.1,50]
         nhi_limits = [2,20]
 
         cores = load_ds9_region(cores,
-                filename_base = region_dir + 'taurus_av_boxes_',
+                filename_base = region_dir + 'california_av_boxes_',
                 header = h)
 
         for core in cores:
@@ -963,8 +953,8 @@ def main():
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',
-                        filename='taurus_nhi_vs_av_' + core + '_box.png',
-                        title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
+                        filename='california_nhi_vs_av_' + core + '_box.png',
+                        title=r'N(HI) vs. A$_v$ of california Core ' + core,
                         show=False)
 
 
@@ -972,12 +962,12 @@ def main():
                 plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
                         sd_image_error = hi_sd_image_error_sub,
                         av_image_error = 0.1,
-                        limits = [0.01,100,2,20],
+                        limits = [0.1,50,4,50],
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',
-                        filename='taurus_sd_vs_av_' + core + '_box.png',
-                        title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
+                        filename='california_sd_vs_av_' + core + '_box.png',
+                        title=r'$\Sigma_{HI}$ vs. A$_v$ of California Core ' + core,
                         show=False)
 
             if False:
@@ -990,9 +980,9 @@ def main():
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',
-                        filename='taurus_hisd_vs_hsd_' + core + '_box.png',
+                        filename='california_hisd_vs_hsd_' + core + '_box.png',
                         title=r'$\Sigma_{HI}$ vs. $\Sigma_{HI}$ + ' + \
-                                '$\Sigma_{H2}$ of Taurus Core ' + core,
+                                '$\Sigma_{H2}$ of California Core ' + core,
                         show=False)
 
 if __name__ == '__main__':

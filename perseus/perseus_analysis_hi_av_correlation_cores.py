@@ -335,11 +335,11 @@ def plot_sd_vs_av(sd_image, av_image,
     sd_image_nonans = sd_image[indices]
     av_image_nonans = av_image[indices]
 
-    if type(sd_image_error) is np.ndarray:
-        sd_image_error_nonans = sd_image_error[indices]
-    else:
+    if type(sd_image_error) is float:
         sd_image_error_nonans = sd_image_error * \
                 np.ones(sd_image[indices].shape)
+    else:
+        sd_image_error_nonans = sd_image_error[indices]
 
     if type(av_image_error) is np.ndarray:
         av_image_error_nonans = av_image_error[indices]
@@ -625,18 +625,80 @@ def hrs2degs(ra=None, dec=None):
 
 def get_pix_coords(ra=None, dec=None, header=None):
 
-    ''' Ra and dec in degrees.
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec).
     '''
 
     import pywcsgrid2 as wcs
     import pywcs
 
-    ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    # convert to degrees
+    if type(ra) is tuple and type(dec) is tuple:
+        ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    else:
+    	ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
     pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
 
     return pix_coords
+
+def hrs2degs(ra=None, dec=None):
+    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
+    '''
+
+    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
+    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
+
+    return (ra_deg, dec_deg)
+
+def convert_core_coordinates(cores, header):
+
+    for core in cores:
+        cores[core].update({'box_pixel': 0})
+        cores[core].update({'center_pixel': 0})
+
+        try:
+            box_wcs = cores[core]['box_wcs']
+            box_pixel = len(box_wcs) * [0,]
+            # convert box corners to pixel coords
+            for i in range(len(box_wcs)/2):
+                pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+                        header=header)
+                box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]),\
+                        int(pixels[1])
+            cores[core]['box_pixel'] = box_pixel
+        except TypeError:
+            do_nothing = True
+
+
+    	center_wcs = cores[core]['center_wcs']
+
+        # convert centers to pixel coords
+        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
+                                                     dec=center_wcs[1],
+                                                     header=header)
+
+    return cores
+
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    for core in cores:
+    	region = read_ds9_region(filename_base + core + '.reg')
+        box_center_pixel = get_pix_coords(ra = region[0],
+                                          dec = region[1],
+                                          header = header)
+        box_center_pixel = (int(box_center_pixel[1]), int(box_center_pixel[0]))
+        box_height = region[2] / header['CDELT1']
+        box_width = region[3] / header['CDELT2']
+        cores[core].update({'box_center_pix': box_center_pixel})
+        cores[core].update({'box_width': box_width})
+        cores[core].update({'box_height': box_height})
+        cores[core].update({'box_angle': region[4]})
+
+    return cores
 
 def main():
     ''' Executes script.
@@ -659,6 +721,8 @@ def main():
     from os import system,path
     import myclumpfinder as clump_finder
     reload(clump_finder)
+    import mygeometry as myg
+    reload(myg)
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
@@ -666,10 +730,23 @@ def main():
     av_dir = '/d/bip3/ezbc/perseus/data/2mass/'
     hi_dir = '/d/bip3/ezbc/perseus/data/galfa/'
     core_dir = output_dir + 'core_arrays/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load 2mass Av and GALFA HI images, on same grid
-    av_data, av_header = load_fits(av_dir + 'perseus_av_lee12_masked.fits',
+    av_data_2mass, av_header = load_fits(av_dir + \
+                'perseus_av_lee12_masked.fits',
             return_header=True)
+
+    av_data_planck, av_header = load_fits(av_dir + \
+                '../av/perseus_planck_av_regrid.fits',
+            return_header=True)
+
+    hi_data,h = load_fits(hi_dir + 'perseus_galfa_cube_bin_3.7arcmin.fits',
+            return_header=True)
+    # make the velocity axis
+    velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
+            h['CRVAL3']
+    velocity_axis /= 1000.
 
     nhi_image, h = load_fits(hi_dir + 'perseus_galfa_lee12_masked.fits',
             return_header=True)
@@ -678,68 +755,77 @@ def main():
 
     nhi_image_error = 0.6 # 1e20 cm^-2
 
-    nh2_image = calculate_nh2(nhi_image = nhi_image,
-            av_image = av_data, dgr = 1.1e-1)
-    nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
-            av_image = 0.1, dgr = 1.1e-1)
+
+    # Create N(HI) image from 3.7' res GALFA cube
+    noise_cube_filename = 'taurus_galfa_cube_bin_3.7arcmin_noise.fits'
+    if not path.isfile(hi_dir + noise_cube_filename):
+        noise_cube = calculate_noise_cube(cube=hi_data,
+                velocity_axis=velocity_axis,
+                velocity_noise_range=[90,110], header=h, Tsys=30.,
+                filename=hi_dir + noise_cube_filename)
+    else:
+        noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
+            return_header=True)
+
+    # calculate nhi and error maps, write nhi map to fits file
+    nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
+        velocity_axis=velocity_axis,
+        noise_cube = noise_cube,
+        velocity_range=[-5,15],
+        return_nhi_error=True,
+        fits_filename = hi_dir + 'perseus_galfa_nhi_3.7arcmin.fits',
+        fits_error_filename = hi_dir + 'perseus_galfa_nhi_error_3.7arcmin.fits',
+        header = h)
+
+
+    #nh2_image = calculate_nh2(nhi_image = nhi_image,
+    #        av_image = av_data, dgr = 1.1e-1)
+    #nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
+    #        av_image = 0.1, dgr = 1.1e-1)
 
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
-    hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
+    #hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
+    hi_sd_image_error = nhi_image_error / 1.25 * np.ones(hi_sd_image.shape)
 
-    h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
-    h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
+    #h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
+    #h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
 
-    h_sd_image = av_data / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
-    h_sd_image_error = 0.1 / (1.25 * 0.11)
+    #h_sd_image = av_data / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
+    #h_sd_image_error = 0.1 / (1.25 * 0.11)
 
     cores = {'IC348':
-                {'wcs_position': [15*(3+44/60), 32+8/60., 0],
+                {'center_wcs': [(3, 44, 0), (32, 8, 0)],
                  'map': None,
-                 'threshold': 4.75,
-                 'box': [get_pix_coords(ra=(3,46,13),
-                                        dec=(26,03,24),
-                                        header=h),
-                         get_pix_coords(ra=(3,43,4),
-                                        dec=(32,25,41),
-                                        header=h)]
-                 }
-                }
+                 'threshold': None,
+                 'box_wcs': [(3,46,13), (26,3,24), (3,43,4), (32,25,41)],
+                 },
+             'NGC1333':
+                {'center_wcs': [(3, 29, 11), (31, 16, 53)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+             'B4':
+                {'center_wcs': [(3, 44, 18), (32, 05, 20)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+             'B5':
+                {'center_wcs': [(3, 47, 34), (32, 48, 17)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+             #'':
+             #   {'center_wcs': [],
+             #    'map': None,
+             #    'threshold': None,
+             #    'box_wcs': None,
+             #    },
+            }
 
-    for core in cores:
-    	box = cores[core]['box']
-    	cores[core]['box'] = (int(box[0][0]),int(box[0][1]),
-    	        int(box[1][0]),int(box[1][1]))
-
-    # calculate correlation for cores
-    if False:
-        limits =[1,22,6,16]
-
-        for core in cores:
-
-            print('Calculating N(HI) vs. Av for core %s' % core)
-
-            core_map = np.load(core_dir + core + '.npy')
-
-            if False:
-                plot_nhi_vs_av(nhi_image,core_map,
-                        nhi_image_error = nhi_image_error,
-                        av_image_error = 0.1,
-                        limits = limits,
-                        savedir=figure_dir,
-                        plot_type='scatter',
-                        filename='perseus_nhi_vs_av_' + core + '_small.png',
-                        title=r'N(HI) vs. A$_v$ of perseus Core ' + core,
-                        show=False)
-
-            plot_sd_vs_av(sd_image, core_map,
-                    sd_image_error = sd_image_error,
-                    av_image_error = 0.1,
-                    limits = limits,
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    filename='perseus_sd_vs_av_' + core + '_small.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of perseus Core ' + core,
-                    show = False)
+    cores = convert_core_coordinates(cores, h)
 
     if True:
         hsd_limits =[0.1,300]
@@ -747,54 +833,69 @@ def main():
         av_limits =[0.01,100]
         nhi_limits = [2,20]
 
+
+        cores = load_ds9_region(cores,
+                filename_base = region_dir + 'perseus_av_boxes_',
+                header = h)
+
         for core in cores:
             print('Calculating for core %s' % core)
 
-            indices = cores[core]['box']
-            nhi_image_sub = get_sub_image(nhi_image, indices)
-            nhi_image_error_sub = nhi_image_error
-            av_data_sub = get_sub_image(av_data, indices)
-            if False:
-                plot_nhi_vs_av(nhi_image_sub,av_data_sub,
-                        nhi_image_error = nhi_image_error_sub,
-                        av_image_error = 0.1,
-                        limits = [0.01,100,2,20],
-                        savedir=figure_dir,
-                        plot_type='scatter',
-                        scale='log',
-                        filename='perseus_nhi_vs_av_' + core + '_box.png',
-                        title=r'N(HI) vs. A$_v$ of perseus Core ' + core,
-                        show=False)
+            # Grab the mask from the DS9 regions
+            xy = cores[core]['box_center_pix']
+            box_width = cores[core]['box_width']
+            box_height = cores[core]['box_height']
+            box_angle = cores[core]['box_angle']
+            mask = myg.get_rectangular_mask(nhi_image,
+        	        xy[0], xy[1],
+                    width = box_width,
+                    height = box_height,
+                    angle = box_angle)
 
-            hi_sd_image_sub = get_sub_image(hi_sd_image, indices)
-            hi_sd_image_error_sub = hi_sd_image_error
+            # Get indices where there is no mask, and extract those pixels
+            indices = np.where(mask == 1)
+            av_data_2mass_sub = av_data_2mass[indices]
+            av_data_planck_sub = av_data_planck[indices]
+            hi_sd_image_sub = hi_sd_image[indices]
+            hi_sd_image_error_sub = hi_sd_image_error[indices]
+
             av_limits =[0.01,100]
 
-            plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
+            plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
                     sd_image_error = hi_sd_image_error_sub,
                     av_image_error = 0.1,
                     limits = [0.1,20,2,10],
                     savedir=figure_dir,
                     plot_type='scatter',
                     scale='log',
-                    filename='perseus_sd_vs_av_' + core + '_box.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of perseus Core ' + core,
+                    filename='perseus_sd_vs_av_' + core + '_planck.png',
+                    title=r'$\Sigma_{HI}$ vs. A$_v$ of Perseus Core ' + core,
                     show=False)
 
-            if True:
-                h_sd_image_sub = get_sub_image(h_sd_image, indices)
-                #h_sd_image_error_sub = get_sub_image(h_sd_image_error, indices)
-                plot_hisd_vs_hsd(hi_sd_image_sub, h_sd_image_sub,
-                        h_sd_image_error = h_sd_image_error,
-                        hi_sd_image_error = hi_sd_image_error_sub,
-                        limits = [1,100,1,20],
-                        savedir=figure_dir,
-                        plot_type='scatter',
-                        scale='log',
-                        filename='perseus_hisd_vs_hsd_' + core + '_box.png',
-                        title=r'$\Sigma_{HI}$ vs. $\Sigma_{HI}$ + ' + \
-                                '$\Sigma_{H2}$ of Perseus Core ' + core,
-                        show=False)
+            plot_sd_vs_av(hi_sd_image_sub, av_data_2mass_sub,
+                    sd_image_error = hi_sd_image_error_sub,
+                    av_image_error = 0.1,
+                    limits = [0.1,20,2,10],
+                    savedir=figure_dir,
+                    plot_type='scatter',
+                    scale='log',
+                    filename='perseus_sd_vs_av_' + core + '_lee12.png',
+                    title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                            'Perseus Core ' + core,
+                    show=False)
+
+            plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
+                    sd_image_error = hi_sd_image_error_sub,
+                    av_image_error = 0.1,
+                    limits = [0.1,20,2,10],
+                    savedir=figure_dir,
+                    plot_type='scatter',
+                    scale='log',
+                    filename='perseus_sd_vs_av_' + core + '_planck.png',
+                    title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                            'Perseus Core ' + core,
+                    show=False)
+
 
     # Plot heat map of correlations
     if False:

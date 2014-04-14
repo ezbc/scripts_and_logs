@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the CfA CO 2nd moment (velocity dispersion) in Taurus MC
+''' Calculates the CfA CO 2nd moment (velocity dispersion) in Perseus MC
 '''
 
 import pyfits as pf
@@ -305,7 +305,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -414,27 +414,28 @@ def plot_mom2_image(mom2_image=None, header=None, contour_image=None,
 
     # Convert sky to pix coordinates
     wcs_header = pywcs.WCS(header)
-    core_anno_color = 'w'
-    for core in cores:
-        pix_coords = cores[core]['center_pixel']
+    core_anno_color = 'c'
+    if cores is not None:
+        for core in cores:
+            pix_coords = cores[core]['center_pixel']
 
-        ax.scatter(pix_coords[0],pix_coords[1],
-                color=core_anno_color,
-                s=200, marker='+',
-                linewidths=2)
+            ax.scatter(pix_coords[0],pix_coords[1],
+                    color=core_anno_color,
+                    s=200, marker='+',
+                    linewidths=2)
 
-        ax.annotate(core,
-                xy=[pix_coords[0], pix_coords[1]],
-                xytext=(5,5),
-                textcoords='offset points',
-                color=core_anno_color,
-                )
+            ax.annotate(core,
+                    xy=[pix_coords[0], pix_coords[1]],
+                    xytext=(5,5),
+                    textcoords='offset points',
+                    color=core_anno_color,
+                    )
 
-        if boxes:
-            rect = ax.add_patch(Polygon(
-                cores[core]['box_vertices'][:, ::-1],
-                    facecolor='none',
-                    edgecolor='k' ))
+            if boxes:
+                rect = ax.add_patch(Polygon(
+                    cores[core]['box_vertices'][:, ::-1],
+                        facecolor='none',
+                        edgecolor='k' ))
 
     if filename is not None:
         plt.savefig(savedir + filename)
@@ -455,22 +456,22 @@ def main():
     reload(mymath)
 
     # define directory locations
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/co_dispersion/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
-    cfa_dir = '/d/bip3/ezbc/taurus/data/cfa/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/co_dispersion/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/galfa/'
+    cfa_dir = '/d/bip3/ezbc/perseus/data/cfa/'
     core_dir = output_dir + 'core_arrays/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load 2mass Av and GALFA HI images, on same grid
     cfa_data, cfa_header = load_fits(cfa_dir + \
-                'taurus_cfa_cube_galfa_regrid.fits',
+                'perseus_cfa_cube_galfa_regrid.fits',
             return_header=True)
 
     #av_data += - 0.4 # subtracts background of 0.4 mags
     hi_data, hi_header = load_fits(hi_dir + \
-                'taurus_galfa_cube_bin_3.7arcmin.fits',
+                'perseus_galfa_cube_bin_3.7arcmin.fits',
             return_header = True)
 
     # make the velocity axis
@@ -536,47 +537,49 @@ def main():
                 filename_base = region_dir + 'taurus_av_boxes_',
                 header = hi_header)
 
-        mask = np.zeros((cfa_mom2.shape))
-        for core in cores:
-            print('Calculating for core %s' % core)
+        # save cores for later
+        if 0:
+            mask = np.zeros((cfa_mom2.shape))
+            for core in cores:
+                print('Calculating for core %s' % core)
 
-            av_limits = [0.01,100]
+                av_limits = [0.01,100]
 
-            # Grab the mask
-            xy = cores[core]['box_center_pix']
-            box_width = cores[core]['box_width']
-            box_height = cores[core]['box_height']
-            box_angle = cores[core]['box_angle']
-            mask += myg.get_rectangular_mask(cfa_mom2,
-        	        xy[0], xy[1],
-                    width = box_width,
-                    height = box_height,
-                    angle = box_angle)
-
-            cores[core]['box_vertices'] = myg.get_rect(
+                # Grab the mask
+                xy = cores[core]['box_center_pix']
+                box_width = cores[core]['box_width']
+                box_height = cores[core]['box_height']
+                box_angle = cores[core]['box_angle']
+                mask += myg.get_rectangular_mask(cfa_mom2,
                         xy[0], xy[1],
                         width = box_width,
                         height = box_height,
-                        angle = box_angle,)
+                        angle = box_angle)
 
-            indices = np.where(mask == 1)
+                cores[core]['box_vertices'] = myg.get_rect(
+                            xy[0], xy[1],
+                            width = box_width,
+                            height = box_height,
+                            angle = box_angle,)
 
-        mask[mask > 1] = 1
-        #cfa_mom2[mask == 0] = np.nan
-        cfa_mom2[cfa_mom2 > 5] = 5
+                indices = np.where(mask == 1)
+
+            mask[mask > 1] = 1
+            cfa_mom2[mask == 0] = np.nan
 
         # currently have variance, need dispersion
         cfa_mom2 = cfa_mom2**0.5
+
 
         # Plot
         plot_mom2_image(mom2_image = cfa_mom2,
                 header = cfa_header,
                 boxes = False,
-                cores = cores,
-                limits=[128,37,308,206],
-                title=r'Taurus: $\sigma_{\rm CO}$ map with core boxed-regions.',
-                savedir=figure_dir,
-                filename='taurus_co_veldisp_map.png',
+                #limits=[128,37,308,206],
+                title = r'Perseus: $\sigma_{\rm CO}$ map with core ' + \
+                        'boxed-regions.',
+                savedir = figure_dir,
+                filename='perseus_co_veldisp_map.png',
                 show=True)
 
 if __name__ == '__main__':

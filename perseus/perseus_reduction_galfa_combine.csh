@@ -17,9 +17,15 @@ foreach filename (GALFA*.mir)
   puthd in=${filename}/restfreq value=1.420405752E+09 type='double'
 end
 
-imcomb "in=*44*34*.sub.mir,*044*26*.sub.mir,*52*26*sub.mir,*52*34*sub.mir" out=perseus.galfa.cube.sub.mir
+imcomb "in=*DEC_060*.sub.mir,*DEC_052*.sub.mir,*DEC_044*.sub.mir,*DEC_036*.sub.mir"\
+out=perseus_galfa_cube_sub.mir
 
-regrid in=perseus.galfa.cube.sub.mir out=perseus.galfa.cube.sub.regrid.mir op=galeqsw
+imcomb "in=*DEC*.sub.mir" \
+out=perseus_galfa_cube_sub.mir
+
+regrid in=perseus_galfa_cube_sub.mir \
+out=perseus_galfa_cube_sub_regrid.mir \
+op=galeqsw
 
 #imcomb "in=*.mir" out=perseus.galfa.cube.mir
 
@@ -28,10 +34,10 @@ foreach filename (*galfa*.mir)
   puthd in=${filename}/restfreq value=1.420405752E+09 type='double'
 end
 
-fits in=perseus.galfa.cube.sub.regrid.mir \
-    out=perseus.galfa.cube.sub.regrid.fits op=xyout
+fits in=perseus_galfa_cube_sub_regrid.mir \
+    out=perseus_galfa_cube_sub_regrid.fits op=xyout
 
-fits in=perseus.galfa.cube.mir out=perseus.galfa.cube.fits \
+fits in=perseus_galfa_cube_mir out=perseus_galfa_cube.fits \
     op=xyout
 
 

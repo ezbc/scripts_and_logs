@@ -10,8 +10,8 @@ def extract_data():
 
     # Goal: RA from 1:30 to 5:30hrs, Dec = 20 to 38deg
 
-    ra_range = (55, 75)
-    dec_range = (20, 40)
+    dec_range = (15, 35)
+    ra_range = (52.5, 82.5)
 
     (data, header) = pl.get_data(data_location = data_location,
             data_type = 'Dust Opacity',
@@ -43,18 +43,16 @@ def ebv2av(data, header):
     return (data, header)
 
 def main():
-    av_dir = '/d/bip3/ezbc/california/data/av/'
-    planck_dir = '/d/bip3/ezbc/california/data/planck/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    planck_dir = '/d/bip3/ezbc/taurus/data/planck/'
 
     (data, header) = extract_data()
 
-    write_data(data, header, planck_dir + 'california_planck_ebv.fits')
+    write_data(data, header, planck_dir + 'taurus_planck_ebv.fits')
 
     ebv2av(data, header)
 
-    write_data(data, header, av_dir + 'california_planck_av.fits')
-
-    print('complete')
+    write_data(data, header, av_dir + 'taurus_planck_av.fits')
 
 if __name__ == '__main__':
 	main()
