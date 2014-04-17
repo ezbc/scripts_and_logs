@@ -390,19 +390,22 @@ def main():
 
         mask[mask > 1] = 1
 
-        nhi_image[mask == 0] = np.nan
+        #nhi_image[mask == 0] = np.nan
 
         # trim hi_image to av_image size
         nhi_image_trim = np.ma.array(nhi_image,
                 mask = (av_image != av_image))
 
         # Plot
-        plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
-                contour_image=av_image, contours=[5,10,15],
-                boxes=True, cores = cores, limits=[128,37,308,206],
-                title='Taurus: N(HI) map with core boxed-regions.',
-                savedir=figure_dir, filename='taurus_nhi_cores_map.png',
-                show=True)
+        figure_types = ['pdf', 'png']
+        for figure_type in figure_types:
+            plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
+                    contour_image=av_image, contours=[5,10,15],
+                    boxes=True, cores = cores, limits=[128,37,308,206],
+                    title='Taurus: N(HI) map with core boxed-regions.',
+                    savedir=figure_dir, filename='taurus_nhi_cores_map.%s' % \
+                            figure_type,
+                    show=False)
 
 if __name__ == '__main__':
     main()

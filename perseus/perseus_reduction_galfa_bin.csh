@@ -34,6 +34,16 @@ regrid in=$tauruscfa/taurus.cfa.cube.mir \
     out=$cfa/perseus.cfa.cube.galfaBin.4arcmin.mir \
     axes=1,2
 
+# grid min's 2mass av image onto the galfa 3.7' image
+regrid in=../2mass/2mass_av_lee12.mir \
+    tin=$galfa/perseus_galfa_cube_bin_3.7arcmin.mir \
+    out=../2mass/perseus_av_2mass_galfa_regrid.mir \
+    axes=1,2
+
+fits in=../2mass/perseus_av_2mass_galfa_regrid.mir \
+    out=../2mass/perseus_av_2mass_galfa_regrid.fits \
+    op=xyout
+
 # Regrid CfA map Min's HI image
 fits in=$galfa/perseus.lee12.fits out=$galfa/perseus.lee12.mir op=xyin
 
