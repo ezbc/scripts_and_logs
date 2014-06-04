@@ -1,0 +1,940 @@
+User number 8000
+		     UGCA 105, Observed on October 10, 2011
+
+1. UVLOD: load data
+
+   default 'uvlod'; bcount 0;
+   ncount 0; 
+   datain 'VLADATA:TDEM15_1'; douvcomp -1;
+   outna 'UGCA105'; outcl 'UVDATA'; outseq 0;
+   outdi 1; doall 1; npoints 0; go
+
+   --> 576550 visibilities
+
+IMHEAD:
+
+128 channels, 1.4198747E+09 Hz at channel 65.00, 1.5625000E+04 Hz/channel
+
+2. INDXR
+   task 'indxr'; getn 1; 
+   infile ''; prtlev 0; cparm 0,0,0.06666667;
+   bparm 0,0; go
+
+   -->  NOTE: using CPARM(3)=4/60, to match 4-second scan intervals
+
+INDXR1: Warning:   Warning:  1.393  percent of times not found in WX table
+	This may be a normal amount
+
+IMHEAD: 
+
+3. LISTR
+   default 'listr'; getn 1;
+   optype 'scan'; docrt 132;
+   go
+
+ localhos  LISTR(31DEC11)   8000     10-OCT-2011  18:34:46    Page    1
+File = UGCA105     .UVDATA.   1 Vol = 1  Userid = 8000
+Freq =  1.419874719 GHz   Ncor =  2   No. vis =    576550
+Scan summary listing
+ 
+Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START VIS  END VIS
+   1 J0542+4951      : 0000           1  0/10:55:46 -   0/10:56:38     1       1       4550
+   2 J0542+4951      : 0000  K        1  0/10:56:46 -   0/11:06:34     1    4551      52325
+   3 J0614+6046      : 0000  D        1  0/11:06:42 -   0/11:09:34     1   52326      66300
+   4 UGCA 105        : 0000           1  0/11:09:42 -   0/11:33:58     1   66301     184275
+   5 J0614+6046      : 0000  D        1  0/11:34:06 -   0/11:35:58     1  184276     193700
+   6 UGCA 105        : 0000           1  0/11:36:06 -   0/12:00:26     1  193701     312000
+   7 J0614+6046      : 0000  D        1  0/12:00:34 -   0/12:02:26     1  312001     321425
+   8 UGCA 105        : 0000           1  0/12:02:34 -   0/12:26:50     1  321426     439400
+   9 J0614+6046      : 0000  D        1  0/12:26:58 -   0/12:28:50     1  439401     448825
+  10 UGCA 105        : 0000           1  0/12:28:58 -   0/12:53:18     1  448826     567125
+  11 J0614+6046      : 0000  D        1  0/12:53:26 -   0/12:55:18     1  567126     576550
+ 
+Source summary
+Velocity type = '        '    Definition = '        '
+ 
+  ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)   IFlux   QFlux   UFlux   VFlux  No. vis
+   1 J0542+4951      : 0000         05:42:36.1379  49:51:07.234   0.000   0.000   0.000   0.000    4550
+   2 J0542+4951      : 0000   K     05:42:36.1379  49:51:07.234   0.000   0.000   0.000   0.000   47775
+   3 J0614+6046      : 0000   D     06:14:23.8662  60:46:21.755   0.000   0.000   0.000   0.000   51675
+   4 UGCA 105        : 0000         05:14:14.9000  62:34:48.000   0.000   0.000   0.000   0.000  472550
+ 
+  ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+   1 All Sources          1.4199       112.1224          1.4204
+ 
+Frequency Table summary
+FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+   1   1       1.41987472    2000.0001     15.6250      1
+
+
+4. PRTAN
+   task 'prtan'; optype 'scan'; docrt 132; go
+ 
+                       Location of VLA antennas
+ 
+                               N09 (20)*
+                               N08 (28)*
+                               N07 ( 8)*
+                               N06 (23)*
+                               N05 (10)*
+                               N04 (16)*
+                                   (  )
+                               N02 (22)*
+                               N01 (13)*
+                          *(24) W01  E01 (21)*
+                        *(17) W02      E02 ( 9)*
+                      *(14) W03          E03 (11)*
+                    *(19) W04              E04 ( 7)*
+                  *( 4) W05                  E05 (18)*
+                *(26) W06                      E06 ( 2)*
+              *( 1) W07                          E07 (27)*
+            *( 5) W08                              E08 (12)*
+          *(15) W09                                  E09 ( 3)*
+                                   ( 6)
+                                   (25)
+* => EVLA ANTENNA
+                 
+
+
+5. VLANT
+   default 'vlant'; getn 1; go
+
+   -No changes needed
+   - ALL ANT may still get more corrections.
+
+6.  From log file:
+
+************************************************************************
+**** BEGIN EXAMINING DATA NOW ****
+****
+**** EVLA OPERATOR LOG COMMENTS FOLLOW
+****
+**** SHADOWING is occurri.ng; noted at 10:55:40 (start; flux cal?)  
+**** 
+**** Antenna 6 out of services (problems with elevantion motor)
+**** 
+************************************************************************
+
+7.  Examine PRIMARY CAL data in TVFLG:
+
+-- ASSURE THAT YOU SET 'SWITCH ALL-CH FLAG'!!
+
+**** Primary calibrator, RR:
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; 
+   dohist -1; sources ''; calcode 'K'; 
+   timerang 0; stokes 'RR'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib 2; gainuse 0; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+
+   -- first-scan issues flagged.
+
+**** Primary calibrator, LL:
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; 
+   dohist -1; sources ''; calcode 'K'; 
+   timerang 0; stokes 'LL'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib 2; gainuse 0; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+
+   -- first-scan issues flagged.
+
+8. FRING
+   -Selected 00:03:40:00-00:04:41:00 on 0137+331=3C48
+
+   task 'fring'; default fring;
+   getn 1; timerang 00 11 05 00 00 11 06 00;
+   calsour ''; calcode 'K'; 
+   solint 1.05; dparm(9)=1;
+
+   --> Prior to fring:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   1
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is   2
+
+   --> After FRING, which writes out SN TABLE version #1:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   1
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is   2
+AIPS 1: Maximum version number of extension files of type SN is   1
+   --> FINDS 52 good solutions
+
+--> The SN table needs ot be applied to the main CL table created by INDXR:
+
+9. CLCAL
+   task 'clcal'; default 'clcal';
+   timerang 0; gainuse 0; gainver 0;
+   snver 1; inver 1
+   
+   --> After CLCAL, which writes out CL TABLE version #2:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   2
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is   2
+AIPS 1: Maximum version number of extension files of type SN is   1
+   - EVLA reduction guide states, "Be sure to apply this (or higher)
+      CL table with DOCALIB 1 in all later steps".
+      ---->  CHECK THIS CAREFULLY!
+
+10. PRTUV:  task 'prtuv'; docrt 132; getn 1; go
+   -Scan length 4.0 seconds
+
+11. Initial TVFLG.
+    -- Apply flags with flagver=0
+
+-- ASSURE THAT YOU SET 'SWITCH ALL-CH FLAG'!!
+
+**** Primary calibrator, RR:
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; 
+   dohist -1; sources ''; calcode 'K'; 
+   timerang 0; stokes 'RR'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib 2; gainuse 0; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+
+   -- Ant 7 look systematically low; watch carefully.
+   -- No further flags.
+
+**** Primary calibrator, LL:
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; 
+   dohist -1; sources ''; calcode 'K'; 
+   timerang 0; stokes 'LL'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib 2; gainuse 0; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+
+   -- Ant 7 looks OK in LL.
+   -- No further flags.   
+
+**** Phase calibrator, RR:
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; 
+   dohist -1; sources ''; calcode 'D'; 
+   timerang 0; stokes 'RR'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib 2; gainuse 0; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+
+   -- First scan is broken into two scans (see Scheduling Block). 
+   -- Flagged off first scan; affected by "first-scan issues"
+   -- This was "extra time" built into SB to guarantee enough time
+   -- for slewing.
+   -- 6 flags applied.
+   -- Ant 7 is sporadic.  Some scans obvioulsy higher amplitude than others.
+   -- Watch Ant 7 carefully!
+
+**** Phase calibrator, LL:
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; 
+   dohist -1; sources ''; calcode 'D'; 
+   timerang 0; stokes 'LL'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib 2; gainuse 0; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+
+   -- First scan is broken into two scans (see Scheduling Block). 
+   -- Flagged off first scan; affected by "first-scan issues"
+   -- This was "extra time" built into SB to guarantee enough time
+   -- for slewing.
+   -- 6 flags applied.
+   -- Ant 7 looks OK in LL.
+ 
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; calcode '-cal'; 
+   dohist -1; sources ''; 
+   timerang 0; stokes 'RR'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; nchav echan-bchan+1
+   antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib -1; gainuse 0; blver -1; 
+   flagver -1; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+
+   -- Nothing major evident in TVFLAG.
+   -- Check SPFLG carefully.
+
+   tvreset; tvclear;
+   task 'tvflg'; default tvflg;
+   getn 1; docat -1; calcode '-cal'; 
+   dohist -1; sources ''; 
+   timerang 0; stokes 'LL'; selband -1; 
+   selfreq -1; freqid 1; bif 0; eif 0;
+   bchan 54; echan 73; antennas 0; 
+   baseline 0; uvrange 0; subarray 0; 
+   docalib 2; gainuse 0; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; dparm(6)=4; baddisk 0;
+   go
+ 
+   -- Nothing major evident in TVFLAG.
+   -- Check SPFLG carefully.
+
+12.  SPFLG - edit line UV data using the TV display and cursor
+
+*******************************************
+** MW FG is severe in channels 104-110
+** Flagging all of these channels now.
+*******************************************
+
+======>> Primary CAL, RR: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'K'; 
+    timerang 00 10 56 46 00 11 06 34
+    stokes 'RR'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; 
+    txinc -1; tyinc -1; go
+
+    --> channels 104-110 flagged on ALL BL
+
+======>> Primary CAL, LL: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'K'; timerang 0;
+    stokes 'LL'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; go
+
+    --> channels 104-110 flagged on ALL BL
+
+======>> Phase CAL, RR: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'd'; timerang 0;
+    stokes 'RR'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; go
+
+    --> channels 104-110 flagged on ALL BL
+    --> Ant 7 issues.  Ant 26 issues.
+
+======>> Phase CAL, LL: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'D'; timerang 0;
+    stokes 'LL'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib -1; gainuse 0;
+    dopol -1; blver -1; flagver -1; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; go
+
+    --> channels 104-110 flagged on ALL BL
+
+=====>> Source, RR ---- 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode '-cal'; timerang 0;
+    stokes 'RR'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0;
+    baddisk 0; dparm(6)=4; go
+
+    --> Ant 7 & 26 look bad. 
+    --> Flags on channels 104--110 inherited from CLACODE='D' execution above,
+        since theses times were crossed by the "gaps" in phase cal scans.
+
+=====>> Source, LL ---
+
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode '-cal'; timerang 0;
+    stokes 'LL'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0;
+    baddisk 0; dparm(6)=4; go
+
+    --> Ant 12 looks bad on LL.
+    --> Flags on channels 104--110 inherited from CLACODE='D' execution above,
+        since theses times were crossed by the "gaps" in phase cal scans.
+
+******************************************
+*******************************
+*** Second execution of SPFLAG:
+*******************************
+******************************************
+
+======>> Primary CAL, RR: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'K'; timerang 0;
+    stokes 'RR'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; go
+
+    --> 19 flags applied, many on channel 72
+
+======>> Primary CAL, LL: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'K'; timerang 0;
+    stokes 'LL'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; go
+
+    --> 17 flags applied.  
+
+======>> Phase CAL, RR: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'd'; timerang 0;
+    stokes 'RR'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; go
+
+    --> Ant 7, 26 bad in RR.  Flagged all 7-* and
+        26-* baselines.
+
+======>> Phase CAL, LL: 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode 'D'; timerang 0;
+    stokes 'LL'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0; 
+    baddisk 0; dparm(6)=4; go
+
+    --> Ant 12 bad in LL.  Flagged all *-12 baselines.
+    --> Ant 28 last scan is bad.  Flagged this and the time 
+    	(on source) prior to it.
+
+=====>> Source, RR ---- 
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode '-cal'; timerang 0;
+    stokes 'RR'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0;
+    baddisk 0; dparm(6)=4; go
+
+    --> check that 7 & 26 are gone....
+    --> Flux variations on some BL (e.g., 2-18, 2-27, 4-19, 8-23, 
+    	     8-28, 9-11, 9-13, and others).  This may be due to 
+	     flux on shortest BL.  Check for quality of images.
+	     Assume for now these are ok.
+    --> Some channels flagged when amplitude high in 1 channel only.
+        First & last integrations on all scans flagged on all BL.
+    --> Otherwise pretty clean data
+
+=====>> Source, LL ---
+
+    task 'spflg'; default spflg; tvreset; tvclear;
+    getn 1; sources ''; calcode '-cal'; timerang 0;
+    stokes 'LL'; selband -1; selfreq -1; 
+    freqid -1; bif 0; eif 0; bchan 1; echan 0;
+    antenn 0; baseli 0; docat -1; 
+    uvrange 0; subarray 0; docalib 2; gainuse 0;
+    dopol -1; blver -1; flagver 0; outfgver 0;
+    doband -1; bpver -1; smooth 0; 
+    dparm 0; antennas 0;
+    baddisk 0; dparm(6)=4; go
+
+    --> check that ant 12 is gone, and 28 last scan is gone.
+    --> Flux variations on some BL (e.g., 2-18, 2-27, 4-19, 8-23, 
+    	     8-28, 9-11, 9-13, and others).  This may be due to 
+	     flux on shortest BL.  Check for quality of images.
+	     Assume for now these are ok.
+    --> Ant 28 bad, flagged all BL.
+    --> Some channels flagged when amplitude high in 1 channel only.
+        First & last integrations on all scans flagged on all BL.
+    --> Otherwise pretty clean data
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+--> FLAGGING IS COMPLETED.
+--> Highest FG table version # = 14
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+13. POSSM; examine bandpasses & identify reliable sections
+    -- Using antennas 13, 24, 21 (center of array) for BPASS examination
+ 
+    tvreset;  tvclear;
+    task 'possm'; default 'possm' 
+    getn 1; source '';
+    calcode 'K'; stokes ''; bchan 0; echan 0;
+    dotv 1; nplots 9; anten 13,24,21; 
+    baseline 0;
+    docal 1; aparm 1,0; go
+
+    - Bandpass plots look very nice between channels ~15 and 100. 
+       Recall that channels 104--110 was flagged for all BL due to 
+       MWHI.  Bandpass would be ok from ~113 and lower, but probably 
+       do not wat to use anything past channel 103.
+
+14. BPASS
+    task 'bpass'; default 'bpass';
+    getn 1; docal 1; solint 0; calcode 'K';
+    calsour 'J0542+4951'; ichansel 15,103,1,0;
+    bpassprm(5)=1; bpassprm(10)=3; go
+
+-- Prior to BPASS:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   2
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is  14
+AIPS 1: Maximum version number of extension files of type SN is   1
+
+-- After BPASS:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   2
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is  14
+AIPS 1: Maximum version number of extension files of type SN is   1
+AIPS 1: Maximum version number of extension files of type BP is   1
+
+15.  POSSM - examine bandpasses again, after BPASS has executed.  
+
+    tvreset;  tvclear;
+    task 'possm'; default 'possm' 
+    getn 1; source '';
+    calcode 'K'; stokes ''; bchan 0; echan 0;
+    dotv 1; nplots 9; 
+    anten 13,24,21; baseline 0;
+    docal 1; aparm 1,0; doband 3; go
+
+-- Few antennas I examined look ok; phases +/- 3 degrees, with ammplitudes more or 
+   less constant across bandpasses.   The large MWHI feature will be problematic.
+
+16. SETJY:  MAKE ABSOLUTELY SURE THAT calcode = '' (is blank)
+    task 'setjy'; default 'setjy';
+    getn 1; sources 'J0542+4951';
+    qual -1; bif 0; eif 0; zerosp 0; 
+    optype 'CALC'; calcode ''; sysvel 0; 
+    restfreq 0; veltyp ''; veldef ''; 
+    freqid=1; aparm 0; go
+
+    --> SETJY1: 'J0542+4951      ' IF =  1 FLUX =21.8758 (Jy calcd)
+
+-- CHECK LISTR:    task 'LISTR'; default 'listr'; getn 1; optype 'scan'; docrt 132; go
+
+17.  CALRD - read in a calibrator FITS image file
+     task 'calrd';
+     object '3c147'; band 'L'; go
+
+18. CALIB:  first, information on calibrators:
+
+SITUATIONS WHERE SPECIAL RESTRICTIONS ARE NECESSARY FOR FLUX CALIBRATION
+
+      The following rules must be carefully followed to ensure proper
+flux bootstrapping in the combinations of array scale and band noted
+below.  For the hybrid configurations (BnA, CnB, DnC) the rule for the
+more compact configuration should be adopted (i.e. follow B config
+rules for BnA).  When specifying inner antennas to be used for the
+calibration solution, no antenna on the North arm further out than on
+the East or West arms should be used.  Finally, it is a good idea to
+set WTUV = 0.1 in CALIB to ensure a stable solution.
+
+                                            NUMBER OF
+SOURCE      BAND    UVRANGE    CONFIG    INNER ANTENNAS          NOTES
+            (cm)      (Kl)                  (per arm)
+-----------------------------------------------------------------------------
+3C48/3C147   20       0-40        A             7
+                       "        B,C,D          All
+
+3C286      20       0-18            A              4
+                     "            B,C,D           All
+                   90-180           A             All     Reduce flux by 6%
+
+---> UVRANGE for 3c147 is 0-40 for B,C,D arrays
+
+--->> Phase cal = ?  Assume none for now.
+
+
+--> NO UVRANGE restrictions on phase cal
+
+    task 'calib'; default 'calib'; getn 1; 
+    get2n 2; calcode 'K';  qual -1; 
+    timerang 0; uvrange 0 40; 
+    docal 1; doband 3; solin 0; nmaps 1;
+    calsour 'J0542+4951'; 
+    ichansel 15,103,1,0;
+    snver 2; inp;
+
+---> Results: 51 good solutions, fails on 1 solution.
+     	      
+Header:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   2
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is  14
+AIPS 1: Maximum version number of extension files of type SN is   2
+AIPS 1: Maximum version number of extension files of type BP is   1
+
+19. CALIB on phase cals:
+    
+    clr2name; nmaps 0; 
+    uvrange 0;
+    calsour 'J0614+6046'; calcode 'D';
+    go 
+
+--> Results:  239 good solutions
+--> 0.66667 of the times had 0-2 percent outside 2.5 times rms
+
+20. GETJY.  MAKE SURE THAT YOU USE ONLY THE HIGHEST SN TABLE VERSION, AND SET IT EXPLICITLY.
+    default 'getjy'; getn 1; source 'J0614+6046';
+    calcode '*'; snver 2;
+    calsour 'J0542+4951'; bif 0; eif 0;
+    inp
+
+    --> J0614+6046      :  0   D     1    1.16647 +/-   0.00281  0.10755
+    --> Calibrator manual: 1.26 Jy.  
+
+Contents of header:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   2
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is  14
+AIPS 1: Maximum version number of extension files of type SN is   2
+AIPS 1: Maximum version number of extension files of type BP is   1
+
+21. CLCAL
+    task 'clcal';
+    default 'clcal'; getn 1; calcode '*';
+    snver 2; invers snver; go
+
+AFTER CLCAL:
+AIPS 1: Maximum version number of extension files of type HI is   1
+AIPS 1: Maximum version number of extension files of type FQ is   1
+AIPS 1: Maximum version number of extension files of type AN is   1
+AIPS 1: Maximum version number of extension files of type SU is   1
+AIPS 1: Maximum version number of extension files of type WX is   1
+AIPS 1: Maximum version number of extension files of type CL is   3
+AIPS 1: Maximum version number of extension files of type NX is   1
+AIPS 1: Maximum version number of extension files of type FG is  14
+AIPS 1: Maximum version number of extension files of type SN is   2
+AIPS 1: Maximum version number of extension files of type BP is   1
+
+--> CL table, version #3, written by CLCAL
+
+22.  LISTR:  print outputs for phase cals.  Amplitudes should be roughly constant, 
+              while phases should be blose to zero.
+
+	      Task 'LISTR'; getn 1; Optype 'matx'; 
+	      Inext 'SN'; Inver 0;  Sources ''; 
+	      Calcode 'D'; Timerang 0; Stokes ''; 
+	      Selband -1; Selfreq -1; Freqid 1; 
+	      Bif 0; Eif 0; Bchan 1; Echan 0; 
+	      Antennas 0; Baseline 0; Uvrange 0; 
+	      Subarray 0; Docalib 2; Gainuse 0; 
+	      Dopol -1; Blver -1; flagver 0; 
+	      Doband 3; Bpver 1; Smooth 0; 
+	      Dparm 5,1,0;  doacor 0; Factor 0; 
+	      Docrt -1; baddisk 0;
+	      Outprint 'VLADATA:UGCA105.D.LISTR.CLCAL'; 
+
+--> Solution is adequate.  Most phases within +/-5 degrees, amplitudes 
+    constant.   Some phases varying at 10-15 degrees.  Return to this.
+
+--> If you need to reset calibration:  
+    
+    task 'extdest'; getn 1; inext 'sn'; invers 2; extdest
+    task 'extdest'; getn 1; inext 'cl'; invers 3; extdest
+
+
+23. TVFLG ON SOURCE.  
+
+    tvreset; tvclear;
+    default 'tvflg'; getn 1; docal 1;
+    stokes 'RR'; sources '';
+    calcode '-cal';
+    doband 3; bchan 15; echan 103; 
+    bif 0; eif 0; nchav echan-bchan+1;
+    calcode '-cal'; dparm(6)=4; go
+
+    --> A few high BL but these may be due to structure in source
+
+    tvreset; tvclear;
+    default 'tvflg'; getn 1; docal 1;
+    stokes 'RR'; sources '';
+    calcode '-cal';
+    doband 3; bchan 15; echan 103; 
+    bif 0; eif 0; nchav echan-bchan+1;
+    calcode '-cal'; dparm(6)=4; go
+
+    --> A few high BL but these may be due to structure in source
+
+
+24.  REWAY - replaces SPLIT, applies calibration and attempts to get the 
+     data weighting correct.  Following suggestions in the EVLA guide for
+     now, will want to experiment with these assumptions later.
+
+     task 'reway'; default 'reway'; getn 1;
+     docal 1; doband 3;
+     source ''; calcode '-cal';
+     aparm 11,44,12,0,10,4;
+     calcode '-cal'; bpver 0; 
+     outname 'UGCA105';
+     outclass 'split';
+
+-- Note on aparm: to use a rolling buffer of 11 times separated by no
+   more than 44 seconds and then smoothed further with a Gaussian 12
+   seconds in FWHM. Data are flagged if the rms is more than 4 times
+   the variance away from the mean averaged over all baselines, IFs,
+   and polarizations. Flagging on the variance of the rms from the
+   mean on a baseline basis is essentially turned off by the 10.
+-- This is the suggestion from APPENDIX E of the AIPS COOKBOOK
+
+     -- PROCEEDS NOMINALLY
+-- Output:  3.8000 UGCA105     .SPLIT .    
+
+25. IMAGR - dirty cube, robust = 5
+
+**** 1024x1024 dirty cube:
+     task 'imagr'; default 'imagr'; getn 3;
+     sources 'UGCA 105'; qual -1; calcode ''; 
+     timerang 0; selband -1; selfreq -1; 
+     freqid -1; subarray 0; 
+     baseline 0; docalib -1; 
+     gainuse 0; dopol -1; blver -1; 
+     flagver 0; doband -1; bpver -1; 
+     smooth 0; stokes ''; bchan 15; echan 103;
+     channel 0; nchav echan-bchan+1; 
+     chinc 1; bif 0; eif 0; 
+     outname 'dirty_im'; outdisk 1;
+     outclass '' 
+     outseq 0; outver 0; clr2na; 
+     cellsi 2; 
+     imsize 1024; nfield 1; 
+     do3dimag -1; fldsize 0; rashift 0; 
+     uvtaper 0; 
+     uvrange 0 0; guard 0 0;
+     rotate 0; zerosp 0; uvwtfn ''; 
+     uvsize 0 0; robust 5; uvbox 0;  
+     uvbxfn 1; xtype 5; ytype 5; xparm 0;  
+     yparm 0; niter 1000; bcomp 0; 
+     allokay 0; nboxes 0; clbox 0; 
+     boxfile ''; oboxfile ''; gain 0.1; 
+     flux 0; minpatch 51; bmaj 0; 
+     bmin 0; bpa 0; overlap 0; phat 0;
+     factor 0; cmethod ''; imagrprm 0;
+     ngauss 0; wgauss 0; fgauss 0; 
+     maxpixel 20000; clr3na; clr4na; 
+     dotv -1; grchan 0; 
+     baddisk 0;
+
+-- Output:  FWHM = 61.18" x 49.58"
+
+task 'imagr'; default 'imagr'; getn 3;
+sources 'UGCA 105'; qual -1; calcode ''; 
+timerang 0; selband -1; selfreq -1; 
+freqid -1; subarray 0; 
+baseline 0; docalib -1; 
+gainuse 0; dopol -1; blver -1; 
+flagver 0; doband -1; bpver -1; 
+smooth 0; stokes ''; bchan 0; echan 0;
+channel 0; nchav 1; 
+chinc 1; bif 0; eif 0; 
+outname 'dirty_cube'; outdisk 1;
+outclass '' 
+outseq 0; outver 0; clr2na; 
+cellsi 4; 
+imsize 1024; nfield 1; 
+do3dimag -1; fldsize 0; rashift 0; 
+uvtaper 0; 
+uvrange 0 0; guard 0 0;
+rotate 0; zerosp 0; uvwtfn ''; 
+uvsize 0 0; robust 5; uvbox 0;  
+uvbxfn 1; xtype 5; ytype 5; xparm 0;  
+yparm 0; niter 1000; bcomp 0; 
+allokay 0; nboxes 0; clbox 0; 
+boxfile ''; oboxfile ''; 
+gain 0.1; 
+flux 0; minpatch 51; bmaj 0; 
+bmin 0; bpa 0; overlap 0; phat 0;
+factor 0; cmethod ''; imagrprm 0;
+ngauss 0; wgauss 0; fgauss 0; 
+maxpixel 20000; clr3na; clr4na; 
+fqtol -1; dotv -1; grchan 0; 
+baddisk 0;
+
+--> WOW this galaxy is bright! 
+--> HI emission from channels ~45 to 101.  Luckily the MWHI sets in around 104.
+
+- Next, create a full cube at robust=0.5.
+
+task 'imagr'; default 'imagr'; getn 3;
+sources 'UGCA 105'; qual -1; calcode ''; 
+timerang 0; selband -1; selfreq -1; 
+freqid -1; subarray 0; 
+baseline 0; docalib -1; 
+gainuse 0; dopol -1; blver -1; 
+flagver 0; doband -1; bpver -1; 
+smooth 0; stokes ''; bchan 40; echan 103;
+channel 0; nchav 1; 
+chinc 1; bif 0; eif 0; 
+outname 'dirty_cube'; outdisk 1;
+outclass '' 
+outseq 0; outver 0; clr2na; 
+cellsi 4; 
+imsize 1024; nfield 1; 
+do3dimag -1; fldsize 0; rashift 0; 
+uvtaper 0; 
+uvrange 0 0; guard 0 0;
+rotate 0; zerosp 0; uvwtfn ''; 
+uvsize 0 0; robust 0.5; uvbox 0;  
+uvbxfn 1; xtype 5; ytype 5; xparm 0;  
+yparm 0; niter 1000; bcomp 0; 
+allokay 0; nboxes 0; clbox 0; 
+boxfile ''; oboxfile ''; 
+gain 0.1; 
+flux 0; minpatch 51; bmaj 0; 
+bmin 0; bpa 0; overlap 0; phat 0;
+factor 0; cmethod ''; imagrprm 0;
+ngauss 0; wgauss 0; fgauss 0; 
+maxpixel 20000; clr3na; clr4na; 
+fqtol -1; dotv -1; grchan 0; 
+baddisk 0;
+
+--->  Cube looks amazing!
+
+26.  REWAY - split out the phase cal source & see hwo things look.
+
+     task 'reway'; default 'reway'; getn 1;
+     docal 1; doband 3;
+     source 'J0614+6046';
+     aparm 11,44,12,0,10,4;
+     calcode 'D'; bpver 0; 
+     outname 'J0614';
+     outclass 'split';
+
+**** 1024x1024 dirty image:
+     task 'imagr'; default 'imagr'; getn 4;
+     sources ''; qual -1; calcode ''; 
+     timerang 0; selband -1; selfreq -1; 
+     freqid -1; subarray 0; 
+     baseline 0; docalib -1; 
+     gainuse 0; dopol -1; blver -1; 
+     flagver 0; doband -1; bpver -1; 
+     smooth 0; stokes ''; bchan 16; echan 102;
+     channel 0; nchav echan-bchan+1; 
+     chinc 1; bif 0; eif 0; 
+     outname 'J0614'; outdisk 1;
+     outclass '' 
+     outseq 0; outver 0; clr2na; 
+     cellsi 4; 
+     imsize 1024; nfield 1; 
+     do3dimag -1; fldsize 0; rashift 0; 
+     uvtaper 0; 
+     uvrange 0 0; guard 0 0;
+     rotate 0; zerosp 0; uvwtfn ''; 
+     uvsize 0 0; robust 5; uvbox 0;  
+     uvbxfn 1; xtype 5; ytype 5; xparm 0;  
+     yparm 0; niter 1000; bcomp 0; 
+     allokay 0; nboxes 0; clbox 0; 
+     boxfile ''; oboxfile ''; gain 0.1; 
+     flux 0; minpatch 51; bmaj 0; 
+     bmin 0; bpa 0; overlap 0; phat 0;
+     factor 0; cmethod ''; imagrprm 0;
+     ngauss 0; wgauss 0; fgauss 0; 
+     maxpixel 20000; clr3na; clr4na; 
+     fqtol -1; dotv -1; grchan 0; 
+     baddisk 0;
+
+-- Calibration complete.  Ready for imaging treatments
+
