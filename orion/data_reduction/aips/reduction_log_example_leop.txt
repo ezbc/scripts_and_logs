@@ -1,0 +1,418 @@
+---------------------------------------------------------------- 
+- EVLA Imaging of HI1022
+- Observed April 18th, 2012
+- C Array
+- Imaging
+- User number 9001
+----------------------------------------------------------------- 
+
+.  Set velocity definitions: 
+
+**  From image header: freq = 256 channels 1.4190400E+09 Hz at channel
+**   nu_0 = 1420.405752E6 MHz Radio velocity definition: v = c*(1 -
+**   nu/nu_0) Here, v = 299792458*(1 - 1.4190400E9/1420.405752E6) =
+**   2398868.58 m/sec = 2398.86858 km/s
+
+     task 'altdef'; default 'altdef'; getn 1; axtype 'rad hel';
+     axval 2398.86858; axref 129; restfreq 1420.405752E6; altdef
+
+     --> Completed
+
+0b. AVSPC - Channel averaging ---> NO AVSPC PERFORMED
+
+   task 'avspc'; default 'avspc'; getn 1
+   outname inname; channel 8;
+   outclass 'SMTH8'; avoption 'subs';
+   go
+   
+   -->
+
+1.  UVLSF - Least squares fit baseline and subtracts from uv data
+	Note: ICHANSEL = start, end, increment, & IF for each region (1 before & 1 after 
+	the line channels).
+    -- Recall, BPASS executed on channels 
+    -- Created many-channel dirty cube to identify line-free channels.
+
+    -- First UVLSF channel segment: 
+    -- Set ichansel:
+
+    task 'UVLSF'; default 'UVLSF'; 
+    getn 1; sources 'HI1022'; 
+    Qual -1; calcode '-cal'; timerang 0; 
+    selband -1; selfreq -1; freqid -1; 
+    subarray 0; bif 0; eif 0; 
+    gainuse 0; dopol -1; blver -1; 
+    flagver 0; doband -1; bpver -1;
+    smooth 0; doacor -1; docalib -1; 
+    outname inname; outclass 'UVLSF1'; 
+    outseq 0; outdisk 1; bchan 1; echan 0;
+    ichansel 32,96,1,0,168,216
+    order 1;
+    dooutput -1; channel 0; flux 0; 
+    cutoff 0; shift 0 0;
+    inp; go;
+
+--> 32 9001 HI1022.UVLSF1.1 UV 08-MAY-2012 14:25:57
+
+3.  IMAGR:  make a dirty cube, to check solution and to measure RMS:
+-we should see only noise
+
+   task 'imagr'; default 'imagr'; getn 32;
+   sources 'HI1022'; qual -1; calcode ''; 
+   timerang 0; selband -1; selfreq -1; 
+   freqid -1; subarray 0; 
+   baseline 0; docalib -1; 
+   gainuse 0; dopol -1; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; stokes ''; bchan 140; echan 160;
+   channel 0; nchav 0; 
+   chinc 1; bif 0; eif 0; 
+   outname 'HI1022'; outdisk 1;
+   outclass 'DRTY1' 
+   outseq 0; outver 0; clr2na; 
+   cellsi 4; 
+   imsize 512; nfield 1; 
+   do3dimag -1; fldsize 0; rashift 0; 
+   uvtaper 2.5; 
+   uvrange 0 0; guard 0 0;
+   rotate 0; zerosp 0; uvwtfn ''; 
+   uvsize 0 0; robust 0.5; uvbox 0; 
+   uvbxfn 1; xtype 5; ytype 5; xparm 0; 
+   yparm 0; niter 1000; bcomp 0; 
+   allokay 0; nboxes 0; clbox 0; 
+   boxfile ''; oboxfile ''; gain 0.1; 
+   flux 0; minpatch 51; bmaj 0; 
+   bmin 0; bpa 0; overlap 0; phat 0;
+   factor 0; cmethod ''; imagrprm 0;
+   ngauss 0; wgauss 0; fgauss 0; 
+   maxpixel 20000; clr3na; clr4na; 
+   fqtol -1; dotv -1; grchan 0; 
+   baddisk 0; go
+
+   --> 35 9001 HI1022.ICL001.5 MA 08-MAY-2012 14:47:57
+
+   -- RMS =  0.003075 Jy/Bm
+   -- Beam =  57.86" x 49.43"
+
+
+
+
+
+
+
+4.a  IMAGR:  Make full, cleaned cube, robust = 0.5, going to RMS = 0.003075
+
+   task 'imagr'; default 'imagr'; getn 32;
+   sources '*'; qual -1; calcode '-'; 
+   timerang 0; selband -1; selfreq -1; 
+   freqid -1; subarray 0; 
+   baseline 0; docalib -1; 
+   gainuse 0; dopol -1; blver -1; 
+   flagver 0; doband -1; bpver -1; 
+   smooth 0; stokes ''; bchan 80; echan 160;
+   channel 0; nchav 0; 
+   chinc 1; bif 0; eif 0; 
+   outname 'HI1022'; outdisk 1;
+   outclass 'CLN1' 
+   outseq 0; outver 0; clr2na; 
+   cellsi 4; 
+   imsize 512; nfield 1; 
+   do3dimag -1; fldsize 0; rashift 0; 
+   uvtaper 2.48; 
+   uvrange 0 0; guard 0 0;
+   rotate 0; zerosp 0; uvwtfn ''; 
+   uvsize 0 0; robust 0.5; uvbox 0; 
+   uvbxfn 1; xtype 5; ytype 5; xparm 0; 
+   yparm 0; niter 1000000; bcomp 0; 
+   allokay 0; nboxes 0; clbox 0; 
+   boxfile '';
+   oboxfile ''; gain 0.1; 
+   flux 0.003075;
+   minpatch 51; bmaj 0; 
+   bmin 0; bpa 0; overlap 0; phat 0;
+   factor 0; cmethod ''; imagrprm 0;
+   ngauss 0; wgauss 0; fgauss 0; 
+   maxpixel 20000; clr3na; clr4na; 
+   fqtol -1; dotv -1; grchan 0; 
+   baddisk 0; go;
+
+--> 
+--> " X  "
+--> RMS (whole cube) = 0.0 JY/BEAM--> Beam area =  pixels/beam
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+BEGIN BLANKING PROCEDURES
+	1.  convolve final cube to low resolution (here, 60 arcsec)
+	2.  get rms in the convolved cube
+	3.  blank convolved cube at 2 sigma
+	4.  further blanking by hand - out put is the master cube
+		--> keep only emission seen in 3 consecutive channels
+	5.  convolve original (non-blanked) cubes to circular beams
+	5.  blank convolved cubes with master cubes
+	6.  transpose
+	7.  create moment maps 
+	8.  apply primary beam corrections
+	9.  switch back to velocity axis for moment 0 maps
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+7.  CONVL - convolve natural-weighted cube (robust=0.5) to larger, circular beam.
+    	  -- Current beam size = " x  "
+
+	  task 'convl'; default 'convl';
+	  getn 8;  opcode ''; 
+	  blc 0; trc 0; clr2na; outname inname; 
+	  outclass 'CNVL8';
+	  bmaj 59; bmin 59; bpa 0; factor 0; 
+	  doblank 0; baddisk 0; go;
+
+	-->  wrote file: 4 9001 HI1022.CNVL8 .1 MA 08-MAY-2012 12:47:56
+
+	--> catalogue # 4
+
+8.  BLANK - blank convolved cube at 2.5 sigma; here, RMS = 0.00114 Jy/beam
+	    2.5 sigma =  2.5*0.00114 = 0.00342 Jy/Bm
+
+	    task 'BLANK'; default 'blank'; 
+	    getn 4; clr2na; 
+	    outname inname; outclass 'CVLBL8'; 
+	    trc 0; blc 0; bchan 0; echan 0;
+	    dooutput -1; doalign 1; opcode 'SELC';
+	    dparm 1, 0, 10000, 0.00342, 0; 
+	    doinvers -1; tvchan 1; pixrange 0; 
+	    functype ''; txinc 1; tyinc 1; go;
+
+	--> Output:  class: CVLBL8  catalogue #: 11
+
+
+8B.  SUBIM:  copy out central 512x512 of cube for speed.
+
+     	    task 'SUBIM'; default; getn 11; 
+	    outname inname; outclass inclass; 
+	    blc 128 128; trc 384 384; 
+	    go
+
+	--> cat # 12
+
+	--> Next, interactively blank by hand (advantageous to have kvis running as well,
+	    to allow easy movie manipulation):
+
+	    task 'BLANK'; getn 12; clr2na; 
+	    outclass '';  dparm 0; 
+	    trc 0; blc 0; bchan 0; echan 0;
+    	    dooutput -1; doalign 1; opcode 'TVCU'; 
+	    doinvers -1; tvchan 1; pixrange 0; 
+	    txinc 1; tyinc 1;
+	    tvreset; tvclear; go
+
+      --> Output: HI1022.
+
+      ---->> How does the cube look?
+
+10. DID NOT PERFORM THIS STEP, USED #25 FOR BLANKING, ORIGINAL
+    CONVOLVED DEEP CLEAN CUBE
+
+    CONVL - convolve original cube to circular beam size (prior to 
+    	    blanking versus the MASTR cube).  Smoothing to 33" beam:
+
+	    task 'convl'; getn 19; opcode ''; 
+	    blc 0; trc 0; clr2na; 
+	    outname inname; 
+	    outclass 'CVL_33';  
+	    bmaj 33; bmin 33; bpa 0; factor 0; 
+	    doblank 0; baddisk 0; go;
+
+	--> Output: 13 9001 HI1022.BLANK.2 MA 08-MAY-2012 13:02:05
+
+	    	      
+11.  BLANK - blank CONVOLVED cubes against MASTR blanked cubes.  -->
+Use "MASTR" blanking cube.  Note that this method ensures that the
+same regions are included when cubes are inspected at different
+resolutions and with different S/N ratios.  --> NOTE: dparm MUST be
+set to "0 0 100 0 0 0" in order to assure that all pixels in the
+residuum-rescaled cubes are retained through blanking procedure.  The
+"normal" cubes, when blanked, will have pixels that exceed the flux
+threshold and have been verified to be real.  These same pixels in the
+residuum-rescaled cubes may be (slightly) less than the flux
+threshold; "BLANK" (with dparm = 0) would require all pixels in the
+"blanked" cube to be >= the pixels in the "MASTR" cubes.  Pixels >0,
+but < flux threshold, will still have real signal.  These must be
+retained, or else sharp edges result.
+
+	    --> getn is image to be blanked
+	    --> get2n is the MASTR blanked cube 
+
+    task 'BLANK'; default
+    getn 8; get2n 13; 
+    outname inname;
+    outclass 'MSTR8';  
+    dparm 0 0 100 0 0 0; 
+    trc 0; blc 0; bchan 0; echan 0;
+    dooutput -1; doalign 1; opcode 'IN2C'; 
+    doinvers -1; tvchan 1; pixrange 0; 
+    txinc 1; tyinc 1; inp; go;
+
+	--> Output: HI1022., CAT #
+        --> 14 9001 HI1022.MSTR8.1 MA 08-MAY-2012 13:17:35
+
+12.  TRANS - transpose to velocity-RA-DEC, for input into XMOM task.  Note that 
+     ALTSW must be executed on the MA_BLA cube first:
+
+     getn 14; altsw
+
+     -->  switched to vel-ra-dec
+
+     task 'TRANS'; default
+     getn 14; 
+     outname inname;
+     outclass 'TRNS8'; blc 0; trc 0; 
+     transcod '312'; baddisk 0; go
+
+	--> Output: 15 9001 HI1022.TRNS8.1 MA 08-MAY-2012 13:18:50
+	              
+13.  XMOM - create moment maps.  Assure first axis is velocity.
+	** Assumes a blanked input, so takes all values as valid
+
+** Using TRANS cube created from MA_BLA cube:
+
+   task 'xmom'; default 'xmom'; getn 15; 
+   outname 'HI1022';          
+   blc 0; trc 0; flux -10000; icut -10000; 
+   optype ''; pbparm 0; baddisk 0; inp
+
+AIPS 1:   16 9001 HI1022      .XMOMNC.    1 MA 08-MAY-2012 13:19:32
+AIPS 1:   17 9001 HI1022      .XMOM0 .    1 MA 08-MAY-2012 13:19:32
+AIPS 1:   18 9001 HI1022      .XMOM1 .    1 MA 08-MAY-2012 13:19:32
+AIPS 1:   19 9001 HI1022      .XMOM2 .    1 MA 08-MAY-2012 13:19:32
+AIPS 1:   20 9001 HI1022      .XMOM3 .    1 MA 08-MAY-2012 13:19:32
+	
+files written out to HI1022.XMOM0.1 HI1022.xmom0.r0pt5.fits, and 
+
+
+14.  PBCOR - apply primary beam correction to moment 0 map.
+     	   ** First, apply altsw; note that PBCOR requires RA-DEC-FREQ axes 
+	      (though, in any order):
+
+	getn ; altsw
+
+	task 'pbcor'; getn ; blc 0; trc 0; 
+	outname inname; outclass 'X0_PBC'; 
+	outdisk 0; pbparm 0; coord 0; 
+	doinvers -1;  go
+
+	 --> Output: HI1022..
+
+** Switch back to ra-dec-velocity axes:
+
+   getn ; altsw
+   getn ; altsw 
+
+15.  MATHS - convert moment zero images to column density units.
+	Recall:  1 K = (7.354E-8)*[Bmaj(")*Bmin(")/lamda^2(m)] Jy/Bm
+
+	Here, units of images are Jy/Bm m/s; cellsize = 2"; 	
+	    lambda = 0.211061140507 m
+
+	Thus, for the 21 cm line of Hydrogen, we have:
+
+	    1 K = Bmaj(")*Bmin(")/(6.057493205E5) Jy/Bm
+			---- OR ----
+	    1 Jy/Bm = (6.057493205E5)/[Bmaj(")*Bmin(")]
+
+	Now, recall that:
+		N_HI = (1.8224E18 cm^-2)*[T_b (K)]*int(dv)
+	   -- For moment maps in K km/sec, just input the values & multiply by coefficient.
+	   -- Assure that units are Jy/Bm km/sec (i.e., divide by 1000)
+	   Leave in units of 1E20 cm^-2 by dividing by 1E20:
+
+	   For a x beam:
+		N_HI (cm^-2) = (image) * [(6.057493205E5)/(*)] * (1/1000) * (1.8224E18 cm^-2) * (1/1E20)
+		N_HI (cm^-2) = (image)*()
+
+	Then put units of images as "1E20/cm2" using "puthead".
+
+--->> For Robust = 0.5 Moment 0 image, using MA_BLA cube:
+
+      task 'maths'; default 'maths';
+      getn ; 
+      outname inname; outclass '1E20';
+      outseq 0; outdisk 0; blc 0; trc 0;
+      opcode 'POLY'; cparm 0 0.0039229308 0 0; 
+      inp; go
+
+      --> Output:  8000 HI1022_R0.5.1E20  .    1
+
+--->>  NOW, for outputs, insert "1E20 cm^-2" as BUNIT parameter in image header:
+
+       task 'puthead'; getn 19; keyword 'BUNIT';
+       keyvalue 0; keystrng '1E20/cm2';
+       keytype ''; puthead
+
+-- Write FITS images of moment 0 and 1 images: 
+
+run wrtprocs
+"fitdisk" as needed
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXX -- END OF PRELIMINARY REDUCTIONS FOR UGCA 105, D
+configuration observation.  October 21, 2011 XXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+--- Blank 1E20 image at 1E20 cm^-2 level.  Use then as mask for other moment maps.
+
+BLANK - 1E20 image at 1E20 level:
+
+	    task 'BLANK'; default 'blank'; 
+	    getn 19; clr2na; 
+	    outname inname; outclass '1E20BL'; 
+	    trc 0; blc 0; bchan 0; echan 0;
+	    dooutput -1; doalign 1; opcode 'SELC'; 
+	    dparm 1, 0, 10000, 1.0, 0; 
+	    doinvers -1; tvchan 1; pixrange 0; 
+	    functype ''; txinc 1; tyinc 1; go;
+
+--> 20 8000 UGCA105_R0.5.1E20BL. 
+
+--- Now use this as a blank against mom1 image and moment 0 primary beam corrected:
+
+	    --> getn is image to be blanked
+	    --> get2n is the MASTR blanked cube 
+
+    task 'BLANK'; default
+    getn 18; get2n 20; 
+    outname inname;
+    outclass 'M0_BLA';  
+    dparm 0 0 100 0 0 0; 
+    trc 0; blc 0; bchan 0; echan 0;
+    dooutput -1; doalign 1; opcode 'IN2C'; 
+    doinvers -1; tvchan 1; pixrange 0; 
+    txinc 1; tyinc 1; inp; go;
+
+	--> Output: 21 8000 UGCA105_R0.5.M0_BLA.    1
+
+    task 'BLANK'; default
+    getn 15; get2n 20; 
+    outname inname;
+    outclass 'M1_BLA';  
+    dparm 0 0 100 0 0 0; 
+    trc 0; blc 0; bchan 0; echan 0;
+    dooutput -1; doalign 1; opcode 'IN2C'; 
+    doinvers -1; tvchan 1; pixrange 0; 
+    txinc 1; tyinc 1; go;
+
+	--> Output:  22 8000 UGCA105_R0.5.M1_BLA.    1
+

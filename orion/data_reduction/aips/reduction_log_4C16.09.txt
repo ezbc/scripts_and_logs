@@ -1,0 +1,1232 @@
+
+#===============================================================================
+#===============================================================================
+
+# Reduction script for practice absorption data
+# AIPS ID 83
+
+#===============================================================================
+#===============================================================================
+
+
+# A few tips from Brian Babler
+# ------------------------------------------------------------------------------
+
+# Practice data directory:
+# /d/leffe/cmurray/Brian/10C-196.sb4997632.eb5088657.55813.373845856484/
+# Source is 4C16.09
+#
+# If you want to have multiple AIPS data devices (such as BIP as well
+# as LEFFE) the file in your home directory is called .dadevs
+# My file .dadevs has these two lines:
+#
+# +  /usr/local/aips/AIPS/DATA/LEFFE
+# +  /usr/local/aips/AIPS/DATA/BIP
+#
+# This means LEFFE is disk1 and BIP is disk2 for my AIPS work.
+#
+# Before running AIPS it is best to set system variables to the
+# data directory where you will be pulling the initial files from
+# and the directory you want output files to go to, I usually
+# do something like this:
+#
+# bip-(brian)-75-> setenv AIPSFILE /d/bip4/NRAO_data/4Min/13B-329.sb28545889.eb28547462.56617.26506841435
+# (Data located at)
+#
+# bip-(brian)-76-> setenv AIPSWDIR /usr/users/brian/aips/4Min/1_34
+# (Working directory for output files)
+# ------------------------------------------------------------------------------
+
+# Set the environment to which files will be written
+
+    setenv DATADIR /d/bip3/ezbc/orion/data/absorption/
+
+    setenv SRCDIR /d/leffe/cmurray/Brian/10C-196.sb4997632.eb5088657.55813.373845856484
+
+# To start aips, ssh into leffe, then enter
+
+    aips tv=local
+
+# --------- #
+#     1
+# --------- #
+    task 'bdflist'; default 'bdflist'; 
+    asdmfile 'SRCDIR:';
+    inp
+    go bdflist
+    
+    # ObitTalk /usr/users/ezbc/BDFLIST.run.20MAY2014.094518 >> /usr/users/ezbc/BDFLIST.log.20MAY2014.094518 &
+    #  
+    # Using DADEVS.SH
+    # ASDMList: info    20140520T094519 ASDMList Begins, svn ver. 444M
+    # ASDMList: info    20140520T094519 Date/Time: 2014-05-20  09:45:19
+    # ASDMList: info    20140520T094519 Writing output to /usr/users/ezbc/BDFLIST.log.20MAY2014.094518
+    # Summary of ASDM in /d/leffe/cmurray/Brian/10C-196.sb4997632.eb5088657.55813.373845856484/
+    #   Configuration Summary
+    # Observed 2011-09-09, Array = EVLA, Observer = Dr. Ayesha Begum
+    # Configurations
+    #  
+    #   Configuration  0, no. SpWin = 1
+    #      SpWin=  0 Freq=   1.420 GHz, 256 chan of BW=    1.953 kHz, tot BW=   0.500 MHz, USB Band=Unknown
+    #   Configuration  1, no. SpWin = 1
+    #      SpWin=  1 Freq=   1.419 GHz, 256 chan of BW=    1.953 kHz, tot BW=   0.500 MHz, USB Band=Unknown
+    #   Configuration  2, no. SpWin = 1
+    #      SpWin=  2 Freq=   1.422 GHz, 256 chan of BW=    1.953 kHz, tot BW=   0.500 MHz, USB Band=Unknown
+    #  
+    #                                 Page 1
+    # Summary of ASDM in /d/leffe/cmurray/Brian/10C-196.sb4997632.eb5088657.55813.373845856484/
+    #   Scan Summary
+    # Scan=1 config=0 Source=J0318+1628 Code='D' time= 00/08:58:21.9-00/09:02:14.1
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=2 config=1 Source=J0318+1628 Code='D' time= 00/09:02:14.1-00/09:04:13.7
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=3 config=2 Source=J0318+1628 Code='D' time= 00/09:04:13.7-00/09:06:13.4
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=4 config=0 Source=J0318+1628 Code='D' time= 00/09:06:13.4-00/09:10:02.8
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=5 config=0 Source=J0318+1628 Code='D' time= 00/09:10:02.8-00/09:20:01.1
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=6 config=0 Source=J0318+1628 Code='D' time= 00/09:20:01.1-00/09:23:00.6
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=7 config=1 Source=J0137+3309 Code='F' time= 00/09:23:00.6-00/09:32:59.0
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=8 config=1 Source=J0137+3309 Code='F' time= 00/09:32:59.0-00/09:37:58.2
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=9 config=2 Source=J0137+3309 Code='F' time= 00/09:37:58.2-00/09:47:56.5
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=10 config=2 Source=J0137+3309 Code='F' time= 00/09:47:56.5-00/09:51:25.9
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=11 config=0 Source=J0318+1628 Code='D' time= 00/09:51:25.9-00/10:01:24.3
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=12 config=0 Source=J0318+1628 Code='D' time= 00/10:01:24.3-00/10:03:24.0
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=13 config=0 Source=J0318+1628 Code='D' time= 00/10:03:24.0-00/10:07:13.4
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=14 config=0 Source=J0318+1628 Code='D' time= 00/10:07:13.4-00/10:17:11.7
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=15 config=0 Source=J0318+1628 Code='D' time= 00/10:17:11.7-00/10:20:11.2
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=16 config=1 Source=J0137+3309 Code='F' time= 00/10:20:11.2-00/10:30:09.6
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=17 config=1 Source=J0137+3309 Code='F' time= 00/10:30:09.6-00/10:35:08.8
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=18 config=2 Source=J0137+3309 Code='F' time= 00/10:35:08.8-00/10:45:07.1
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=19 config=2 Source=J0137+3309 Code='F' time= 00/10:45:07.1-00/10:48:36.5
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=20 config=0 Source=J0318+1628 Code='D' time= 00/10:48:36.5-00/10:58:34.9
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=21 config=0 Source=J0318+1628 Code='D' time= 00/10:58:34.9-00/11:00:34.6
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=22 config=0 Source=J0318+1628 Code='D' time= 00/11:00:34.6-00/11:04:24.0
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=23 config=0 Source=J0318+1628 Code='D' time= 00/11:04:24.0-00/11:14:22.3
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=24 config=0 Source=J0318+1628 Code='D' time= 00/11:14:22.3-00/11:17:21.8
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=25 config=1 Source=J0137+3309 Code='F' time= 00/11:17:21.8-00/11:27:20.2
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=26 config=1 Source=J0137+3309 Code='F' time= 00/11:27:20.2-00/11:32:19.4
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=27 config=2 Source=J0137+3309 Code='F' time= 00/11:32:19.4-00/11:42:17.7
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=28 config=2 Source=J0137+3309 Code='F' time= 00/11:42:17.7-00/11:45:47.2
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=29 config=0 Source=J0318+1628 Code='D' time= 00/11:45:47.2-00/11:55:45.5
+    #    Intent[1]='CALIBRATE_PHASE'
+    # Scan=30 config=0 Source=J0318+1628 Code='D' time= 00/11:55:45.5-00/11:57:45.2
+    #    Intent[1]='CALIBRATE_PHASE'
+    # ASDMList: info    20140520T094519 ASDMList Ends, svn ver. 444M
+    # ASDMList: info    20140520T094519 Date/Time: 2014-05-20  09:45:19
+    # ASDMList: info    20140520T094519 ASDMList Runtime =        0 sec. CPU usage =    0.358 sec.
+    # Obit: info    20140520T094519 ObitPython Begins, svn ver. 444M
+    # Obit: info    20140520T094519 Date/Time: 2014-05-20  09:45:19
+
+# --------- #
+#     2
+# --------- #
+
+    task 'bdf2aips'; default 'bdf2aips';
+    asdmfile 'SRCDIR:';
+    outname '4C1609-A';
+    outdisk 2;
+    config 0;
+    inp
+    go bdf2aips
+
+    task 'bdf2aips'; default 'bdf2aips';
+    asdmfile 'SRCDIR:';
+    outname '4C1609-B';
+    outdisk 2;
+    config 1;
+    inp
+    go bdf2aips
+    
+    task 'bdf2aips'; default 'bdf2aips';
+    asdmfile 'SRCDIR:';
+    outname '4C1609-C';
+    outdisk 2;
+    config 2;
+    inp
+    go bdf2aips
+
+    # OUTPUT:
+    # -------
+    # Catalog on disk  2
+    #  Cat Usid Mapname      Class   Seq  Pt     Last access      Stat
+    #    1   83 4C1609-A    .UVEVLA.    1 UV 23-MAY-2014 12:53:24
+    #    2   83 4C1609-B    .UVEVLA.    1 UV 23-MAY-2014 12:53:25
+    #    3   83 4C1609-C    .UVEVLA.    1 UV 23-MAY-2014 12:53:30
+
+# --------- #
+#     3
+# --------- #
+    
+    task 'listr'; default 'listr';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    optype 'scan';
+    indisk 2;
+    inp
+    go listr
+    
+    task 'listr'; default 'listr';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    optype 'scan';
+    indisk 2;
+    inp
+    go listr
+    
+    task 'listr'; default 'listr';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    optype 'scan';
+    indisk 2;
+    inp
+    go listr
+
+    # OUTPUT:
+    # -------
+    # File = 4C1609-A    .UVEVLA.   1 Vol = 1  Userid =   83
+    # Freq =  1.420263406 GHz   Ncor =  2   No. vis =         0
+    # Scan summary listing
+    #  
+    # Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START
+    #  
+    # Source summary
+    # Velocity type = '        '    Definition = '        '
+    #  
+    #   ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)  No. vis
+    #    1 J0318+1628      : 0000   D     03:18:57.8027  16:28:32.699       0
+    #  
+    #   ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+    #    1 All Sources          1.4203        -5.0000          1.4204
+    #  
+    # Frequency Table summary
+    # FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+    #    1   1       1.42026341     500.0000      1.9531      1
+
+    # File = 4C1609-B    .UVEVLA.   1 Vol = 1  Userid =   83
+    # Freq =  1.418763295 GHz   Ncor =  2   No. vis =    948428
+    # Scan summary listing
+    #  
+    # Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START
+    #    1 J0318+1628      : 0000  F        0  0/09:02:15 -   0/09:04:13     1       1
+    #    2 J0137+3309      : 0000  F        0  0/09:23:01 -   0/09:32:59     1   39885
+    #    3 J0137+3309      : 0000  F        0  0/09:33:00 -   0/09:37:58     1  242009
+    #    4 J0137+3309      : 0000  F        0  0/10:20:12 -   0/10:30:09     1  343071
+    #    5 J0137+3309      : 0000  F        0  0/10:30:10 -   0/10:35:08     1  544857
+    #    6 J0137+3309      : 0000  F        0  0/11:17:22 -   0/11:27:20     1  645581
+    #    7 J0137+3309      : 0000  F        0  0/11:27:22 -   0/11:32:19     1  847705
+    #  
+    # Source summary
+    # Velocity type = '        '    Definition = '        '
+    #  
+    #   ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)  No. vis
+    #    2 J0318+1628      : 0000   F     03:18:57.8027  16:28:32.699   39884
+    #    3 J0137+3309      : 0000   F     01:37:41.2994  33:09:35.133  908544
+    #  
+    #   ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+    #    2 All Sources          1.4188        -5.0000          1.4189
+    #  
+    # Frequency Table summary
+    # FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+    #    1   1       1.41876330     500.0000      1.9531      1
+
+    # File = 4C1609-C    .UVEVLA.   1 Vol = 1  Userid =   83
+    # Freq =  1.421763518 GHz   Ncor =  2   No. vis =    857168
+    # Scan summary listing
+    #  
+    # Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START
+    #    1 J0318+1628      : 0000  F        0  0/09:04:14 -   0/09:06:13     1       1
+    #    2 J0137+3309      : 0000  F        0  0/09:37:59 -   0/09:47:55     1   40223
+    #    3 J0137+3309      : 0000  F        0  0/09:47:57 -   0/09:51:25     1  242009
+    #    4 J0137+3309      : 0000  F        0  0/10:35:09 -   0/10:45:07     1  312313
+    #    5 J0137+3309      : 0000  F        0  0/10:45:09 -   0/10:48:36     1  514437
+    #    6 J0137+3309      : 0000  F        0  0/11:32:21 -   0/11:42:17     1  584741
+    #    7 J0137+3309      : 0000  F        0  0/11:42:19 -   0/11:45:46     1  786527
+    #  
+    # Source summary
+    # Velocity type = '        '    Definition = '        '
+    #  
+    #   ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)  No. vis
+    #    2 J0318+1628      : 0000   F     03:18:57.8027  16:28:32.699   40222
+    #    3 J0137+3309      : 0000   F     01:37:41.2994  33:09:35.133  816946
+    #  
+    #   ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+    #    2 All Sources          1.4218        -5.0000          1.4219
+    #  
+    # Frequency Table summary
+    # FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+    #    1   1       1.42176352     500.0000      1.9531      1
+
+
+
+# --------- #
+#     4
+# --------- #
+
+
+    task 'prtan'; default 'prtan';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    docrt 0;
+    outprint 'DATADIR:antennas.txt';
+    inp
+    go 'prtan'
+
+    # OUTPUT:
+    # -------
+    #                 Location of VLA antennas
+ 
+    #                          N72 (20)*
+    #                          N64 ( 8)*
+    #                              (  )
+    #                          N48 (16)*
+    #                          N40 ( 6)*
+    #                          N32 (10)*
+    #                          N24 (22)*
+    #                          N16 (13)*
+    #                          N08 (28)*
+    #                     *( 5) W08  E08 (12)*
+    #                   *(24) W16      E16 (21)*
+    #                 *(15) W24          E24 ( 9)*
+    #               *(17) W32              E32 ( 7)*
+    #             *(19) W40                  E40 (11)*
+    #           *(14) W48                      E48 (18)*
+    #         *(26) W56                          E56 ( 2)*
+    #       *( 4) W64                              E64 (27)*
+    #     *( 1) W72                                  E72 ( 3)*
+
+
+# ------------------------------------------------------------------------------
+#     5: Create a test bandpass solution
+# ------------------------------------------------------------------------------
+
+# Do a test bandpass to look for bad antennas on B & C (BPASS), this creates
+# BP1. Be sure that calsour is set to your bandpass calibrator.
+
+    task 'bpass'; default 'bpass';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    freqid -1;
+    refant 28;
+    bpassprm(4) 1;
+    bpassprm(9) 3;
+    ichansel 50 200;
+    indisk 2;
+    inp
+    go 'bpass'
+    
+    task 'bpass'; default 'bpass';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    freqid -1;
+    docalib 1;
+    gainuse 1;
+    refant 28;
+    bpassprm(4) 1;
+    bpassprm(9) 3;
+    ichansel 50 200;
+    indisk 2;
+    inp
+    go 'bpass'
+
+# ------------------------------------------------------------------------------
+#     6: Examine test bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Use POSSM to view the bandpass just created (check all antennas together and
+# each antenna individually for sick antennas). Make sure sources is set to
+# your bandpass calibrator and APARM(8) = 2.
+
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    freqid -1;
+    indisk 2;
+    gainuse 2;
+    aparm(7) 2;
+    dotv 1;
+    inp
+    go 'possm'
+   
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    freqid -1;
+    indisk 2;
+    gainuse 2;
+    aparm(7) 2;
+    dotv 1;
+    inp
+    go 'possm'
+
+    # Mild gradient in BP for some antennas, overall, quite beautiful.
+    
+# ------------------------------------------------------------------------------
+#     7: Flag antennas or baselines based on bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Flag based on the bpass
+
+    tvreset; tvclear;
+    task 'uvflg'; default 'uvflg';
+    inname '4c1609';
+    inclass 'uvevla';
+    calcode 'F';
+    opcode 'flag';
+    go 'uvflg'
+
+    inext 'fg'; INVERS -1; EXTDES
+
+    # No obvious flagging to be done
+
+# ------------------------------------------------------------------------------
+#     8: Delete test bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Delete BP1 from B and C when done
+    
+    getn 2; inext 'bp'; invers -1; extdes
+    getn 3; inext 'bp'; invers -1; extdes
+
+# ------------------------------------------------------------------------------
+#     9: Flag visibilities interactively
+# ------------------------------------------------------------------------------
+
+    # Source
+    tvreset; tvclear;
+    task 'tvflg'; default 'tvflg';
+    inname '4c1609-A';
+    inclass 'uvevla';
+    sources '';
+    docalib -1;
+    flagver 0;
+    dparm(6) 10;
+    indisk 2;
+    in2disk 2;
+    inp
+    go 'tvflg'
+
+    # BP + phase calibrators
+    tvreset; tvclear;
+    task 'tvflg'; default 'tvflg';
+    inname '4c1609-B';
+    inclass 'uvevla';
+    sources '';
+    docalib -1;
+    flagver 0;
+    dparm(6) 10;
+    indisk 2;
+    in2disk 2;
+    inp
+    go 'tvflg'
+
+    # BP + phase calibrators
+    tvreset; tvclear;
+    task 'tvflg'; default 'tvflg';
+    inname '4c1609-C';
+    inclass 'uvevla';
+    sources '';
+    docalib -1;
+    flagver 0;
+    dparm(6) 10;
+    indisk 2;
+    in2disk 2;
+    inp
+    go 'tvflg'
+
+# ------------------------------------------------------------------------------
+#     10: Derive bandpass solutions from BP calibrator
+# ------------------------------------------------------------------------------
+
+# Do a real bandpass to look for bad antennas on B & C (BPASS), this creates
+# BP1. Be sure that calsour is set to your bandpass calibrator.
+
+    task 'bpass'; default 'bpass';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsourc 'J0137+3309';
+    freqid -1;
+    docalib 1;
+    gainuse 1;
+    ichansel 50 200;
+    refant 28;
+    bpassprm(5) 1; 
+    bpassprm(10) 3;
+    inp
+    go 'bpass'
+
+    task 'bpass'; default 'bpass';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsourc 'J0137+3309';
+    freqid -1;
+    docalib 1;
+    gainuse 1;
+    ichansel 50 200;
+    refant 28;
+    bpassprm(5) 1; 
+    bpassprm(10) 3;
+    inp
+    go 'bpass'
+
+# ------------------------------------------------------------------------------
+#     11: Examine bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Use POSSM to view the bandpass just created (check all antennas together and
+# each antenna individually for sick antennas). Make sure sources is set to
+# your bandpass calibrator and APARM(8) = 2.
+
+    # Bandpass gains for config 1
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    freqid -1;
+    gainuse 2;
+    aparm 0 0 0 0 0 0 0 2 0 0;
+    dotv 1;
+    inp
+    go 'possm'
+    
+    # Bandpass gains for config 2
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    freqid -1;
+    gainuse 2;
+    aparm 0 0 0 0 0 0 0 2 0 0;
+    dotv 1;
+    inp
+    go 'possm'
+
+    # Amplitude differences for config 1
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    codetyp 'difa';
+    sort 'ta';
+    freqid -1;
+    bchan 50;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+    
+    # Amplitude differences for config 2
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    codetyp 'difa';
+    sort 'ta';
+    freqid -1;
+    bchan 50;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+
+    # Phase difference for config 1
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    codetyp 'difa';
+    sort 'ta';
+    freqid -1;
+    bchan 50;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+    
+    # Phase difference for config 2
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    codetyp 'difa';
+    sort 'ta';
+    freqid -1;
+    bchan 50;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+
+
+# ------------------------------------------------------------------------------
+#     12: Flag visibilities based on bandpass solutions
+# ------------------------------------------------------------------------------
+
+# If any bad antennas or baselines exist, flag with uvflg
+
+    task 'uvflg'; default 'uvflg';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    source 'J0137+3309';
+    antenna ;
+    opcode 'flag';
+    stokes 'LL';
+    timerang -1;
+    inp
+    go 'uvflg'
+
+# if there was a mistake in flagging use inext. get the version with invers, -1
+# is the latest flag version.
+
+    inext 'fg'; invers -1; extdes
+
+# ------------------------------------------------------------------------------
+#     13: Calibrate the BP calibrator
+# ------------------------------------------------------------------------------
+
+# Calibrate the BP calibrator in B & C using a model (models can be retrieved
+# with the task CALRD, see page 4-14 in the cookbook). Calsour should be the BP
+# calibrator. Use in2d and get2n to load the model. Running calib will create
+# SN 1 in B and C.
+
+# list the models with caldir
+
+    caldir
+
+# read the model into aips
+
+    task 'calrd'; default 'calrd';
+    object '3C48';
+    band 'L';
+    outdisk 2;
+    inp
+    go 'calrd'
+    
+    # Catalog on disk  2
+    #  Cat Usid Mapname      Class   Seq  Pt     Last access      Stat
+    #    4   83 3C48_L      .MODEL .    1 MA 26-MAY-2014 13:52:00
+
+    task 'calib'; default 'calib';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    freqid -1;
+    indisk 2;
+    in2name '3C48_L';
+    in2class 'MODEL';
+    in2disk 2;
+    outdisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+    
+    task 'calib'; default 'calib';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    indisk 2;
+    calsour 'J0137+3309';
+    in2name '3C48_L';
+    in2class 'MODEL';
+    in2disk 2;
+    outdisk 2;
+    freqid -1;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 
+
+# ------------------------------------------------------------------------------
+#     14: Calibrate the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'calib'; default 'calib';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0318+1628';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+    
+    task 'calib'; default 'calib';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsour 'J0318+1628';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+
+# ------------------------------------------------------------------------------
+#     15: Get the flux of the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'getjy'; default 'getjy';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    sources 'J0318+1628';
+    indisk 2;
+    freqid -1;
+    inp
+    go 'getjy'
+
+    # Output
+    # ------
+    # Calibrator robust averaging used    620 of    620 gain samples
+    #    Source:Qual      CALCODE IF  Flux (Jy)
+    # J0318+1628      :  0   F     1    7.84743 +/-   0.03557  0.11219
+    #    Source:Qual    CALCODE    used   total     bad used  tot  bad
+    # J0318+1628      :  0 F         52      52       0   50   52    1
+    
+    task 'getjy'; default 'getjy';
+    inname '4C1609-C';
+    inclass 'UVEVLA';
+    calsour 'J0137+3309';
+    sources 'J0318+1628';
+    freqid -1;
+    inp
+    go 'getjy'
+
+    # Output
+    # ------
+    # Calibrator robust averaging used    310 of    310 gain samples
+    #    Source:Qual      CALCODE IF  Flux (Jy)
+    # J0318+1628      :  0   F     1    7.84492 +/-   0.04115  6.82579
+    #    Source:Qual    CALCODE    used   total     bad used  tot  bad
+    # J0318+1628      :  0 F         52      52       0   49   52    2
+
+# ------------------------------------------------------------------------------
+#     16: Combine the gain solutions from the offset frequency bands
+# ------------------------------------------------------------------------------
+
+    task 'dbcon'; default 'dbcon';
+    inname '4C1609-B';
+    inclass 'UVEVLA';
+    indisk 2;
+    in2name '4C1609-C';
+    in2class 'UVEVLA';
+    in2disk 2;
+    outname '4C1609-BC';
+    outdisk 2;
+    dopos -1;
+    inp
+    go 'dbcon'
+
+# ------------------------------------------------------------------------------
+#     17: Examine combined bandpass solution
+# ------------------------------------------------------------------------------
+
+    # Bandpass gains for combined set, examine in tv window
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname '4C1609-BC';
+    inclass 'DBCON';
+    calsour 'J0137+3309';
+    freqid -1;
+    gainuse 2;
+    aparm(8) 2;
+    dotv 1;
+    inp
+    go 'possm'
+
+    # Bandpass gains for combined set, save to disk
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname '4C1609-BC';
+    inclass 'DBCON';
+    calsour 'J0137+3309';
+    freqid -1;
+    gainuse 2;
+    aparm(8) 2;
+    dotv -1;
+    inp
+    go 'possm'
+
+    # Print the file
+    task 'lwpla'; default 'lwpla';
+    inname '4C1609-BC';
+    inclass 'DBCON';
+    plver 1;
+    invers 2;
+    inp
+    go 'lwpla'
+
+# ------------------------------------------------------------------------------
+#     18: Copy bandpass to the source
+# ------------------------------------------------------------------------------
+
+    task 'tacop'; default 'tacop';
+    inname '4C1609-BC';
+    inclass 'DBCON';
+    indisk 2;
+    inext 'BP';
+    invers 1;
+    outname '4C1609-A';
+    outclass 'UVEVLA';
+    outdisk 2;
+    inp
+    go 'tacop';
+
+# ------------------------------------------------------------------------------
+#     19: Set the flux of the phase calibrator
+# ------------------------------------------------------------------------------
+
+    # Set the zerosp adverb to be the flux of the phase calibrator in Jy!
+
+    task 'setjy'; default 'setjy';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    sources 'J0318+1628';
+    zerosp 7.84;
+    inp
+    go 'setjy'
+
+
+# ------------------------------------------------------------------------------
+#     20: Calibrate the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'calib'; default 'calib';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    calsour 'J0318+1628';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+    
+
+# ------------------------------------------------------------------------------
+#     21: Examine solution table of target
+# ------------------------------------------------------------------------------
+
+    task 'listr'; default 'listr';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    optype 'gain';
+    inver 1;
+    docrt 132;
+    inp
+    go 'listr'
+
+# ------------------------------------------------------------------------------
+#     22: Flag visibilities based on the solution table
+# ------------------------------------------------------------------------------
+
+    task 'uvflg'; default 'uvflg';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    antenna 06;
+    opcode 'flag';
+    stokes 'RR';
+    timerang 0 09 22 01 0 09 58 21 ;
+    inp
+    go 'uvflg'
+
+    task 'uvflg'; default 'uvflg';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    antenna 21;
+    opcode 'flag';
+    stokes 'LL';
+    timerang 0 10 03 24 0 10 06 24 ;
+    inp
+    go 'uvflg'
+
+    task 'uvflg'; default 'uvflg';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    antenna 28;
+    opcode 'flag';
+    stokes 'RR';
+    timerang 0 10 55 21 0 11 00 34 ;
+    inp
+    go 'uvflg'
+
+    task 'uvflg'; default 'uvflg';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    antenna 06;
+    opcode 'flag';
+    stokes 'LL';
+    timerang 0 09 22 01 0 09 58 21 ;
+    inp
+    go 'uvflg'
+    
+    task 'uvflg'; default 'uvflg';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    antenna 28;
+    opcode 'flag';
+    stokes 'LL';
+    timerang 0 10 55 21 0 11 00 34 ;
+    inp
+    go 'uvflg'
+
+
+# delete the solution table and redo calibration of the phase calibrator in
+# configuration A (Step 20).
+
+    inext 'sn'; invers -1; extdes
+
+    task 'calib'; default 'calib';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    calsour 'J0318+1628';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+
+    task 'listr'; default 'listr';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    optype 'gain';
+    inver 1;
+    docrt 132;
+    inp
+    go 'listr'
+
+
+# ------------------------------------------------------------------------------
+#     23: Interpolate the target to the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'clcal'; default 'clcal';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    sources 'J0318+1628';
+    freqid -1;
+    snver 2;
+    gainuse 0;
+    refant 28;
+    inp
+    go 'clcal'
+
+
+# ------------------------------------------------------------------------------
+#     24: Examine solution
+# ------------------------------------------------------------------------------
+
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    calsour 'J0318+1628';
+    freqid -1;
+    docal 1;
+    doband 1;
+    gainuse 2;
+    aparm 0;
+    dotv 1;
+    inp
+    go 'possm'
+
+# ------------------------------------------------------------------------------
+#     25: Split the source from the dataset
+# ------------------------------------------------------------------------------
+
+    task 'split'; default 'split';
+    inname '4C1609-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    sources 'J0318+1628';
+    freqid -1;
+    docalib 1;
+    gainuse 2;
+    flagver 0;
+    doband 1;
+    outdisk 2;
+    outclass 'split';
+    inp
+    go 'split'
+
+# ------------------------------------------------------------------------------
+#     26: Subtract the continuum from the source
+# ------------------------------------------------------------------------------
+
+    task 'uvlsf'; default 'uvlsf';
+    inname 'J0318+1628';
+    inclass 'SPLIT';
+    sources 'J0318+1628';
+    docalib -1;
+    doband -1;
+    dooutput 1;
+    ichansel 10 60 1 1 150 250 1 1;
+    outname 'J0318+1628';
+    outdisk 2;
+    inp 
+    go 'uvlsf'
+
+# ------------------------------------------------------------------------------
+#     27: Image the target
+# ------------------------------------------------------------------------------
+
+    tvreset; tvclear;
+    task 'imagr'; default 'imagr';
+    inname 'J0318+1628';
+    inclass 'BASFIT';
+    indisk 2;
+    sources 'J0318+1628';
+    outname 'J0318+1628';
+    outdisk 2;
+    docalib -1;
+    doband -1;
+    cellsize 0.4 0.4;
+    imsize 512 512;
+    niter 2000;
+    bchan 1;
+    echan 0;
+    dotv 1;
+    inp 
+    go 'imagr'
+
+# ------------------------------------------------------------------------------
+#     28: Display the dirty image
+# ------------------------------------------------------------------------------
+
+    tvreset; tvclear;
+    task 'tvlod'; default 'tvlod';
+    inname 'J0318+1628';
+    inclass 'ICL001';
+    inp
+    go 'tvlod'
+
+# draw a rectangle outside of the source
+
+    tvwindow
+
+# calculate noise
+    
+    imstat
+
+    # Output
+    # ------
+    # rms= 3.89E-02 JY/BEAM
+
+# get peak emission
+
+    getn 9 imh
+
+    # Output
+    # ------
+    # Maximum= 8.287601E+00 JY/BEAM 
+
+    # SNR = 212
+
+# ------------------------------------------------------------------------------
+#     29: Merge clean components
+# ------------------------------------------------------------------------------
+
+    task 'ccmrg'; default 'ccmrg';
+    inname 'J0318+1628';
+    inclass 'ICL001';
+    invers 1;
+    outvers 1;
+    baddisk 1;
+    inp
+    go 'ccmrg'
+
+# print the clean component extension files, write down number of first
+# negative component
+
+    task 'prtcc'; default 'prtcc';
+    inname 'J0318+1628';
+    inclass 'ICL001';
+    docrt 1;
+    inp
+    go 'prtcc'
+
+    # Output
+    # ------
+    # Did not clean to produce negative components
+
+# ------------------------------------------------------------------------------
+#     30: Perform self-calibration with calib
+# ------------------------------------------------------------------------------
+
+    task 'calib'; default 'calib';
+    inname 'J0318+1628';
+    inclass 'BASFIT';
+    in2name 'J0318+1628';
+    in2class 'ICL001';
+    in2d 2;
+    calsour 'J0318+1628';
+    ncomp 4,0;
+    solmod 'p';
+    cparm 0;
+    aparm(7) 3;
+    solint 1
+    refant 28;
+    inp
+    go 'calib'
+    
+# plot the solution
+
+    tvreset; tvclear;
+    task 'snplt'; default 'snplt';
+    inname 'J0318+1628';
+    inclass 'BASFIT';
+    indisk 2;
+    inext 'SN';
+    sources 'J0138+1628';
+    dotv 1;
+    nplots 4;
+    inp
+    go 'snplt'
+
+    # time just before 11 00 hours has largely varying amplitudes
+
+# ------------------------------------------------------------------------------
+#     31: Copy solution to original split target source
+# ------------------------------------------------------------------------------
+
+    task 'tacop'; default 'tacop';
+    inname 'J0318+1628';
+    inclass 'BASFIT';
+    indisk 2;
+    inext 'SN';
+    outname 'J0318+1628';
+    outclass 'SPLIT';
+    outdisk 2;
+    inp
+    go 'tacop';
+
+
+
+# ------------------------------------------------------------------------------
+#     32: Subtract the continuum from the source, applying the calibration
+# ------------------------------------------------------------------------------
+
+    task 'uvlsf'; default 'uvlsf';
+    inname 'J0318+1628';
+    inclass 'SPLIT';
+    sources 'J0318+1628';
+    docalib 1;
+    gainuse 1;
+    doband -1;
+    dooutput 1;
+    ichansel 10 60 1 1 150 250 1 1;
+    outname 'J0318+1628';
+    outdisk 2;
+    baddisk 1;
+    inp 
+    go 'uvlsf'
+
+
+# ------------------------------------------------------------------------------
+#     33: Image the target
+# ------------------------------------------------------------------------------
+
+    tvreset; tvclear;
+    task 'imagr'; default 'imagr';
+    inname 'J0318+1628';
+    inclass 'BASFIT';
+    insez 2;
+    indisk 2;
+    baddisk 1;
+    sources 'J0318+1628';
+    outname 'J0318+1628';
+    outdisk 2;
+    docalib -1;
+    doband -1;
+    cellsize 0.4 0.4;
+    imsize 512 512;
+    niter 2000;
+    bchan 1;
+    echan 0;
+    dotv 1;
+    inp 
+    go 'imagr'
+
+
+    # Output
+    # ------
+    # rms= 4.11E-02 JY/BEAM
+
+# get peak emission
+
+    getn 15 imh
+
+    # Output
+    # ------
+    # Maximum= 8.48031521E+00 JY/BEAM 
+
+    # SNR = 206
+
+
+
+
+
+

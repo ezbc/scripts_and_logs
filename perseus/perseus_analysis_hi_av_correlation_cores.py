@@ -341,11 +341,11 @@ def plot_sd_vs_av(sd_image, av_image,
     else:
         sd_image_error_nonans = sd_image_error[indices]
 
-    if type(av_image_error) is np.ndarray:
-        av_image_error_nonans = av_image_error[indices]
-    else:
+    if type(av_image_error) is float:
         av_image_error_nonans = av_image_error * \
                 np.ones(av_image[indices].shape)
+    else:
+        av_image_error_nonans = av_image_error[indices]
 
     # Create figure
     fig = plt.figure(figsize=(8,8))
@@ -404,10 +404,11 @@ def plot_sd_vs_av(sd_image, av_image,
     if returnimage:
         return correlations_image
 
-def calculate_NHI(cube=None, velocity_axis=None, SpectralGrid=None,
-        velocity_range=[], return_nhi_error=True, noise_cube=None,
-        velocity_noise_range=[-110,-90,90,100],
-        Tsys=30.):
+def calculate_nhi(cube = None, velocity_axis = None, velocity_range = [],
+        return_nhi_error = True, noise_cube = None,
+        velocity_noise_range=[90,100], Tsys = 30., header = None,
+        fits_filename = None, fits_error_filename = None, verbose = True):
+
     ''' Calculates an N(HI) image given a velocity range within which to
     include a SpectralGrid's components.
 
@@ -417,7 +418,13 @@ def calculate_NHI(cube=None, velocity_axis=None, SpectralGrid=None,
         Three dimensional array with velocity axis as 0th axis. Must specify
         a velocity_axis if cube is used.
     velocity_axis : array-like, optional
-        One dimensional array containing velocities corresponding to '''
+        One dimensional array containing velocities corresponding to
+    fits_filename : str
+        If specified, and a header is provided, the nhi image will be written.
+    header : pyfits.Header
+        Header from cube.
+
+    '''
 
     import numpy as np
 
@@ -438,6 +445,28 @@ def calculate_NHI(cube=None, velocity_axis=None, SpectralGrid=None,
 
     # NHI in units of 1e20 cm^-2
     nhi_image = np.ma.array(image,mask=np.isnan(image)) * 1.823e-2
+
+
+    if fits_filename is not None and header is not None:
+        if verbose:
+        	print('Writing N(HI) image to FITS file %s' % fits_filename)
+        header['BUNIT'] = '1e20 cm^-2'
+        header.remove('CDELT3')
+        header.remove('CRVAL3')
+        header.remove('CRPIX3')
+        header.remove('CTYPE3')
+        header.remove('NAXIS3')
+        header['NAXIS'] = 2
+
+        pf.writeto(fits_filename, image*1.823e-2, header = header, clobber =
+                True, output_verify = 'fix')
+
+    if fits_error_filename is not None and header is not None:
+        if verbose:
+        	print('Writing N(HI) error image to FITS file %s' % fits_filename)
+
+        pf.writeto(fits_error_filename, image_error * 1.823e-2, header =
+                header, clobber = True, output_verify = 'fix')
 
     if return_nhi_error:
         nhi_image_error = np.ma.array(image_error,
@@ -734,27 +763,31 @@ def main():
 
     # load 2mass Av and GALFA HI images, on same grid
     av_data_2mass, av_header = load_fits(av_dir + \
-                'perseus_av_lee12_masked.fits',
+                '2mass_av_lee12_planck_regrid.fits',
+            return_header=True)
+    av_data_2mass, av_header = load_fits(av_dir + \
+                'perseus_av_2mass_galfa_regrid.fits',
             return_header=True)
 
     av_data_planck, av_header = load_fits(av_dir + \
                 '../av/perseus_planck_av_regrid.fits',
             return_header=True)
 
-    hi_data,h = load_fits(hi_dir + 'perseus_galfa_cube_bin_3.7arcmin.fits',
+    hi_data, h = load_fits(hi_dir + 'perseus_galfa_cube_bin_3.7arcmin.fits',
             return_header=True)
     # make the velocity axis
     velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
             h['CRVAL3']
     velocity_axis /= 1000.
 
+    '''
     nhi_image, h = load_fits(hi_dir + 'perseus_galfa_lee12_masked.fits',
             return_header=True)
 
     nhi_image = nhi_image[0,:,:] / 1e20
 
     nhi_image_error = 0.6 # 1e20 cm^-2
-
+    '''
 
     # Create N(HI) image from 3.7' res GALFA cube
     noise_cube_filename = 'taurus_galfa_cube_bin_3.7arcmin_noise.fits'
@@ -768,15 +801,14 @@ def main():
             return_header=True)
 
     # calculate nhi and error maps, write nhi map to fits file
-    nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
+    nhi_image, nhi_image_error = calculate_nhi(cube = hi_data,
         velocity_axis=velocity_axis,
         noise_cube = noise_cube,
         velocity_range=[-5,15],
         return_nhi_error=True,
-        fits_filename = hi_dir + 'perseus_galfa_nhi_3.7arcmin.fits',
-        fits_error_filename = hi_dir + 'perseus_galfa_nhi_error_3.7arcmin.fits',
+        #fits_filename = hi_dir + 'perseus_galfa_nhi_3.7arcmin.fits',
+        #fits_error_filename = hi_dir + 'perseus_galfa_nhi_error_3.7arcmin.fits',
         header = h)
-
 
     #nh2_image = calculate_nh2(nhi_image = nhi_image,
     #        av_image = av_data, dgr = 1.1e-1)
@@ -833,7 +865,6 @@ def main():
         av_limits =[0.01,100]
         nhi_limits = [2,20]
 
-
         cores = load_ds9_region(cores,
                 filename_base = region_dir + 'perseus_av_boxes_',
                 header = h)
@@ -861,40 +892,33 @@ def main():
 
             av_limits =[0.01,100]
 
-            plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
-                    sd_image_error = hi_sd_image_error_sub,
-                    av_image_error = 0.1,
-                    limits = [0.1,20,2,10],
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    scale='log',
-                    filename='perseus_sd_vs_av_' + core + '_planck.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of Perseus Core ' + core,
-                    show=False)
+            figure_types = ['pdf', 'png']
+            for figure_type in figure_types:
+                plot_sd_vs_av(hi_sd_image_sub, av_data_2mass_sub,
+                        sd_image_error = hi_sd_image_error_sub,
+                        av_image_error = 0.1,
+                        limits = [0.1,20,2,10],
+                        savedir=figure_dir,
+                        plot_type='scatter',
+                        scale='log',
+                        filename='perseus_sd_vs_av_' + core + '_lee12.%s' % \
+                                figure_type,
+                        title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                                'Perseus Core ' + core,
+                        show=False)
 
-            plot_sd_vs_av(hi_sd_image_sub, av_data_2mass_sub,
-                    sd_image_error = hi_sd_image_error_sub,
-                    av_image_error = 0.1,
-                    limits = [0.1,20,2,10],
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    scale='log',
-                    filename='perseus_sd_vs_av_' + core + '_lee12.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
-                            'Perseus Core ' + core,
-                    show=False)
-
-            plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
-                    sd_image_error = hi_sd_image_error_sub,
-                    av_image_error = 0.1,
-                    limits = [0.1,20,2,10],
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    scale='log',
-                    filename='perseus_sd_vs_av_' + core + '_planck.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
-                            'Perseus Core ' + core,
-                    show=False)
+                plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
+                        sd_image_error = hi_sd_image_error_sub,
+                        av_image_error = 0.1,
+                        limits = [0.1,20,2,10],
+                        savedir=figure_dir,
+                        plot_type='scatter',
+                        scale='log',
+                        filename='perseus_sd_vs_av_' + core + '_planck.%s' % \
+                                figure_type,
+                        title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                                'Perseus Core ' + core,
+                        show=False)
 
 
     # Plot heat map of correlations

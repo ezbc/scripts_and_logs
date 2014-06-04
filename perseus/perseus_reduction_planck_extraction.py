@@ -5,7 +5,7 @@ reload(pl)
 from astropy.io import fits as pf
 
 
-def extract_data():
+def extract_data(field = 2):
     data_location = '/d/bip3/ezbc/planck/planck_raw_data/'
 
     # Goal: RA from 1:30 to 5:30hrs, Dec = 20 to 38deg
@@ -18,7 +18,7 @@ def extract_data():
             x_range = ra_range,
             y_range = dec_range,
             coord_type = 'equatorial',
-            field = 2,
+            field = field,
             dr_version = 2,
             resolution = 0.01,
             cut_last_pixel = False,
@@ -47,12 +47,16 @@ def main():
     planck_dir = '/d/bip3/ezbc/perseus/data/planck/'
 
     (data, header) = extract_data()
-
     write_data(data, header, planck_dir + 'perseus_planck_ebv.fits')
 
     ebv2av(data, header)
-
     write_data(data, header, av_dir + 'perseus_planck_av.fits')
+
+    (data, header) = extract_data(field = 3)
+    write_data(data, header, planck_dir + 'perseus_planck_ebv_error.fits')
+
+    ebv2av(data, header)
+    write_data(data, header, av_dir + 'perseus_planck_av_error.fits')
 
 if __name__ == '__main__':
 	main()

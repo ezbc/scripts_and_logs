@@ -958,7 +958,8 @@ def main():
                         show=False)
 
 
-            if True:
+            figure_types = ['pdf', 'png']
+            for figure_type in figure_types:
                 plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
                         sd_image_error = hi_sd_image_error_sub,
                         av_image_error = 0.1,
@@ -966,7 +967,8 @@ def main():
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',
-                        filename='california_sd_vs_av_' + core + '_box.png',
+                        filename='california_sd_vs_av_' + core + '_box.%s' % \
+                            figure_type,
                         title=r'$\Sigma_{HI}$ vs. A$_v$ of California Core ' + core,
                         show=False)
 

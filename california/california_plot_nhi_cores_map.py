@@ -396,7 +396,7 @@ def main():
                 contour_image=av_image, contours=[3,6,10],
                 boxes=True, cores = cores, #limits=[128,37,308,206],
                 title='California: N(HI) map with core boxed-regions.',
-                savedir=figure_dir, filename='california_nhi_cores_map.png',
+                savedir=figure_dir, filename='california_nhi_cores_map.pdf',
                 show=True)
 
 if __name__ == '__main__':

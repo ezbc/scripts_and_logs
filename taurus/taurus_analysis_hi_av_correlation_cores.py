@@ -414,7 +414,7 @@ def plot_sd_vs_av(sd_image, av_image,
     	ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel('A$_v$ (mag)',)
+    ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
     ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
     ax.set_title(title)
     ax.grid(True)
@@ -918,7 +918,8 @@ def main():
                     savedir=figure_dir,
                     plot_type='scatter',
                     filename='taurus_sd_vs_av_' + core + '_small.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_v$ of Taurus Core ' + core,
+                    title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of Taurus Core ' + \
+                            core,
                     show = False)
 
     if True:
@@ -961,7 +962,8 @@ def main():
             hi_sd_image_sub = hi_sd_image[indices]
             hi_sd_image_error_sub = hi_sd_image_error[indices]
 
-            if True:
+            figure_types = ['pdf', 'png']
+            for figure_type in figure_types:
                 plot_sd_vs_av(hi_sd_image_sub, av_data_k09_sub,
                         sd_image_error = hi_sd_image_error_sub,
                         av_image_error = 0.1,
@@ -969,8 +971,9 @@ def main():
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',
-                        filename='taurus_sd_vs_av_' + core + '_k09.png',
-                        title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                        filename='taurus_sd_vs_av_' + core + '_k09.%s' % \
+                                figure_type,
+                        title=r'$\Sigma_{HI}$ vs. K+09 A$_{\rm V}$ of ' + \
                                 'Taurus Core ' + core,
                         show=False)
 
@@ -981,8 +984,9 @@ def main():
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',
-                        filename='taurus_sd_vs_av_' + core + '_planck.png',
-                        title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                        filename='taurus_sd_vs_av_' + core + '_planck.%s' % \
+                                figure_type,
+                        title=r'$\Sigma_{HI}$ vs. Planck A$_{\rm V}$ of ' + \
                                 'Taurus Core ' + core,
                         show=False)
 
