@@ -250,6 +250,46 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     return cores
 
+def subtract_background(image, degree=1):
+
+    import itertools
+
+    # Generate Data...
+    numdata = 100
+    x = np.linspace(0, image.shape[0], num=image.shape[0] + 1)
+    y = np.linspace(1, image.shape[1], num=image.shape[1] + 1)
+
+    # Fit a 3rd order, 2d polynomial
+    m = polyfit2d(x,y,z)
+
+    # Evaluate it on a grid...
+    nx, ny = 20, 20
+    xx, yy = np.meshgrid(np.linspace(x.min(), x.max(), nx),
+                         np.linspace(y.min(), y.max(), ny))
+    zz = polyval2d(xx, yy, m)
+
+    # Plot
+    plt.imshow(zz, extent=(x.min(), y.max(), x.max(), y.min()))
+    plt.scatter(x, y, c=z)
+    plt.show()
+
+def polyfit2d(x, y, z, order=3):
+    ncols = (order + 1)**2
+    G = np.zeros((x.size, ncols))
+    ij = itertools.product(range(order+1), range(order+1))
+    for k, (i,j) in enumerate(ij):
+        G[:,k] = x**i * y**j
+    m, _, _, _ = np.linalg.lstsq(G, z)
+    return m
+
+def polyval2d(x, y, m):
+    order = int(np.sqrt(len(m))) - 1
+    ij = itertools.product(range(order+1), range(order+1))
+    z = np.zeros_like(x)
+    for a, (i,j) in zip(m, ij):
+        z += a * x**i * y**j
+    return z
+
 def main():
     ''' Executes script.
     '''
@@ -263,7 +303,7 @@ def main():
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
     core_dir = output_dir + 'core_arrays/'

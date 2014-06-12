@@ -59,14 +59,12 @@ def plot_profile(radii, profile, limits=None, savedir='./', filename=None,
     ax.set_ylabel('A$_V$ (mag)',)
     ax.set_xlabel(r'Radius (pc)',)
     ax.set_title(title)
-    ax.set_yscale('log')
-    ax.set_xscale('log')
+    ax.set_yscale('linear', nonposy = 'clip')
+    ax.set_xscale('linear', nonposx = 'clip')
     ax.grid(True)
 
-
-
     if filename is not None:
-        plt.savefig(savedir + filename,bbox_inches='tight')
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -269,22 +267,82 @@ def convert_core_coordinates(cores, header):
         cores[core].update({'box_pixel': 0})
         cores[core].update({'center_pixel': 0})
 
-    	box_wcs = cores[core]['box_wcs']
-    	box_pixel = len(box_wcs) * [0,]
+        try:
+            box_wcs = cores[core]['box_wcs']
+            box_pixel = len(box_wcs) * [0,]
+            # convert box corners to pixel coords
+            for i in range(len(box_wcs)/2):
+                pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+                        header=header)
+                box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]),\
+                        int(pixels[1])
+            cores[core]['box_pixel'] = box_pixel
+        except TypeError:
+            do_nothing = True
+
+
     	center_wcs = cores[core]['center_wcs']
 
         # convert centers to pixel coords
         cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
                                                      dec=center_wcs[1],
                                                      header=header)
-        # convert box corners to pixel coords
-        for i in range(len(box_wcs)/2):
-        	pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
-        	        header=header)
-        	box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
-        cores[core]['box_pixel'] = box_pixel
 
     return cores
+
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    for core in cores:
+    	region = read_ds9_region(filename_base + core + '.reg')
+        box_center_pixel = get_pix_coords(ra = region[0],
+                                          dec = region[1],
+                                          header = header)
+        box_center_pixel = (int(box_center_pixel[1]), int(box_center_pixel[0]))
+        box_height = region[2] / header['CDELT1']
+        box_width = region[3] / header['CDELT2']
+        cores[core].update({'box_center_pix': box_center_pixel})
+        cores[core].update({'box_width': box_width})
+        cores[core].update({'box_height': box_height})
+        cores[core].update({'box_angle': region[4]})
+
+    return cores
+
+def read_ds9_region(filename):
+
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
+    '''
+
+    # Import external modules
+    import pyregion as pyr
+
+    # Read region file
+    region = pyr.open(filename)
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    return region[0].coord_list
 
 def load_fits(filename,return_header=False):
     ''' Loads a fits file.
@@ -314,13 +372,17 @@ def hrs2degs(ra=None, dec=None):
 
 def get_pix_coords(ra=None, dec=None, header=None):
 
-    ''' Ra and dec in degrees.
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec).
     '''
 
     import pywcsgrid2 as wcs
     import pywcs
 
-    ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    # convert to degrees
+    if type(ra) is tuple and type(dec) is tuple:
+        ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+    else:
+    	ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
     pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
@@ -343,7 +405,7 @@ def get_radial_profile(image, center=None, stddev=False, binsize=1,
     	weights=None
 
     result = radial_average(image, binsize=binsize, center=center,
-            stddev=stddev, mask=mask, interpnan=True, returnradii=True,
+            stddev=stddev, mask=mask, interpnan=False, returnradii=True,
             weights=weights)
 
     return result
@@ -359,10 +421,9 @@ def fit_profile(radii, profile, function, sigma=None):
     import numpy as np
 
     profile_fit = curve_fit(function, radii, profile, sigma=sigma,
-            maxfev=10000)
+            maxfev=1000000,)
 
     return profile_fit
-
 
 def print_fit_params(cores, A_p, pho_c, R_flat, p, filename=None):
 
@@ -371,10 +432,12 @@ def print_fit_params(cores, A_p, pho_c, R_flat, p, filename=None):
 
     import os
 
-    #print('A_p\t pho_c\t R_flat\t p ')
-    #print(core_name + ':')
-    #print('%.2f\t %.2f \t %.2f \t %.2f \n' % \
-    #        (A_p, pho_c, R_flat, p))
+    if filename is None:
+        for i, core in enumerate(cores):
+            print('A_p\t pho_c\t R_flat\t p ')
+            print(core + ':')
+            print('%.2f\t %.2f \t %.2f \t %.2f \n' % \
+                    (A_p[i], pho_c[i], R_flat[i], p[i]))
 
     if filename is not None:
         os.system('rm -rf ' + filename)
@@ -391,60 +454,20 @@ def main():
     import numpy as np
     from os import system,path
     import myclumpfinder as clump_finder
-    reload(clump_finder)
+    import mygeometry as myg
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
     core_dir = output_dir + 'core_arrays/'
 
     # load 2mass Av and GALFA HI images, on same grid
-    av_image, av_header = load_fits(av_dir + 'taurus_av_k09_regrid.fits',
-            return_header=True)
-    # load Av image from goldsmith: Pineda et al. 2010, ApJ, 721, 686
-    av_image_goldsmith = load_fits(av_dir + \
-            'taurus_av_p10_regrid.fits')
-
-    #av_image += - 0.4 # subtracts background of 0.4 mags
-    hi_data,h = load_fits(hi_dir + 'taurus_galfa_cube_bin_3.7arcmin.fits',
+    av_image, h = load_fits(av_dir + 'taurus_planck_av_regrid.fits',
             return_header=True)
 
-    # make the velocity axis
-    velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
-            h['CRVAL3']
-    velocity_axis /= 1000.
-
-    # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_galfa_cube_bin_3.7arcmin_noise.fits'
-    if not path.isfile(hi_dir + noise_cube_filename):
-        noise_cube = calculate_noise_cube(cube=hi_data,
-                velocity_axis=velocity_axis,
-                velocity_noise_range=[90,110], header=h, Tsys=30.,
-                filename=hi_dir + noise_cube_filename)
-    else:
-        noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
-            return_header=True)
-
-    # calculate maps
-    nhi_image, nhi_image_error = calculate_NHI(cube=hi_data,
-        velocity_axis=velocity_axis, noise_cube = noise_cube,
-        velocity_range=[-100,100], return_nhi_error=True)
-
-    nh2_image = calculate_nh2(nhi_image = nhi_image,
-            av_image = av_image, dgr = 1.1e-1)
-    nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
-            av_image = 0.1, dgr = 1.1e-1)
-
-    hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
-    hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
-
-    h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
-    h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
-
-    h_sd_image = av_image / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
-    h_sd_image_error = 0.1 / (1.25 * 0.11)
 
     cores = {'L1495':
                 {'center_wcs': [(4,14,0), (28, 11, 0)],
@@ -492,8 +515,13 @@ def main():
 
     cores = convert_core_coordinates(cores, h)
 
+    cores = load_ds9_region(cores,
+            filename_base = region_dir + 'taurus_av_boxes_',
+            header = h)
+
     if True:
-        limits = [0.1, 10, 0.01, 30]
+        #limits = [0.1, 100, 0.1, 100] # x-log limits
+        limits = [0, 20, -1, 30] # x-linear limits
 
         A_p = []
         pho_c = []
@@ -503,30 +531,66 @@ def main():
         for core in cores:
             print('Calculating for core %s' % core)
 
-            # plotting radial profiles only within boxes
-            av_image_sub = get_sub_image(av_image, cores[core]['box_pixel'])
-            # change center pixel to correspond to sub image
-            pix = cores[core]['center_pixel']
-            pix = (pix[0] - cores[core]['box_pixel'][0],
-                pix[1] - cores[core]['box_pixel'][1],)
-            cores[core]['center_pixel'] = pix
+            # Grab the mask from the DS9 regions
+            xy = cores[core]['box_center_pix']
+            box_width = cores[core]['box_width']
+            box_height = cores[core]['box_height']
+            box_angle = cores[core]['box_angle']
+            mask = myg.get_rectangular_mask(av_image,
+        	        xy[0], xy[1],
+                    width = box_width,
+                    height = box_height,
+                    angle = box_angle)
 
+            # Get indices where there is no mask, and extract those pixels
+            indices = np.where(mask == 1)
+
+            # plotting radial profiles only within boxes
+            #av_image_sub = get_sub_image(av_image, cores[core]['box_pixel'])
+            # change center pixel to correspond to sub image
+            #pix = cores[core]['center_pixel']
+            #pix = (pix[0] - cores[core]['box_pixel'][0],
+            #    pix[1] - cores[core]['box_pixel'][1],)
+            #cores[core]['center_pixel'] = pix
+
+            av_image_sub = av_image
+            #av_image_sub[mask == 0] = np.NaN
+            temp_mask = np.copy(mask)
+            temp_mask[mask == 0] = 1
+            temp_mask[mask == 1] = 0
+
+            import matplotlib.pyplot as plt
+
+            plt.clf()
+            plt.imshow(np.ma.array(av_image_sub, mask=temp_mask))
+            plt.savefig('/usr/users/ezbc/Desktop/map%s.png' % core)
+            plt.clf()
+
+            pix = cores[core]['center_pixel']
 
             # extract radial profile weighted by SNR
             radii, profile = get_radial_profile(av_image_sub, binsize=3,
-                    center=cores[core]['center_pixel'],
-                    weights=av_image_sub/0.3)
+                    center=pix,
+                    weights=av_image_sub / 0.3,
+                    mask=mask
+                    )
+
             # extract std
             radii, profile_std = get_radial_profile(av_image_sub, binsize=3,
-                    center=cores[core]['center_pixel'], stddev=True,
-                    weights=av_image_sub/0.3)
+                    center=pix,
+                    stddev=True,
+                    weights=av_image_sub / 0.3,
+                    #mask=mask
+                    )
 
             # convert radii from degrees to parsecs
-            radii_arcmin = radii * h['CDELT2'] * 60 * 60# radii in arcminutes
-            radii_pc = radii_arcmin * 147 / 206265. # radii in parsecs
+            radii_arcmin = radii * h['CDELT2'] * 60 * 60. # radii in arcminutes
+            radii_pc = radii_arcmin * 300 / 206265. # radii in parsecs
 
             # extract radii from within the limits
-            indices = np.where(radii_pc < limits[1])
+            indices = np.where((radii_pc < limits[1]) & \
+                               (profile == profile) & \
+                               (profile_std == profile_std))
             radii_pc = radii_pc[indices]
             profile = profile[indices]
             profile_std = profile_std[indices]
@@ -540,27 +604,28 @@ def main():
             profile_fit_params = fit_profile(radii_pc, profile, function,
                     sigma=profile / profile_std)[0]
 
-
             # plot the radial profile
-            plot_profile(radii_pc, profile,
-                    profile_errors = profile_std,
-                    limits = limits,
-                    profile_fit_params = profile_fit_params,
-                    profile_fit_function = function,
-                    savedir=figure_dir,
-                    filename = 'taurus_profile_av_' + core + '.png',
-                    title=r'Radial A$_V$ Profile of Taurus Core ' + core,
-                    show = False)
+            figure_types = ['.pdf', '.png']
+            for figure_type in figure_types:
+                plot_profile(radii_pc, profile,
+                        profile_errors = profile_std,
+                        limits = limits,
+                        profile_fit_params = profile_fit_params,
+                        profile_fit_function = function,
+                        savedir=figure_dir,
+                        filename = 'taurus_profile_av_' + core + figure_type,
+                        title=r'Radial A$_V$ Profile of Taurus Core ' + core,
+                        show = False)
 
             A_p.append(profile_fit_params[0])
             pho_c.append(profile_fit_params[1])
             R_flat.append(profile_fit_params[2])
             p.append(profile_fit_params[3])
 
-        print A_p, pho_c, R_flat, p
-
         print_fit_params(cores, A_p, pho_c, R_flat, p,
                 filename=output_dir + 'core_profile_fit_data.txt')
+
+        print_fit_params(cores, A_p, pho_c, R_flat, p)
 
 if __name__ == '__main__':
     main()

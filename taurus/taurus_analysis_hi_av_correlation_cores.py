@@ -406,7 +406,7 @@ def plot_sd_vs_av(sd_image, av_image,
                 markersize=2
                 )
 
-        ax.set_xscale(scale)
+        ax.set_xscale('linear')
         ax.set_yscale(scale)
 
     if limits is not None:
@@ -783,7 +783,7 @@ def main():
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
     core_dir = output_dir + 'core_arrays/'
@@ -980,7 +980,7 @@ def main():
                 plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
                         sd_image_error = hi_sd_image_error_sub,
                         av_image_error = 0.1,
-                        limits = [0.01,100,2,20],
+                        limits = [-5,20,2,20],
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',

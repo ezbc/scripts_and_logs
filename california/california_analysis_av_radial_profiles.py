@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the Av profiles Taurus molecular cloud.
+''' Calculates the Av profiles california molecular cloud.
 '''
 
 def plot_profile(radii, profile, limits=None, savedir='./', filename=None,
@@ -290,7 +290,7 @@ def convert_core_coordinates(cores, header):
 
     return cores
 
-def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'california_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -434,8 +434,8 @@ def print_fit_params(cores, A_p, pho_c, R_flat, p, filename=None):
 
     if filename is None:
         for i, core in enumerate(cores):
-            print('A_p\t pho_c\t R_flat\t p ')
             print(core + ':')
+            print('A_p\t pho_c\t R_flat\t p ')
             print('%.2f\t %.2f \t %.2f \t %.2f \n' % \
                     (A_p[i], pho_c[i], R_flat[i], p[i]))
 
@@ -457,59 +457,64 @@ def main():
     import mygeometry as myg
 
     # define directory locations
-    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/perseus/data/av/'
-    hi_dir = '/d/bip3/ezbc/perseus/data/galfa/'
-    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/california/figures/cores/'
+    av_dir = '/d/bip3/ezbc/california/data/av/'
+    hi_dir = '/d/bip3/ezbc/california/data/galfa/'
+    region_dir = '/d/bip3/ezbc/california/data/python_output/ds9_regions/'
     core_dir = output_dir + 'core_arrays/'
 
     # load 2mass Av and GALFA HI images, on same grid
-    av_image, h = load_fits(av_dir + 'perseus_planck_av_regrid.fits',
+    av_image, h = load_fits(av_dir + 'california_planck_av_regrid.fits',
             return_header=True)
 
-    cores = {'IC348':
-                {'center_wcs': [(3, 43, 52), (31, 59, 55)],
-                 'map': None,
-                 'threshold': None,
-                 'box_wcs': [(3,46,13), (26,3,24), (3,43,4), (32,25,41)],
-                 },
-             'NGC1333':
-                {'center_wcs': [(3, 29, 02), (31, 17, 28)],
+    cores = {'L1482':
+                {'center_wcs': [(4, 29, 41), (35, 48, 41)],
                  'map': None,
                  'threshold': None,
                  'box_wcs': None,
                  },
-             'B4':
-                {'center_wcs': [(3, 45, 14), (31, 40, 57)],
+              'L1483':
+                {'center_wcs': [(4, 34, 57), (36, 18, 12)],
                  'map': None,
                  'threshold': None,
                  'box_wcs': None,
                  },
-             'B5':
-                {'center_wcs': [(3, 47, 39), (32, 53, 26)],
+              'L1478':
+                {'center_wcs': [(4, 25, 7), (37, 13, 0)],
                  'map': None,
                  'threshold': None,
                  'box_wcs': None,
                  },
-             #'':
-             #   {'center_wcs': [],
-             #    'map': None,
-             #    'threshold': None,
-             #    'box_wcs': None,
-             #    },
-            }
+              'L1434':
+                {'center_wcs': [(3, 50, 51), (35, 15, 10)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+              'L1503':
+                {'center_wcs': [(4, 40, 27), (29, 57, 12)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+              'L1507':
+                {'center_wcs': [(4, 42, 51), (29, 44, 47)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+                }
 
     cores = convert_core_coordinates(cores, h)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'perseus_av_boxes_',
+            filename_base = region_dir + 'california_av_boxes_',
             header = h)
 
     if True:
         #limits = [0.1, 100, 0.1, 100] # x-log limits
-        limits = [0, 20, -1, 30] # x-linear limits
-
+        limits = [0, 20, -1, 10] # x-linear limits
 
         A_p = []
         pho_c = []
@@ -541,9 +546,8 @@ def main():
             #    pix[1] - cores[core]['box_pixel'][1],)
             #cores[core]['center_pixel'] = pix
 
-            av_image_sub = np.copy(av_image)
+            av_image_sub = av_image
             #av_image_sub[mask == 0] = np.NaN
-
             temp_mask = np.copy(mask)
             temp_mask[mask == 0] = 1
             temp_mask[mask == 1] = 0
@@ -602,8 +606,10 @@ def main():
                         profile_fit_params = profile_fit_params,
                         profile_fit_function = function,
                         savedir=figure_dir,
-                        filename = 'perseus_profile_av_' + core + figure_type,
-                        title=r'Radial A$_V$ Profile of Perseus Core ' + core,
+                        filename = 'california_profile_av_' + core + \
+                                figure_type,
+                        title=r'Radial A$_V$ Profile of California Core ' + \
+                                core,
                         show = False)
 
             A_p.append(profile_fit_params[0])

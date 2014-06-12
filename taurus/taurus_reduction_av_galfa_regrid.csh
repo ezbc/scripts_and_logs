@@ -5,6 +5,8 @@
 # resolution is 2.4' 
 # final res = (3.7^2 - 2.4^2)^0.5 = 2.816'
 
+# planck image = 5' res, fwhm = 4.38 for smoothing
+
 cd /d/bip3/ezbc/taurus/data/av
 
 set av_dir=/d/bip3/ezbc/taurus/data/av
@@ -18,7 +20,7 @@ fits in=$galfa_dir/taurus_galfa_cube_bin_3.7arcmin.fits\
     out=$galfa_dir/taurus_galfa_cube_bin_3.7arcmin.mir \
     op=xyin
 
-smooth in=$av_dir/taurus_av_k09.mir fwhm=2.816 pa=0 \
+smooth in=$av_dir/taurus_av_k09.mir fwhm=4.38 pa=0 \
     out=$av_dir/taurus_av_k09_smooth.mir \
     scale=0.0 # keep units, do not change to /beam
 

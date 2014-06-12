@@ -20,9 +20,14 @@ fits in=$planck_dir/perseus_planck_av_regrid.mir \
 
 # Regrid of planck onto 5' pixels
 
-regrid in=perseus_planck_av.mir \
-    out=perseus_planck_av_5arcmin.mir \
+regrid in=$planck_dir/perseus_planck_av.mir \
+    out=$planck_dir/perseus_planck_av_5arcmin.mir \
     desc=65,0,-0.08324,300,21,0,0.08324,280
+
+fits in=../av/perseus_planck_av_5arcmin.mir \
+    out=../av/perseus_planck_av_5arcmin.fits \
+    op=xyout
+
 
 # 2mass Av image has same Planck 5' resolution
 
@@ -41,10 +46,6 @@ fits in=../2mass/2mass_av_lee12_planck_regrid.mir \
 
 fits in=../2mass/2mass_av_lee12_nocal_planck_regrid.mir \
     out=../2mass/2mass_av_lee12_nocal_planck_regrid.fits \
-    op=xyout
-
-fits in=../av/perseus_planck_av_5arcmin.mir \
-    out=../av/perseus_planck_av_5arcmin.fits \
     op=xyout
 
 # regrid of planck test regions

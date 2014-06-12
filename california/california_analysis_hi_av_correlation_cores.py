@@ -406,7 +406,7 @@ def plot_sd_vs_av(sd_image, av_image,
                 markersize=2
                 )
 
-        ax.set_xscale(scale)
+        ax.set_xscale('linear')
         ax.set_yscale(scale)
 
     if limits is not None:
@@ -414,7 +414,7 @@ def plot_sd_vs_av(sd_image, av_image,
     	ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel('A$_v$ (mag)',)
+    ax.set_xlabel('A$_V$ (mag)',)
     ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
     ax.set_title(title)
     ax.grid(True)
@@ -788,7 +788,7 @@ def main():
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/california/figures/'
+    figure_dir = '/d/bip3/ezbc/california/figures/cores/'
     av_dir = '/d/bip3/ezbc/california/data/av/'
     hi_dir = '/d/bip3/ezbc/california/data/galfa/'
     core_dir = output_dir + 'core_arrays/'
@@ -963,7 +963,7 @@ def main():
                 plot_sd_vs_av(hi_sd_image_sub, av_data_sub,
                         sd_image_error = hi_sd_image_error_sub,
                         av_image_error = 0.1,
-                        limits = [0.1,50,4,50],
+                        limits = [-5,15,4,50],
                         savedir=figure_dir,
                         plot_type='scatter',
                         scale='log',

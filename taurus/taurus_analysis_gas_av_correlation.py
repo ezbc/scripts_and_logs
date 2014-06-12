@@ -357,7 +357,7 @@ def main():
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/hi_velocity_range/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
     co_dir = '/d/bip3/ezbc/taurus/data/cfa/'

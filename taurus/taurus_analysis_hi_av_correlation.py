@@ -150,8 +150,9 @@ def plot_nhi_vs_av(nhi_image, av_image, savedir='./', filename=None, show=True,
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111)
     if plot_type is 'hexbin':
-        image = ax.hexbin(av_image_nonans.ravel(),
+        image = ax.hexbin(
                 nhi_image_nonans.ravel(),
+                av_image_nonans.ravel(),
                 norm=matplotlib.colors.LogNorm(),
                 mincnt=1,
                 yscale='log',
@@ -169,10 +170,10 @@ def plot_nhi_vs_av(nhi_image, av_image, savedir='./', filename=None, show=True,
         ax.set_yscale('log')
 
     # Adjust asthetics
-    ax.set_xlabel('A$_v$ (mag)',
+    ax.set_ylabel('A$_v$ (mag)',
               size = 'small',
               family='serif')
-    ax.set_ylabel(r'N(HI) (1 $\times 10^{20}$ cm$^{-2}$)',
+    ax.set_xlabel(r'N(HI) (1 $\times 10^{20}$ cm$^{-2}$)',
               size = 'small',
               family='serif')
     ax.set_title(title)
@@ -280,9 +281,9 @@ def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
                                 mask=np.isnan(nhi_image_temp))
 
         # Select pixels with Av > 1.0 mag and Av_SNR > 5.0.
-        # Av > 1.0 mag is used to avoid too low Av. 
-        # 1.0 mag corresponds to SNR = 1 / 0.2 ~ 5 
-        # (see Table 2 of Ridge et al. 2006).  
+        # Av > 1.0 mag is used to avoid too low Av.
+        # 1.0 mag corresponds to SNR = 1 / 0.2 ~ 5
+        # (see Table 2 of Ridge et al. 2006).
         indices = np.where((nhi_image == nhi_image) & \
                 (av_image == av_image) & \
                 (av_image < 2))# & \
@@ -325,19 +326,29 @@ def main(redo_cube_correlation_calculation = False,
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/hi_velocity_range'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
 
     # load 2mass Av and GALFA HI images, on same grid
     av_data = load_fits(av_dir + 'taurus_av_k09_regrid.fits')
+
+    # load Planck Av and GALFA HI images, on same grid
+    av_data = load_fits(av_dir + \
+                'taurus_planck_av_regrid.fits')
+
+    av_data = np.ma.array(av_data, mask=((av_data > 2) & \
+            (av_data != av_data)))
+
     # load Av image from goldsmith: Pineda et al. 2010, ApJ, 721, 686
     av_data_goldsmith = load_fits(av_dir + \
             'taurus_av_p10_regrid.fits')
 
     #av_data += - 0.4 # subtracts background of 0.4 mags
-    hi_data,h = load_fits(hi_dir + 'taurus.galfa.cube.bin.4arcmin.fits',
+    hi_data,h = load_fits(hi_dir + 'taurus_galfa_cube_bin_3.7arcmin.fits',
             return_header=True)
+
+    hi_data = np.ma.array(hi_data, mask=(hi_data != hi_data))
 
     # make the velocity axis
     velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
@@ -363,7 +374,8 @@ def main(redo_cube_correlation_calculation = False,
 
     if redo_cube_correlation_calculation:
         cube_correlations = calculate_correlation(cube=hi_data,
-                velocity_axis=velocity_axis,av_image=av_data,
+                velocity_axis=velocity_axis,
+                av_image=av_data,
                 velocity_centers=velocity_centers,
                 velocity_widths=velocity_widths)
     else:
@@ -379,13 +391,21 @@ def main(redo_cube_correlation_calculation = False,
     np.save(output_dir + 'velocity_centers', velocity_centers)
     np.save(output_dir + 'velocity_widths', velocity_widths)
 
-    if False:
+    if True:
         # Plot heat map of correlations
+
+
         cube_correlations_array = plot_correlations(cube_correlations,
                 velocity_centers, velocity_widths, returnimage=True,
                 savedir=figure_dir,
                 filename='taurus.nhi_av_correlation.png',
                 show=True)
+
+        cube_correlations_array = np.ma.array(cube_correlations_array,
+                mask=(cube_correlations_array != cube_correlations_array))
+        print cube_correlations_array.max()
+        print np.where(cube_correlations_array == cube_correlations_array.max())
+        print cube_correlations_array.shape
 
         plot_center_velocity(cube_correlations,
                 velocity_centers, velocity_widths,
@@ -413,9 +433,9 @@ def main(redo_cube_correlation_calculation = False,
                 filename='taurus.av_nhi_2dDensity.png',)
 
     # calculate correlation for cores
-    if True:
+    if False:
     	indices = [np.arange(130,160),np.arange(175,200)]
-    	
+
         nhi_image_sub = nhi_image[206:227,227:268]
         av_data_sub = av_data[206:227,227:268]
 
