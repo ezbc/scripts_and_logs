@@ -117,6 +117,7 @@ def plot_pdf(av_image, limits=None, savedir='./', filename=None, show=True,
         plt.savefig(savedir + filename,bbox_inches='tight')
     if show:
         fig.show()
+
 def convert_core_coordinates(cores, header):
 
     for core in cores:
@@ -145,7 +146,6 @@ def convert_core_coordinates(cores, header):
                                                      header=header)
 
     return cores
-
 
 def load_fits(filename,return_header=False):
     ''' Loads a fits file.

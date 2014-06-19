@@ -709,6 +709,39 @@ def convert_core_coordinates(cores, header):
 
     return cores
 
+def read_ds9_region(filename):
+
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
+    '''
+
+    # Import external modules
+    import pyregion as pyr
+
+    # Read region file
+    region = pyr.open(filename)
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    return region[0].coord_list
 def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     # region[0] in following format:
@@ -790,7 +823,7 @@ def main():
     '''
 
     # Create N(HI) image from 3.7' res GALFA cube
-    noise_cube_filename = 'taurus_galfa_cube_bin_3.7arcmin_noise.fits'
+    noise_cube_filename = 'perseus_galfa_cube_bin_3.7arcmin_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
