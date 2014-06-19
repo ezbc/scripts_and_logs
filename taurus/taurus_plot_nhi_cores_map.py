@@ -86,6 +86,7 @@ def hrs2degs(ra=None, dec=None):
     return (ra_deg, dec_deg)
 
 def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
+        av_image=None,
         cores=None, title=None, limits=None,
         contours=None, boxes=False, savedir='./', filename=None, show=True):
 
@@ -106,7 +107,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 12
+    fontScale = 15
     params = {#'backend': .pdf',
               'axes.labelsize': fontScale,
               'axes.titlesize': fontScale,
@@ -117,7 +118,8 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              'figure.figsize': (6, 6),
+              'figure.figsize': (15, 7),
+              'figure.titlesize': fontScale
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -125,27 +127,39 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # Create figure instance
     fig = plt.figure()
 
+    if av_image is not None:
+        nrows_ncols=(1,2)
+        ngrids=2
+    else:
+        nrows_ncols=(1,1)
+        ngrids=1
+
     imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(1,1),
-                 ngrids=1,
-                 cbar_mode="single",
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
                  cbar_location='right',
                  cbar_pad="2%",
                  cbar_size='3%',
-                 axes_pad=0,
+                 axes_pad=1,
                  axes_class=(wcs.Axes,
                              dict(header=header)),
-                 aspect=False,
+                 aspect=True,
                  label_mode='L',
-                 share_all=False)
+                 share_all=True)
 
+    # ------------------
+    # NHI image
+    # ------------------
     # create axes
     ax = imagegrid[0]
-    cmap = cm.winter # colormap
+    cmap = cm.pink # colormap
     # show the image
     im = ax.imshow(nhi_image,
             interpolation='nearest',origin='lower',
-            cmap=cmap,)
+            cmap=cmap,
+            #norm=matplotlib.colors.LogNorm()
+            )
 
     # Asthetics
     ax.set_display_coord_system("fk4")
@@ -153,8 +167,6 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
 
     ax.set_xlabel('Right Ascension (J2000)',)
     ax.set_ylabel('Declination (J2000)',)
-    if title is not None:
-    	ax.set_title(title)
 
     # colorbar
     cb = ax.cax.colorbar(im)
@@ -176,21 +188,77 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     for core in cores:
         pix_coords = cores[core]['center_pixel']
 
-        ax.scatter(pix_coords[0],pix_coords[1], color='k', s=200, marker='+',
+        anno_color = (0.3, 0.5, 1)
+
+        ax.scatter(pix_coords[0],pix_coords[1],
+                color=anno_color,
+                s=200,
+                marker='+',
                 linewidths=2)
 
         ax.annotate(core,
                 xy=[pix_coords[0], pix_coords[1]],
                 xytext=(5,5),
                 textcoords='offset points',
-                color='k')
+                color=anno_color)
 
         if boxes:
             rect = ax.add_patch(Polygon(
                 cores[core]['box_vertices'][:, ::-1],
                     facecolor='none',
-                    edgecolor='k' ))
+                    edgecolor=anno_color))
 
+    # ------------------
+    # Av image
+    # ------------------
+    if av_image is not None:
+        # create axes
+        ax = imagegrid[1]
+        cmap = cm.pink # colormap
+        # show the image
+        im = ax.imshow(av_image,
+                interpolation='nearest',origin='lower',
+                cmap=cmap,
+                #norm=matplotlib.colors.LogNorm()
+                )
+
+        # Asthetics
+        ax.set_display_coord_system("fk4")
+        ax.set_ticklabel_type("hms", "dms")
+
+        ax.set_xlabel('Right Ascension (J2000)',)
+        ax.set_ylabel('Declination (J2000)',)
+
+        # colorbar
+        cb = ax.cax.colorbar(im)
+        cmap.set_bad(color='w')
+        # plot limits
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[2])
+            ax.set_ylim(limits[1],limits[3])
+
+        # Plot Av contours
+        if contour_image is not None:
+            ax.contour(contour_image, levels=contours, colors='r')
+
+        # Write label to colorbar
+        cb.set_label_text(r'$A_V$ (mag)',)
+
+        # Convert sky to pix coordinates
+        wcs_header = pywcs.WCS(header)
+        for core in cores:
+            pix_coords = cores[core]['center_pixel']
+
+            anno_color = (0.3, 0.5, 1)
+
+            if boxes:
+                rect = ax.add_patch(Polygon(
+                    cores[core]['box_vertices'][:, ::-1],
+                        facecolor='none',
+                        edgecolor=anno_color))
+
+    if title is not None:
+        fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
         plt.savefig(savedir + filename)
     if show:
@@ -250,46 +318,6 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     return cores
 
-def subtract_background(image, degree=1):
-
-    import itertools
-
-    # Generate Data...
-    numdata = 100
-    x = np.linspace(0, image.shape[0], num=image.shape[0] + 1)
-    y = np.linspace(1, image.shape[1], num=image.shape[1] + 1)
-
-    # Fit a 3rd order, 2d polynomial
-    m = polyfit2d(x,y,z)
-
-    # Evaluate it on a grid...
-    nx, ny = 20, 20
-    xx, yy = np.meshgrid(np.linspace(x.min(), x.max(), nx),
-                         np.linspace(y.min(), y.max(), ny))
-    zz = polyval2d(xx, yy, m)
-
-    # Plot
-    plt.imshow(zz, extent=(x.min(), y.max(), x.max(), y.min()))
-    plt.scatter(x, y, c=z)
-    plt.show()
-
-def polyfit2d(x, y, z, order=3):
-    ncols = (order + 1)**2
-    G = np.zeros((x.size, ncols))
-    ij = itertools.product(range(order+1), range(order+1))
-    for k, (i,j) in enumerate(ij):
-        G[:,k] = x**i * y**j
-    m, _, _, _ = np.linalg.lstsq(G, z)
-    return m
-
-def polyval2d(x, y, m):
-    order = int(np.sqrt(len(m))) - 1
-    ij = itertools.product(range(order+1), range(order+1))
-    z = np.zeros_like(x)
-    for a, (i,j) in zip(m, ij):
-        z += a * x**i * y**j
-    return z
-
 def main():
     ''' Executes script.
     '''
@@ -305,17 +333,18 @@ def main():
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
     figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
     core_dir = output_dir + 'core_arrays/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # Load hi fits file
     hi_image, hi_header = pf.getdata(hi_dir + \
-            'taurus_galfa_cube_bin_3.7arcmin.fits', header=True)
+            'taurus_hi_galfa_cube_regrid_planckres.fits', header=True)
     h = hi_header
 
     # Load av fits file
-    av_image, av_header = pf.getdata(av_dir + 'taurus_av_k09_regrid.fits',
+    av_image, av_header = pf.getdata(av_dir + \
+                'taurus_av_planck_5arcmin.fits',
             header=True)
 
     # make velocity axis for hi cube
@@ -425,12 +454,7 @@ def main():
                         height = box_height,
                         angle = box_angle,)
 
-        #print(cores[core]['box_vertices'])
-        #print core, xy, box_width, box_height, box_angle
-
         mask[mask > 1] = 1
-
-        #nhi_image[mask == 0] = np.nan
 
         # trim hi_image to av_image size
         nhi_image_trim = np.ma.array(nhi_image,
@@ -439,13 +463,24 @@ def main():
         # Plot
         figure_types = ['pdf', 'png']
         for figure_type in figure_types:
+            # N(HI) alone
             plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
-                    contour_image=av_image, contours=[5,10,15],
-                    boxes=True, cores = cores, limits=[128,37,308,206],
+                    #contour_image=av_image, contours=[5,10,15],
+                    boxes=True, cores = cores, limits=[50,37,200,160],
                     title='Taurus: N(HI) map with core boxed-regions.',
                     savedir=figure_dir, filename='taurus_nhi_cores_map.%s' % \
                             figure_type,
-                    show=False)
+                    show=0)
+            # N(HI) + Av
+            plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
+                    av_image=av_image,
+                    boxes=True, cores = cores, limits=[50,37,200,160],
+                    title='Taurus: N(HI) and $A_{V}$ maps ' + \
+                            'with core boxed-regions.',
+                    savedir=figure_dir,
+                    filename='taurus_nhi_av_cores_map.%s' % \
+                            figure_type,
+                    show=0)
 
 if __name__ == '__main__':
     main()

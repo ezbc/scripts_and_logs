@@ -1,113 +1,63 @@
+import numpy as np
+import matplotlib.pyplot as plt
 
+def polyfit2d(x, y, z, degree=1):
 
-def main():
-    # Import external modules
-    import numpy as np
-    import mygeometry as myg
-
-    reload(myg)
-
-    image = np.random.random((10,20))
-    angle = 30.
-    xy = (5,10)
-    width = 1
-    height = 5
-
-    masked_image = myg.get_rectangular_mask(image, xy[0], xy[1], width=width,
-            height=height, angle=angle)
-
-def get_rect(x, y, width, height, angle):
-
-    ''' Returns four points of a rotated rectangle.
-
-    Author: http://stackoverflow.com/questions/12638790/drawing-a-rectangle-inside-a-2d-numpy-array
-
-    Parameters
-    ----------
-    x, y : int
-        x and y positions of rectangle
-    width : float
-        Width of rectangle.
-    height : float
-        Height of rectangle.
-    angle : float
-        Angle of rotation in degrees clockwise from East.
+    ''' 2D polynomial fit to z at the given x and y coordinates. z(x,y) =
+    p[0] * x**deg + p[1] * y**deg + ... + p[deg].
     '''
 
-    # Create simple rectangle
-    rect = np.array([(0, 0), (width, 0), (width, height), (0, height), (0, 0)])
-    theta = (np.pi / 180.0) * angle
+    from scipy.optimize import curve_fit
 
-    # Define four corners of rotated rectangle
-    R = np.array([[np.cos(theta), -np.sin(theta)],
-                  [np.sin(theta), np.cos(theta)]])
-    offset = np.array([x, y])
-    transformed_rect = np.dot(rect, R) + offset
+    popt, pcov = curve_fit(poly2d_fit, (x, y), z)
 
-    return transformed_rect
+    return popt, pcov
 
-def point_in_polygon(target, poly):
+def poly2d((x, y), coeffs=(0, 1, 1), degree=1):
 
-    """x,y is the point to test. poly is a list of tuples comprising the
-    polygon."""
+    if len(coeffs) != 2 * degree + 1:
+        raise ValueError('Coeffslength must be 2*degree + 1')
+    else:
+    	pass
 
-    from collections import namedtuple
+    z = coeffs[0] * np.ones(x.shape)
 
-    point = namedtuple("Point", ("x", "y"))
-    line = namedtuple("Line", ("p1", "p2"))
-    target = point(*target)
+    for i in xrange(1, degree + 1, 2):
+        z += coeffs[i] * x**i + coeffs[i + 1] * y**i
 
-    inside = False
-    # Build list of coordinate pairs
-    # First, turn it into named tuples
+    return z.ravel()
 
-    poly = map(lambda p: point(*p), poly)
+def poly2d_fit((x, y), a=0, b=1, c=1):
 
-    # Make two lists, with list2 shifted forward by one and wrapped around
-    list1 = poly
-    list2 = poly[1:] + [poly[0]]
-    poly = map(line, list1, list2)
+    return poly2d((x,y), coeffs=(a, b, c), degree=1)
 
-    for l in poly:
-        p1 = l.p1
-        p2 = l.p2
+shape = (10, 10)
 
-        if p1.y == p2.y:
-            # This line is horizontal and thus not relevant.
-            continue
-        if max(p1.y, p2.y) < target.y <= min(p1.y, p2.y):
-            # This line is too high or low
-            continue
-        if target.x < max(p1.x, p2.x):
-            # Ignore this line because it's to the right of our point
-            continue
-        # Now, the line still might be to the right of our target point, but
-        # still to the right of one of the line endpoints.
-        rise = p1.y - p2.y
-        run =  p1.x - p2.x
-        try:
-            slope = rise/float(run)
-        except ZeroDivisionError:
-            slope = float('inf')
+x = np.linspace(0, shape[0], shape[0])
+y = np.linspace(0, shape[1], shape[1])
 
-        # Find the x-intercept, that is, the place where the line we are
-        # testing equals the y value of our target point.
+x, y = np.meshgrid(x,y)
 
-        # Pick one of the line points, and figure out what the run between it
-        # and the target point is.
-        run_to_intercept = target.x - p1.x
-        x_intercept = p1.x + run_to_intercept / slope
-        if target.x < x_intercept:
-            # We almost crossed the line.
-            continue
+z = poly2d((x, y), coeffs=(1,15,5))
 
-        inside = not inside
+z_noisy = z + 15 * np.random.normal(size=z.shape)
 
-    return inside
+print z
 
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.imshow(z_noisy.reshape(10, 10))
+fig.show()
 
-if __name__ == '__main__':
-    main()
+popt, pcov = polyfit2d(x, y, z_noisy)
 
+z_fit = poly2d_fit((x, y), *popt)
+
+print z_fit
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.imshow(z_fit.reshape(10, 10))
+fig.show()
 
 

@@ -67,7 +67,9 @@ def plot_pdf(av_image, limits=None, savedir='./', filename=None, show=True,
     bin_centers = np.append(bin_centers,
             bin_centers[-1] + (bin_centers[-1] - bin_centers[-2]))
 
-    bin_centers = np.log(bin_centers)
+    # Normalize the bins
+    mean_loc = np.argmin(np.abs(bin_centers - av_image_nonans.mean()))
+    bin_centers = np.log(bin_centers / bin_centers[mean_loc])
 
     ax.errorbar(
         bin_centers,
@@ -82,7 +84,17 @@ def plot_pdf(av_image, limits=None, savedir='./', filename=None, show=True,
     if fit_gaussian:
         def gauss(x, a, x0, sigma):
             return a * np.exp(-(x - x0)**2 / (2 * sigma**2))
-        popt, pcov = curve_fit(gauss, bin_centers, n, p0=[200, 1, 2])
+
+        indices = np.where((bin_centers > -1.5) & \
+                                       (bin_centers < 1))
+
+        bin_centers_crop, n_crop = bin_centers[indices], n[indices]
+
+        popt, pcov = curve_fit(gauss,
+                               bin_centers_crop,
+                               n_crop,
+                               p0=[200, 0, 1],
+                               maxfev=1000000)
         ax.plot(bin_centers,
                 gauss(bin_centers, *popt),
                 color = 'r')
@@ -108,10 +120,148 @@ def plot_pdf(av_image, limits=None, savedir='./', filename=None, show=True,
     	ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel(r'ln(A$_{\rm V}$ (mag))',)
+    ax.set_xlabel(r'ln(A$_{\rm V}$ / $\bar{\rm A}_{\rm V}$ (mag))',)
     ax.set_ylabel(r'N',)
     ax.set_title(title)
     ax.grid(True)
+
+    if filename is not None:
+        plt.savefig(savedir + filename,bbox_inches='tight')
+    if show:
+        fig.show()
+
+def plot_pdfs(av_images, limits=None, savedir='./', filename=None, show=True,
+        scale=(0,0), n_bins=100, fit_gaussian=True, returnimage=False,
+        title='', core_names=''):
+
+    ''' Plots a probability distribution function of an image.
+
+    '''
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from scipy.optimize import curve_fit
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (10, 10),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    n = int(np.ceil(len(av_images)**0.5))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(n, n),
+                 ngrids=len(av_images),
+                 axes_pad=0.25,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True)
+
+    for j, av_image in enumerate(av_images):
+        ax = imagegrid[j]
+
+        # Drop the NaNs from the images
+        indices = np.where(av_image == av_image)
+        av_image_nonans = av_image[indices]
+
+        # Derive the histograms
+        bin_edges = np.logspace(-3, 3, num=n_bins, base=np.e)
+        n = np.zeros(n_bins - 1)
+
+        for i in xrange(n_bins - 1):
+            bin_count = len(av_image_nonans[(av_image_nonans > bin_edges[i]) & \
+                                        (av_image_nonans < bin_edges[i + 1])])
+            n[i] = bin_count
+
+        bin_centers = 0.5*(bin_edges[1:] + bin_edges[:-1])
+
+        n = np.append(n, 0)
+        bin_centers = np.append(bin_centers,
+                bin_centers[-1] + (bin_centers[-1] - bin_centers[-2]))
+
+        # Normalize the bins
+        mean_loc = np.argmin(np.abs(bin_centers - av_image_nonans.mean()))
+        bin_centers = np.log(bin_centers / bin_centers[mean_loc])
+
+        ax.errorbar(
+            bin_centers,
+            n,
+            yerr = n**0.5,
+            marker = '.',
+            color = 'k',
+            drawstyle = 'steps-mid'
+        )
+
+        # Fit a gausssian to the distribution
+        if fit_gaussian:
+            def gauss(x, a, x0, sigma):
+                return a * np.exp(-(x - x0)**2 / (2 * sigma**2))
+
+            indices = np.where((bin_centers > -1.5) & \
+                                           (bin_centers < 1))
+
+            indices = np.where(bin_centers == bin_centers)
+
+            bin_centers_crop, n_crop = bin_centers[indices], n[indices]
+
+            popt, pcov = curve_fit(gauss,
+                                   bin_centers_crop,
+                                   n_crop,
+                                   p0=[200, 0, 1],
+                                   maxfev=1000000)
+            ax.plot(bin_centers,
+                    gauss(bin_centers, *popt),
+                    color = 'r')
+
+        try:
+            if scale[0] == 0:
+                x_scale = 'linear'
+            elif scale[0] == 1:
+                x_scale = 'log'
+            if scale[1] == 0:
+                y_scale = 'linear'
+            elif scale[1] == 1:
+                y_scale = 'log'
+        except IndexError('Scale must be tuple with 2 integer elements.'):
+            pass
+
+        ax.set_xscale(x_scale, nonposx = 'clip')
+        ax.set_yscale(y_scale, nonposy = 'clip')
+
+
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        # Adjust asthetics
+        ax.set_xlabel(r'ln(A$_{\rm V}$ / $\bar{\rm A}_{\rm V}$)',)
+        ax.set_ylabel(r'N',)
+        ax.set_title(core_names[j])
+        ax.grid(True)
 
     if filename is not None:
         plt.savefig(savedir + filename,bbox_inches='tight')
@@ -263,6 +413,12 @@ def main():
     av_data_k09, av_header = load_fits(av_dir + 'taurus_av_k09_regrid.fits',
             return_header=True)
 
+    av_data_k09_orig, av_header = load_fits(av_dir + \
+                                          'taurus_av_kainulainen2009.fits',
+                                       return_header=True)
+
+    av_data_k09_orig[av_data_k09_orig == -1] = np.NaN
+
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, h = load_fits(av_dir + \
                 'taurus_planck_av_regrid.fits',
@@ -321,19 +477,45 @@ def main():
 
         figure_types = ['pdf', 'png']
         for figure_type in figure_types:
-            plot_pdf(av_data_planck,
-                    limits = [-2, 3.1, 1, 10**5],
-                    savedir=figure_dir,
-                    scale=(0,1),
-                    filename='taurus_av_pdf_global_planck.%s' % \
-                            figure_type,
-                    title=r'A$_{\rm V}$ PDF of ' + \
-                            'Taurus',
-                    show=False)
+            if 1:
+                plot_pdf(av_data_planck,
+                        limits = [-2, 3.1, 1, 10**5],
+                        savedir=figure_dir + 'panel_cores/',
+                        scale=(0,1),
+                        filename='taurus_av_pdf_global_planck.%s' % \
+                                figure_type,
+                        title=r'A$_{\rm V}$ PDF of ' + \
+                                'Taurus',
+                        show=False)
+
+                plot_pdf(av_data_k09,
+                        limits = [-2, 3.1, 1, 10**5],
+                        savedir=figure_dir + 'panel_cores/',
+                        scale=(0,1),
+                        filename='taurus_av_pdf_global_k09.%s' % \
+                                figure_type,
+                        title=r'A$_{\rm V}$ PDF of ' + \
+                                'Taurus',
+                        show=False)
+            if 1:
+                # Create PDF with original Av image from Jouni
+                plot_pdfs((av_data_k09_orig, av_data_k09),
+                        limits = [-2, 3.1, 1, 10**5],
+                        savedir=figure_dir + 'panel_cores/',
+                        scale=(0,1),
+                        core_names=('Original', 'Planck Regrid'),
+                        filename='taurus_av_pdf_global_k09_orig_vs_regrid.%s'%\
+                                figure_type,
+                        title=r'A$_{\rm V}$ PDF of Taurus',
+                        show=False)
 
         cores = load_ds9_region(cores,
                 filename_base = region_dir + 'taurus_av_boxes_',
                 header = h)
+
+        av_data_list_k09 = []
+        av_data_list_planck = []
+        core_name_list = []
 
         for core in cores:
             print('Calculating PDF for core %s' % core)
@@ -354,17 +536,42 @@ def main():
             av_data_k09_sub = av_data_k09[indices]
             av_data_planck_sub = av_data_planck[indices]
 
-            figure_types = ['pdf', 'png']
+            if 1:
+                figure_types = ['pdf', 'png']
+                for figure_type in figure_types:
+                    plot_pdf(av_data_planck_sub,
+                            limits = [-1,4,1,1000],
+                            savedir=figure_dir + 'individual_cores/',
+                            scale=(0,1),
+                            filename='taurus_av_pdf_' + core + '_planck.%s' % \
+                                    figure_type,
+                            title=r'A$_{\rm V}$ PDF of ' + \
+                                    'Taurus Core ' + core,
+                            show=False)
+
+            av_data_list_k09.append(av_data_k09_sub)
+            av_data_list_planck.append(av_data_planck_sub)
+            core_name_list.append(core)
+
+        if 1:
             for figure_type in figure_types:
-                plot_pdf(av_data_planck_sub,
-                        limits = [-1,4,1,1000],
-                        savedir=figure_dir,
-                        scale=(0,1),
-                        filename='taurus_av_pdf' + core + '_planck.%s' % \
-                                figure_type,
-                        title=r'A$_{\rm V}$ PDF of ' + \
-                                'Taurus Core ' + core,
-                        show=False)
+                plot_pdfs(av_data_list_k09,
+                          limits = [-2,2.9,1,100],
+                          savedir=figure_dir + 'panel_cores/',
+                          scale=(0,1),
+                          filename='taurus_av_pdfs_k09.%s' % figure_type,
+                          title=r'A$_{\rm V}$ PDF of Taurus Core ',
+                          core_names=core_name_list,
+                          show=False)
+
+                plot_pdfs(av_data_list_planck,
+                          limits = [-2,2.9,1,100],
+                          savedir=figure_dir + 'panel_cores/',
+                          scale=(0,1),
+                          filename='taurus_av_pdfs_planck.%s' % figure_type,
+                          title=r'A$_{\rm V}$ PDF of Taurus Core ',
+                          core_names=core_name_list,
+                          show=False)
 
 if __name__ == '__main__':
     main()
