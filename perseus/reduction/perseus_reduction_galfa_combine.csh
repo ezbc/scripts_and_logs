@@ -1,6 +1,6 @@
 #!/bin/csh
 
-cd /d/bip3/ezbc/perseus/data/galfa/
+cd /d/bip3/ezbc/perseus/data/hi/archive_files/
 
 foreach filename (GALFA*.fits)
   set base=`basename ${filename} .fits`
@@ -18,13 +18,12 @@ foreach filename (GALFA*.mir)
 end
 
 imcomb "in=*DEC_060*.sub.mir,*DEC_052*.sub.mir,*DEC_044*.sub.mir,*DEC_036*.sub.mir"\
-out=perseus_galfa_cube_sub.mir
+out=../perseus_hi_galfa_cube.mir
 
-imcomb "in=*DEC*.sub.mir" \
-out=perseus_galfa_cube_sub.mir
+cd ..
 
-regrid in=perseus_galfa_cube_sub.mir \
-out=perseus_galfa_cube_sub_regrid.mir \
+regrid in=perseus_hi_galfa_cube.mir \
+out=perseus_hi_galfa_cube_galcoord.mir \
 op=galeqsw
 
 #imcomb "in=*.mir" out=perseus.galfa.cube.mir
@@ -34,10 +33,12 @@ foreach filename (*galfa*.mir)
   puthd in=${filename}/restfreq value=1.420405752E+09 type='double'
 end
 
-fits in=perseus_galfa_cube_sub_regrid.mir \
-    out=perseus_galfa_cube_sub_regrid.fits op=xyout
+fits in=perseus_hi_galfa_cube.mir \
+    out=perseus_hi_galfa_cube.fits \
+    op=xyout
 
-fits in=perseus_galfa_cube_mir out=perseus_galfa_cube.fits \
+fits in=perseus_hi_galfa_cube_galcoord.mir \
+    out=perseus_hi_galfa_cube_galcoord.fits \
     op=xyout
 
 

@@ -6,6 +6,7 @@
 # GALFA HI                      3.7'            3.363
 # Kainulainen et al. (2009) Av  2.4'            4.386
 # Pineda et al. (2010) Av       3.3'            3.75
+# CfA CO Dame et al. (2001)     8'              No smoothing
 
 cd /d/bip3/ezbc/taurus/data
 
@@ -24,6 +25,10 @@ fits in=hi/taurus_hi_galfa_cube.fits \
 
 fits in=av/taurus_av_planck.fits \
     out=av/taurus_av_planck.mir \
+    op=xyin
+
+fits in=co/taurus_cfa_cube_eqcoord.fits \
+    out=co/taurus_co_cfa_cube.mir \
     op=xyin
 
 # Regrid Planck image to have pixels = 1 resolution element = 5'
@@ -65,6 +70,11 @@ regrid in=hi/taurus_hi_galfa_cube_smooth_planckres.mir \
     tin=av/taurus_av_planck_5arcmin.mir \
     axes=1,2
 
+regrid in=co/taurus_co_cfa_cube.mir \
+    out=co/taurus_co_cfa_cube_regrid_planckres.mir \
+    tin=av/taurus_av_planck_5arcmin.mir \
+    axes=1,2
+
 # write fits images out
 fits in=av/taurus_av_planck_5arcmin.mir \
     out=av/taurus_av_planck_5arcmin.fits \
@@ -80,6 +90,10 @@ fits in=av/taurus_av_p10_regrid_planckres.mir \
 
 fits in=hi/taurus_hi_galfa_cube_regrid_planckres.mir \
     out=hi/taurus_hi_galfa_cube_regrid_planckres.fits \
+    op=xyout
+
+fits in=co/taurus_co_cfa_cube_regrid_planckres.mir \
+    out=co/taurus_co_cfa_cube_regrid_planckres.fits \
     op=xyout
 
 
