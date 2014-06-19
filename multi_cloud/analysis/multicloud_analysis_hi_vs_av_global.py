@@ -139,7 +139,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 12
+    fontScale = 10
     params = {#'backend': .pdf',
               'axes.labelsize': fontScale,
               'axes.titlesize': fontScale,
@@ -150,7 +150,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              'figure.figsize': (10, 10),
+              'figure.figsize': (7, 7),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -555,7 +555,6 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
 def main():
 
-    import grid
     import numpy as np
     from os import system,path
     import myclumpfinder as clump_finder
@@ -563,9 +562,7 @@ def main():
     import mygeometry as myg
     reload(myg)
 
-
-
-    cloud_list = ('taurus', 'perseus', 'california')
+    cloud_list = ('taurus', 'perseus', 'california', 'perseus')
     data_dict = {}
 
     for i, cloud in enumerate(cloud_list):
@@ -611,11 +608,15 @@ def main():
                     load_fits(hi_dir + filename,
                         return_header=True)
 
+        velocity_range = [-100, 100]
+        if i == 3:
+            velocity_range = [-5, 15]
+
         # calculate nhi and error maps, write nhi map to fits file
         cloud_dict['nhi_image'], cloud_dict['nhi_image_error'] = \
                 calculate_nhi(cube=cloud_dict['hi_data'],
                     noise_cube=cloud_dict['noise_cube'],
-                    velocity_range=[-100,100],
+                    velocity_range=velocity_range,
                     return_nhi_error=True,
                     fits_filename=hi_dir + '%s_nhi_galfa_5arcmin.fits' % cloud,
                     fits_error_filename=hi_dir + \
@@ -630,8 +631,9 @@ def main():
                     sd_factor=1/1.25)
 
         # Write the cloud properties to the main dictionary
+        if i == 3:
+        	cloud = 'perseus\nlee12'
         data_dict[cloud] = cloud_dict
-
 
     sd_image_list = []
     av_image_list = []
@@ -647,14 +649,16 @@ def main():
         av_image_error_list.append(data_dict[cloud]['av_data_error'])
 
     #figure_types = ['png', 'pdf']
-    figure_types = ('png',)
+    figure_types = ('png', 'pdf')
     for figure_type in figure_types:
+        limits = [-3, 40, 0, 32]
+
         # scatter plot
         plot_sd_vs_av_grid(sd_image_list,
                         av_image_list,
                         sd_image_errors = sd_image_error_list,
                         av_image_errors = av_image_error_list,
-                        limits = [-3,40,4,32],
+                        limits=limits,
                         savedir=figure_dir,
                         scale=('linear', 'linear'),
                         filename='multicloud_sd_vs_av_scatter_planck.%s'%\
@@ -669,7 +673,7 @@ def main():
                         av_image_list,
                         sd_image_errors = sd_image_error_list,
                         av_image_errors = av_image_error_list,
-                        limits = [-3,40,4,32],
+                        limits=limits,
                         savedir=figure_dir,
                         scale=('linear', 'linear'),
                         plot_type='hexbin',

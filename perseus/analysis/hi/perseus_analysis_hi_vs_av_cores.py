@@ -404,6 +404,232 @@ def plot_sd_vs_av(sd_image, av_image,
     if returnimage:
         return correlations_image
 
+def plot_sd_vs_av_grid(sd_images, av_images,
+        sd_image_errors=None, av_image_errors=None, limits=None,
+        savedir='./', filename=None, show=True, scale=('linear', 'linear'),
+        returnimage=False, title=None, core_names=''):
+    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
+    and an Av image.
+    '''
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (10, 10),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    n = int(np.ceil(len(av_images)**0.5))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(n, n),
+                 ngrids=len(av_images),
+                 axes_pad=0.25,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True)
+
+    for i in xrange(len(av_images)):
+    	sd_image = sd_images[i]
+    	sd_image_error = sd_image_errors[i]
+    	av_image = av_images[i]
+    	av_image_error = av_image_errors[i]
+
+        # Drop the NaNs from the images
+        indices = np.where((sd_image == sd_image) &\
+                           (sd_image_error == sd_image_error) &\
+                           (av_image == av_image) &\
+                           (av_image_error == av_image_error) &\
+                           (av_image > 0) &\
+                           (sd_image > 0))
+
+        sd_image_nonans = sd_image[indices]
+        av_image_nonans = av_image[indices]
+
+        if type(sd_image_error) is np.ndarray:
+            sd_image_error_nonans = sd_image_error[indices]
+        else:
+            sd_image_error_nonans = np.array(sd_image_error[indices])
+
+        if type(av_image_error) is np.ndarray:
+            av_image_error_nonans = av_image_error[indices]
+        else:
+            av_image_error_nonans = av_image_error * \
+                    np.ones(av_image[indices].shape)
+
+        # Create plot
+        ax = imagegrid[i]
+
+        image = ax.errorbar(av_image_nonans.ravel(),
+                sd_image_nonans.ravel(),
+                xerr=(av_image_error_nonans.ravel()),
+                yerr=(sd_image_error_nonans.ravel()),
+                alpha=0.3,
+                color='k',
+                marker='^',ecolor='k',linestyle='none',
+                markersize=2
+                )
+
+        ax.set_xscale(scale[0], nonposx = 'clip')
+        ax.set_yscale(scale[1], nonposy = 'clip')
+
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        # Adjust asthetics
+        ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
+        ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_title(core_names[i])
+        ax.grid(True)
+
+    if title is not None:
+    	fig.suptitle(title, fontsize=fontScale*1.5)
+    if filename is not None:
+        plt.savefig(savedir + filename, bbox_inches='tight')
+    if show:
+        fig.show()
+    if returnimage:
+        return correlations_image
+
+def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
+        hi_sd_image_errors=None, h_sd_image_errors=None, limits=None,
+        savedir='./', filename=None, show=True, scale=('linear', 'linear'),
+        returnimage=False, title=None, core_names=''):
+    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
+    and an Av image.
+    '''
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (10, 10),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    n = int(np.ceil(len(h_sd_images)**0.5))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(n, n),
+                 ngrids=len(h_sd_images),
+                 axes_pad=0.25,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True)
+
+    for i in xrange(len(h_sd_images)):
+    	hi_sd_image = hi_sd_images[i]
+    	h_sd_image = h_sd_images[i]
+    	hi_sd_image_error = hi_sd_image_errors[i]
+    	h_sd_image_error = h_sd_image_errors[i]
+
+        # Drop the NaNs from the images
+        indices = np.where((hi_sd_image == hi_sd_image) &\
+                           (hi_sd_image_error == hi_sd_image_error)&\
+                           (h_sd_image == h_sd_image)&\
+                           (h_sd_image_error == h_sd_image_error)&\
+                           (h_sd_image > 0) &\
+                           (hi_sd_image > 0))
+
+        hi_sd_image_nonans = hi_sd_image[indices]
+        h_sd_image_nonans = h_sd_image[indices]
+
+        if type(hi_sd_image_error) is np.ndarray:
+            hi_sd_image_error_nonans = hi_sd_image_error[indices]
+        else:
+            hi_sd_image_error_nonans = np.array(hi_sd_image_error[indices])
+
+        if type(h_sd_image_error) is np.ndarray:
+            h_sd_image_error_nonans = h_sd_image_error[indices]
+        else:
+            h_sd_image_error_nonans = h_sd_image_error * \
+                    np.ones(h_sd_image[indices].shape)
+
+        # Create plot
+        ax = imagegrid[i]
+
+        image = ax.errorbar(h_sd_image_nonans.ravel(),
+                hi_sd_image_nonans.ravel(),
+                xerr=(h_sd_image_error_nonans.ravel()),
+                yerr=(hi_sd_image_error_nonans.ravel()),
+                alpha=0.3,
+                color='k',
+                marker='^',ecolor='k',linestyle='none',
+                markersize=2
+                )
+
+        ax.set_xscale(scale[0], nonposx = 'clip')
+        ax.set_yscale(scale[1], nonposy = 'clip')
+
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        # Adjust asthetics
+        ax.set_xlabel(r'$\Sigma_{HI}$ + $\Sigma_{H_2}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_title(core_names[i])
+        ax.grid(True)
+
+    if title is not None:
+    	fig.suptitle(title, fontsize=fontScale*1.5)
+    if filename is not None:
+        plt.savefig(savedir + filename, bbox_inches='tight')
+    if show:
+        fig.show()
+    if returnimage:
+        return correlations_image
+
 def calculate_nhi(cube = None, velocity_axis = None, velocity_range = [],
         return_nhi_error = True, noise_cube = None,
         velocity_noise_range=[90,100], Tsys = 30., header = None,
@@ -699,7 +925,6 @@ def convert_core_coordinates(cores, header):
         except TypeError:
             do_nothing = True
 
-
     	center_wcs = cores[core]['center_wcs']
 
         # convert centers to pixel coords
@@ -742,6 +967,7 @@ def read_ds9_region(filename):
     # [ra center, dec center, width, height, rotation angle]
 
     return region[0].coord_list
+
 def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     # region[0] in following format:
@@ -789,41 +1015,39 @@ def main():
     # define directory locations
     output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
     figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/perseus/data/2mass/'
-    hi_dir = '/d/bip3/ezbc/perseus/data/galfa/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
     core_dir = output_dir + 'core_arrays/'
     region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load 2mass Av and GALFA HI images, on same grid
-    av_data_2mass, av_header = load_fits(av_dir + \
-                '2mass_av_lee12_planck_regrid.fits',
-            return_header=True)
-    av_data_2mass, av_header = load_fits(av_dir + \
-                'perseus_av_2mass_galfa_regrid.fits',
-            return_header=True)
-
     av_data_planck, av_header = load_fits(av_dir + \
-                '../av/perseus_planck_av_regrid.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
-    hi_data, h = load_fits(hi_dir + 'perseus_galfa_cube_bin_3.7arcmin.fits',
+    av_error_data_planck, av_error_header = load_fits(av_dir + \
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
+
+    av_data_2mass, av_header = load_fits(av_dir + \
+                '/perseus_av_lee12_masked_regrid_planckres.fits',
+            return_header=True)
+
+    hi_data, h = load_fits(hi_dir + \
+                'perseus_hi_galfa_cube_regrid_planckres.fits',
+            return_header=True)
+
+    # mask the planck data with the 2mass image from lee et al. 2012
+    av_data_planck[av_data_2mass != av_data_2mass] = np.NaN
+    av_error_data_planck[av_data_2mass != av_data_2mass] = np.NaN
+
     # make the velocity axis
-    velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
+    velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1)* h['CDELT3'] + \
             h['CRVAL3']
     velocity_axis /= 1000.
 
-    '''
-    nhi_image, h = load_fits(hi_dir + 'perseus_galfa_lee12_masked.fits',
-            return_header=True)
-
-    nhi_image = nhi_image[0,:,:] / 1e20
-
-    nhi_image_error = 0.6 # 1e20 cm^-2
-    '''
-
     # Create N(HI) image from 3.7' res GALFA cube
-    noise_cube_filename = 'perseus_galfa_cube_bin_3.7arcmin_noise.fits'
+    noise_cube_filename = 'perseus_hi_noise_galfa_cube_planckregrid.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -839,24 +1063,22 @@ def main():
         noise_cube = noise_cube,
         velocity_range=[-5,15],
         return_nhi_error=True,
-        #fits_filename = hi_dir + 'perseus_galfa_nhi_3.7arcmin.fits',
-        #fits_error_filename = hi_dir + 'perseus_galfa_nhi_error_3.7arcmin.fits',
         header = h)
 
-    #nh2_image = calculate_nh2(nhi_image = nhi_image,
-    #        av_image = av_data, dgr = 1.1e-1)
-    #nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
-    #        av_image = 0.1, dgr = 1.1e-1)
+    # calculate N(H2) maps
+    nh2_image = calculate_nh2(nhi_image = nhi_image,
+            av_image = av_data_planck, dgr = 1.1e-1)
+    nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
+            av_image = av_error_data_planck, dgr = 1.1e-1)
 
+    # convert to column density to surface density
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
-    #hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
-    hi_sd_image_error = nhi_image_error / 1.25 * np.ones(hi_sd_image.shape)
+    hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
+    h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
+    h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
+    h_sd_image = av_data_planck / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
+    h_sd_image_error = av_error_data_planck / (1.25 * 0.11)
 
-    #h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
-    #h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
-
-    #h_sd_image = av_data / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
-    #h_sd_image_error = 0.1 / (1.25 * 0.11)
 
     cores = {'IC348':
                 {'center_wcs': [(3, 44, 0), (32, 8, 0)],
@@ -902,6 +1124,14 @@ def main():
                 filename_base = region_dir + 'perseus_av_boxes_',
                 header = h)
 
+        hi_sd_image_list = []
+        h_sd_image_list = []
+        av_image_list = []
+        core_name_list = []
+        hi_sd_image_error_list = []
+        h_sd_image_error_list = []
+        av_image_error_list = []
+
         for core in cores:
             print('Calculating for core %s' % core)
 
@@ -920,53 +1150,81 @@ def main():
             indices = np.where(mask == 1)
             av_data_2mass_sub = av_data_2mass[indices]
             av_data_planck_sub = av_data_planck[indices]
+            av_error_data_planck_sub = av_error_data_planck[indices]
             hi_sd_image_sub = hi_sd_image[indices]
             hi_sd_image_error_sub = hi_sd_image_error[indices]
+            h_sd_image_sub = h_sd_image[indices]
+            h_sd_image_error_sub = h_sd_image_error[indices]
 
             av_limits =[0.01,100]
 
             figure_types = ['pdf', 'png']
-            for figure_type in figure_types:
-                plot_sd_vs_av(hi_sd_image_sub, av_data_2mass_sub,
-                        sd_image_error = hi_sd_image_error_sub,
-                        av_image_error = 0.1,
-                        limits = [0.1,20,2,10],
-                        savedir=figure_dir,
-                        plot_type='scatter',
-                        scale='log',
-                        filename='perseus_sd_vs_av_' + core + '_lee12.%s' % \
-                                figure_type,
-                        title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
-                                'Perseus Core ' + core,
-                        show=False)
+            if 0:
+                for figure_type in figure_types:
+                    plot_sd_vs_av(hi_sd_image_sub, av_data_2mass_sub,
+                            sd_image_error = hi_sd_image_error_sub,
+                            av_image_error = 0.1,
+                            limits = [0.1,20,2,10],
+                            savedir=figure_dir,
+                            plot_type='scatter + individual_cores/',
+                            scale='log',
+                            filename='perseus_sd_vs_av_%s_lee12.%s' % \
+                                    (core, figure_type),
+                            title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                                    'Perseus Core ' + core,
+                            show=False)
 
-                plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
-                        sd_image_error = hi_sd_image_error_sub,
-                        av_image_error = 0.1,
-                        limits = [-5,20,2,20],
-                        savedir=figure_dir,
-                        plot_type='scatter',
-                        scale='log',
-                        filename='perseus_sd_vs_av_' + core + '_planck.%s' % \
-                                figure_type,
-                        title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
-                                'Perseus Core ' + core,
-                        show=False)
+                    plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
+                            sd_image_error = hi_sd_image_error_sub,
+                            av_image_error = 0.1,
+                            limits = [-5,20,2,20],
+                            savedir=figure_dir + 'individual_cores/',
+                            plot_type='scatter',
+                            scale='log',
+                            filename='perseus_sd_vs_av_%s_planck.%s' % \
+                                    (core, figure_type),
+                            title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of ' + \
+                                    'Perseus Core ' + core,
+                            show=False)
+
+            hi_sd_image_list.append(hi_sd_image_sub)
+            hi_sd_image_error_list.append(hi_sd_image_error_sub)
+            h_sd_image_list.append(h_sd_image_sub)
+            h_sd_image_error_list.append(h_sd_image_error_sub)
+            av_image_list.append(av_data_planck_sub)
+            av_image_error_list.append(av_error_data_planck_sub)
+            core_name_list.append(core)
+
+        for figure_type in figure_types:
+            plot_sd_vs_av_grid(hi_sd_image_list,
+                            av_image_list,
+                            sd_image_errors = hi_sd_image_error_list,
+                            av_image_errors = av_image_error_list,
+                            limits = [0.1,100,3,10],
+                            savedir=figure_dir + 'panel_cores/',
+                            scale=('log', 'log'),
+                            filename='perseus_sd_vs_av_panels_planck.%s'%\
+                                    figure_type,
+                            show=False,
+                            core_names=core_name_list,
+                            title=r'$\Sigma_{HI}$ vs. Planck A$_{\rm V}$' + \
+                                    ' of Perseus Cores')
+
+            plot_hisd_vs_hsd_grid(hi_sd_image_list,
+                            h_sd_image_list,
+                            hi_sd_image_errors = hi_sd_image_error_list,
+                            h_sd_image_errors = h_sd_image_error_list,
+                            limits = [1, 100, 1, 80],
+                            savedir=figure_dir + 'panel_cores/',
+                            scale=('log', 'log'),
+                            filename='perseus_hisd_vs_hsd_panels_planck.%s'%\
+                                    figure_type,
+                            show=False,
+                            core_names=core_name_list,
+                            title=r'$\Sigma_{HI}$ vs. $\Sigma_{H}$' + \
+                                    ' of Perseus Cores')
 
 
-    # Plot heat map of correlations
-    if False:
-        if correlations is not None:
-            correlations_array = plot_correlations(correlations,
-                    velocity_centers, velocity_widths,
-                    returnimage=True,show=False)
-        if False:
-            # Print best-fit characteristics
-            indices = np.where(cube_correlations_array == \
-                    cube_correlations_array.max())
-            print 'Maximum correlation values: '
-            print str(velocity_centers[indices[0]][0]) + ' km/s center'
-            print str(velocity_widths[indices[1]][0]) + ' km/s width'
 
 if __name__ == '__main__':
     main()

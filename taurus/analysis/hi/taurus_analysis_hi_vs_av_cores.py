@@ -913,6 +913,10 @@ def main():
                 'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
+    av_error_data_planck, av_error_header = load_fits(av_dir + \
+                'taurus_av_error_planck_5arcmin.fits',
+            return_header=True)
+
     #av_data_k09 += - 0.4 # subtracts background of 0.4 mags
     hi_data,h = load_fits(hi_dir + \
                 'taurus_hi_galfa_cube_regrid_planckres.fits',
@@ -938,7 +942,7 @@ def main():
     nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
         velocity_axis=velocity_axis,
         noise_cube = noise_cube,
-        velocity_range=[-100,100],
+        velocity_range=[-5,20],
         return_nhi_error=True,
         fits_filename = hi_dir + 'taurus_nhi_galfa_5arcmin.fits',
         fits_error_filename = hi_dir + 'taurus_nhi_galfa_5arcmin_error.fits',
@@ -955,8 +959,8 @@ def main():
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
     h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
     h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
-    h_sd_image = av_data_k09 / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
-    h_sd_image_error = 0.1 / (1.25 * 0.11)
+    h_sd_image = av_data_planck / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
+    h_sd_image_error = av_error_data_planck / (1.25 * 0.11)
 
     # define core properties
     cores = {'L1495':
@@ -1046,22 +1050,13 @@ def main():
                 header = h)
 
         sd_image_list = []
-        av_image_list = []
-        core_name_list = []
         sd_image_error_list = []
+        core_name_list = []
+        av_image_list = []
         av_image_error_list = []
 
         for core in cores:
             print('Calculating for core %s' % core)
-
-            #indices = cores[core]['box']
-            #nhi_image_sub = get_sub_image(nhi_image, indices)
-            #nhi_image_error_sub = get_sub_image(nhi_image_error, indices)
-            #av_data_k09_sub = get_sub_image(av_data_k09, indices)
-            #hi_sd_image_sub = get_sub_image(hi_sd_image, indices)
-            #hi_sd_image_error_sub = get_sub_image(hi_sd_image_error, indices)
-            av_limits =[0.01,100]
-
 
             # Grab the mask from the DS9 regions
             xy = cores[core]['box_center_pix']
@@ -1078,6 +1073,7 @@ def main():
             indices = np.where(mask == 1)
             av_data_k09_sub = av_data_k09[indices]
             av_data_planck_sub = av_data_planck[indices]
+            av_error_data_planck_sub = av_error_data_planck[indices]
             hi_sd_image_sub = hi_sd_image[indices]
             hi_sd_image_error_sub = hi_sd_image_error[indices]
 
@@ -1111,19 +1107,19 @@ def main():
                             show=False)
 
             sd_image_list.append(hi_sd_image_sub)
-            av_image_list.append(av_data_planck_sub)
-            core_name_list.append(core)
             sd_image_error_list.append(hi_sd_image_error_sub)
-            av_image_error_list.append(0.1)
+            av_image_list.append(av_data_planck_sub)
+            av_image_error_list.append(av_error_data_planck_sub)
+            core_name_list.append(core)
 
         for figure_type in figure_types:
             plot_sd_vs_av_grid(sd_image_list,
                             av_image_list,
                             sd_image_errors = sd_image_error_list,
                             av_image_errors = av_image_error_list,
-                            limits = [0,20,4,16],
+                            #limits = [0,20,4,16],
                             savedir=figure_dir + 'panel_cores/',
-                            scale=('linear', 'linear'),
+                            scale=('log', 'log'),
                             filename='taurus_sd_vs_av_panels_planck.%s'%\
                                     figure_type,
                             show=False,

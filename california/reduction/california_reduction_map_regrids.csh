@@ -15,11 +15,15 @@ fits in=av/california_av_planck.fits \
     out=av/california_av_planck.mir \
     op=xyin
 
+fits in=av/california_av_error_planck.fits \
+    out=av/california_av_error_planck.mir \
+    op=xyin
+
 fits in=hi/california_hi_galfa_cube.fits \
     out=hi/california_hi_galfa_cube.mir \
     op=xyin
 
-fits in=../../taurus/data/co/taurus_cfa_cube_eqcoord.fits \
+fits in=../../california/data/co/california_cfa_cube_eqcoord.fits \
     out=co/california_co_cfa_cube.mir \
     op=xyin
 
@@ -29,6 +33,10 @@ fits in=../../taurus/data/co/taurus_cfa_cube_eqcoord.fits \
 regrid in=av/california_av_planck.mir \
     out=av/california_av_planck_5arcmin.mir \
     desc=74.75,0,-0.08333,159,28.066,0,0.08333,144
+
+regrid in=av/california_av_error_planck.mir \
+    out=av/california_av_error_planck_5arcmin.mir \
+    desc=77.5,0,-0.08333,240,18,0,0.08333,180
 
 # regrid galfa hi image to have lower velocity resolution
 regrid in=hi/california_hi_galfa_cube.mir \
@@ -54,6 +62,10 @@ regrid in=co/california_co_cfa_cube.mir \
 # write fits images out
 fits in=av/california_av_planck_5arcmin.mir \
     out=av/california_av_planck_5arcmin.fits \
+    op=xyout
+
+fits in=av/california_av_error_planck_5arcmin.mir \
+    out=av/california_av_error_planck_5arcmin.fits \
     op=xyout
 
 fits in=hi/california_hi_galfa_cube_regrid_planckres.mir \

@@ -20,11 +20,15 @@ fits in=av/perseus_av_planck.fits \
     out=av/perseus_av_planck.mir \
     op=xyin
 
+fits in=av/perseus_av_error_planck.fits \
+    out=av/perseus_av_error_planck.mir \
+    op=xyin
+
 fits in=hi/perseus_hi_galfa_cube.fits \
     out=hi/perseus_hi_galfa_cube.mir \
     op=xyin
 
-fits in=../../taurus/data/co/taurus_cfa_cube_eqcoord.fits \
+fits in=../../perseus/data/co/perseus_cfa_cube_eqcoord.fits \
     out=co/perseus_co_cfa_cube.mir \
     op=xyin
 
@@ -33,6 +37,10 @@ fits in=../../taurus/data/co/taurus_cfa_cube_eqcoord.fits \
 # 5' / 60"/deg = 0.08333 deg
 regrid in=av/perseus_av_planck.mir \
     out=av/perseus_av_planck_5arcmin.mir \
+    desc=59.75,0,-0.08333,180,26.05,0,0.08333,132
+
+regrid in=av/perseus_av_error_planck.mir \
+    out=av/perseus_av_error_planck_5arcmin.mir \
     desc=59.75,0,-0.08333,180,26.05,0,0.08333,132
 
 # regrid galfa hi image to have lower velocity resolution
@@ -67,6 +75,10 @@ regrid in=co/perseus_co_cfa_cube.mir \
 # write fits images out
 fits in=av/perseus_av_planck_5arcmin.mir \
     out=av/perseus_av_planck_5arcmin.fits \
+    op=xyout
+
+fits in=av/perseus_av_error_planck_5arcmin.mir \
+    out=av/perseus_av_error_planck_5arcmin.fits \
     op=xyout
 
 fits in=av/perseus_av_lee12_masked_regrid_planckres.mir \

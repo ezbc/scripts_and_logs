@@ -27,6 +27,10 @@ fits in=av/taurus_av_planck.fits \
     out=av/taurus_av_planck.mir \
     op=xyin
 
+fits in=av/taurus_av_error_planck.fits \
+    out=av/taurus_av_error_planck.mir \
+    op=xyin
+
 fits in=co/taurus_cfa_cube_eqcoord.fits \
     out=co/taurus_co_cfa_cube.mir \
     op=xyin
@@ -36,6 +40,10 @@ fits in=co/taurus_cfa_cube_eqcoord.fits \
 # 5' / 60"/deg = 0.08333 deg
 regrid in=av/taurus_av_planck.mir \
     out=av/taurus_av_planck_5arcmin.mir \
+    desc=77.5,0,-0.08333,240,18,0,0.08333,180
+
+regrid in=av/taurus_av_error_planck.mir \
+    out=av/taurus_av_error_planck_5arcmin.mir \
     desc=77.5,0,-0.08333,240,18,0,0.08333,180
 
 # regrid galfa hi image to have lower velocity resolution
@@ -78,6 +86,10 @@ regrid in=co/taurus_co_cfa_cube.mir \
 # write fits images out
 fits in=av/taurus_av_planck_5arcmin.mir \
     out=av/taurus_av_planck_5arcmin.fits \
+    op=xyout
+
+fits in=av/taurus_av_error_planck_5arcmin.mir \
+    out=av/taurus_av_error_planck_5arcmin.fits \
     op=xyout
 
 fits in=av/taurus_av_k09_regrid_planckres.mir \

@@ -92,14 +92,14 @@ def main():
     (data, header) = tau353_to_ebv(data, header)
     write_data(data, header, planck_dir + 'perseus_planck_ebv.fits')
     (data, header) = ebv2av(data, header)
-    write_data(data, header, av_dir + 'perseus_planck_av.fits')
+    write_data(data, header, av_dir + 'perseus_av_planck.fits')
 
     (data, header) = extract_data(datatype = 'tau353err')
     write_data(data, header, planck_dir + 'perseus_planck_tau353_error.fits')
     (data, header) = tau353_to_ebv(data, header)
     write_data(data, header, planck_dir + 'perseus_planck_ebv_error.fits')
     (data, header) = ebv2av(data, header)
-    write_data(data, header, av_dir + 'perseus_planck_av_error.fits')
+    write_data(data, header, av_dir + 'perseus_av_error_planck.fits')
 
 if __name__ == '__main__':
 	main()
