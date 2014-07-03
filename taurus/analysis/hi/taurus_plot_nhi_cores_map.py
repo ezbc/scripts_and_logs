@@ -468,7 +468,8 @@ def main():
                     #contour_image=av_image, contours=[5,10,15],
                     boxes=True, cores = cores, limits=[50,37,200,160],
                     title='Taurus: N(HI) map with core boxed-regions.',
-                    savedir=figure_dir, filename='taurus_nhi_cores_map.%s' % \
+                    savedir=figure_dir,
+                    filename='taurus_nhi_cores_map.%s' % \
                             figure_type,
                     show=0)
             # N(HI) + Av

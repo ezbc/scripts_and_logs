@@ -1,3 +1,4 @@
+
 #!/usr/bin/python
 
 ''' Calculates the N(HI) / Av correlation for the Taurus molecular cloud.
@@ -6,123 +7,9 @@
 import pyfits as pf
 import numpy as np
 
-def plot_correlations(correlations,velocity_centers,velocity_widths,
-        savedir='./', filename=None,show=True, returnimage=False):
-    ''' Plots a heat map of correlation values as a function of velocity width
-    and velocity center.
-    '''
 
-    # Import external modules
-    import numpy as np
-    import math
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(8,2.5))
-
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(1,1),
-                 ngrids=1,
-                 cbar_mode="single",
-                 cbar_location='right',
-                 cbar_pad="0.3%",
-                 cbar_size='6%',
-                 axes_pad=0,
-                 aspect=False,
-                 label_mode='L',
-                 share_all=False)
-
-    correlations_image = np.empty((velocity_centers.shape[0],
-                                   velocity_widths.shape[0]))
-    correlations_image[:,:] = np.NaN
-    count = 0
-    try:
-        for i, center in enumerate(velocity_centers):
-            for j, width in enumerate(velocity_widths):
-                correlations_image[i,j] = correlations[count]
-                count += 1
-    except IndexError:
-        print(' plot_correlations: O-d array input, cannot proceed')
-
-    image = np.ma.array(correlations_image,mask=np.isnan(correlations_image))
-
-    ax = imagegrid[0]
-    ax.set_xlabel('Velocity Width (km/s)',
-              size = 'small',
-              family='serif')
-    ax.set_ylabel('Velocity Center (km/s)',
-              size = 'small',
-              family='serif')
-
-    #ax.set_xticks(np.arange(0,velocity_widths.shape[0],1)[::5],
-    #        velocity_centers[::5])
-
-    plt.rc('text', usetex=True)
-    im = ax.imshow(image, interpolation='nearest',origin='lower',
-            extent=[velocity_widths[0],velocity_widths[-1],
-                velocity_centers[0],velocity_centers[-1]],
-            cmap=plt.jet())
-    cb = ax.cax.colorbar(im)
-
-    #cb.set_clim(vmin=0.)
-    # Write label to colorbar
-    cb.set_label_text(r'Correlation coefficient',
-                   size='small',
-                   family='serif')
-
-    if filename is not None:
-        plt.savefig(savedir + filename,bbox_inches='tight')
-    if show:
-        fig.show()
-    if returnimage:
-        return correlations_image
-
-def plot_center_velocity(correlations, velocity_centers, velocity_widths,
-        velocity_center=None, savedir='./', filename=None, show=True,
-        returnimage=False):
-    ''' Plots correlation vs. velocity width for a single center velocity.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(8,8))
-
-    correlations_image = np.empty((velocity_centers.shape[0],
-                                   velocity_widths.shape[0]))
-    correlations_image[:,:] = np.NaN
-    count = 0
-    for i, center in enumerate(velocity_centers):
-        for j, width in enumerate(velocity_widths):
-            correlations_image[i,j] = correlations[count]
-            count += 1
-
-    ax = fig.add_subplot(111)
-    ax.set_xlabel('Velocity Width (km/s)',
-              size = 'small',
-              family='serif')
-    ax.set_ylabel('Correlation Coefficient',
-              size = 'small',
-              family='serif')
-    ax.set_title('Center velocity ' + str(velocity_center) + ' km/s')
-
-    center_index = np.where(velocity_centers == velocity_center)[0][0]
-
-    ax.plot(velocity_widths,
-            correlations_image[center_index,:])
-    # fig.show()
-
-    if filename is not None:
-        plt.savefig(savedir + filename,bbox_inches='tight')
-    if show:
-        fig.show()
-    if returnimage:
-        return correlations_image
+''' Plotting Functions
+'''
 
 def plot_nhi_vs_av(nhi_image, av_image,
         nhi_image_error=None, av_image_error=None, limits=None,
@@ -430,6 +317,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
         sd_image_errors=None, av_image_errors=None, limits=None,
         savedir='./', filename=None, show=True, scale=('linear', 'linear'),
         returnimage=False, title=None, core_names=''):
+
     ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
     and an Av image.
     '''
@@ -649,6 +537,250 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
         fig.show()
     if returnimage:
         return correlations_image
+
+def plot_rh2_vs_h(rh2, h_sd, rh2_error=None, h_sd_error=None, rh2_fit = None,
+        h_sd_fit = None, limits = None, fit = True, savedir = './', filename =
+        None, show = True, scale = 'linear', title = ''):
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+
+
+    # Drop the NaNs from the images
+    if type(rh2_error) is float:
+        indices = np.where((rh2 == rh2) &\
+                           (h_sd == h_sd)&\
+                           (h_sd > 0) &\
+                           (rh2 > -5))
+
+    if type(rh2_error) is np.ndarray or \
+            type(rh2_error) is np.ma.core.MaskedArray or \
+            type(h_sd_error) is np.ndarray or \
+            type(h_sd_error) is np.ma.core.MaskedArray:
+        indices = np.where((rh2 == rh2) &\
+                           (h_sd == h_sd) &\
+                           (h_sd_error == h_sd_error) &\
+                           (rh2_error == rh2_error) &\
+                           (h_sd > 0) &\
+                           (rh2 > 0))
+
+    rh2_nonans = rh2[indices]
+    h_sd_nonans = h_sd[indices]
+
+    if type(rh2_error) is np.ndarray:
+        rh2_error_nonans = rh2_error[indices]
+    else:
+        rh2_error_nonans = np.array(rh2_error[indices])
+
+    if type(h_sd_error) is np.ndarray or \
+            type(h_sd_error) is np.ma.core.MaskedArray:
+        h_sd_error_nonans = h_sd_error[indices]
+    else:
+        h_sd_error_nonans = h_sd_error * \
+                np.ones(h_sd[indices].shape)
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (6, 6),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure
+    plt.clf()
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    if 1:
+        image = ax.errorbar(h_sd_nonans.ravel(),
+                rh2_nonans.ravel(),
+                xerr=(h_sd_error_nonans.ravel()),
+                yerr=(rh2_error_nonans.ravel()),
+                alpha=0.3,
+                color='k',
+                marker='^',ecolor='k',linestyle='none',
+                markersize=3
+                )
+    if rh2_fit is not None:
+        ax.plot(h_sd_fit, rh2_fit,
+                color = 'r')
+
+    ax.set_xscale(scale)
+    ax.set_yscale(scale)
+
+    if limits is not None:
+    	ax.set_xlim(limits[0],limits[1])
+    	ax.set_ylim(limits[2],limits[3])
+
+    # Adjust asthetics
+    ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
+    ax.set_ylabel(r'R$_{H2}$',)
+    ax.set_title(title)
+    ax.grid(True)
+
+    if filename is not None:
+        plt.savefig(savedir + filename,bbox_inches='tight')
+    if show:
+        fig.show()
+
+def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
+        h_sd_error_images=None, rh2_fits = None, h_sd_fits = None, limits =
+        None, fit = True, savedir = './', filename = None, show = True, scale =
+        'linear', title = '', core_names='', phi_cnm_list=None):
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (10, 10),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    n = int(np.ceil(len(rh2_images)**0.5))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(n, n),
+                 ngrids=len(rh2_images),
+                 axes_pad=0.25,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True)
+
+    # Cycle through lists
+    for i in xrange(len(rh2_images)):
+    	rh2 = rh2_images[i]
+    	h_sd = h_sd_images[i]
+    	rh2_error = rh2_error_images[i]
+    	h_sd_error = h_sd_error_images[i]
+    	rh2_fit = rh2_fits[i]
+    	h_sd_fit = h_sd_fits[i]
+        if phi_cnm_list is not None:
+    	    phi_cnm = phi_cnm_list[i]
+
+        #print('# of positive real points:')
+        #print(rh2[(rh2==rh2) & (rh2 > 0)].size)
+
+        # Drop the NaNs from the images
+        if type(rh2_error) is float:
+            indices = np.where((rh2 == rh2) &\
+                               (h_sd == h_sd)&\
+                               (h_sd > 0) &\
+                               (rh2 > 0))
+
+        if type(rh2_error) is np.ndarray or \
+                type(rh2_error) is np.ma.core.MaskedArray or \
+                type(h_sd_error) is np.ndarray or \
+                type(h_sd_error) is np.ma.core.MaskedArray:
+            indices = np.where((rh2 == rh2) &\
+                               (h_sd == h_sd) &\
+                               (h_sd_error == h_sd_error) &\
+                               (rh2_error == rh2_error) &\
+                               (h_sd > 0) &\
+                               (rh2 > 0))
+
+        rh2_nonans = rh2[indices]
+        h_sd_nonans = h_sd[indices]
+
+        if type(rh2_error) is np.ndarray:
+            rh2_error_nonans = rh2_error[indices]
+        else:
+            rh2_error_nonans = np.array(rh2_error[indices])
+
+        if type(h_sd_error) is np.ndarray or \
+                type(h_sd_error) is np.ma.core.MaskedArray:
+            h_sd_error_nonans = h_sd_error[indices]
+        else:
+            h_sd_error_nonans = h_sd_error * \
+                    np.ones(h_sd[indices].shape)
+
+                # Create plot
+        ax = imagegrid[i]
+
+        image = ax.errorbar(h_sd_nonans.ravel(),
+                rh2_nonans.ravel(),
+                xerr=(h_sd_error_nonans.ravel()),
+                yerr=(rh2_error_nonans.ravel()),
+                alpha=0.3,
+                color='k',
+                marker='^',ecolor='k',linestyle='none',
+                markersize=3
+                )
+        if rh2_fit is not None:
+            ax.plot(h_sd_fit, rh2_fit,
+                    color = 'r')
+
+        if phi_cnm_list is not None:
+            ax.annotate(r'$\phi$ = %.2f' % phi_cnm,
+                    xytext=(0.6, 0.1),
+                    xy=(0.6, 0.1),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    color='k'
+                    )
+
+        ax.set_xscale(scale[0])
+        ax.set_yscale(scale[1])
+
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        # Adjust asthetics
+        ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_ylabel(r'R$_{H2}$',)
+        ax.set_title(core_names[i])
+        ax.grid(True)
+
+    if title is not None:
+    	fig.suptitle(title, fontsize=fontScale*1.5)
+    if filename is not None:
+        plt.savefig(savedir + filename) #, bbox_inches='tight')
+    if show:
+        fig.show()
+
+''' Calculations
+'''
 
 def calculate_nhi(cube = None, velocity_axis = None, velocity_range = [],
         return_nhi_error = True, noise_cube = None,
@@ -872,6 +1004,83 @@ def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
                  print "{0:.2%} processed".format(i/total)
     return correlations
 
+''' Fitting Functions
+'''
+
+def krumholz_eq(h_sd, phi_CNM = None,
+        Z = 1., # metallicity
+        a = 0.2, # ?
+        f_diss = 0.1, # fraction of absorbing H2 which disociates
+        phi_mol = 10.0, # molecular gas fraction
+        mu_H = 2.3e-24, # molecular weight of H, g
+        ):
+    '''
+    Krumholz et al. 2008
+    '''
+
+    # Constants
+    c = 3.0e10 # speed of light, cm/s
+
+    # solar values
+    sigma_d_solar = 1e-21 # solar dust grain cross section, cm^2
+    R_d_solar = 10**-16.5 # solar cloud radius, cm
+    E_0_solar = 7.5e-4 # Radiation field, erg/s
+
+    # cloud values
+    sigma_d = sigma_d_solar * Z # dust grain cross section, cm^2
+    R_d = R_d_solar * Z # cloud radius, cm
+
+    # normalized radiation field strength, EQ 7
+    chi = ((f_diss * sigma_d_solar * c * E_0_solar) \
+            * (1.0 + (3.1 * Z**0.365))) \
+            / (31.0 * phi_CNM * R_d_solar)
+
+    # dust-adjusted radiation field, EQ 10
+    psi = chi * (2.5 + chi) / (2.5 + (chi * np.e))
+
+    # cloud optical depth, EQ 21
+    tau_c = (3.0 * h_sd * sigma_d) / (4.0 * (3.1 * Z**0.365) * mu_H)
+
+    # cloud optical depth, EQ 21
+    tau_c = 0.067 * Z * h_sd
+
+    # ratio of molecular to atomic fraction, EQ 17 Lee et al. 2012
+    R_H2 = 4 * tau_c / (3 * psi) \
+            * (1+ 0.8 * psi * phi_mol \
+                / (4 * tau_c + 3 * (phi_mol - 1) * psi)) -1
+
+    return R_H2
+
+def krumholz_eq_simple(h_sd, phi_CNM):
+
+   return krumholz_eq(h_sd, phi_CNM = phi_CNM,
+        Z = 1, # metallicity
+        a = 0.2, # ?
+        f_diss = 0.1, # fraction of absorbing H2 which disociates
+        phi_mol = 10.0, # molecular gas fraction
+        mu_H = 2.3e-24, # molecular weight of H, g
+        )
+
+def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False):
+
+    from scipy.optimize import curve_fit
+
+    # fit the krumholz model, choose first element of tuple = parameters
+    rh2_fit_params = curve_fit(krumholz_eq_simple, h_sd, rh2,
+            maxfev=10000000, p0 = p0)[0]
+
+    # Create large array of h_sd
+    h_sd_extended = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e5)
+    rh2_fit = krumholz_eq_simple(h_sd_extended, rh2_fit_params)
+
+    if return_params:
+        return rh2_fit, h_sd_extended, rh2_fit_params
+    else:
+        return rh2_fit, h_sd_extended
+
+''' DS9 Region and Coordinate Functions
+'''
+
 def convert_core_coordinates(cores, header):
 
     for core in cores:
@@ -1062,17 +1271,26 @@ def main():
 
     # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image = nhi_image,
-            av_image = av_data_k09, dgr = 1.1e-1)
+            av_image = av_data_k09, dgr = 5.33e-1)
     nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
-            av_image = av_error_data_planck, dgr = 1.1e-1)
+            av_image = av_error_data_planck, dgr = 5.33e-1)
 
     # convert to column density to surface density
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
-    h2_sd_image = calculate_sd(nh2_image, sd_factor=1/6.25)
-    h2_sd_image_error = calculate_sd(nh2_image_error, sd_factor=1/6.25)
-    h_sd_image = av_data_planck / (1.25 * 0.11) # DGR = 1.1e-12 mag / cm^-2
-    h_sd_image_error = av_error_data_planck / (1.25 * 0.11)
+
+    # Paradis et al. (2012) gives DGR for taurus
+    h_sd_image = av_data_planck / (1.25 * 0.53) # DGR = 1.1e-22 mag / cm^-2
+    h_sd_image_error = av_error_data_planck / (1.25 * 0.53)
+
+    # h2 surface density
+    h2_sd_image = h_sd_image - hi_sd_image
+    h2_sd_image_error = (h_sd_image_error**2 - hi_sd_image_error**2)**0.5
+
+    # Write ratio between H2 and HI
+    rh2_image = h2_sd_image / hi_sd_image
+    rh2_image_error = rh2_image * (hi_sd_image_error**2 / hi_sd_image**2 \
+                 + h2_sd_image_error**2 / h2_sd_image**2)**0.5
 
     # define core properties
     cores = {'L1495':
@@ -1121,143 +1339,167 @@ def main():
 
     cores = convert_core_coordinates(cores, h)
 
-    # calculate correlation for cores
-    if False:
-        limits =[1,22,6,16]
+    hsd_limits =[0.1,300]
+    hisd_limits = [2,20]
+    av_limits =[0.01,100]
+    nhi_limits = [2,20]
 
-        for core in cores:
+    cores = load_ds9_region(cores,
+            filename_base = region_dir + 'taurus_av_boxes_',
+            header = h)
 
-            print('Calculating N(HI) vs. Av for core %s' % core)
+    hi_sd_image_list = []
+    hi_sd_image_error_list = []
+    h_sd_image_list = []
+    h_sd_image_error_list = []
+    av_image_list = []
+    av_image_error_list = []
+    rh2_image_list = []
+    rh2_image_error_list = []
+    rh2_fit_list = []
+    h_sd_fit_list = []
+    phi_cnm_list = []
+    core_name_list = []
 
-            core_map = np.load(core_dir + core + '.npy')
-            plot_nhi_vs_av(nhi_image,core_map,
-                    nhi_image_error = nhi_image_error,
-                    av_image_error = 0.1,
-                    limits = limits,
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    filename='taurus_nhi_vs_av_' + core + '_small.png',
-                    title=r'N(HI) vs. A$_v$ of Taurus Core ' + core,
-                    show=False)
+    for core in cores:
+        print('Calculating for core %s' % core)
 
-            plot_sd_vs_av(sd_image, core_map,
-                    sd_image_error = sd_image_error,
-                    av_image_error = 0.1,
-                    limits = limits,
-                    savedir=figure_dir,
-                    plot_type='scatter',
-                    filename='taurus_sd_vs_av_' + core + '_small.png',
-                    title=r'$\Sigma_{HI}$ vs. A$_{\rm V}$ of Taurus Core ' + \
-                            core,
-                    show = False)
+        # Grab the mask from the DS9 regions
+        xy = cores[core]['box_center_pix']
+        box_width = cores[core]['box_width']
+        box_height = cores[core]['box_height']
+        box_angle = cores[core]['box_angle']
+        mask = myg.get_rectangular_mask(nhi_image,
+                xy[0], xy[1],
+                width = box_width,
+                height = box_height,
+                angle = box_angle)
 
-    if True:
-        hsd_limits =[0.1,300]
-        hisd_limits = [2,20]
-        av_limits =[0.01,100]
-        nhi_limits = [2,20]
+        # Get indices where there is no mask, and extract those pixels
+        indices = np.where(mask == 1)
+        av_data_planck_sub = av_data_planck[indices]
+        av_error_data_planck_sub = av_error_data_planck[indices]
+        hi_sd_image_sub = hi_sd_image[indices]
+        hi_sd_image_error_sub = hi_sd_image_error[indices]
+        h_sd_image_sub = h_sd_image[indices]
+        h_sd_image_error_sub = h_sd_image_error[indices]
+        rh2_image_sub = rh2_image[indices]
+        rh2_image_error_sub = rh2_image_error[indices]
 
-        cores = load_ds9_region(cores,
-                filename_base = region_dir + 'taurus_av_boxes_',
-                header = h)
-
-        hi_sd_image_list = []
-        hi_sd_image_error_list = []
-        h_sd_image_list = []
-        h_sd_image_error_list = []
-        av_image_list = []
-        av_image_error_list = []
-        core_name_list = []
-
-        for core in cores:
-            print('Calculating for core %s' % core)
-
-            # Grab the mask from the DS9 regions
-            xy = cores[core]['box_center_pix']
-            box_width = cores[core]['box_width']
-            box_height = cores[core]['box_height']
-            box_angle = cores[core]['box_angle']
-            mask = myg.get_rectangular_mask(nhi_image,
-        	        xy[0], xy[1],
-                    width = box_width,
-                    height = box_height,
-                    angle = box_angle)
-
-            # Get indices where there is no mask, and extract those pixels
-            indices = np.where(mask == 1)
-            av_data_planck_sub = av_data_planck[indices]
-            av_error_data_planck_sub = av_error_data_planck[indices]
-            hi_sd_image_sub = hi_sd_image[indices]
-            hi_sd_image_error_sub = hi_sd_image_error[indices]
-            h_sd_image_sub = h_sd_image[indices]
-            h_sd_image_error_sub = h_sd_image_error[indices]
-
-
-            figure_types = ['png', 'pdf']
-            for figure_type in figure_types:
-                if 0:
-                    plot_sd_vs_av(hi_sd_image_sub, av_data_k09_sub,
-                            sd_image_error = hi_sd_image_error_sub,
-                            av_image_error = 0.1,
-                            limits = [-5,20,2,20],
-                            savedir=figure_dir + 'individual_cores/',
-                            plot_type='scatter',
-                            scale='log',
-                            filename='taurus_sd_vs_av_' + core + '_k09.%s' % \
-                                    figure_type,
-                            title=r'$\Sigma_{HI}$ vs. K+09 A$_{\rm V}$ of ' + \
-                                    'Taurus Core ' + core,
-                            show=False)
-                if 0:
-                    plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
-                            sd_image_error = hi_sd_image_error_sub,
-                            av_image_error = 0.1,
-                            limits = [-5,20,2,20],
-                            savedir=figure_dir + 'individual_cores/',
-                            plot_type='scatter',
-                            scale='log',
-                            filename='taurus_sd_vs_av_' + core + '_planck.%s'%\
-                                    figure_type,
-                            title=r'$\Sigma_{HI}$ vs. Planck A$_{\rm V}$ of '+\
-                                    'Taurus Core ' + core,
-                            show=False)
-
-            hi_sd_image_list.append(hi_sd_image_sub)
-            hi_sd_image_error_list.append(hi_sd_image_error_sub)
-            h_sd_image_list.append(h_sd_image_sub)
-            h_sd_image_error_list.append(h_sd_image_error_sub)
-            av_image_list.append(av_data_planck_sub)
-            av_image_error_list.append(av_error_data_planck_sub)
-            core_name_list.append(core)
-
+        figure_types = ['png', 'pdf']
         for figure_type in figure_types:
-            plot_sd_vs_av_grid(hi_sd_image_list,
-                            av_image_list,
-                            sd_image_errors = hi_sd_image_error_list,
-                            av_image_errors = av_image_error_list,
-                            #limits = [0,20,4,16],
-                            savedir=figure_dir + 'panel_cores/',
-                            scale=('linear', 'linear'),
-                            filename='taurus_sd_vs_av_panels_planck.%s'%\
-                                    figure_type,
-                            show=False,
-                            core_names=core_name_list,
-                            title=r'$\Sigma_{HI}$ vs. Planck A$_{\rm V}$' + \
-                                    ' of Taurus Cores')
+            if 0:
+                plot_sd_vs_av(hi_sd_image_sub, av_data_k09_sub,
+                        sd_image_error = hi_sd_image_error_sub,
+                        av_image_error = 0.1,
+                        limits = [-5,20,2,20],
+                        savedir=figure_dir + 'individual_cores/',
+                        plot_type='scatter',
+                        scale='log',
+                        filename='taurus_sd_vs_av_' + core + '_k09.%s' % \
+                                figure_type,
+                        title=r'$\Sigma_{HI}$ vs. K+09 A$_{\rm V}$ of ' + \
+                                'Taurus Core ' + core,
+                        show=False)
+            if 0:
+                plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
+                        sd_image_error = hi_sd_image_error_sub,
+                        av_image_error = 0.1,
+                        limits = [-5,20,2,20],
+                        savedir=figure_dir + 'individual_cores/',
+                        plot_type='scatter',
+                        scale='log',
+                        filename='taurus_sd_vs_av_' + core + '_planck.%s'%\
+                                figure_type,
+                        title=r'$\Sigma_{HI}$ vs. Planck A$_{\rm V}$ of '+\
+                                'Taurus Core ' + core,
+                        show=False)
 
-            plot_hisd_vs_hsd_grid(hi_sd_image_list,
-                            h_sd_image_list,
-                            hi_sd_image_errors = hi_sd_image_error_list,
-                            h_sd_image_errors = h_sd_image_error_list,
-                            limits = [1, 100, 1, 80],
-                            savedir=figure_dir + 'panel_cores/',
-                            scale=('log', 'log'),
-                            filename='taurus_hisd_vs_hsd_panels_planck.%s'%\
-                                    figure_type,
-                            show=False,
-                            core_names=core_name_list,
-                            title=r'$\Sigma_{HI}$ vs. $\Sigma_{H}$' + \
-                                    ' of Taurus Cores')
+        # Fit R_H2
+        #---------
+        # Unravel images to single dimension
+        rh2_ravel = rh2_image_sub.ravel()
+        rh2_error_ravel = rh2_image_error_sub.ravel()
+        h_sd_ravel = h_sd_image_sub.ravel()
+        h_sd_error_ravel = h_sd_image_error_sub.ravel()
+
+        # write indices for only ratios > 0
+        indices = np.where(rh2_ravel > 0)
+
+        # Fit to krumholz model, init guess of phi_CNM = 10
+        rh2_fit, h_sd_fit, phi_cnm = fit_krumholz(h_sd_ravel[indices],
+                rh2_ravel[indices],
+                (0.001, 1000, 1e6),
+                p0 = 1,
+                return_params = True)
+
+        print('%s\t %.2f' % (core, phi_cnm))
+
+        # see eq 6 of krumholz+09
+        # phi_cnm is the number density of the CNM over the minimum number
+        # density required for pressure balance
+        # the lower phi_cnm values than for perseus mean that california
+        # has a more diffuse CNM
+
+        # append to the lists
+        hi_sd_image_list.append(hi_sd_image_sub)
+        hi_sd_image_error_list.append(hi_sd_image_error_sub)
+        h_sd_image_list.append(h_sd_image_sub)
+        h_sd_image_error_list.append(h_sd_image_error_sub)
+        av_image_list.append(av_data_planck_sub)
+        av_image_error_list.append(av_error_data_planck_sub)
+        rh2_image_list.append(rh2_image_sub)
+        rh2_image_error_list.append(rh2_image_error_sub)
+        rh2_fit_list.append(rh2_fit)
+        h_sd_fit_list.append(h_sd_fit)
+        phi_cnm_list.append(phi_cnm)
+        core_name_list.append(core)
+
+    for figure_type in figure_types:
+        plot_rh2_vs_h_grid(rh2_image_list,
+                h_sd_image_list,
+                rh2_error_images = rh2_image_error_list,
+                h_sd_error_images = h_sd_image_error_list,
+                rh2_fits = rh2_fit_list,
+                h_sd_fits = h_sd_fit_list,
+                limits = [0, 80, 10**-3, 10**2],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('linear', 'log'),
+                filename = 'taurus_rh2_vs_hsd_panels_planck.png',
+                title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
+                        + ' of Taurus Cores',
+                core_names=core_name_list,
+                phi_cnm_list=phi_cnm_list,
+                show = False)
+
+    if 0:
+        plot_sd_vs_av_grid(hi_sd_image_list,
+                        av_image_list,
+                        sd_image_errors = hi_sd_image_error_list,
+                        av_image_errors = av_image_error_list,
+                        #limits = [0,20,4,16],
+                        savedir=figure_dir + 'panel_cores/',
+                        scale=('linear', 'linear'),
+                        filename='taurus_sd_vs_av_panels_planck.%s'%\
+                                figure_type,
+                        show=False,
+                        core_names=core_name_list,
+                        title=r'$\Sigma_{HI}$ vs. Planck A$_{\rm V}$' + \
+                                ' of Taurus Cores')
+
+        plot_hisd_vs_hsd_grid(hi_sd_image_list,
+                        h_sd_image_list,
+                        hi_sd_image_errors = hi_sd_image_error_list,
+                        h_sd_image_errors = h_sd_image_error_list,
+                        limits = [1, 100, 1, 80],
+                        savedir=figure_dir + 'panel_cores/',
+                        scale=('log', 'log'),
+                        filename='taurus_hisd_vs_hsd_panels_planck.%s'%\
+                                figure_type,
+                        show=False,
+                        core_names=core_name_list,
+                        title=r'$\Sigma_{HI}$ vs. $\Sigma_{H}$' + \
+                                ' of Taurus Cores')
 
 if __name__ == '__main__':
     main()
