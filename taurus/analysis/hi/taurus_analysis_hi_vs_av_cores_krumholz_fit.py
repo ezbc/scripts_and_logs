@@ -1,4 +1,3 @@
-
 #!/usr/bin/python
 
 ''' Calculates the N(HI) / Av correlation for the Taurus molecular cloud.
@@ -84,8 +83,8 @@ def plot_nhi_vs_av(nhi_image, av_image,
         ax.set_yscale(scale)
 
     if limits is not None:
-    	ax.set_xlim(limits[0],limits[1])
-    	ax.set_ylim(limits[2],limits[3])
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
     ax.set_xlabel('A$_v$ (mag)',
@@ -182,8 +181,8 @@ def plot_hisd_vs_hsd(hi_sd_image, h_sd_image,
         ax.set_yscale(scale)
 
     if limits is not None:
-    	ax.set_xlim(limits[0],limits[1])
-    	ax.set_ylim(limits[2],limits[3])
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
     ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',
@@ -297,8 +296,8 @@ def plot_sd_vs_av(sd_image, av_image,
         ax.set_yscale(scale)
 
     if limits is not None:
-    	ax.set_xlim(limits[0],limits[1])
-    	ax.set_ylim(limits[2],limits[3])
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
     ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
@@ -365,14 +364,14 @@ def plot_sd_vs_av_grid(sd_images, av_images,
                  share_all=True)
 
     for i in xrange(len(av_images)):
-    	sd_image = sd_images[i]
-    	av_image = av_images[i]
-    	sd_image_error = sd_image_errors[i]
-    	av_image_error = av_image_errors[i]
+        sd_image = sd_images[i]
+        av_image = av_images[i]
+        sd_image_error = sd_image_errors[i]
+        av_image_error = av_image_errors[i]
 
         # Drop the NaNs from the images
         indices = np.where((sd_image == sd_image) &\
-                           (av_image == av_image)&\
+                           (av_image == av_image) &\
                            (av_image > 0) &\
                            (sd_image > -5))
 
@@ -417,7 +416,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
         ax.grid(True)
 
     if title is not None:
-    	fig.suptitle(title, fontsize=fontScale*1.5)
+        fig.suptitle(title, fontsize=fontScale*1.5)
     if filename is not None:
         plt.savefig(savedir + filename) #, bbox_inches='tight')
     if show:
@@ -476,10 +475,10 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
                  share_all=True)
 
     for i in xrange(len(h_sd_images)):
-    	hi_sd_image = hi_sd_images[i]
-    	h_sd_image = h_sd_images[i]
-    	hi_sd_image_error = hi_sd_image_errors[i]
-    	h_sd_image_error = h_sd_image_errors[i]
+        hi_sd_image = hi_sd_images[i]
+        h_sd_image = h_sd_images[i]
+        hi_sd_image_error = hi_sd_image_errors[i]
+        h_sd_image_error = h_sd_image_errors[i]
 
         # Drop the NaNs from the images
         indices = np.where((hi_sd_image == hi_sd_image) &\
@@ -530,7 +529,7 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
         ax.grid(True)
 
     if title is not None:
-    	fig.suptitle(title, fontsize=fontScale*1.5)
+        fig.suptitle(title, fontsize=fontScale*1.5)
     if filename is not None:
         plt.savefig(savedir + filename) #, bbox_inches='tight')
     if show:
@@ -626,8 +625,8 @@ def plot_rh2_vs_h(rh2, h_sd, rh2_error=None, h_sd_error=None, rh2_fit = None,
     ax.set_yscale(scale)
 
     if limits is not None:
-    	ax.set_xlim(limits[0],limits[1])
-    	ax.set_ylim(limits[2],limits[3])
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
     ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
@@ -689,14 +688,14 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
 
     # Cycle through lists
     for i in xrange(len(rh2_images)):
-    	rh2 = rh2_images[i]
-    	h_sd = h_sd_images[i]
-    	rh2_error = rh2_error_images[i]
-    	h_sd_error = h_sd_error_images[i]
-    	rh2_fit = rh2_fits[i]
-    	h_sd_fit = h_sd_fits[i]
+        rh2 = rh2_images[i]
+        h_sd = h_sd_images[i]
+        rh2_error = rh2_error_images[i]
+        h_sd_error = h_sd_error_images[i]
+        rh2_fit = rh2_fits[i]
+        h_sd_fit = h_sd_fits[i]
         if phi_cnm_list is not None:
-    	    phi_cnm = phi_cnm_list[i]
+            phi_cnm = phi_cnm_list[i]
 
         #print('# of positive real points:')
         #print(rh2[(rh2==rh2) & (rh2 > 0)].size)
@@ -773,7 +772,232 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         ax.grid(True)
 
     if title is not None:
-    	fig.suptitle(title, fontsize=fontScale*1.5)
+        fig.suptitle(title, fontsize=fontScale*1.5)
+    if filename is not None:
+        plt.savefig(savedir + filename) #, bbox_inches='tight')
+    if show:
+        fig.show()
+
+def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
+        h_sd_error_images=None, hi_fits = None, h_sd_fits = None, limits =
+        None, fit = True, savedir = './', filename = None, show = True, scale =
+        'linear', title = '', core_names='', phi_cnm_list=None):
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (10, 10),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    n = int(np.ceil(len(hi_images)**0.5))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(n, n),
+                 ngrids=len(hi_images),
+                 axes_pad=0.25,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True)
+
+    # Cycle through lists
+    for i in xrange(len(hi_images)):
+        hi_sd = hi_images[i]
+        h_sd = h_sd_images[i]
+        hi_sd_error = hi_sd_error_images[i]
+        h_sd_error = h_sd_error_images[i]
+        hi_sd_fit = hi_fits[i]
+        h_sd_fit = h_sd_fits[i]
+        if phi_cnm_list is not None:
+            phi_cnm = phi_cnm_list[i]
+
+        #print('# of positive real points:')
+        #print(hi_sd[(hi_sd==hi_sd) & (hi_sd > 0)].size)
+
+        # Drop the NaNs from the images
+        if type(hi_sd_error) is float:
+            indices = np.where((hi_sd == hi_sd) &\
+                               (h_sd == h_sd)&\
+                               (h_sd > 0) &\
+                               (hi_sd > 0))
+
+        if type(hi_sd_error) is np.ndarray or \
+                type(hi_sd_error) is np.ma.core.MaskedArray or \
+                type(h_sd_error) is np.ndarray or \
+                type(h_sd_error) is np.ma.core.MaskedArray:
+            indices = np.where((hi_sd == hi_sd) &\
+                               (h_sd == h_sd) &\
+                               (h_sd_error == h_sd_error) &\
+                               (hi_sd_error == hi_sd_error) &\
+                               (h_sd > 0) &\
+                               (hi_sd > 0))
+
+        hi_sd_nonans = hi_sd[indices]
+        h_sd_nonans = h_sd[indices]
+
+        if type(hi_sd_error) is np.ndarray:
+            hi_sd_error_nonans = hi_sd_error[indices]
+        else:
+            hi_sd_error_nonans = np.array(hi_sd_error[indices])
+
+        if type(h_sd_error) is np.ndarray or \
+                type(h_sd_error) is np.ma.core.MaskedArray:
+            h_sd_error_nonans = h_sd_error[indices]
+        else:
+            h_sd_error_nonans = h_sd_error * \
+                    np.ones(h_sd[indices].shape)
+
+                # Create plot
+        ax = imagegrid[i]
+
+        image = ax.errorbar(h_sd_nonans.ravel(),
+                hi_sd_nonans.ravel(),
+                xerr=(h_sd_error_nonans.ravel()),
+                yerr=(hi_sd_error_nonans.ravel()),
+                alpha=0.3,
+                color='k',
+                marker='^',ecolor='k',linestyle='none',
+                markersize=3
+                )
+        if hi_sd_fit is not None:
+            ax.plot(h_sd_fit, hi_sd_fit,
+                    color = 'r')
+
+        if phi_cnm_list is not None:
+            ax.annotate(r'$\phi$ = %.2f' % phi_cnm,
+                    xytext=(0.6, 0.1),
+                    xy=(0.6, 0.1),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    color='k'
+                    )
+
+        ax.set_xscale(scale[0])
+        ax.set_yscale(scale[1])
+
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        # Adjust asthetics
+        ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_ylabel(r'$\Sigma_{HI}$',)
+        ax.set_title(core_names[i])
+        ax.grid(True)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=fontScale*1.5)
+    if filename is not None:
+        plt.savefig(savedir + filename) #, bbox_inches='tight')
+    if show:
+        fig.show()
+
+def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
+        vel_range_list=None,
+        limits = None, savedir = './', filename = None, show = True,
+        scale = 'linear', title = '', core_names='',):
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 12
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (10, 10),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    n = int(np.ceil(len(co_spectrum_list)**0.5))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(n, n),
+                 ngrids=len(co_spectrum_list),
+                 axes_pad=0.25,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True)
+
+    # Cycle through lists
+    for i in xrange(len(co_spectrum_list)):
+        co_spectrum = co_spectrum_list[i]
+        hi_velocity_range = vel_range_list[i]
+
+        # Create plot
+        ax = imagegrid[i]
+
+        image = ax.plot(vel_axis, co_spectrum,
+                color='k',
+                marker=None,
+                drawstyle='steps-mid',
+                markersize=3
+                )
+
+        if hi_velocity_range is not None:
+            ax.axvspan(hi_velocity_range[0], hi_velocity_range[1],
+                    color = 'r', alpha=0.3)
+
+        ax.set_xscale(scale[0], nonposx = 'clip')
+        ax.set_yscale(scale[1], nonposy = 'clip')
+
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        # Adjust asthetics
+        ax.set_xlabel('Velocity (km/s)')
+        ax.set_ylabel('I (K)',)
+        ax.set_title(core_names[i])
+        ax.grid(True)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=fontScale*1.5)
     if filename is not None:
         plt.savefig(savedir + filename) #, bbox_inches='tight')
     if show:
@@ -827,7 +1051,7 @@ def calculate_nhi(cube = None, velocity_axis = None, velocity_range = [],
 
     if fits_filename is not None and header is not None:
         if verbose:
-        	print('Writing N(HI) image to FITS file %s' % fits_filename)
+            print('Writing N(HI) image to FITS file %s' % fits_filename)
         header['BUNIT'] = '1e20 cm^-2'
         header.remove('CDELT3')
         header.remove('CRVAL3')
@@ -841,7 +1065,7 @@ def calculate_nhi(cube = None, velocity_axis = None, velocity_range = [],
 
     if fits_error_filename is not None and header is not None:
         if verbose:
-        	print('Writing N(HI) error image to FITS file %s' % fits_filename)
+            print('Writing N(HI) error image to FITS file %s' % fits_filename)
 
         pf.writeto(fits_error_filename, image_error * 1.823e-2, header =
                 header, clobber = True, output_verify = 'fix')
@@ -1004,6 +1228,51 @@ def calculate_correlation(SpectralGrid=None,cube=None,velocity_axis=None,
                  print "{0:.2%} processed".format(i/total)
     return correlations
 
+def select_co_vel_range(co_data, co_header, flux_threshold=0.80,
+        width_scale=1.):
+
+    from mycoords import make_velocity_axis
+
+    vel_axis = make_velocity_axis(co_header)
+
+    # create average spectrum
+    n_pix = len(co_data[co_data == co_data])
+    co_data_nonans = np.ma.array(co_data, mask=(co_data != co_data))
+    spectrum = np.sum(co_data_nonans, axis=(1)) / n_pix
+
+    #print vel_axis
+
+    # determine velocity where 25% of the flux
+    peak_vel = np.interp(spectrum.max(), spectrum, vel_axis,)
+
+    peak_vel = vel_axis[np.argmin(np.abs(spectrum - spectrum.max()))]
+
+    max_vel_hw = np.min((peak_vel - vel_axis[0], vel_axis[1] - peak_vel))
+
+    vel_hw = 0. # velocity half-width
+    vel_delta = vel_axis[1] - vel_axis[0]
+
+    found_threshold = False
+
+    total_sum = np.sum(spectrum)
+
+    # Start with small region, grow the region until integrated
+    # flux in region is less than flux_threshold * spectrum total sum
+    while vel_hw < max_vel_hw or not found_threshold:
+        low_vel = peak_vel - vel_hw
+        high_vel = peak_vel + vel_hw
+
+        spectrum_crop = spectrum[(vel_axis > low_vel) & (vel_axis < high_vel)]
+
+        partial_sum = np.sum(spectrum_crop)
+
+        if partial_sum >= flux_threshold * total_sum:
+            found_threshold = True
+        else:
+            vel_hw += vel_delta
+
+    return peak_vel - width_scale * vel_hw, peak_vel + width_scale * vel_hw
+
 ''' Fitting Functions
 '''
 
@@ -1013,6 +1282,7 @@ def krumholz_eq(h_sd, phi_CNM = None,
         f_diss = 0.1, # fraction of absorbing H2 which disociates
         phi_mol = 10.0, # molecular gas fraction
         mu_H = 2.3e-24, # molecular weight of H, g
+        return_fractions=False
         ):
     '''
     Krumholz et al. 2008
@@ -1044,24 +1314,43 @@ def krumholz_eq(h_sd, phi_CNM = None,
     # cloud optical depth, EQ 21
     tau_c = 0.067 * Z * h_sd
 
+    f_H2_sub1 = (3.0 * psi) / (3.0 * tau_c)
+    f_H2_sub2 = (4.0 * a * psi * phi_mol) / ((4.0 * tau_c) + (3.0 * (phi_mol \
+            - 1.0) * psi))
+    f_H2 = 1.0 - (f_H2_sub1 / (1.0 + f_H2_sub2))
+    f_HI = 1.0 - f_H2
+
+    # Keep fractions within real fractional value range
+    f_HI[f_HI > 1] = 1.0
+    f_HI[f_HI < 0] = 0.0
+    f_H2[f_H2 > 1] = 1.0
+    f_H2[f_H2 < 0] = 0.0
+
     # ratio of molecular to atomic fraction, EQ 17 Lee et al. 2012
     R_H2 = 4 * tau_c / (3 * psi) \
             * (1+ 0.8 * psi * phi_mol \
                 / (4 * tau_c + 3 * (phi_mol - 1) * psi)) -1
 
-    return R_H2
+    R_H2 = f_H2 / f_HI
 
-def krumholz_eq_simple(h_sd, phi_CNM):
+    if not return_fractions:
+        return R_H2
+    elif return_fractions:
+        return R_H2, f_H2, f_HI
+
+def krumholz_eq_simple(h_sd, phi_CNM, return_fractions=False):
 
    return krumholz_eq(h_sd, phi_CNM = phi_CNM,
-        Z = 1, # metallicity
-        a = 0.2, # ?
-        f_diss = 0.1, # fraction of absorbing H2 which disociates
-        phi_mol = 10.0, # molecular gas fraction
-        mu_H = 2.3e-24, # molecular weight of H, g
+        Z=1.0, # metallicity
+        a=0.2, # ?
+        f_diss=0.1, # fraction of absorbing H2 which disociates
+        phi_mol=10.0, # molecular gas fraction
+        mu_H=2.3e-24, # molecular weight of H, g
+        return_fractions=return_fractions,
         )
 
-def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False):
+def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
+        return_fractions=False):
 
     from scipy.optimize import curve_fit
 
@@ -1071,12 +1360,24 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False):
 
     # Create large array of h_sd
     h_sd_extended = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e5)
-    rh2_fit = krumholz_eq_simple(h_sd_extended, rh2_fit_params)
+
+    if not return_fractions:
+        rh2_fit = krumholz_eq_simple(h_sd_extended, rh2_fit_params)
+    elif return_fractions:
+        rh2_fit, f_H2, f_HI = krumholz_eq_simple(h_sd_extended,
+                                                 rh2_fit_params,
+                                                 return_fractions=True)
+
+    output = [rh2_fit, h_sd_extended]
 
     if return_params:
-        return rh2_fit, h_sd_extended, rh2_fit_params
-    else:
-        return rh2_fit, h_sd_extended
+        output.append(rh2_fit_params)
+    if return_fractions:
+        output.append(f_H2)
+        output.append(f_HI)
+
+    return output
+
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -1087,9 +1388,9 @@ def convert_core_coordinates(cores, header):
         cores[core].update({'box_pixel': 0})
         cores[core].update({'center_pixel': 0})
 
-    	box_wcs = cores[core]['box_wcs']
-    	box_pixel = len(box_wcs) * [0,]
-    	center_wcs = cores[core]['center_wcs']
+        box_wcs = cores[core]['box_wcs']
+        box_pixel = len(box_wcs) * [0,]
+        center_wcs = cores[core]['center_wcs']
 
         # convert centers to pixel coords
         cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
@@ -1097,9 +1398,9 @@ def convert_core_coordinates(cores, header):
                                                      header=header)
         # convert box corners to pixel coords
         for i in range(len(box_wcs)/2):
-        	pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
-        	        header=header)
-        	box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
+            pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+                    header=header)
+            box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
         cores[core]['box_pixel'] = box_pixel
 
     return cores
@@ -1133,7 +1434,7 @@ def get_pix_coords(ra=None, dec=None, header=None):
     if type(ra) is tuple and type(dec) is tuple:
         ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
     else:
-    	ra_deg, dec_deg = ra, dec
+        ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
     pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
@@ -1189,7 +1490,7 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
     # [ra center, dec center, width, height, rotation angle]
     for core in cores:
-    	region = read_ds9_region(filename_base + core + '.reg')
+        region = read_ds9_region(filename_base + core + '.reg')
         box_center_pixel = get_pix_coords(ra = region[0],
                                           dec = region[1],
                                           header = header)
@@ -1212,23 +1513,16 @@ def main():
     reload(clump_finder)
     import mygeometry as myg
     reload(myg)
-
+    from mycoords import make_velocity_axis
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
     figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
     core_dir = output_dir + 'core_arrays/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
-
-    # load 2mass Av and GALFA HI images, on same grid
-    av_data_k09, av_header = load_fits(av_dir + \
-                'taurus_av_k09_regrid_planckres.fits',
-            return_header=True)
-    # load Av image from goldsmith: Pineda et al. 2010, ApJ, 721, 686
-    av_data_goldsmith = load_fits(av_dir + \
-            'taurus_av_p10_regrid_planckres.fits')
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
@@ -1239,14 +1533,17 @@ def main():
                 'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
-    hi_data,h = load_fits(hi_dir + \
+    hi_data, h = load_fits(hi_dir + \
                 'taurus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
+    co_data, co_header = load_fits(co_dir + \
+                'taurus_co_cfa_cube_regrid_planckres.fits',
+            return_header=True)
+
     # make the velocity axis
-    velocity_axis = (np.arange(h['NAXIS3']) - h['CRPIX3'] + 1) * h['CDELT3'] + \
-            h['CRVAL3']
-    velocity_axis /= 1000.
+    velocity_axis = make_velocity_axis(h)
+    co_vel_axis = make_velocity_axis(co_header)
 
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -1271,7 +1568,7 @@ def main():
 
     # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image = nhi_image,
-            av_image = av_data_k09, dgr = 5.33e-1)
+            av_image = av_data_planck, dgr = 5.33e-1)
     nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
             av_image = av_error_data_planck, dgr = 5.33e-1)
 
@@ -1360,6 +1657,9 @@ def main():
     h_sd_fit_list = []
     phi_cnm_list = []
     core_name_list = []
+    co_image_list = []
+    co_vel_range_list = []
+    hi_sd_fit_list = []
 
     for core in cores:
         print('Calculating for core %s' % core)
@@ -1377,6 +1677,49 @@ def main():
 
         # Get indices where there is no mask, and extract those pixels
         indices = np.where(mask == 1)
+        indices = mask == 1
+
+        if 1:
+            co_data_sub = co_data[:, indices]
+            co_image_list.append(np.sum(co_data_sub, axis=1))
+
+            # fit gaussians to CO data
+            co_vel_range = select_co_vel_range(co_data_sub, co_header,
+                    flux_threshold=0.85, width_scale=3.)
+            co_vel_range_list.append(co_vel_range)
+
+            nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
+                    velocity_axis=velocity_axis,
+                    noise_cube=noise_cube,
+                    velocity_range=co_vel_range,
+                    return_nhi_error=True,
+                    header=h)
+
+            # calculate N(H2) maps
+            nh2_image = calculate_nh2(nhi_image = nhi_image,
+                    av_image = av_data_planck, dgr = 5.33e-1)
+            nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
+                    av_image = av_error_data_planck, dgr = 5.33e-1)
+
+            # convert to column density to surface density
+            hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
+            hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
+
+            # Paradis et al. (2012) gives DGR for taurus
+            h_sd_image = av_data_planck / (1.25 * 0.53) # DGR=1.1e-22mag/cm^-2
+            h_sd_image_error = av_error_data_planck / (1.25 * 0.53)
+
+            # h2 surface density
+            h2_sd_image = h_sd_image - hi_sd_image
+            h2_sd_image_error = (h_sd_image_error**2 - \
+                    hi_sd_image_error**2)**0.5
+
+            # Write ratio between H2 and HI
+            rh2_image = h2_sd_image / hi_sd_image
+            rh2_image_error = rh2_image * (hi_sd_image_error**2 / \
+                    hi_sd_image**2 + h2_sd_image_error**2 / \
+                    h2_sd_image**2)**0.5
+
         av_data_planck_sub = av_data_planck[indices]
         av_error_data_planck_sub = av_error_data_planck[indices]
         hi_sd_image_sub = hi_sd_image[indices]
@@ -1385,35 +1728,6 @@ def main():
         h_sd_image_error_sub = h_sd_image_error[indices]
         rh2_image_sub = rh2_image[indices]
         rh2_image_error_sub = rh2_image_error[indices]
-
-        figure_types = ['png', 'pdf']
-        for figure_type in figure_types:
-            if 0:
-                plot_sd_vs_av(hi_sd_image_sub, av_data_k09_sub,
-                        sd_image_error = hi_sd_image_error_sub,
-                        av_image_error = 0.1,
-                        limits = [-5,20,2,20],
-                        savedir=figure_dir + 'individual_cores/',
-                        plot_type='scatter',
-                        scale='log',
-                        filename='taurus_sd_vs_av_' + core + '_k09.%s' % \
-                                figure_type,
-                        title=r'$\Sigma_{HI}$ vs. K+09 A$_{\rm V}$ of ' + \
-                                'Taurus Core ' + core,
-                        show=False)
-            if 0:
-                plot_sd_vs_av(hi_sd_image_sub, av_data_planck_sub,
-                        sd_image_error = hi_sd_image_error_sub,
-                        av_image_error = 0.1,
-                        limits = [-5,20,2,20],
-                        savedir=figure_dir + 'individual_cores/',
-                        plot_type='scatter',
-                        scale='log',
-                        filename='taurus_sd_vs_av_' + core + '_planck.%s'%\
-                                figure_type,
-                        title=r'$\Sigma_{HI}$ vs. Planck A$_{\rm V}$ of '+\
-                                'Taurus Core ' + core,
-                        show=False)
 
         # Fit R_H2
         #---------
@@ -1427,11 +1741,13 @@ def main():
         indices = np.where(rh2_ravel > 0)
 
         # Fit to krumholz model, init guess of phi_CNM = 10
-        rh2_fit, h_sd_fit, phi_cnm = fit_krumholz(h_sd_ravel[indices],
-                rh2_ravel[indices],
-                (0.001, 1000, 1e6),
-                p0 = 1,
-                return_params = True)
+        rh2_fit, h_sd_fit, phi_cnm, f_H2, f_HI = \
+                fit_krumholz(h_sd_ravel[indices],
+                             rh2_ravel[indices],
+                             (0.001, 1000, 1e6),
+                             p0=10.0,
+                             return_params=True,
+                             return_fractions=True)
 
         print('%s\t %.2f' % (core, phi_cnm))
 
@@ -1440,6 +1756,15 @@ def main():
         # density required for pressure balance
         # the lower phi_cnm values than for perseus mean that california
         # has a more diffuse CNM
+
+        # By fitting the model to the observed R_H2 vs total H, you basically
+        # constrained psi in Equation (35) of Krumholz+09.  This means that
+        # you can calculate f_H2 for a given total hydrogen surface density.
+        # In this case, H2 surface density = f_H2 * total hydrogen surface
+        # density HI surface density = (1 - f_HI) * total hydrogen surface
+        # density
+
+        hi_sd_fit = f_HI * h_sd_fit
 
         # append to the lists
         hi_sd_image_list.append(hi_sd_image_sub)
@@ -1452,8 +1777,22 @@ def main():
         rh2_image_error_list.append(rh2_image_error_sub)
         rh2_fit_list.append(rh2_fit)
         h_sd_fit_list.append(h_sd_fit)
+        hi_sd_fit_list.append(hi_sd_fit)
         phi_cnm_list.append(phi_cnm)
         core_name_list.append(core)
+
+    figure_types = ['png', 'pdf']
+    for figure_type in figure_types:
+        plot_co_spectrum_grid(co_vel_axis,
+                co_image_list,
+                vel_range_list=co_vel_range_list,
+                #limits = [0, 80, 10**-3, 10**2],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('linear', 'linear'),
+                filename = 'taurus_core_co_spectra_grid.%s' % figure_type,
+                title = r'Integrated $^{12}$CO spectra of Taurus Cores',
+                core_names=core_name_list,
+                show = False)
 
     for figure_type in figure_types:
         plot_rh2_vs_h_grid(rh2_image_list,
@@ -1472,7 +1811,24 @@ def main():
                 phi_cnm_list=phi_cnm_list,
                 show = False)
 
-    if 0:
+        plot_hi_vs_h_grid(hi_sd_image_list,
+                h_sd_image_list,
+                hi_sd_error_images = hi_sd_image_error_list,
+                h_sd_error_images = h_sd_image_error_list,
+                hi_fits = hi_sd_fit_list,
+                h_sd_fits = h_sd_fit_list,
+                #limits = [10**-1, 10**2, 10**0, 10**2],
+                limits = [-5, 50, 2, 9],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('linear', 'linear'),
+                filename = 'taurus_hi_vs_h_panels_planck.png',
+                title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
+                        + ' of Taurus Cores',
+                core_names=core_name_list,
+                phi_cnm_list=phi_cnm_list,
+                show = False)
+
+    if 1:
         plot_sd_vs_av_grid(hi_sd_image_list,
                         av_image_list,
                         sd_image_errors = hi_sd_image_error_list,
