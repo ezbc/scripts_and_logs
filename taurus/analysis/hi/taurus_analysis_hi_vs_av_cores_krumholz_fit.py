@@ -642,7 +642,8 @@ def plot_rh2_vs_h(rh2, h_sd, rh2_error=None, h_sd_error=None, rh2_fit = None,
 def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         h_sd_error_images=None, rh2_fits = None, h_sd_fits = None, limits =
         None, fit = True, savedir = './', filename = None, show = True, scale =
-        'linear', title = '', core_names='', phi_cnm_list=None):
+        'linear', title = '', core_names='', phi_cnm_list=None,
+        chisq_list=None):
 
     # Import external modules
     import numpy as np
@@ -696,9 +697,8 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         h_sd_fit = h_sd_fits[i]
         if phi_cnm_list is not None:
             phi_cnm = phi_cnm_list[i]
-
-        #print('# of positive real points:')
-        #print(rh2[(rh2==rh2) & (rh2 > 0)].size)
+        if chisq_list is not None:
+            chisq = chisq_list[i]
 
         # Drop the NaNs from the images
         if type(rh2_error) is float:
@@ -740,10 +740,10 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                 rh2_nonans.ravel(),
                 xerr=(h_sd_error_nonans.ravel()),
                 yerr=(rh2_error_nonans.ravel()),
-                alpha=0.3,
+                alpha=0.5,
                 color='k',
                 marker='^',ecolor='k',linestyle='none',
-                markersize=3
+                markersize=4
                 )
         if rh2_fit is not None:
             ax.plot(h_sd_fit, rh2_fit,
@@ -757,9 +757,17 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                     xycoords='axes fraction',
                     color='k'
                     )
+        if chisq_list is not None:
+            ax.annotate(r'$\chi^2/\nu$ = %.2f' % chisq,
+                    xytext=(0.48, 0.2),
+                    xy=(0.48, 0.2),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    color='k'
+                    )
 
-        ax.set_xscale(scale[0])
-        ax.set_yscale(scale[1])
+        ax.set_xscale(scale[0], nonposx = 'clip')
+        ax.set_yscale(scale[1], nonposy = 'clip')
 
         if limits is not None:
             ax.set_xlim(limits[0],limits[1])
@@ -1350,7 +1358,44 @@ def krumholz_eq_simple(h_sd, phi_CNM, return_fractions=False):
         )
 
 def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
-        return_fractions=False):
+        return_fractions=False, return_chisq=False, rh2_error=None):
+
+    '''
+    Parameters
+    ----------
+    h_sd : array-like
+        Hydrogen surface density in units of solar mass per parsec**2
+    rh2 : array-like
+        Ratio between molecular and atomic hydrogen masses.
+    h_sd_extent : tuple
+        Lower and upper bound of hydrogen surface densities with which to
+        build the output model array.
+    p0 : None, scalar, or M-length sequence.
+        Initial guess for the parameters. See scipy.optimize.curve_fit.
+    return_params : bool
+        Return parameters from fit?
+    return_fractions : bool
+        Return f_H2 and f_HI?
+    return_chisq : bool
+        Return the reduced chi^2 statistic?
+    rh2_error : bool
+        Error in rh2 parameter. Calculates a more accurate chi^2 statistic
+
+    Returns
+    -------
+    rh2_fit : array-like
+        Model ratio between molecular and atomic hydrogen masses.
+    h_sd_extended : array-like
+        Model hydrogen surface density in units of solar mass per parsec**2.
+    rh2_fit_params : array-like, optional
+        Model parameter fits.
+    f_H2, f_HI : array-like, optional
+        f_H2 = mass fraction of molecular hydrogen
+        f_HI = mass fraction of atomic hydrogen
+    chisq_reduced : float, optional
+        Reduced chi squared statistic.
+
+    '''
 
     from scipy.optimize import curve_fit
 
@@ -1368,6 +1413,14 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
                                                  rh2_fit_params,
                                                  return_fractions=True)
 
+    if return_chisq:
+    	dof = len(rh2) - 1
+    	rh2_fit_grid = krumholz_eq_simple(h_sd, rh2_fit_params)
+    	chisq = np.sum((rh2_fit_grid - rh2)**2)
+        if rh2_error is not None:
+    		chisq /= np.sum(rh2_error**2)
+    	chisq_reduced = chisq / dof
+
     output = [rh2_fit, h_sd_extended]
 
     if return_params:
@@ -1375,6 +1428,8 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
     if return_fractions:
         output.append(f_H2)
         output.append(f_HI)
+    if return_chisq:
+    	output.append(chisq_reduced)
 
     return output
 
@@ -1620,6 +1675,7 @@ def main():
     rh2_fit_list = []
     h_sd_fit_list = []
     phi_cnm_list = []
+    chisq_list = []
     core_name_list = []
     co_image_list = []
     co_vel_range_list = []
@@ -1712,13 +1768,15 @@ def main():
         indices = np.where(rh2_ravel > 0)
 
         # Fit to krumholz model, init guess of phi_CNM = 10
-        rh2_fit, h_sd_fit, phi_cnm, f_H2, f_HI = \
+        rh2_fit, h_sd_fit, phi_cnm, f_H2, f_HI, chisq= \
                 fit_krumholz(h_sd_ravel[indices],
                              rh2_ravel[indices],
                              (0.001, 1000, 1e6),
                              p0=10.0,
                              return_params=True,
-                             return_fractions=True)
+                             return_fractions=True,
+                             return_chisq=True,
+                             rh2_error=rh2_image_error_sub)
 
         print('%s\t %.2f' % (core, phi_cnm))
 
@@ -1750,6 +1808,7 @@ def main():
         h_sd_fit_list.append(h_sd_fit)
         hi_sd_fit_list.append(hi_sd_fit)
         phi_cnm_list.append(phi_cnm)
+        chisq_list.append(chisq)
         core_name_list.append(core)
 
     figure_types = ['png', 'pdf']
@@ -1780,6 +1839,7 @@ def main():
                         + ' of Taurus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
+                chisq_list=chisq_list,
                 show = False)
 
         plot_hi_vs_h_grid(hi_sd_image_list,
@@ -1793,7 +1853,7 @@ def main():
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
                 filename = 'taurus_hi_vs_h_panels_planck.%s' % figure_type,
-                title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
+                title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
                         + ' of Taurus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
