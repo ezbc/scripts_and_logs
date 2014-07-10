@@ -992,7 +992,7 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
 
         # Adjust asthetics
         ax.set_xlabel('Velocity (km/s)')
-        ax.set_ylabel('I (K)',)
+        ax.set_ylabel(r'<I$_{\rm CO}$> (K)',)
         ax.set_title(core_names[i])
         ax.grid(True)
 
@@ -1378,7 +1378,6 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
 
     return output
 
-
 ''' DS9 Region and Coordinate Functions
 '''
 
@@ -1424,16 +1423,21 @@ def get_sub_image(image, indices):
 
 def get_pix_coords(ra=None, dec=None, header=None):
 
-    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec).
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec), or Ra in degrees
+    and dec in degrees.
     '''
 
     import pywcsgrid2 as wcs
     import pywcs
 
-    # convert to degrees
-    if type(ra) is tuple and type(dec) is tuple:
-        ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
-    else:
+    # convert to degrees if ra and dec are array-like
+    try:
+        if len(ra) == 3 and len(dec) == 3:
+            ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+        else:
+        	raise ValueError('RA and Dec must be in (hrs,min,sec) and' + \
+        	        ' (deg,arcmin,arcsec) or in degrees.')
+    except TypeError:
         ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
@@ -1514,6 +1518,7 @@ def main():
     import mygeometry as myg
     reload(myg)
     from mycoords import make_velocity_axis
+    import json
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
@@ -1521,7 +1526,7 @@ def main():
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
     co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = output_dir + 'core_arrays/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
@@ -1590,49 +1595,8 @@ def main():
                  + h2_sd_image_error**2 / h2_sd_image**2)**0.5
 
     # define core properties
-    cores = {'L1495':
-                {'center_wcs': [(4,14,0), (28, 11, 0)],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,16,30), (27,44,30), (4,5,20), (28,28,33)]
-                 },
-             'L1495A':
-                {'center_wcs': [(4,18,0), (28,23., 0)],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,28,23),(28,12,50),(4,16,23),(29,46,5)],
-                 },
-             'B213':
-                {'center_wcs': [(4, 19, 0), (27, 15,0)],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,22,27), (26,45,47),(4,5,25),(27,18,48)],
-                },
-             'B220':
-                {'center_wcs': [(4, 41, 0.), (26,7,0)],
-                 'map': None,
-                 'threshold': 7,
-                 'box_wcs': [(4,47,49),(25,31,13),(4,40,37),(27,31,17)],
-                 },
-             'L1527':
-                {'center_wcs': [(4, 39, 0.), (25,47, 0)],
-                 'map': None,
-                 'threshold': 7,
-                 'box_wcs': [(4,40,13), (24,46,38), (4,34,35), (25,56,7)],
-                 },
-             'B215':
-                {'center_wcs': [(4, 23, 0), (25, 3, 0)],
-                 'map': None,
-                 'threshold': 3,
-                 'box_wcs': [(4,24,51), (22,36,7), (4,20,54), (25,26,31)],
-                 },
-             'L1524':
-                {'center_wcs': [(4,29,0.), (24,31.,0)],
-                 'map': None,
-                 'threshold': 3,
-                 'box_wcs': [(4,31,0), (22,4,6), (4,25,33), (25,0,55)],
-                 }
-                }
+    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+        cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
 
@@ -1679,9 +1643,16 @@ def main():
         indices = np.where(mask == 1)
         indices = mask == 1
 
+        mask = myg.get_polygon_mask(av_data_planck,
+                cores[core]['box_vertices_rotated'])
+
+        indices = np.where(mask == 1)
+        indices = mask == 1
+
         if 1:
             co_data_sub = co_data[:, indices]
-            co_image_list.append(np.sum(co_data_sub, axis=1))
+            co_image_list.append(np.sum(co_data_sub, axis=1) / \
+                    co_data_sub.shape[0])
 
             # fit gaussians to CO data
             co_vel_range = select_co_vel_range(co_data_sub, co_header,
@@ -1790,7 +1761,7 @@ def main():
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
                 filename = 'taurus_core_co_spectra_grid.%s' % figure_type,
-                title = r'Integrated $^{12}$CO spectra of Taurus Cores',
+                title = r'Average $^{12}$CO spectra of Taurus Cores',
                 core_names=core_name_list,
                 show = False)
 
@@ -1804,7 +1775,7 @@ def main():
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'taurus_rh2_vs_hsd_panels_planck.png',
+                filename = 'taurus_rh2_vs_hsd_panels_planck.%s' % figure_type,
                 title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
                         + ' of Taurus Cores',
                 core_names=core_name_list,
@@ -1821,14 +1792,14 @@ def main():
                 limits = [-5, 50, 2, 9],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
-                filename = 'taurus_hi_vs_h_panels_planck.png',
+                filename = 'taurus_hi_vs_h_panels_planck.%s' % figure_type,
                 title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
                         + ' of Taurus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
 
-    if 1:
+    if 0:
         plot_sd_vs_av_grid(hi_sd_image_list,
                         av_image_list,
                         sd_image_errors = hi_sd_image_error_list,

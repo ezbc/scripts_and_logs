@@ -148,7 +148,7 @@ def plot_profile_grid(radii_list, profile_list, limits=None, savedir='./',
     if title:
         fig.suptitle(title, fontsize=1.5*fontScale)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename)#, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -359,7 +359,6 @@ def main():
     av_image, h = load_fits(av_dir + 'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
-
     cores = {'L1495':
                 {'center_wcs': [(4,14,0), (28, 11, 0)],
                  'map': None,
@@ -411,7 +410,6 @@ def main():
             header = h)
 
     if True:
-        #limits = [0.1, 100, 0.1, 100] # x-log limits
         limits = [0, 20, -1, 25] # x-linear limits
 
         # Initialize fit params
@@ -444,33 +442,23 @@ def main():
             # Get indices where there is no mask, and extract those pixels
             indices = np.where(mask == 1)
 
-            # plotting radial profiles only within boxes
-            #av_image_sub = get_sub_image(av_image, cores[core]['box_pixel'])
-            # change center pixel to correspond to sub image
-            #pix = cores[core]['center_pixel']
-            #pix = (pix[0] - cores[core]['box_pixel'][0],
-            #    pix[1] - cores[core]['box_pixel'][1],)
-            #cores[core]['center_pixel'] = pix
-
-            av_image_sub = av_image
+            av_image_sub = np.copy(av_image)
             #av_image_sub[mask == 0] = np.NaN
-            temp_mask = np.copy(mask)
-            temp_mask[mask == 0] = 1
-            temp_mask[mask == 1] = 0
+            av_image_sub = np.ma.array(av_image, mask=(mask == 0))
 
-            import matplotlib.pyplot as plt
-
-            plt.clf()
-            plt.imshow(np.ma.array(av_image_sub, mask=temp_mask))
-            plt.savefig('/usr/users/ezbc/Desktop/map%s.png' % core)
-            plt.clf()
+            # to check the positions of the boxes, uncomment the following
+            #import matplotlib.pyplot as plt
+            #plt.clf()
+            #plt.imshow(np.ma.array(av_image_sub, mask=temp_mask))
+            #plt.savefig('/usr/users/ezbc/Desktop/map%s.png' % core)
+            #plt.clf()
 
             pix = cores[core]['center_pixel']
 
             # extract radial profile weighted by SNR
-            radii, profile = get_radial_profile(av_image_sub, binsize=3,
+            radii, profile = get_radial_profile(av_image, binsize=3,
                     center=pix,
-                    weights=av_image_sub / 0.3,
+                    weights=av_image / 0.3,
                     mask=mask
                     )
 
