@@ -1,0 +1,454 @@
+
+2014-07-09 15:36:59 INFO setjy	##########################################
+2014-07-09 15:36:59 INFO setjy	##### Begin Task: setjy              #####
+2014-07-09 15:36:59 INFO setjy	setjy(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",field="2",spw="",selectdata=False,
+2014-07-09 15:36:59 INFO setjy	        timerange="",scan="",observation="",modimage="3C48_L.im",listmodels=False,
+2014-07-09 15:36:59 INFO setjy	        scalebychan=True,fluxdensity=-1,spix=0,reffreq="1GHz",standard="Perley-Butler 2010",
+2014-07-09 15:36:59 INFO setjy	        useephemdir=False,usescratch=False)
+2014-07-09 15:36:59 INFO setjy	Opening MeasurementSet /d/bip3/ezbc/orion/data/absorption/casa/10C-196.sb4997632.eb5088657.55813.373845856484.ms
+2014-07-09 15:37:06 INFO setjy	Using /usr/users/ezbc/opt/casapy-40.1.22889-003-64b/data/nrao/VLA/CalModels/3C48_L.im for modimage.
+2014-07-09 15:37:06 INFO imager	Using channel dependent flux densities
+2014-07-09 15:37:09 INFO imager	Selected 1659125 out of 3489200 rows.
+2014-07-09 15:37:09 INFO imager	  J0137+3309 (fld ind 2) spw 0  [I=16.021, Q=0, U=0, V=0] Jy, (Perley-Butler 2010)
+2014-07-09 15:37:09 INFO imager	Using model image /usr/users/ezbc/opt/casapy-40.1.22889-003-64b/data/nrao/VLA/CalModels/3C48_L.im
+2014-07-09 15:37:09 INFO imager	Scaling spw 0's model image by channel to I = [16.0207, 16.0207, 16.0207, 16.0206, 16.0206, 16.0206, 16.0206, 16.0206, 16.0206, 16.0205, 16.0205, 16.0205, 16.0205, 16.0205, 16.0204, 16.0204, 16.0204, 16.0204, 16.0204, 16.0204, 16.0203, 16.0203, 16.0203, 16.0203, 16.0203, 16.0203, 16.0202, 16.0202, 16.0202, 16.0202, 16.0202, 16.0202, 16.0201, 16.0201, 16.0201, 16.0201, 16.0201, 16.0201, 16.02, 16.02, 16.02, 16.02, 16.02, 16.0199, 16.0199, 16.0199, 16.0199, 16.0199, 16.0199, 16.0198, 16.0198, 16.0198, 16.0198, 16.0198, 16.0198, 16.0197, 16.0197, 16.0197, 16.0197, 16.0197, 16.0197, 16.0196, 16.0196, 16.0196, 16.0196, 16.0196, 16.0196, 16.0195, 16.0195, 16.0195, 16.0195, 16.0195, 16.0194, 16.0194, 16.0194, 16.0194, 16.0194, 16.0194, 16.0193, 16.0193, 16.0193, 16.0193, 16.0193, 16.0193, 16.0192, 16.0192, 16.0192, 16.0192, 16.0192, 16.0192, 16.0191, 16.0191, 16.0191, 16.0191, 16.0191, 16.0191, 16.019, 16.019, 16.019, 16.019, 16.019, 16.0189, 16.0189, 16.0189, 16.0189, 16.0189, 16.0189, 16.0188, 16.0188, 16.0188, 16.0188, 16.0188, 16.0188, 16.0187, 16.0187, 16.0187, 16.0187, 16.0187, 16.0187, 16.0186, 16.0186, 16.0186, 16.0186, 16.0186, 16.0186, 16.0185, 16.0185, 16.0185, 16.0185, 16.0185, 16.0184, 16.0184, 16.0184, 16.0184, 16.0184, 16.0184, 16.0183, 16.0183, 16.0183, 16.0183, 16.0183, 16.0183, 16.0182, 16.0182, 16.0182, 16.0182, 16.0182, 16.0182, 16.0181, 16.0181, 16.0181, 16.0181, 16.0181, 16.0181, 16.018, 16.018, 16.018, 16.018, 16.018, 16.0179, 16.0179, 16.0179, 16.0179, 16.0179, 16.0179, 16.0178, 16.0178, 16.0178, 16.0178, 16.0178, 16.0178, 16.0177, 16.0177, 16.0177, 16.0177, 16.0177, 16.0177, 16.0176, 16.0176, 16.0176, 16.0176, 16.0176, 16.0175, 16.0175, 16.0175, 16.0175, 16.0175, 16.0175, 16.0174, 16.0174, 16.0174, 16.0174, 16.0174, 16.0174, 16.0173, 16.0173, 16.0173, 16.0173, 16.0173, 16.0173, 16.0172, 16.0172, 16.0172, 16.0172, 16.0172, 16.0172, 16.0171, 16.0171, 16.0171, 16.0171, 16.0171, 16.017, 16.017, 16.017, 16.017, 16.017, 16.017, 16.0169, 16.0169, 16.0169, 16.0169, 16.0169, 16.0169, 16.0168, 16.0168, 16.0168, 16.0168, 16.0168, 16.0168, 16.0167, 16.0167, 16.0167, 16.0167, 16.0167, 16.0167, 16.0166, 16.0166, 16.0166, 16.0166, 16.0166, 16.0165, 16.0165, 16.0165, 16.0165, 16.0165, 16.0165, 16.0164, 16.0164, 16.0164, 16.0164, 16.0164, 16.0164, 16.0163, 16.0163, 16.0163, 16.0163] Jy (ch 0) for visibility prediction.
+2014-07-09 15:37:09 INFO imager	The model image's reference pixel is 0.00132543 arcsec from J0137+3309's phase center.
+2014-07-09 15:37:16 INFO imager	  J0137+3309 (fld ind 2) spw 1  [I=16.034, Q=0, U=0, V=0] Jy, (Perley-Butler 2010)
+2014-07-09 15:37:16 INFO imager	Scaling spw 1's model image by channel to I = [16.034, 16.0339, 16.0339, 16.0339, 16.0339, 16.0339, 16.0338, 16.0338, 16.0338, 16.0338, 16.0338, 16.0338, 16.0337, 16.0337, 16.0337, 16.0337, 16.0337, 16.0337, 16.0336, 16.0336, 16.0336, 16.0336, 16.0336, 16.0336, 16.0335, 16.0335, 16.0335, 16.0335, 16.0335, 16.0335, 16.0334, 16.0334, 16.0334, 16.0334, 16.0334, 16.0333, 16.0333, 16.0333, 16.0333, 16.0333, 16.0333, 16.0332, 16.0332, 16.0332, 16.0332, 16.0332, 16.0332, 16.0331, 16.0331, 16.0331, 16.0331, 16.0331, 16.0331, 16.033, 16.033, 16.033, 16.033, 16.033, 16.033, 16.0329, 16.0329, 16.0329, 16.0329, 16.0329, 16.0328, 16.0328, 16.0328, 16.0328, 16.0328, 16.0328, 16.0327, 16.0327, 16.0327, 16.0327, 16.0327, 16.0327, 16.0326, 16.0326, 16.0326, 16.0326, 16.0326, 16.0326, 16.0325, 16.0325, 16.0325, 16.0325, 16.0325, 16.0324, 16.0324, 16.0324, 16.0324, 16.0324, 16.0324, 16.0323, 16.0323, 16.0323, 16.0323, 16.0323, 16.0323, 16.0322, 16.0322, 16.0322, 16.0322, 16.0322, 16.0322, 16.0321, 16.0321, 16.0321, 16.0321, 16.0321, 16.0321, 16.032, 16.032, 16.032, 16.032, 16.032, 16.0319, 16.0319, 16.0319, 16.0319, 16.0319, 16.0319, 16.0318, 16.0318, 16.0318, 16.0318, 16.0318, 16.0318, 16.0317, 16.0317, 16.0317, 16.0317, 16.0317, 16.0317, 16.0316, 16.0316, 16.0316, 16.0316, 16.0316, 16.0316, 16.0315, 16.0315, 16.0315, 16.0315, 16.0315, 16.0314, 16.0314, 16.0314, 16.0314, 16.0314, 16.0314, 16.0313, 16.0313, 16.0313, 16.0313, 16.0313, 16.0313, 16.0312, 16.0312, 16.0312, 16.0312, 16.0312, 16.0312, 16.0311, 16.0311, 16.0311, 16.0311, 16.0311, 16.0311, 16.031, 16.031, 16.031, 16.031, 16.031, 16.0309, 16.0309, 16.0309, 16.0309, 16.0309, 16.0309, 16.0308, 16.0308, 16.0308, 16.0308, 16.0308, 16.0308, 16.0307, 16.0307, 16.0307, 16.0307, 16.0307, 16.0307, 16.0306, 16.0306, 16.0306, 16.0306, 16.0306, 16.0305, 16.0305, 16.0305, 16.0305, 16.0305, 16.0305, 16.0304, 16.0304, 16.0304, 16.0304, 16.0304, 16.0304, 16.0303, 16.0303, 16.0303, 16.0303, 16.0303, 16.0303, 16.0302, 16.0302, 16.0302, 16.0302, 16.0302, 16.0302, 16.0301, 16.0301, 16.0301, 16.0301, 16.0301, 16.03, 16.03, 16.03, 16.03, 16.03, 16.03, 16.0299, 16.0299, 16.0299, 16.0299, 16.0299, 16.0299, 16.0298, 16.0298, 16.0298, 16.0298, 16.0298, 16.0298, 16.0297, 16.0297, 16.0297, 16.0297, 16.0297, 16.0297, 16.0296, 16.0296, 16.0296, 16.0296, 16.0296, 16.0295] Jy (ch 0) for visibility prediction.
+2014-07-09 15:37:17 INFO imager	Selected 873600 out of 3489200 rows.
+2014-07-09 15:37:17 INFO imager	  J0137+3309 (fld ind 2) spw 2  [I=16.007, Q=0, U=0, V=0] Jy, (Perley-Butler 2010)
+2014-07-09 15:37:17 INFO imager	Scaling spw 2's model image by channel to I = [16.0074, 16.0074, 16.0074, 16.0074, 16.0074, 16.0074, 16.0073, 16.0073, 16.0073, 16.0073, 16.0073, 16.0073, 16.0072, 16.0072, 16.0072, 16.0072, 16.0072, 16.0072, 16.0071, 16.0071, 16.0071, 16.0071, 16.0071, 16.0071, 16.007, 16.007, 16.007, 16.007, 16.007, 16.0069, 16.0069, 16.0069, 16.0069, 16.0069, 16.0069, 16.0068, 16.0068, 16.0068, 16.0068, 16.0068, 16.0068, 16.0067, 16.0067, 16.0067, 16.0067, 16.0067, 16.0067, 16.0066, 16.0066, 16.0066, 16.0066, 16.0066, 16.0066, 16.0065, 16.0065, 16.0065, 16.0065, 16.0065, 16.0064, 16.0064, 16.0064, 16.0064, 16.0064, 16.0064, 16.0063, 16.0063, 16.0063, 16.0063, 16.0063, 16.0063, 16.0062, 16.0062, 16.0062, 16.0062, 16.0062, 16.0062, 16.0061, 16.0061, 16.0061, 16.0061, 16.0061, 16.0061, 16.006, 16.006, 16.006, 16.006, 16.006, 16.0059, 16.0059, 16.0059, 16.0059, 16.0059, 16.0059, 16.0058, 16.0058, 16.0058, 16.0058, 16.0058, 16.0058, 16.0057, 16.0057, 16.0057, 16.0057, 16.0057, 16.0057, 16.0056, 16.0056, 16.0056, 16.0056, 16.0056, 16.0056, 16.0055, 16.0055, 16.0055, 16.0055, 16.0055, 16.0055, 16.0054, 16.0054, 16.0054, 16.0054, 16.0054, 16.0053, 16.0053, 16.0053, 16.0053, 16.0053, 16.0053, 16.0052, 16.0052, 16.0052, 16.0052, 16.0052, 16.0052, 16.0051, 16.0051, 16.0051, 16.0051, 16.0051, 16.0051, 16.005, 16.005, 16.005, 16.005, 16.005, 16.005, 16.0049, 16.0049, 16.0049, 16.0049, 16.0049, 16.0048, 16.0048, 16.0048, 16.0048, 16.0048, 16.0048, 16.0047, 16.0047, 16.0047, 16.0047, 16.0047, 16.0047, 16.0046, 16.0046, 16.0046, 16.0046, 16.0046, 16.0046, 16.0045, 16.0045, 16.0045, 16.0045, 16.0045, 16.0045, 16.0044, 16.0044, 16.0044, 16.0044, 16.0044, 16.0043, 16.0043, 16.0043, 16.0043, 16.0043, 16.0043, 16.0042, 16.0042, 16.0042, 16.0042, 16.0042, 16.0042, 16.0041, 16.0041, 16.0041, 16.0041, 16.0041, 16.0041, 16.004, 16.004, 16.004, 16.004, 16.004, 16.004, 16.0039, 16.0039, 16.0039, 16.0039, 16.0039, 16.0038, 16.0038, 16.0038, 16.0038, 16.0038, 16.0038, 16.0037, 16.0037, 16.0037, 16.0037, 16.0037, 16.0037, 16.0036, 16.0036, 16.0036, 16.0036, 16.0036, 16.0036, 16.0035, 16.0035, 16.0035, 16.0035, 16.0035, 16.0035, 16.0034, 16.0034, 16.0034, 16.0034, 16.0034, 16.0033, 16.0033, 16.0033, 16.0033, 16.0033, 16.0033, 16.0032, 16.0032, 16.0032, 16.0032, 16.0032, 16.0032, 16.0031, 16.0031, 16.0031, 16.0031, 16.0031, 16.0031] Jy (ch 0) for visibility prediction.
+2014-07-09 15:37:18 INFO imager	Selected 785525 out of 3489200 rows.
+2014-07-09 15:37:19 INFO setjy	##### End Task: setjy                #####
+2014-07-09 15:37:19 INFO setjy	##########################################
+2014-07-09 15:37:19 INFO bandpass	   
+2014-07-09 15:37:19 INFO bandpass	##########################################
+2014-07-09 15:37:19 INFO bandpass	##### Begin Task: bandpass           #####
+2014-07-09 15:37:19 INFO bandpass	bandpass(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="bandpass.bcal",field="2",spw="1, 2",
+2014-07-09 15:37:19 INFO bandpass	        intent="",selectdata=True,timerange="",uvrange="",antenna="",
+2014-07-09 15:37:19 INFO bandpass	        scan="",observation="",msselect="",solint="inf",combine="scan",
+2014-07-09 15:37:19 INFO bandpass	        refant="ea28",minblperant=4,minsnr=3.0,solnorm=False,bandtype="B",
+2014-07-09 15:37:19 INFO bandpass	        smodel=[],append=False,fillgaps=0,degamp=3,degphase=3,
+2014-07-09 15:37:19 INFO bandpass	        visnorm=False,maskcenter=0,maskedge=5,gaintable=[''],gainfield=[''],
+2014-07-09 15:37:19 INFO bandpass	        interp=[''],spwmap=[],gaincurve=False,opacity=[],parang=False)
+2014-07-09 15:37:19 INFO bandpass	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 15:37:19 INFO bandpass	Initializing nominal selection to the whole MS.
+2014-07-09 15:37:19 INFO bandpass	Reseting solve/apply state
+2014-07-09 15:37:19 INFO bandpass	Beginning selectvis--(MSSelection version)-------
+2014-07-09 15:37:19 INFO bandpass	Reseting solve/apply state
+2014-07-09 15:37:19 INFO bandpass	Performing selection on MeasurementSet
+2014-07-09 15:37:19 INFO bandpass	 Selecting on spw: '1, 2'
+2014-07-09 15:37:19 INFO bandpass	 Selecting on field: '2'
+2014-07-09 15:37:20 INFO bandpass	By selection 3489200 rows are reduced to 1659125
+2014-07-09 15:37:23 INFO bandpass	Frequency selection: 
+2014-07-09 15:37:23 INFO bandpass	.  Spw 1:0~255 (256 channels, step by 1)
+2014-07-09 15:37:23 INFO bandpass	.  Spw 2:0~255 (256 channels, step by 1)
+2014-07-09 15:37:23 INFO bandpass	Beginning setsolve--(MSSelection version)-------
+2014-07-09 15:37:23 INFO bandpass	Arranging to SOLVE:
+2014-07-09 15:37:23 INFO bandpass	.   B Jones: table=bandpass.bcal append=false solint=inf,none refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 15:37:23 INFO bandpass	Beginning solve-----------------------------
+2014-07-09 15:37:23 INFO bandpass	The following calibration terms are arranged for apply:
+2014-07-09 15:37:23 INFO bandpass	.   (None)
+2014-07-09 15:37:23 INFO bandpass	The following calibration term is arranged for solve:
+2014-07-09 15:37:23 INFO bandpass	.   B Jones: table=bandpass.bcal append=false solint=inf,none refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 15:37:23 INFO bandpass	Solving for B Jones
+2014-07-09 15:37:26 INFO bandpass	Combining scans.
+2014-07-09 15:37:26 INFO bandpass	For solint = inf, found 2 solution intervals.
+2014-07-09 15:37:26 SEVERE bandpass	Leap second table TAI_UTC seems out-of-date. 
+2014-07-09 15:37:26 SEVERE bandpass	Until table is updated (see aips++ manager) times and coordinates
+2014-07-09 15:37:26 SEVERE bandpass	derived from UTC could be wrong by 1s or more.
+2014-07-09 15:43:54 INFO bandpass	  Found good B Jones solutions in 2 slots.
+2014-07-09 15:43:54 INFO bandpass	Applying refant: ea28
+2014-07-09 15:43:54 INFO bandpass	Writing solutions to table: bandpass.bcal
+2014-07-09 15:43:54 INFO bandpass	Finished solving.
+2014-07-09 15:43:54 INFO bandpass	##### End Task: bandpass             #####
+2014-07-09 15:43:54 INFO bandpass	##########################################
+2014-07-09 15:43:54 INFO bandpass	   
+2014-07-09 15:43:54 INFO bandpass	##########################################
+2014-07-09 15:43:54 INFO bandpass	##### Begin Task: bandpass           #####
+2014-07-09 15:43:54 INFO bandpass	bandpass(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="bandpass_source.bcal",field="2",spw="1, 2",
+2014-07-09 15:43:54 INFO bandpass	        intent="",selectdata=True,timerange="",uvrange="",antenna="",
+2014-07-09 15:43:54 INFO bandpass	        scan="",observation="",msselect="",solint="inf",combine="spw, scan",
+2014-07-09 15:43:54 INFO bandpass	        refant="ea28",minblperant=4,minsnr=3.0,solnorm=False,bandtype="B",
+2014-07-09 15:43:54 INFO bandpass	        smodel=[],append=False,fillgaps=0,degamp=3,degphase=3,
+2014-07-09 15:43:54 INFO bandpass	        visnorm=False,maskcenter=0,maskedge=5,gaintable=[''],gainfield=[''],
+2014-07-09 15:43:54 INFO bandpass	        interp=[''],spwmap=[],gaincurve=False,opacity=[],parang=False)
+2014-07-09 15:43:54 INFO bandpass	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 15:43:54 INFO bandpass	Initializing nominal selection to the whole MS.
+2014-07-09 15:44:00 INFO bandpass	Reseting solve/apply state
+2014-07-09 15:44:00 INFO bandpass	Beginning selectvis--(MSSelection version)-------
+2014-07-09 15:44:00 INFO bandpass	Reseting solve/apply state
+2014-07-09 15:44:00 INFO bandpass	Performing selection on MeasurementSet
+2014-07-09 15:44:00 INFO bandpass	 Selecting on spw: '1, 2'
+2014-07-09 15:44:00 INFO bandpass	 Selecting on field: '2'
+2014-07-09 15:44:01 INFO bandpass	By selection 3489200 rows are reduced to 1659125
+2014-07-09 15:44:03 INFO bandpass	Frequency selection: 
+2014-07-09 15:44:03 INFO bandpass	.  Spw 1:0~255 (256 channels, step by 1)
+2014-07-09 15:44:03 INFO bandpass	.  Spw 2:0~255 (256 channels, step by 1)
+2014-07-09 15:44:03 INFO bandpass	Beginning setsolve--(MSSelection version)-------
+2014-07-09 15:44:03 INFO bandpass	Arranging to SOLVE:
+2014-07-09 15:44:03 INFO bandpass	.   B Jones: table=bandpass_source.bcal append=false solint=inf,none refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 15:44:03 INFO bandpass	Beginning solve-----------------------------
+2014-07-09 15:44:03 INFO bandpass	The following calibration terms are arranged for apply:
+2014-07-09 15:44:03 INFO bandpass	.   (None)
+2014-07-09 15:44:03 INFO bandpass	The following calibration term is arranged for solve:
+2014-07-09 15:44:03 INFO bandpass	.   B Jones: table=bandpass_source.bcal append=false solint=inf,none refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 15:44:03 INFO bandpass	Solving for B Jones
+2014-07-09 15:44:07 INFO bandpass	Combining scans.
+2014-07-09 15:44:07 INFO bandpass	Combining spws: [1, 2] -> 1
+2014-07-09 15:44:07 INFO bandpass	For solint = inf, found 1 solution intervals.
+2014-07-09 15:50:31 INFO bandpass	  Found good B Jones solutions in 1 slots.
+2014-07-09 15:50:31 INFO bandpass	Applying refant: ea28
+2014-07-09 15:50:31 INFO bandpass	At 2011/09/09/10:36:26.8 (Spw=1, Fld=2), using refant ea05 (id=4) (alternate)
+2014-07-09 15:50:31 INFO bandpass	 NB: An alternate refant was used at least once to maintain
+2014-07-09 15:50:31 INFO bandpass	  phase continuity where the user's preferred refant drops out.
+2014-07-09 15:50:31 INFO bandpass	  Alternate refants are held constant in phase (_not_ zeroed)
+2014-07-09 15:50:31 INFO bandpass	  during these periods, and the preferred refant may return at
+2014-07-09 15:50:31 INFO bandpass	  a non-zero phase.  This is generally harmless.
+2014-07-09 15:50:31 INFO bandpass	Writing solutions to table: bandpass_source.bcal
+2014-07-09 15:50:31 INFO bandpass	Finished solving.
+2014-07-09 15:50:31 INFO bandpass	##### End Task: bandpass             #####
+2014-07-09 15:50:31 INFO bandpass	##########################################
+2014-07-09 15:50:31 INFO gaincal	   
+2014-07-09 15:50:31 INFO gaincal	##########################################
+2014-07-09 15:50:31 INFO gaincal	##### Begin Task: gaincal            #####
+2014-07-09 15:50:31 INFO gaincal	gaincal(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="scanphase.gcal",field="1, 2",spw="1, 2",
+2014-07-09 15:50:31 INFO gaincal	        intent="",selectdata=True,timerange="",uvrange="",antenna="",
+2014-07-09 15:50:31 INFO gaincal	        scan="",observation="",msselect="",solint="inf",combine="",
+2014-07-09 15:50:31 INFO gaincal	        preavg=-1.0,refant="ea28",minblperant=4,minsnr=3.0,solnorm=False,
+2014-07-09 15:50:31 INFO gaincal	        gaintype="G",smodel=[],calmode="p",append=False,splinetime=3600.0,
+2014-07-09 15:50:31 INFO gaincal	        npointaver=3,phasewrap=180.0,gaintable=['bandpass.bcal'],gainfield=[''],interp=[''],
+2014-07-09 15:50:31 INFO gaincal	        spwmap=[],gaincurve=False,opacity=[],parang=False)
+2014-07-09 15:50:31 INFO gaincal	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 15:50:31 INFO gaincal	Initializing nominal selection to the whole MS.
+2014-07-09 15:50:36 INFO gaincal	Beginning selectvis--(MSSelection version)-------
+2014-07-09 15:50:36 INFO gaincal	Reseting solve/apply state
+2014-07-09 15:50:36 INFO gaincal	Performing selection on MeasurementSet
+2014-07-09 15:50:36 INFO gaincal	 Selecting on spw: '1, 2'
+2014-07-09 15:50:36 INFO gaincal	 Selecting on field: '1, 2'
+2014-07-09 15:50:37 INFO gaincal	By selection 3489200 rows are reduced to 1736150
+2014-07-09 15:50:37 INFO gaincal	Frequency selection: 
+2014-07-09 15:50:37 INFO gaincal	.  Spw 1:0~255 (256 channels, step by 1)
+2014-07-09 15:50:37 INFO gaincal	.  Spw 2:0~255 (256 channels, step by 1)
+2014-07-09 15:50:37 INFO gaincal	Beginning setapply--(MSSelection version)-------
+2014-07-09 15:50:37 INFO gaincal	Arranging to APPLY:
+2014-07-09 15:50:37 INFO gaincal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 15:50:37 INFO gaincal	Beginning setsolve--(MSSelection version)-------
+2014-07-09 15:50:37 INFO gaincal	Arranging to SOLVE:
+2014-07-09 15:50:37 INFO gaincal	.   G Jones: table=scanphase.gcal append=false solint=inf refant='ea28' minsnr=3 apmode=P solnorm=false
+2014-07-09 15:50:37 INFO gaincal	Beginning solve-----------------------------
+2014-07-09 15:50:37 INFO gaincal	The following calibration terms are arranged for apply:
+2014-07-09 15:50:37 INFO gaincal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 15:50:37 INFO gaincal	The following calibration term is arranged for solve:
+2014-07-09 15:50:37 INFO gaincal	.   G Jones: table=scanphase.gcal append=false solint=inf refant='ea28' minsnr=3 apmode=P solnorm=false
+2014-07-09 15:50:37 INFO gaincal	Solving for G Jones
+2014-07-09 15:50:40 INFO gaincal	For solint = inf, found 14 solution intervals.
+2014-07-09 15:57:36 INFO gaincal	  Found good G Jones solutions in 14 slots.
+2014-07-09 15:57:36 INFO gaincal	Applying refant: ea28
+2014-07-09 15:57:36 INFO gaincal	Enforcing apmode on solutions.
+2014-07-09 15:57:36 INFO gaincal	Writing solutions to table: scanphase.gcal
+2014-07-09 15:57:36 INFO gaincal	Finished solving.
+2014-07-09 15:57:36 INFO gaincal	Calibration solve statistics per spw:  (expected/attempted/succeeded):
+2014-07-09 15:57:36 INFO gaincal	  Spw 0: 0/0/0
+2014-07-09 15:57:36 INFO gaincal	  Spw 1: 7/7/7
+2014-07-09 15:57:36 INFO gaincal	  Spw 2: 7/7/7
+2014-07-09 15:57:36 INFO gaincal	##### End Task: gaincal              #####
+2014-07-09 15:57:36 INFO gaincal	##########################################
+2014-07-09 15:57:36 INFO gaincal	   
+2014-07-09 15:57:36 INFO gaincal	##########################################
+2014-07-09 15:57:36 INFO gaincal	##### Begin Task: gaincal            #####
+2014-07-09 15:57:36 INFO gaincal	gaincal(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="amp.gcal",field="1, 2",spw="",
+2014-07-09 15:57:36 INFO gaincal	        intent="",selectdata=True,timerange="",uvrange="",antenna="",
+2014-07-09 15:57:36 INFO gaincal	        scan="",observation="",msselect="",solint="inf",combine="",
+2014-07-09 15:57:36 INFO gaincal	        preavg=-1.0,refant="ea28",minblperant=4,minsnr=3.0,solnorm=False,
+2014-07-09 15:57:36 INFO gaincal	        gaintype="G",smodel=[],calmode="ap",append=False,splinetime=3600.0,
+2014-07-09 15:57:36 INFO gaincal	        npointaver=3,phasewrap=180.0,gaintable=['bandpass.bcal', 'scanphase.gcal'],gainfield=[''],interp=[''],
+2014-07-09 15:57:36 INFO gaincal	        spwmap=[],gaincurve=False,opacity=[],parang=False)
+2014-07-09 15:57:36 INFO gaincal	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 15:57:36 INFO gaincal	Initializing nominal selection to the whole MS.
+2014-07-09 15:57:41 INFO gaincal	Beginning selectvis--(MSSelection version)-------
+2014-07-09 15:57:41 INFO gaincal	Reseting solve/apply state
+2014-07-09 15:57:41 INFO gaincal	Performing selection on MeasurementSet
+2014-07-09 15:57:41 INFO gaincal	 Selecting on field: '1, 2'
+2014-07-09 15:57:42 INFO gaincal	By selection 3489200 rows are reduced to 1736150
+2014-07-09 15:57:42 INFO gaincal	Frequency selection: Selecting all channels in all spws.
+2014-07-09 15:57:42 INFO gaincal	Beginning setapply--(MSSelection version)-------
+2014-07-09 15:57:42 INFO gaincal	Arranging to APPLY:
+2014-07-09 15:57:42 INFO gaincal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 15:57:42 INFO gaincal	Beginning setapply--(MSSelection version)-------
+2014-07-09 15:57:42 INFO gaincal	Arranging to APPLY:
+2014-07-09 15:57:42 INFO gaincal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 15:57:42 INFO gaincal	Beginning setsolve--(MSSelection version)-------
+2014-07-09 15:57:42 INFO gaincal	Arranging to SOLVE:
+2014-07-09 15:57:42 INFO gaincal	.   G Jones: table=amp.gcal append=false solint=inf refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 15:57:42 INFO gaincal	Beginning solve-----------------------------
+2014-07-09 15:57:42 INFO gaincal	The following calibration terms are arranged for apply:
+2014-07-09 15:57:42 INFO gaincal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 15:57:42 INFO gaincal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 15:57:42 INFO gaincal	The following calibration term is arranged for solve:
+2014-07-09 15:57:42 INFO gaincal	.   G Jones: table=amp.gcal append=false solint=inf refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 15:57:42 INFO gaincal	Solving for G Jones
+2014-07-09 15:57:43 INFO gaincal	For solint = inf, found 14 solution intervals.
+2014-07-09 16:05:07 INFO gaincal	  Found good G Jones solutions in 14 slots.
+2014-07-09 16:05:07 INFO gaincal	Applying refant: ea28
+2014-07-09 16:05:07 INFO gaincal	Writing solutions to table: amp.gcal
+2014-07-09 16:05:07 INFO gaincal	Finished solving.
+2014-07-09 16:05:07 INFO gaincal	Calibration solve statistics per spw:  (expected/attempted/succeeded):
+2014-07-09 16:05:07 INFO gaincal	  Spw 0: 0/0/0
+2014-07-09 16:05:07 INFO gaincal	  Spw 1: 7/7/7
+2014-07-09 16:05:07 INFO gaincal	  Spw 2: 7/7/7
+2014-07-09 16:05:07 INFO gaincal	##### End Task: gaincal              #####
+2014-07-09 16:05:07 INFO gaincal	##########################################
+2014-07-09 16:05:08 INFO gaincal	   
+2014-07-09 16:05:08 INFO gaincal	##########################################
+2014-07-09 16:05:08 INFO gaincal	##### Begin Task: gaincal            #####
+2014-07-09 16:05:08 INFO gaincal	gaincal(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="amp_source.gcal",field="0, 1",spw="",
+2014-07-09 16:05:08 INFO gaincal	        intent="",selectdata=True,timerange="",uvrange="",antenna="",
+2014-07-09 16:05:08 INFO gaincal	        scan="",observation="",msselect="",solint="inf",combine="spw, field",
+2014-07-09 16:05:08 INFO gaincal	        preavg=-1.0,refant="ea28",minblperant=4,minsnr=3.0,solnorm=False,
+2014-07-09 16:05:08 INFO gaincal	        gaintype="G",smodel=[],calmode="ap",append=False,splinetime=3600.0,
+2014-07-09 16:05:08 INFO gaincal	        npointaver=3,phasewrap=180.0,gaintable=['bandpass_source.bcal', 'scanphase.gcal'],gainfield=[''],interp=[''],
+2014-07-09 16:05:08 INFO gaincal	        spwmap=[[1, 1, 2], [1, 1, 2]],gaincurve=False,opacity=[],parang=False)
+2014-07-09 16:05:08 INFO gaincal	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 16:05:08 INFO gaincal	Initializing nominal selection to the whole MS.
+2014-07-09 16:05:08 INFO gaincal	Beginning selectvis--(MSSelection version)-------
+2014-07-09 16:05:08 INFO gaincal	Reseting solve/apply state
+2014-07-09 16:05:08 INFO gaincal	Performing selection on MeasurementSet
+2014-07-09 16:05:08 INFO gaincal	 Selecting on field: '0, 1'
+2014-07-09 16:05:08 INFO gaincal	By selection 3489200 rows are reduced to 1830075
+2014-07-09 16:05:08 INFO gaincal	Frequency selection: Selecting all channels in all spws.
+2014-07-09 16:05:08 INFO gaincal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:05:08 INFO gaincal	Arranging to APPLY:
+2014-07-09 16:05:08 INFO gaincal	.   B Jones: table=bandpass_source.bcal select= interp=linear spwmap=[1, 1, 2] calWt=true
+2014-07-09 16:05:08 INFO gaincal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:05:08 INFO gaincal	Arranging to APPLY:
+2014-07-09 16:05:09 INFO gaincal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[1, 1, 2] calWt=true
+2014-07-09 16:05:09 INFO gaincal	Beginning setsolve--(MSSelection version)-------
+2014-07-09 16:05:09 INFO gaincal	Arranging to SOLVE:
+2014-07-09 16:05:09 INFO gaincal	.   G Jones: table=amp_source.gcal append=false solint=inf refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 16:05:09 INFO gaincal	Beginning solve-----------------------------
+2014-07-09 16:05:09 INFO gaincal	The following calibration terms are arranged for apply:
+2014-07-09 16:05:09 INFO gaincal	.   B Jones: table=bandpass_source.bcal select= interp=linear spwmap=[1, 1, 2] calWt=true
+2014-07-09 16:05:09 INFO gaincal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[1, 1, 2] calWt=true
+2014-07-09 16:05:09 INFO gaincal	The following calibration term is arranged for solve:
+2014-07-09 16:05:09 INFO gaincal	.   G Jones: table=amp_source.gcal append=false solint=inf refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 16:05:09 INFO gaincal	Solving for G Jones
+2014-07-09 16:05:12 INFO gaincal	Combining spws: [0, 1, 2] -> 0
+2014-07-09 16:05:12 INFO gaincal	Combining fields.
+2014-07-09 16:05:12 INFO gaincal	For solint = inf, found 18 solution intervals.
+2014-07-09 16:07:57 INFO gaincal	  Found good G Jones solutions in 1 slots.
+2014-07-09 16:07:57 WARN gaincal	Spectral window(s) 2, 
+2014-07-09 16:07:57 WARN gaincal	  could not be solved due to missing (pre-)calibration
+2014-07-09 16:07:57 WARN gaincal	    in one or more of the specified tables.
+2014-07-09 16:07:57 WARN gaincal	    Please check your results carefully!
+2014-07-09 16:07:57 INFO gaincal	Applying refant: ea28
+2014-07-09 16:07:57 INFO gaincal	At 2011/09/09/09:03:14.0 (Spw=0, Fld=1), using refant ea05 (id=4) (alternate)
+2014-07-09 16:07:57 INFO gaincal	 NB: An alternate refant was used at least once to maintain
+2014-07-09 16:07:57 INFO gaincal	  phase continuity where the user's preferred refant drops out.
+2014-07-09 16:07:57 INFO gaincal	  Alternate refants are held constant in phase (_not_ zeroed)
+2014-07-09 16:07:57 INFO gaincal	  during these periods, and the preferred refant may return at
+2014-07-09 16:07:57 INFO gaincal	  a non-zero phase.  This is generally harmless.
+2014-07-09 16:07:57 INFO gaincal	Writing solutions to table: amp_source.gcal
+2014-07-09 16:07:57 INFO gaincal	Finished solving.
+2014-07-09 16:07:57 INFO gaincal	Calibration solve statistics per spw:  (expected/attempted/succeeded):
+2014-07-09 16:07:57 INFO gaincal	  Spw 0: 16/1/1
+2014-07-09 16:07:57 INFO gaincal	  Spw 1: 1/0/0
+2014-07-09 16:07:57 INFO gaincal	  Spw 2: 1/0/0
+2014-07-09 16:07:57 INFO gaincal	##### End Task: gaincal              #####
+2014-07-09 16:07:57 INFO gaincal	##########################################
+2014-07-09 16:07:57 INFO gaincal	   
+2014-07-09 16:07:57 INFO gaincal	##########################################
+2014-07-09 16:07:57 INFO gaincal	##### Begin Task: gaincal            #####
+2014-07-09 16:07:57 INFO gaincal	gaincal(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="amp_source.gcal",field="1, 2",spw="",
+2014-07-09 16:07:57 INFO gaincal	        intent="",selectdata=True,timerange="",uvrange="",antenna="",
+2014-07-09 16:07:57 INFO gaincal	        scan="",observation="",msselect="",solint="inf",combine="",
+2014-07-09 16:07:57 INFO gaincal	        preavg=-1.0,refant="ea28",minblperant=4,minsnr=3.0,solnorm=False,
+2014-07-09 16:07:57 INFO gaincal	        gaintype="G",smodel=[],calmode="ap",append=True,splinetime=3600.0,
+2014-07-09 16:07:57 INFO gaincal	        npointaver=3,phasewrap=180.0,gaintable=['bandpass.bcal', 'scanphase.gcal'],gainfield=[''],interp=[''],
+2014-07-09 16:07:57 INFO gaincal	        spwmap=[],gaincurve=False,opacity=[],parang=False)
+2014-07-09 16:07:57 INFO gaincal	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 16:07:57 INFO gaincal	Initializing nominal selection to the whole MS.
+2014-07-09 16:08:01 INFO gaincal	Beginning selectvis--(MSSelection version)-------
+2014-07-09 16:08:01 INFO gaincal	Reseting solve/apply state
+2014-07-09 16:08:01 INFO gaincal	Performing selection on MeasurementSet
+2014-07-09 16:08:01 INFO gaincal	 Selecting on field: '1, 2'
+2014-07-09 16:08:01 INFO gaincal	By selection 3489200 rows are reduced to 1736150
+2014-07-09 16:08:01 INFO gaincal	Frequency selection: Selecting all channels in all spws.
+2014-07-09 16:08:01 INFO gaincal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:08:01 INFO gaincal	Arranging to APPLY:
+2014-07-09 16:08:02 INFO gaincal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:08:02 INFO gaincal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:08:02 INFO gaincal	Arranging to APPLY:
+2014-07-09 16:08:02 INFO gaincal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:08:02 INFO gaincal	Beginning setsolve--(MSSelection version)-------
+2014-07-09 16:08:02 INFO gaincal	Arranging to SOLVE:
+2014-07-09 16:08:02 INFO gaincal	.   G Jones: table=amp_source.gcal append=true solint=inf refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 16:08:02 INFO gaincal	Beginning solve-----------------------------
+2014-07-09 16:08:02 INFO gaincal	The following calibration terms are arranged for apply:
+2014-07-09 16:08:02 INFO gaincal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:08:02 INFO gaincal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:08:02 INFO gaincal	The following calibration term is arranged for solve:
+2014-07-09 16:08:02 INFO gaincal	.   G Jones: table=amp_source.gcal append=true solint=inf refant='ea28' minsnr=3 apmode=AP solnorm=false
+2014-07-09 16:08:02 INFO gaincal	Solving for G Jones
+2014-07-09 16:08:05 INFO gaincal	For solint = inf, found 14 solution intervals.
+2014-07-09 16:15:30 INFO gaincal	  Found good G Jones solutions in 14 slots.
+2014-07-09 16:15:30 INFO gaincal	Applying refant: ea28
+2014-07-09 16:15:30 INFO gaincal	Appending solutions to table: amp_source.gcal
+2014-07-09 16:15:30 INFO gaincal	Finished solving.
+2014-07-09 16:15:30 INFO gaincal	Calibration solve statistics per spw:  (expected/attempted/succeeded):
+2014-07-09 16:15:30 INFO gaincal	  Spw 0: 0/0/0
+2014-07-09 16:15:30 INFO gaincal	  Spw 1: 7/7/7
+2014-07-09 16:15:30 INFO gaincal	  Spw 2: 7/7/7
+2014-07-09 16:15:30 INFO gaincal	##### End Task: gaincal              #####
+2014-07-09 16:15:30 INFO gaincal	##########################################
+2014-07-09 16:15:31 INFO fluxscale	   
+2014-07-09 16:15:31 INFO fluxscale	##########################################
+2014-07-09 16:15:31 INFO fluxscale	##### Begin Task: fluxscale          #####
+2014-07-09 16:15:31 INFO fluxscale	fluxscale(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="amp.gcal",fluxtable="flux.cal",reference="2",
+2014-07-09 16:15:31 INFO fluxscale	        transfer=[''],listfile="",append=False,refspwmap=[-1],incremental=False)
+2014-07-09 16:15:31 INFO fluxscale	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 16:15:31 INFO fluxscale	Initializing nominal selection to the whole MS.
+2014-07-09 16:15:35 INFO fluxscale	Beginning fluxscale--(MSSelection version)-------
+2014-07-09 16:15:35 INFO fluxscale	 Assuming all non-reference fields are transfer fields.
+2014-07-09 16:15:35 INFO fluxscale	 Found reference field(s): J0137+3309
+2014-07-09 16:15:35 INFO fluxscale	 Found transfer field(s):  J0318+1628
+2014-07-09 16:15:35 INFO fluxscale	 Flux density for J0318+1628 in SpW=0 is:  INSUFFICIENT DATA 
+2014-07-09 16:15:35 INFO fluxscale	 Flux density for J0318+1628 in SpW=1 is: 7.53431 +/- 0.0343559 (SNR = 219.302, N = 52)
+2014-07-09 16:15:35 INFO fluxscale	 Flux density for J0318+1628 in SpW=2 is: 7.52817 +/- 0.030671 (SNR = 245.449, N = 52)
+2014-07-09 16:15:35 INFO fluxscale	 Fitted spectrum for J0318+1628 with fitorder=1: Flux density = 7.53431 +/- 0 (freq=1.41876 GHz) spidx=-0.385998 (degenerate)
+2014-07-09 16:15:35 INFO fluxscale	Storing result in flux.cal
+2014-07-09 16:15:35 INFO fluxscale	Writing solutions to table: flux.cal
+2014-07-09 16:15:35 INFO fluxscale	##### End Task: fluxscale            #####
+2014-07-09 16:15:35 INFO fluxscale	##########################################
+2014-07-09 16:15:36 INFO fluxscale	   
+2014-07-09 16:15:36 INFO fluxscale	##########################################
+2014-07-09 16:15:36 INFO fluxscale	##### Begin Task: fluxscale          #####
+2014-07-09 16:15:36 INFO fluxscale	fluxscale(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",caltable="amp_source.gcal",fluxtable="flux_source.cal",reference="2",
+2014-07-09 16:15:36 INFO fluxscale	        transfer="0",listfile="",append=False,refspwmap=[1],incremental=False)
+2014-07-09 16:15:36 INFO fluxscale	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 16:15:36 INFO fluxscale	Initializing nominal selection to the whole MS.
+2014-07-09 16:15:36 INFO fluxscale	Beginning fluxscale--(MSSelection version)-------
+2014-07-09 16:15:36 WARN fluxscale	 The following transfer fields have no solutions available: J0318+1628 
+2014-07-09 16:15:36 INFO fluxscale	 Found reference field(s): J0137+3309
+2014-07-09 16:15:36 INFO fluxscale	 Found transfer field(s):  J0318+1628
+2014-07-09 16:15:36 INFO fluxscale	 All spectral windows will be referenced to spw=1
+2014-07-09 16:15:36 INFO fluxscale	 Flux density for J0318+1628 in SpW=0 (ref SpW=1) is: 8.87145 +/- 0.231694 (SNR = 38.2894, N = 28)
+2014-07-09 16:15:36 INFO fluxscale	 Flux density for J0318+1628 in SpW=1 is: 7.53431 +/- 0.0343559 (SNR = 219.302, N = 52)
+2014-07-09 16:15:36 INFO fluxscale	 Flux density for J0318+1628 in SpW=2 (ref SpW=1) is: 7.51333 +/- 0.0539161 (SNR = 139.352, N = 52)
+2014-07-09 16:15:36 INFO fluxscale	 Fitted spectrum for J0318+1628 with fitorder=2: Flux density = 8.87145 +/- 0 (freq=1.42026 GHz) spidx=-1.48506 +/- 0 curv=-340074 (degenerate)
+2014-07-09 16:15:36 INFO fluxscale	Storing result in flux_source.cal
+2014-07-09 16:15:36 INFO fluxscale	Writing solutions to table: flux_source.cal
+2014-07-09 16:15:36 INFO fluxscale	##### End Task: fluxscale            #####
+2014-07-09 16:15:36 INFO fluxscale	##########################################
+2014-07-09 16:15:36 INFO applycal	   
+2014-07-09 16:15:36 INFO applycal	##########################################
+2014-07-09 16:15:36 INFO applycal	##### Begin Task: applycal           #####
+2014-07-09 16:15:36 INFO applycal	applycal(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",field="2",spw="",intent="",
+2014-07-09 16:15:36 INFO applycal	        selectdata=True,timerange="",uvrange="",antenna="",scan="",
+2014-07-09 16:15:36 INFO applycal	        observation="",msselect="",gaintable=['bandpass.bcal', 'scanphase.gcal', 'flux.cal'],gainfield=['2', '2', '2'],interp=[''],
+2014-07-09 16:15:36 INFO applycal	        spwmap=[],gaincurve=False,opacity=[],parang=False,calwt=True,
+2014-07-09 16:15:36 INFO applycal	        applymode="",flagbackup=True)
+2014-07-09 16:15:36 INFO applycal	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 16:15:36 INFO applycal	Initializing nominal selection to the whole MS.
+2014-07-09 16:15:36 INFO applycal	Table type is Measurement Set
+2014-07-09 16:15:36 INFO applycal	Creating new backup flag file called before_applycal_23
+2014-07-09 16:16:04 INFO applycal	Beginning selectvis--(MSSelection version)-------
+2014-07-09 16:16:04 INFO applycal	Reseting solve/apply state
+2014-07-09 16:16:04 INFO applycal	Performing selection on MeasurementSet
+2014-07-09 16:16:04 INFO applycal	 Selecting on field: '2'
+2014-07-09 16:16:05 INFO applycal	By selection 3489200 rows are reduced to 1659125
+2014-07-09 16:16:05 INFO applycal	Frequency selection: Selecting all channels in all spws.
+2014-07-09 16:16:05 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:16:05 INFO applycal	Arranging to APPLY:
+2014-07-09 16:16:05 INFO applycal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:16:05 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:16:05 INFO applycal	Arranging to APPLY:
+2014-07-09 16:16:05 INFO applycal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:16:05 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:16:05 INFO applycal	Arranging to APPLY:
+2014-07-09 16:16:05 INFO applycal	.   G Jones: table=flux.cal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:16:05 INFO applycal	Beginning correct---------------------------
+2014-07-09 16:16:05 INFO applycal	The following calibration terms are arranged for apply:
+2014-07-09 16:16:05 INFO applycal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:16:05 INFO applycal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:16:05 INFO applycal	.   G Jones: table=flux.cal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:19:03 INFO applycal	Finished correcting.
+2014-07-09 16:19:03 INFO applycal	Calibration apply flagging statistics:
+2014-07-09 16:19:03 INFO applycal	  Total selected visibilities = 849472000
+2014-07-09 16:19:03 INFO applycal	  Flags:
+2014-07-09 16:19:03 INFO applycal	   B Jones: In: 95085568 (11.1934905447%) --> Out: 95085568 (11.1934905447%) (bandpass.bcal)
+2014-07-09 16:19:03 INFO applycal	   G Jones: In: 95085568 (11.1934905447%) --> Out: 95085568 (11.1934905447%) (scanphase.gcal)
+2014-07-09 16:19:03 INFO applycal	   G Jones: In: 95085568 (11.1934905447%) --> Out: 95085568 (11.1934905447%) (flux.cal)
+2014-07-09 16:19:03 INFO applycal	##### End Task: applycal             #####
+2014-07-09 16:19:03 INFO applycal	##########################################
+2014-07-09 16:19:03 INFO applycal	   
+2014-07-09 16:19:03 INFO applycal	##########################################
+2014-07-09 16:19:03 INFO applycal	##### Begin Task: applycal           #####
+2014-07-09 16:19:03 INFO applycal	applycal(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",field="1",spw="",intent="",
+2014-07-09 16:19:03 INFO applycal	        selectdata=True,timerange="",uvrange="",antenna="",scan="",
+2014-07-09 16:19:03 INFO applycal	        observation="",msselect="",gaintable=['bandpass.bcal', 'scanphase.gcal', 'flux.cal'],gainfield=['2', '1', '1'],interp=[''],
+2014-07-09 16:19:03 INFO applycal	        spwmap=[],gaincurve=False,opacity=[],parang=False,calwt=True,
+2014-07-09 16:19:03 INFO applycal	        applymode="",flagbackup=True)
+2014-07-09 16:19:03 INFO applycal	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 16:19:03 INFO applycal	Initializing nominal selection to the whole MS.
+2014-07-09 16:19:03 INFO applycal	Table type is Measurement Set
+2014-07-09 16:19:03 INFO applycal	Creating new backup flag file called before_applycal_24
+2014-07-09 16:19:32 INFO applycal	Beginning selectvis--(MSSelection version)-------
+2014-07-09 16:19:32 INFO applycal	Reseting solve/apply state
+2014-07-09 16:19:32 INFO applycal	Performing selection on MeasurementSet
+2014-07-09 16:19:32 INFO applycal	 Selecting on field: '1'
+2014-07-09 16:19:32 INFO applycal	By selection 3489200 rows are reduced to 77025
+2014-07-09 16:19:32 INFO applycal	Frequency selection: Selecting all channels in all spws.
+2014-07-09 16:19:32 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:19:32 INFO applycal	Arranging to APPLY:
+2014-07-09 16:19:32 INFO applycal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:19:32 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:19:32 INFO applycal	Arranging to APPLY:
+2014-07-09 16:19:33 INFO applycal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:19:33 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:19:33 INFO applycal	Arranging to APPLY:
+2014-07-09 16:19:33 INFO applycal	.   G Jones: table=flux.cal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:19:33 INFO applycal	Beginning correct---------------------------
+2014-07-09 16:19:33 INFO applycal	The following calibration terms are arranged for apply:
+2014-07-09 16:19:33 INFO applycal	.   B Jones: table=bandpass.bcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:19:33 INFO applycal	.   G Jones: table=scanphase.gcal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:19:33 INFO applycal	.   G Jones: table=flux.cal select= interp=linear spwmap=[-1] calWt=true
+2014-07-09 16:19:41 INFO applycal	Finished correcting.
+2014-07-09 16:19:41 INFO applycal	Calibration apply flagging statistics:
+2014-07-09 16:19:41 INFO applycal	  Total selected visibilities = 39436800
+2014-07-09 16:19:41 INFO applycal	  Flags:
+2014-07-09 16:19:41 INFO applycal	   B Jones: In: 491008 (1.24505030834%) --> Out: 491008 (1.24505030834%) (bandpass.bcal)
+2014-07-09 16:19:41 INFO applycal	   G Jones: In: 491008 (1.24505030834%) --> Out: 491008 (1.24505030834%) (scanphase.gcal)
+2014-07-09 16:19:41 INFO applycal	   G Jones: In: 491008 (1.24505030834%) --> Out: 491008 (1.24505030834%) (flux.cal)
+2014-07-09 16:19:41 INFO applycal	##### End Task: applycal             #####
+2014-07-09 16:19:41 INFO applycal	##########################################
+2014-07-09 16:19:41 INFO applycal	   
+2014-07-09 16:19:41 INFO applycal	##########################################
+2014-07-09 16:19:41 INFO applycal	##### Begin Task: applycal           #####
+2014-07-09 16:19:41 INFO applycal	applycal(vis="10C-196.sb4997632.eb5088657.55813.373845856484.ms",field="0",spw="0",intent="",
+2014-07-09 16:19:41 INFO applycal	        selectdata=True,timerange="",uvrange="",antenna="",scan="",
+2014-07-09 16:19:41 INFO applycal	        observation="",msselect="",gaintable=['bandpass_source.bcal', 'amp_source.gcal', 'flux_source.cal'],gainfield=['2', '0', '0'],interp=[''],
+2014-07-09 16:19:41 INFO applycal	        spwmap=[[1], [0], [0]],gaincurve=False,opacity=[],parang=False,calwt=True,
+2014-07-09 16:19:41 INFO applycal	        applymode="",flagbackup=True)
+2014-07-09 16:19:41 INFO applycal	Opening MS: 10C-196.sb4997632.eb5088657.55813.373845856484.ms for calibration.
+2014-07-09 16:19:41 INFO applycal	Initializing nominal selection to the whole MS.
+2014-07-09 16:19:42 INFO applycal	Table type is Measurement Set
+2014-07-09 16:19:42 INFO applycal	Creating new backup flag file called before_applycal_25
+2014-07-09 16:20:10 INFO applycal	Beginning selectvis--(MSSelection version)-------
+2014-07-09 16:20:10 INFO applycal	Reseting solve/apply state
+2014-07-09 16:20:10 INFO applycal	Performing selection on MeasurementSet
+2014-07-09 16:20:10 INFO applycal	 Selecting on spw: '0'
+2014-07-09 16:20:10 INFO applycal	 Selecting on field: '0'
+2014-07-09 16:20:10 INFO applycal	By selection 3489200 rows are reduced to 1753050
+2014-07-09 16:20:11 INFO applycal	Frequency selection: 
+2014-07-09 16:20:11 INFO applycal	.  Spw 0:0~255 (256 channels, step by 1)
+2014-07-09 16:20:11 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:20:11 INFO applycal	Arranging to APPLY:
+2014-07-09 16:20:11 INFO applycal	.   B Jones: table=bandpass_source.bcal select= interp=linear spwmap=[1] calWt=true
+2014-07-09 16:20:11 INFO applycal	Beginning setapply--(MSSelection version)-------
+2014-07-09 16:20:11 INFO applycal	Arranging to APPLY:
+2014-07-09 16:20:11 SEVERE applycal	Error selecting on caltable: amp_source.gcal...  Check inputs and try again.
+2014-07-09 16:20:11 SEVERE applycal	MSSelectionNullSelection : The selected table has zero rows.
+2014-07-09 16:20:11 SEVERE applycal	Exception Reported: Error in Calibrater::setapply.
+2014-07-09 16:20:11 SEVERE applycal	An error occurred running task applycal.
+

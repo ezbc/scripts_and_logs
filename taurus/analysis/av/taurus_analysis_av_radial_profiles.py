@@ -152,133 +152,9 @@ def plot_profile_grid(radii_list, profile_list, limits=None, savedir='./',
     if show:
         fig.show()
 
-def convert_core_coordinates(cores, header):
-
-    for core in cores:
-        cores[core].update({'box_pixel': 0})
-        cores[core].update({'center_pixel': 0})
-
-        try:
-            box_wcs = cores[core]['box_wcs']
-            box_pixel = len(box_wcs) * [0,]
-            # convert box corners to pixel coords
-            for i in range(len(box_wcs)/2):
-                pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
-                        header=header)
-                box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]),\
-                        int(pixels[1])
-            cores[core]['box_pixel'] = box_pixel
-        except TypeError:
-            do_nothing = True
-
-
-    	center_wcs = cores[core]['center_wcs']
-
-        # convert centers to pixel coords
-        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
-                                                     dec=center_wcs[1],
-                                                     header=header)
-
-    return cores
-
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
-
-    # region[0] in following format:
-    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
-    # [ra center, dec center, width, height, rotation angle]
-    for core in cores:
-    	region = read_ds9_region(filename_base + core + '.reg')
-        box_center_pixel = get_pix_coords(ra = region[0],
-                                          dec = region[1],
-                                          header = header)
-        box_center_pixel = (int(box_center_pixel[1]), int(box_center_pixel[0]))
-        box_height = region[2] / header['CDELT1']
-        box_width = region[3] / header['CDELT2']
-        cores[core].update({'box_center_pix': box_center_pixel})
-        cores[core].update({'box_width': box_width})
-        cores[core].update({'box_height': box_height})
-        cores[core].update({'box_angle': region[4]})
-
-    return cores
-
-def read_ds9_region(filename):
-
-    ''' Converts DS9 region file into format for plotting region.
-
-    Need the following format:
-        angle : degrees
-        xy : pixels
-        width : pixels
-        height : pixels
-
-    Region file provides following format:
-        # Region file format: DS9 version 4.1
-        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
-        fk5
-        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
-
-    pyregion module reads DS9 regions:
-    http://leejjoon.github.io/pyregion/users/overview.html
-
-
-    '''
-
-    # Import external modules
-    import pyregion as pyr
-
-    # Read region file
-    region = pyr.open(filename)
-
-    # region[0] in following format:
-    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
-    # [ra center, dec center, width, height, rotation angle]
-
-    return region[0].coord_list
-
-def load_fits(filename,return_header=False):
-    ''' Loads a fits file.
-    '''
-
-    import pyfits as pf
-
-    f = pf.open(filename)
-    if return_header:
-        return f[0].data,f[0].header
-    else:
-        return f[0].data
-
-def get_sub_image(image,indices):
-
-    return image[indices[1]:indices[3],
-            indices[0]:indices[2]]
-
-def hrs2degs(ra=None, dec=None):
-    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
-    '''
-
-    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
-    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
-
-    return (ra_deg, dec_deg)
-
-def get_pix_coords(ra=None, dec=None, header=None):
-
-    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec).
-    '''
-
-    import pywcsgrid2 as wcs
-    import pywcs
-
-    # convert to degrees
-    if type(ra) is tuple and type(dec) is tuple:
-        ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
-    else:
-    	ra_deg, dec_deg = ra, dec
-
-    wcs_header = pywcs.WCS(header)
-    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
-
-    return pix_coords
+'''
+Calculations
+'''
 
 def get_radial_profile(image, center=None, stddev=False, binsize=1,
         mask=None, weights=None):
@@ -339,6 +215,135 @@ def print_fit_params(cores, A_p, pho_c, R_flat, p, filename=None):
                     (core, A_p[i], pho_c[i], R_flat[i], p[i]))
         f.close()
 
+''' DS9 Region and Coordinate Functions
+'''
+def convert_core_coordinates(cores, header):
+
+    for core in cores:
+        cores[core].update({'box_pixel': 0})
+        cores[core].update({'center_pixel': 0})
+
+        box_wcs = cores[core]['box_wcs']
+        box_pixel = len(box_wcs) * [0,]
+        center_wcs = cores[core]['center_wcs']
+
+        # convert centers to pixel coords
+        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
+                                                     dec=center_wcs[1],
+                                                     header=header)
+        # convert box corners to pixel coords
+        for i in range(len(box_wcs)/2):
+            pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+                    header=header)
+            box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
+        cores[core]['box_pixel'] = box_pixel
+
+    return cores
+
+def load_fits(filename,return_header=False):
+    ''' Loads a fits file.
+    '''
+
+    import pyfits as pf
+
+    f = pf.open(filename)
+    if return_header:
+        return f[0].data,f[0].header
+    else:
+        return f[0].data
+
+def get_sub_image(image, indices):
+
+    return image[indices[1]:indices[3],
+            indices[0]:indices[2]]
+
+def get_pix_coords(ra=None, dec=None, header=None):
+
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec), or Ra in degrees
+    and dec in degrees.
+    '''
+
+    import pywcsgrid2 as wcs
+    import pywcs
+
+    # convert to degrees if ra and dec are array-like
+    try:
+        if len(ra) == 3 and len(dec) == 3:
+            ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+        else:
+        	raise ValueError('RA and Dec must be in (hrs,min,sec) and' + \
+        	        ' (deg,arcmin,arcsec) or in degrees.')
+    except TypeError:
+        ra_deg, dec_deg = ra, dec
+
+    wcs_header = pywcs.WCS(header)
+    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
+
+    return pix_coords
+
+def hrs2degs(ra=None, dec=None):
+    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
+    '''
+
+    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
+    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
+
+    return (ra_deg, dec_deg)
+
+def read_ds9_region(filename):
+
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
+    '''
+
+    # Import external modules
+    import pyregion as pyr
+
+    # Read region file
+    region = pyr.open(filename)
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    return region[0].coord_list
+
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    for core in cores:
+        region = read_ds9_region(filename_base + core + '.reg')
+        box_center_pixel = get_pix_coords(ra = region[0],
+                                          dec = region[1],
+                                          header = header)
+        box_center_pixel = (int(box_center_pixel[1]), int(box_center_pixel[0]))
+        box_height = region[2] / header['CDELT1']
+        box_width = region[3] / header['CDELT2']
+        cores[core].update({'box_center_pix': box_center_pixel})
+        cores[core].update({'box_width': box_width})
+        cores[core].update({'box_height': box_height})
+        cores[core].update({'box_angle': region[4]})
+
+    return cores
+
 def main():
 
     import grid
@@ -346,6 +351,7 @@ def main():
     from os import system,path
     import myclumpfinder as clump_finder
     import mygeometry as myg
+    import json
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
@@ -353,55 +359,15 @@ def main():
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/galfa/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
-    core_dir = output_dir + 'core_arrays/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
 
     # load 2mass Av and GALFA HI images, on same grid
     av_image, h = load_fits(av_dir + 'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
-    cores = {'L1495':
-                {'center_wcs': [(4,14,0), (28, 11, 0)],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,16,30), (27,44,30), (4,5,20), (28,28,33)]
-                 },
-             'L1495A':
-                {'center_wcs': [(4,18,0), (28,23., 0)],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,28,23),(28,12,50),(4,16,23),(29,46,5)],
-                 },
-             'B213':
-                {'center_wcs': [(4, 19, 0), (27, 15,0)],
-                 'map': None,
-                 'threshold': 4.75,
-                 'box_wcs': [(4,22,27), (26,45,47),(4,5,25),(27,18,48)],
-                },
-             'B220':
-                {'center_wcs': [(4, 41, 0.), (26,7,0)],
-                 'map': None,
-                 'threshold': 7,
-                 'box_wcs': [(4,47,49),(25,31,13),(4,40,37),(27,31,17)],
-                 },
-             'L1527':
-                {'center_wcs': [(4, 39, 0.), (25,47, 0)],
-                 'map': None,
-                 'threshold': 7,
-                 'box_wcs': [(4,40,13), (24,46,38), (4,34,35), (25,56,7)],
-                 },
-             'B215':
-                {'center_wcs': [(4, 23, 0), (25, 3, 0)],
-                 'map': None,
-                 'threshold': 3,
-                 'box_wcs': [(4,24,51), (22,36,7), (4,20,54), (25,26,31)],
-                 },
-             'L1524':
-                {'center_wcs': [(4,29,0.), (24,31.,0)],
-                 'map': None,
-                 'threshold': 3,
-                 'box_wcs': [(4,31,0), (22,4,6), (4,25,33), (25,0,55)],
-                 }
-                }
+    # define core properties
+    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+        cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
 
@@ -438,6 +404,9 @@ def main():
                     width = box_width,
                     height = box_height,
                     angle = box_angle)
+
+            mask = myg.get_polygon_mask(av_image,
+                    cores[core]['box_vertices_rotated'])
 
             # Get indices where there is no mask, and extract those pixels
             indices = np.where(mask == 1)

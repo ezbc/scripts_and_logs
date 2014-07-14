@@ -4,7 +4,6 @@ import planckpy as pl
 reload(pl)
 from astropy.io import fits as pf
 
-
 def extract_data(datatype = 'ebv'):
     data_location = '/d/bip3/ezbc/planck/planck_raw_data/'
 
@@ -95,14 +94,14 @@ def main():
     (data, header) = tau353_to_ebv(data, header)
     write_data(data, header, planck_dir + 'taurus_planck_ebv.fits')
     (data, header) = ebv2av(data, header)
-    write_data(data, header, av_dir + 'taurus_planck_av.fits')
+    write_data(data, header, av_dir + 'taurus_av_planck.fits')
 
     (data, header) = extract_data(datatype = 'tau353err')
     write_data(data, header, planck_dir + 'taurus_planck_tau353_error.fits')
     (data, header) = tau353_to_ebv(data, header)
     write_data(data, header, planck_dir + 'taurus_planck_ebv_error.fits')
     (data, header) = ebv2av(data, header)
-    write_data(data, header, av_dir + 'taurus_planck_av_error.fits')
+    write_data(data, header, av_dir + 'taurus_av_planck_error.fits')
 
 if __name__ == '__main__':
 	main()

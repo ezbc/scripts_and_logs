@@ -121,7 +121,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
         sd_image_errors=None, av_image_errors=None, limits=None,
         savedir='./', filename=None, show=True, scale=('linear', 'linear'),
         returnimage=False, title=None, core_names='', plot_type='scatter',
-        hexbin_range=None):
+        hexbin_range=(None, None), hexbin_gridsize=100, paper_fig=False):
     ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
     and an Av image.
     '''
@@ -175,7 +175,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
                               cbar_mode='single',
                               cbar_location='right',
                               cbar_pad=0.1,
-                              cbar_size=0.25,
+                              cbar_size=0.1,
                               #cbar_set_cax=True,
                               axes_pad=0,
                               aspect=False,
@@ -228,11 +228,13 @@ def plot_sd_vs_av_grid(sd_images, av_images,
                 sd_image_nonans.ravel(),
                 #norm=matplotlib.colors.LogNorm(), # logscale?
                 mincnt=1,
+                gridsize=hexbin_gridsize,
                 yscale=scale[0],
                 xscale=scale[1],
                 cmap = matplotlib.cm.gist_stern,
                 vmin=hexbin_range[0],
-                vmax=hexbin_range[1])
+                vmax=hexbin_range[1]
+                )
 
             cbar = imagegrid[0].cax.colorbar(image)
             cbar.set_label_text('Bin Counts')
@@ -245,8 +247,8 @@ def plot_sd_vs_av_grid(sd_images, av_images,
         ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
         ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
         ax.annotate(core_names[i].capitalize(),
-                xytext=(0.7, 0.9),
-                xy=(0.7, 0.9),
+                xytext=(0.6, 0.9),
+                xy=(0.6, 0.9),
                 textcoords='axes fraction',
                 xycoords='axes fraction',
                 color='k'
@@ -256,7 +258,11 @@ def plot_sd_vs_av_grid(sd_images, av_images,
     if title is not None:
     	fig.suptitle(title, fontsize=fontScale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        if not paper_fig:
+        	bbox_inches = 'tight'
+        else:
+        	bbox_inches = None
+        plt.savefig(savedir + filename, bbox_inches=bbox_inches)
     if show:
         fig.show()
     if returnimage:
@@ -562,7 +568,7 @@ def main():
     import mygeometry as myg
     reload(myg)
 
-    cloud_list = ('taurus', 'perseus', 'california', 'perseus')
+    cloud_list = ('taurus', 'perseus', 'california') #, 'perseus')
     data_dict = {}
 
     for i, cloud in enumerate(cloud_list):
@@ -608,8 +614,13 @@ def main():
                     load_fits(hi_dir + filename,
                         return_header=True)
 
+        # Velocity ranges over which to integrate HI
         velocity_range = [-100, 100]
-        if i == 3:
+        if cloud == 'california':
+        	velocity_range = [-10, 10]
+        elif cloud == 'taurus':
+        	velocity_range = [0, 15]
+        elif cloud == 'perseus':
             velocity_range = [-5, 15]
 
         # calculate nhi and error maps, write nhi map to fits file
@@ -648,25 +659,30 @@ def main():
         sd_image_error_list.append(data_dict[cloud]['hi_sd_image_error'])
         av_image_error_list.append(data_dict[cloud]['av_data_error'])
 
-    #figure_types = ['png', 'pdf']
+    figure_types = ('png',)
     figure_types = ('png', 'pdf')
+
     for figure_type in figure_types:
-        limits = [-3, 40, 0, 32]
+        limits = [-3, 40, 0, 32] # for full LOS HI integration
+        limits = [-3, 40, 0, 15] # for CO-informed HI integration, linear
+        #limits = [0.1, 40, 0.1, 15] # for CO-informed HI integration, log
 
         # scatter plot
-        plot_sd_vs_av_grid(sd_image_list,
-                        av_image_list,
-                        sd_image_errors = sd_image_error_list,
-                        av_image_errors = av_image_error_list,
-                        limits=limits,
-                        savedir=figure_dir,
-                        scale=('linear', 'linear'),
-                        filename='multicloud_sd_vs_av_scatter_planck.%s'%\
-                                figure_type,
-                        show=False,
-                        core_names=core_name_list,
-                        title=r'Global $\Sigma_{HI}$ vs. Planck A$_{\rm V}$' + \
-                                ' of GMCs')
+        # do not use a pdf for the scatter plot, huge file size.
+        if figure_type == 'png':
+            plot_sd_vs_av_grid(sd_image_list,
+                            av_image_list,
+                            sd_image_errors = sd_image_error_list,
+                            av_image_errors = av_image_error_list,
+                            limits=limits,
+                            savedir=figure_dir,
+                            scale=('linear', 'linear'),
+                            filename='multicloud_sd_vs_av_scatter_planck.%s'%\
+                                    figure_type,
+                            show=False,
+                            core_names=core_name_list,
+                            title=r'Global $\Sigma_{HI}$ vs. ' + \
+                                    r'Planck A$_{\rm V}$ of GMCs')
 
         # density plot
         plot_sd_vs_av_grid(sd_image_list,
@@ -677,13 +693,17 @@ def main():
                         savedir=figure_dir,
                         scale=('linear', 'linear'),
                         plot_type='hexbin',
-                        hexbin_range=(0,240),
+                        hexbin_range=(1,12),
+                        hexbin_gridsize=300,
                         filename='multicloud_sd_vs_av_hexbin_planck.%s'%\
                                 figure_type,
                         show=False,
+                        paper_fig=True,
                         core_names=core_name_list,
                         title=r'Global $\Sigma_{HI}$ vs. Planck A$_{\rm V}$' + \
                                 ' of GMCs')
+
+
 
 
 if __name__ == '__main__':

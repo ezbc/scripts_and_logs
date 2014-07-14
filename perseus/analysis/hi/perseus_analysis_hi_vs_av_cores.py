@@ -511,7 +511,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
     if title is not None:
     	fig.suptitle(title, fontsize=fontScale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename) #, bbox_inches='tight')
     if show:
         fig.show()
     if returnimage:
@@ -557,10 +557,14 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
     # Create figure instance
     fig = plt.figure()
 
-    n = int(np.ceil(len(h_sd_images)**0.5))
+    nrows = int(np.ceil(len(h_sd_images)**0.5))
+    ncols = nrows
+
+    if nrows**2 - nrows >= len(h_sd_images):
+        nrows -= 1
 
     imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
+                 nrows_ncols=(nrows, ncols),
                  ngrids=len(h_sd_images),
                  axes_pad=0.25,
                  aspect=False,
@@ -624,7 +628,7 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
     if title is not None:
     	fig.suptitle(title, fontsize=fontScale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename) #, bbox_inches='tight')
     if show:
         fig.show()
     if returnimage:
@@ -1104,6 +1108,18 @@ def main():
                  'threshold': None,
                  'box_wcs': None,
                  },
+             'B1':
+                {'center_wcs': [(3, 36, 27), (31, 07, 18)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+             'B1E':
+                {'center_wcs': [(3, 33, 31), (31, 10, 31)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
              #'':
              #   {'center_wcs': [],
              #    'map': None,
@@ -1158,15 +1174,16 @@ def main():
 
             av_limits =[0.01,100]
 
-            figure_types = ['pdf', 'png']
+            figure_types = ['png', 'pdf'] # create pdf for printing
+            figure_types = ['png',] # create pdf for printing
             if 0:
                 for figure_type in figure_types:
                     plot_sd_vs_av(hi_sd_image_sub, av_data_2mass_sub,
                             sd_image_error = hi_sd_image_error_sub,
                             av_image_error = 0.1,
                             limits = [0.1,20,2,10],
-                            savedir=figure_dir,
-                            plot_type='scatter + individual_cores/',
+                            savedir=figure_dir + 'individual_cores/' ,
+                            plot_type='scatter',
                             scale='log',
                             filename='perseus_sd_vs_av_%s_lee12.%s' % \
                                     (core, figure_type),

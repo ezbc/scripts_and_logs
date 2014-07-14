@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the california molecular cloud.
 '''
 
 import pyfits as pf
@@ -761,8 +761,8 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                     )
         if chisq_list is not None:
             conf = (1.0 - p_value) * 100.
-            ax.annotate(r'$\chi^2/\nu$ = %.2f at %i %% conf.' % \
-                    (chisq, conf),
+            ax.annotate(r'$\chi^2$ = %.2f' % \
+                    chisq,
                     xytext=(0.48, 0.2),
                     xy=(0.48, 0.2),
                     textcoords='axes fraction',
@@ -1591,7 +1591,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'california_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -1645,29 +1645,29 @@ def main():
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/california/figures/cores/'
+    av_dir = '/d/bip3/ezbc/california/data/av/'
+    hi_dir = '/d/bip3/ezbc/california/data/hi/'
+    co_dir = '/d/bip3/ezbc/california/data/co/'
+    core_dir = '/d/bip3/ezbc/california/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/california/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'california_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'california_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'california_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'taurus_co_cfa_cube_regrid_planckres.fits',
+                'california_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -1675,7 +1675,7 @@ def main():
     co_vel_axis = make_velocity_axis(co_header)
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -1691,8 +1691,8 @@ def main():
         noise_cube = noise_cube,
         velocity_range=[0,15],
         return_nhi_error=True,
-        fits_filename = hi_dir + 'taurus_nhi_galfa_5arcmin.fits',
-        fits_error_filename = hi_dir + 'taurus_nhi_galfa_5arcmin_error.fits',
+        fits_filename = hi_dir + 'california_nhi_galfa_5arcmin.fits',
+        fits_error_filename = hi_dir + 'california_nhi_galfa_5arcmin_error.fits',
         header = h)
 
     # calculate N(H2) maps
@@ -1705,7 +1705,7 @@ def main():
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
 
-    # Paradis et al. (2012) gives DGR for taurus
+    # Paradis et al. (2012) gives DGR for california
     h_sd_image = av_data_planck / (1.25 * dgr) # DGR = 1.1e-22 mag / cm^-2
     h_sd_image_error = av_error_data_planck / (1.25 * dgr)
 
@@ -1719,7 +1719,7 @@ def main():
                  + h2_sd_image_error**2 / h2_sd_image**2)**0.5
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'california_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
@@ -1730,7 +1730,7 @@ def main():
     nhi_limits = [2,20]
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'california_av_boxes_',
             header = h)
 
     hi_image_list = []
@@ -1786,12 +1786,14 @@ def main():
             hi_vel_range = select_hi_vel_range(co_data_sub, co_header,
                     flux_threshold=0.85, width_scale=co_width_scale)
             hi_vel_range_list.append(hi_vel_range)
-        elif hi_av_correlation:
+
+        if hi_av_correlation:
             hi_vel_range = cores[core]['hi_velocity_range']
             correlation_coeff = cores[core]['correlation_coeff']
 
             hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
                     hi_vel_range[1] * hi_vel_range_scale)
+
 
         if 1:
             print('HI velocity integration range:')
@@ -1827,7 +1829,7 @@ def main():
             h2_sd_image_error = calculate_sd(nh2_image_error,
                     sd_factor=1/0.625)
 
-            # Paradis et al. (2012) gives DGR for taurus
+            # Paradis et al. (2012) gives DGR for california
             #h_sd_image = av_data_planck / (1.25 * dgr)
             #h_sd_image_error = av_error_data_planck / (1.25 * dgr)
             h_sd_image = hi_sd_image + h2_sd_image
@@ -1843,6 +1845,11 @@ def main():
             rh2_image_error = rh2_image * (hi_sd_image_error**2 / \
                     hi_sd_image**2 + h2_sd_image_error**2 / \
                     h2_sd_image**2)**0.5
+
+        # Write velocity range properties to a file
+        with open(core_dir + 'california_hi_vel_properties.txt', 'w') as f:
+            f.write('core\tco_range\thi_range')
+
 
         av_data_planck_sub = av_data_planck[indices]
         av_error_data_planck_sub = av_error_data_planck[indices]
@@ -1881,7 +1888,7 @@ def main():
         # see eq 6 of krumholz+09
         # phi_cnm is the number density of the CNM over the minimum number
         # density required for pressure balance
-        # the lower phi_cnm values than for taurus mean that taurus
+        # the lower phi_cnm values than for california mean that california
         # has a more diffuse CNM
 
         # By fitting the model to the observed R_H2 vs total H, you basically
@@ -1919,8 +1926,8 @@ def main():
                     #limits = [0, 80, 10**-3, 10**2],
                     savedir = figure_dir + 'panel_cores/',
                     scale = ('linear', 'linear'),
-                    filename = 'taurus_core_co_spectra_grid.%s' % figure_type,
-                    title = r'Average $^{12}$CO spectra of taurus Cores',
+                    filename = 'california_core_co_spectra_grid.%s' % figure_type,
+                    title = r'Average $^{12}$CO spectra of california Cores',
                     core_names=core_name_list,
                     show = False)
 
@@ -1934,9 +1941,9 @@ def main():
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'taurus_rh2_vs_hsd_panels_planck.%s' % figure_type,
+                filename = 'california_rh2_vs_hsd_panels_planck.%s' % figure_type,
                 title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
-                        + ' of taurus Cores',
+                        + ' of california Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 chisq_list=chisq_list,
@@ -1953,9 +1960,9 @@ def main():
                 #limits = [-5, 50, 1, 8],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
-                filename = 'taurus_hi_vs_h_panels_planck.%s' % figure_type,
+                filename = 'california_hi_vs_h_panels_planck.%s' % figure_type,
                 title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of taurus Cores',
+                        + ' of california Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
@@ -1969,10 +1976,10 @@ def main():
                 limits = [10**0, 10**2, 10**0, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('log', 'log'),
-                filename = 'taurus_hi_vs_h_panels_planck_log.%s' %\
+                filename = 'california_hi_vs_h_panels_planck_log.%s' %\
                         figure_type,
                 title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of taurus Cores',
+                        + ' of california Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)

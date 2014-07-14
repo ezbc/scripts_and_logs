@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
 '''
 
 import pyfits as pf
@@ -1591,7 +1591,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -1637,37 +1637,38 @@ def main():
     hi_co_width = False
     hi_av_correlation = True
     co_width_scale = 5.0 # for determining N(HI) vel range
-    hi_vel_range_scale = 2.0 # scale hi velocity range for Av/N(HI) correlation
-
+    velocity_centers = np.linspace(-50, 50, 50)
+    velocity_widths = np.linspace(1, 40, 40)
+    #
     dgr = 6.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     rh2_fit_range = [0.001, 1000] # range of fitted values for krumholz model
 
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'perseus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'taurus_co_cfa_cube_regrid_planckres.fits',
+                'perseus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -1675,7 +1676,7 @@ def main():
     co_vel_axis = make_velocity_axis(co_header)
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -1691,8 +1692,8 @@ def main():
         noise_cube = noise_cube,
         velocity_range=[0,15],
         return_nhi_error=True,
-        fits_filename = hi_dir + 'taurus_nhi_galfa_5arcmin.fits',
-        fits_error_filename = hi_dir + 'taurus_nhi_galfa_5arcmin_error.fits',
+        fits_filename = hi_dir + 'perseus_nhi_galfa_5arcmin.fits',
+        fits_error_filename = hi_dir + 'perseus_nhi_galfa_5arcmin_error.fits',
         header = h)
 
     # calculate N(H2) maps
@@ -1705,7 +1706,7 @@ def main():
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
 
-    # Paradis et al. (2012) gives DGR for taurus
+    # Paradis et al. (2012) gives DGR for perseus
     h_sd_image = av_data_planck / (1.25 * dgr) # DGR = 1.1e-22 mag / cm^-2
     h_sd_image_error = av_error_data_planck / (1.25 * dgr)
 
@@ -1719,7 +1720,7 @@ def main():
                  + h2_sd_image_error**2 / h2_sd_image**2)**0.5
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
@@ -1730,7 +1731,7 @@ def main():
     nhi_limits = [2,20]
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'perseus_av_boxes_',
             header = h)
 
     hi_image_list = []
@@ -1789,9 +1790,6 @@ def main():
         elif hi_av_correlation:
             hi_vel_range = cores[core]['hi_velocity_range']
             correlation_coeff = cores[core]['correlation_coeff']
-
-            hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
-                    hi_vel_range[1] * hi_vel_range_scale)
 
         if 1:
             print('HI velocity integration range:')
@@ -1881,7 +1879,7 @@ def main():
         # see eq 6 of krumholz+09
         # phi_cnm is the number density of the CNM over the minimum number
         # density required for pressure balance
-        # the lower phi_cnm values than for taurus mean that taurus
+        # the lower phi_cnm values than for perseus mean that perseus
         # has a more diffuse CNM
 
         # By fitting the model to the observed R_H2 vs total H, you basically
@@ -1919,8 +1917,8 @@ def main():
                     #limits = [0, 80, 10**-3, 10**2],
                     savedir = figure_dir + 'panel_cores/',
                     scale = ('linear', 'linear'),
-                    filename = 'taurus_core_co_spectra_grid.%s' % figure_type,
-                    title = r'Average $^{12}$CO spectra of taurus Cores',
+                    filename = 'perseus_core_co_spectra_grid.%s' % figure_type,
+                    title = r'Average $^{12}$CO spectra of perseus Cores',
                     core_names=core_name_list,
                     show = False)
 
@@ -1934,9 +1932,9 @@ def main():
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'taurus_rh2_vs_hsd_panels_planck.%s' % figure_type,
+                filename = 'perseus_rh2_vs_hsd_panels_planck.%s' % figure_type,
                 title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
-                        + ' of taurus Cores',
+                        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 chisq_list=chisq_list,
@@ -1953,9 +1951,9 @@ def main():
                 #limits = [-5, 50, 1, 8],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
-                filename = 'taurus_hi_vs_h_panels_planck.%s' % figure_type,
+                filename = 'perseus_hi_vs_h_panels_planck.%s' % figure_type,
                 title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of taurus Cores',
+                        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
@@ -1969,10 +1967,10 @@ def main():
                 limits = [10**0, 10**2, 10**0, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('log', 'log'),
-                filename = 'taurus_hi_vs_h_panels_planck_log.%s' %\
+                filename = 'perseus_hi_vs_h_panels_planck_log.%s' %\
                         figure_type,
                 title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of taurus Cores',
+                        + ' of Perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)

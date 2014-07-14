@@ -82,7 +82,7 @@ fits in=av/perseus_av_error_planck_5arcmin.mir \
     op=xyout
 
 fits in=av/perseus_av_lee12_masked_regrid_planckres.mir \
-    out=av/perseus_av_lee12_maksed_regrid_planckres.fits \
+    out=av/perseus_av_lee12_masked_regrid_planckres.fits \
     op=xyout
 
 fits in=hi/perseus_hi_galfa_cube_regrid_planckres.mir \

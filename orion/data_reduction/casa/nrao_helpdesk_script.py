@@ -24,7 +24,6 @@ setjy(vis = my_vis,
       field = '2',
       modimage = '3C48_L.im')
 
-
 ################################################################################
 # 2: Derive the bandpass solution for the calibrators
 ################################################################################
@@ -64,7 +63,6 @@ gaincal(vis = my_vis,
         refant = 'ea28',
         calmode = 'p',
         solint = 'inf',
-        spwmap = 1,
         gaintable = ['bandpass.bcal'])
 
 # Amplitudes + phases
@@ -80,15 +78,15 @@ gaincal(vis = my_vis,
 # 5: Derive phase and amplitude calibrations for the source
 ################################################################################
 
-gaincal(vis = my_vis,
-        caltable = 'amp_source.gcal',
-        field = '1, 2',
-        combine = 'spw',
-        refant = 'ea28',
-        calmode = 'ap',
-        solint = 'inf',
-        gaintable = ['bandpass.bcal', 'scanphase.gcal'])
-
+gaincal(vis=my_vis,
+        caltable='amp_source.gcal',
+        field='0, 1',
+        combine='spw, field',
+        refant='ea28',
+        calmode='ap',
+        solint='inf',
+        spwmap=[[1, 1, 2], [1, 1, 2]],
+        gaintable=['bandpass_source.bcal', 'scanphase.gcal'])
 
 ################################################################################
 # 6: Apply the flux scaling
@@ -103,10 +101,11 @@ fluxscale(vis = my_vis,
           caltable = 'amp_source.gcal',
           fluxtable = 'flux_source.cal',
           reference = '2',
-          refspwmap = [1,1,2])
+          transfer = '0',
+          refspwmap = [0])
 
     # VLA calibrator manual reports J0138+1629 20cm flux as 7.81 Jy
-    # Calculated 7.57 Jy
+    # Calculated 7.59 Jy for field 1
 
 ################################################################################
 # 7: Apply the calibrations
@@ -128,11 +127,9 @@ applycal(vis = my_vis,
 applycal(vis = my_vis,
         field = '0',
         spw = '0',
-        spwmap = [[1], [1], [1]],
-        gainfield = ['2', '2', '1'],
+        spwmap = [[1], [0], [0]],
+        gainfield = ['2', '0', '0'],
         gaintable = ['bandpass_source.bcal', 'amp_source.gcal',
             'flux_source.cal'])
-
-
 
 

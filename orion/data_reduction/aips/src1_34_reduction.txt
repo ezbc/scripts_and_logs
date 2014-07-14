@@ -1,0 +1,1022 @@
+
+#===============================================================================
+#===============================================================================
+
+# Reduction script for practice absorption data
+# AIPS ID 83
+
+#===============================================================================
+#===============================================================================
+
+
+# A few tips from Brian Babler
+# ------------------------------------------------------------------------------
+
+# Practice data directory:
+# /d/leffe/cmurray/Brian/10C-196.sb4997632.eb5088657.55813.373845856484/
+# Source is 4C16.09
+#
+# If you want to have multiple AIPS data devices (such as BIP as well
+# as LEFFE) the file in your home directory is called .dadevs
+# My file .dadevs has these two lines:
+#
+# +  /usr/local/aips/AIPS/DATA/LEFFE
+# +  /usr/local/aips/AIPS/DATA/BIP
+#
+# This means LEFFE is disk1 and BIP is disk2 for my AIPS work.
+#
+# Before running AIPS it is best to set system variables to the
+# data directory where you will be pulling the initial files from
+# and the directory you want output files to go to, I usually
+# do something like this:
+#
+# bip-(brian)-75-> setenv AIPSFILE /d/bip4/NRAO_data/4Min/13B-329.sb28545889.eb28547462.56617.26506841435
+# (Data located at)
+#
+# bip-(brian)-76-> setenv AIPSWDIR /usr/users/brian/aips/4Min/1_34
+# (Working directory for output files)
+# ------------------------------------------------------------------------------
+
+# Set the environment to which files will be written
+
+    setenv DATADIR /d/bip3/ezbc/orion/data/absorption/
+
+    setenv SRCDIR /d/bip4/NRAO_data/4Min/13B-329.sb28545889.eb28547462.56617.26506841435
+
+# To start aips, ssh into leffe, then enter
+
+    aips tv=local
+
+# --------- #
+#     1
+# --------- #
+    task 'bdflist'; default 'bdflist'; 
+    asdmfile 'SRCDIR:';
+    inp
+    go bdflist
+
+    # ASDMList: info    20140707T110736 ASDMList Begins, svn ver. 444M
+    # ASDMList: info    20140707T110736 Date/Time: 2014-07-07  11:07:36
+    # ASDMList: info    20140707T110737 Writing output to /usr/users/ezbc/BDFLIST.log.07JUL2014.110734
+    # Summary of ASDM in /d/bip4/NRAO_data/4Min/13B-329.sb28545889.eb28547462.56617.26506841435/
+    #   Configuration Summary
+    # Observed 2013-11-21, Array = EVLA, Observer = Dr. Min-Young Lee
+    # Configurations
+    #  
+    #   Configuration  0, no. SpWin = 3
+    #      SpWin=  0 Freq=   1.418 GHz, 256 chan of BW=    1.953 kHz, tot BW=   0.500 MHz, USB Band=EVLA_L
+    #      SpWin=  1 Freq=   1.420 GHz, 256 chan of BW=    1.953 kHz, tot BW=   0.500 MHz, USB Band=EVLA_L
+    #      SpWin=  2 Freq=   1.422 GHz, 256 chan of BW=    1.953 kHz, tot BW=   0.500 MHz, USB Band=EVLA_L
+    #  
+    #                                 Page 1
+    # Summary of ASDM in /d/bip4/NRAO_data/4Min/13B-329.sb28545889.eb28547462.56617.26506841435/
+    #   Scan Summary
+    # Scan=1 config=0 Source=J0503+0203 Code=' ' time= 00/06:23:47.5-00/06:24:47.4
+    #    Intent[1]='UNSPECIFIED'
+    # Scan=2 config=0 Source=J0503+0203 Code=' ' time= 00/06:24:47.4-00/06:29:16.6
+    #    Intent[1]='CALIBRATE_PHASE'
+    #    Intent[2]='CALIBRATE_AMPLI'
+    # Scan=3 config=0 Source=Src1_34 Code=' ' time= 00/06:29:16.6-00/06:39:15.0
+    #    Intent[1]='OBSERVE_TARGET'
+    # Scan=4 config=0 Source=Src1_34 Code=' ' time= 00/06:39:15.0-00/06:49:13.4
+    #    Intent[1]='OBSERVE_TARGET'
+    # Scan=5 config=0 Source=3C147 Code=' ' time= 00/06:49:13.4-00/06:54:12.5
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=6 config=0 Source=3C147 Code=' ' time= 00/06:54:12.5-00/07:00:41.5
+    #    Intent[1]='CALIBRATE_BANDPASS'
+    # Scan=7 config=0 Source=Src1_34 Code=' ' time= 00/07:00:41.5-00/07:10:39.8
+    #    Intent[1]='OBSERVE_TARGET'
+    # Scan=8 config=0 Source=Src1_34 Code=' ' time= 00/07:10:39.8-00/07:20:38.2
+    #    Intent[1]='OBSERVE_TARGET'
+    # Scan=9 config=0 Source=Src1_34 Code=' ' time= 00/07:20:38.2-00/07:23:37.8
+    #    Intent[1]='OBSERVE_TARGET'
+    # ASDMList: info    20140707T110737 ASDMList Ends, svn ver. 444M
+    # ASDMList: info    20140707T110737 Date/Time: 2014-07-07  11:07:37
+    # ASDMList: info    20140707T110737 ASDMList Runtime =        1 sec. CPU usage =    0.388 sec.
+    # Obit: info    20140707T110736 ObitPython Begins, svn ver. 444M
+    # Obit: info    20140707T110736 Date/Time: 2014-07-07  11:07:36 
+
+# --------- #
+#     2
+# --------- #
+
+    task 'bdf2aips'; default 'bdf2aips';
+    asdmfile 'SRCDIR:';
+    outname 'src1_34';
+    outdisk 2;
+    config 0;
+    inp
+    go bdf2aips
+
+    # OUTPUT:
+    # -------
+    # 16   83 src1_34     .UVEVLA.    1 UV 07-JUL-2014 12:43:10
+    
+    task 'listr'; default 'listr';
+    inname 'src1-34';
+    inclass 'UVEVLA';
+    optype 'scan';
+    indisk 2;
+    inp
+    go listr
+    
+    # File = SRC1-34     .UVEVLA.   1 Vol = 2  Userid =   83
+    # Freq =  1.417988786 GHz   Ncor =  2   No. vis =    433982
+    # Scan summary listing
+    #  
+    # Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START
+    #    1 J0503+0203      : 0000           0  0/06:23:49 -   0/06:24:43     1       1
+    #    2 J0503+0203      : 0000           0  0/06:24:49 -   0/06:29:14     1    6933
+    #    3 Src1_34         : 0000           0  0/06:29:19 -   0/06:39:14     1   39418
+    #    4 Src1_34         : 0000           0  0/06:39:17 -   0/06:49:11     1  112053
+    #    5 3C147           : 0000           0  0/06:49:16 -   0/06:54:11     1  184688
+    #    6 3C147           : 0000           0  0/06:54:16 -   0/07:00:38     1  220823
+    #    7 Src1_34         : 0000           0  0/07:00:43 -   0/07:10:38     1  267543
+    #    8 Src1_34         : 0000           0  0/07:10:44 -   0/07:20:35     1  340178
+    #    9 Src1_34         : 0000           0  0/07:20:41 -   0/07:23:35     1  412448
+    #  
+    # Source summary
+    # Velocity type = '        '    Definition = '        '
+    #  
+    #   ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)  No. vis
+    #    1 J0503+0203      : 0000         05:03:21.1972  02:03:04.676   39417
+    #    2 Src1_34         : 0000         05:07:36.4800  03:07:52.200  311710
+    #    3 3C147           : 0000         05:42:36.1379  49:51:07.234   82855
+    #  
+    #   ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+    #    1 All Sources          1.4180         0.0000          1.4204
+    #      IF(  2)              1.4201         0.0000          1.4204
+    #      IF(  3)              1.4218         0.0000          1.4204
+    #  
+    # Frequency Table summary
+    # FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+    #    1   1       1.41798879     500.0000      1.9531      1
+    #        2       1.42011800     500.0000      1.9531      1
+    #        3       1.42180599     500.0000      1.9531      1
+    
+    task 'uvcop'; default 'uvcop';
+    inname 'src1_34';
+    inclass 'uvevla';
+    outname 'src1_34-A';
+    outclass 'uvevla';
+    outdisk 2;
+    bif 2; eif 2;
+    inp
+    go uvcop
+    
+    task 'uvcop'; default 'uvcop';
+    inname 'src1_34';
+    inclass 'uvevla';
+    outname 'src1_34-B';
+    outclass 'uvevla';
+    outdisk 2;
+    bif 1; eif 1;
+    inp
+    go uvcop
+
+    task 'uvcop'; default 'uvcop';
+    inname 'src1_34';
+    inclass 'uvevla';
+    outname 'src1_34-C';
+    outclass 'uvevla';
+    outdisk 2;
+    bif 3; eif 3;
+    inp
+    go uvcop
+
+    # OUTPUT:
+    # -------
+    # 17   83 SRC1_34-A   .UVEVLA.    1 UV 07-JUL-2014 12:51:56
+    # 18   83 SRC1_34-B   .UVEVLA.    1 UV 07-JUL-2014 13:08:26
+    # 19   83 SRC1_34-C   .UVEVLA.    1 UV 07-JUL-2014 13:26:47
+
+# --------- #
+#     3
+# --------- #
+    
+    task 'listr'; default 'listr';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    optype 'scan';
+    indisk 2;
+    inp
+    go listr
+
+    task 'listr'; default 'listr';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    optype 'scan';
+    indisk 2;
+    inp
+    go listr
+    
+    task 'listr'; default 'listr';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    optype 'scan';
+    indisk 2;
+    inp
+    go listr
+
+    # OUTPUT:
+    # -------
+    # File = src1_34-A    .UVEVLA.   1 Vol = 1  Userid =   83
+    # Freq =  1.420263406 GHz   Ncor =  2   No. vis =         0
+    # Scan summary listing
+    #  
+    # Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START
+    #  
+    # Source summary
+    # Velocity type = '        '    Definition = '        '
+    #  
+    #   ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)  No. vis
+    #    1 J0503+0203      : 0000   D     03:18:57.8027  16:28:32.699       0
+    #  
+    #   ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+    #    1 All Sources          1.4203        -5.0000          1.4204
+    #  
+    # Frequency Table summary
+    # FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+    #    1   1       1.42026341     500.0000      1.9531      1
+
+    # File = src1_34-B    .UVEVLA.   1 Vol = 1  Userid =   83
+    # Freq =  1.418763295 GHz   Ncor =  2   No. vis =    948428
+    # Scan summary listing
+    #  
+    # Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START
+    #    1 J0503+0203      : 0000  F        0  0/09:02:15 -   0/09:04:13     1       1
+    #    2 3C147      : 0000  F        0  0/09:23:01 -   0/09:32:59     1   39885
+    #    3 3C147      : 0000  F        0  0/09:33:00 -   0/09:37:58     1  242009
+    #    4 3C147      : 0000  F        0  0/10:20:12 -   0/10:30:09     1  343071
+    #    5 3C147      : 0000  F        0  0/10:30:10 -   0/10:35:08     1  544857
+    #    6 3C147      : 0000  F        0  0/11:17:22 -   0/11:27:20     1  645581
+    #    7 3C147      : 0000  F        0  0/11:27:22 -   0/11:32:19     1  847705
+    #  
+    # Source summary
+    # Velocity type = '        '    Definition = '        '
+    #  
+    #   ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)  No. vis
+    #    2 J0503+0203      : 0000   F     03:18:57.8027  16:28:32.699   39884
+    #    3 3C147      : 0000   F     01:37:41.2994  33:09:35.133  908544
+    #  
+    #   ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+    #    2 All Sources          1.4188        -5.0000          1.4189
+    #  
+    # Frequency Table summary
+    # FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+    #    1   1       1.41876330     500.0000      1.9531      1
+
+    # File = src1_34-C    .UVEVLA.   1 Vol = 1  Userid =   83
+    # Freq =  1.421763518 GHz   Ncor =  2   No. vis =    857168
+    # Scan summary listing
+    #  
+    # Scan      Source      Qual  Calcode Sub         Timerange          FrqID   START
+    #    1 J0503+0203      : 0000  F        0  0/09:04:14 -   0/09:06:13     1       1
+    #    2 3C147      : 0000  F        0  0/09:37:59 -   0/09:47:55     1   40223
+    #    3 3C147      : 0000  F        0  0/09:47:57 -   0/09:51:25     1  242009
+    #    4 3C147      : 0000  F        0  0/10:35:09 -   0/10:45:07     1  312313
+    #    5 3C147      : 0000  F        0  0/10:45:09 -   0/10:48:36     1  514437
+    #    6 3C147      : 0000  F        0  0/11:32:21 -   0/11:42:17     1  584741
+    #    7 3C147      : 0000  F        0  0/11:42:19 -   0/11:45:46     1  786527
+    #  
+    # Source summary
+    # Velocity type = '        '    Definition = '        '
+    #  
+    #   ID Source           Qual  Calcode RA(2000.0)     Dec(2000.0)  No. vis
+    #    2 J0503+0203      : 0000   F     03:18:57.8027  16:28:32.699   40222
+    #    3 3C147      : 0000   F     01:37:41.2994  33:09:35.133  816946
+    #  
+    #   ID Source            Freq(GHz) Velocity(Km/s) Rest freq (GHz)
+    #    2 All Sources          1.4218        -5.0000          1.4219
+    #  
+    # Frequency Table summary
+    # FQID IF#      Freq(GHz)      BW(kHz)   Ch.Sep(kHz)  Sideband
+    #    1   1       1.42176352     500.0000      1.9531      1
+
+
+
+# --------- #
+#     4
+# --------- #
+
+
+    task 'prtan'; default 'prtan';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    docrt 0;
+    outprint 'DATADIR:antennas.txt';
+    inp
+    go 'prtan'
+
+    # OUTPUT:
+    # -------
+    #                 Location of VLA antennas
+ 
+    #                              N72 (20)*
+    #                              N64 ( 8)*
+    #                                  (  )
+    #                              N48 (16)*
+    #                              N40 ( 6)*
+    #                              N32 (10)*
+    #                              N24 (22)*
+    #                              N16 (13)*
+    #                              N08 (28)*
+    #                         *( 5) W08  E08 (12)*
+    #                       *(24) W16      E16 (21)*
+    #                     *(15) W24          E24 ( 9)*
+    #                   *(17) W32              E32 ( 7)*
+    #                 *(19) W40                  E40 (11)*
+    #               *(14) W48                      E48 (18)*
+    #             *(26) W56                          E56 ( 2)*
+    #           *( 4) W64                              E64 (27)*
+    #         *( 1) W72                                  E72 ( 3)*
+
+# ------------------------------------------------------------------------------
+#     5: Create a test bandpass solution
+# ------------------------------------------------------------------------------
+
+# Do a test bandpass to look for bad antennas on B & C (BPASS), this creates
+# BP1. Be sure that calsour is set to your bandpass calibrator.
+
+    task 'bpass'; default 'bpass';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    refant 28;
+    bpassprm(4) 1;
+    bpassprm(9) 3;
+    ichansel 50 200;
+    indisk 2;
+    inp
+    go 'bpass'
+    
+    task 'bpass'; default 'bpass';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    freqid -1;
+    docalib 1;
+    gainuse 1;
+    refant 28;
+    bpassprm(4) 1;
+    bpassprm(9) 3;
+    ichansel 50 200;
+    indisk 2;
+    inp
+    go 'bpass'
+
+# ------------------------------------------------------------------------------
+#     6: Examine test bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Use POSSM to view the bandpass just created (check all antennas together and
+# each antenna individually for sick antennas). Make sure sources is set to
+# your bandpass calibrator and APARM(8) = 2.
+
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    freqid -1;
+    indisk 2;
+    gainuse 2;
+    aparm(7) 2;
+    dotv 1;
+    inp
+    go 'possm'
+   
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    freqid -1;
+    indisk 2;
+    gainuse 2;
+    aparm(7) 2;
+    dotv 1;
+    inp
+    go 'possm'
+
+    # Mild gradient in BP for some antennas, overall, quite beautiful.
+    
+# ------------------------------------------------------------------------------
+#     7: Flag antennas or baselines based on bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Flag based on the bpass
+
+    tvreset; tvclear;
+    task 'uvflg'; default 'uvflg';
+    inname 'src1_34-C';
+    inclass 'uvevla';
+    calcode 'F';
+    opcode 'flag';
+    go 'uvflg'
+
+    inext 'fg'; INVERS -1; EXTDES
+
+    # No obvious flagging to be done
+
+# ------------------------------------------------------------------------------
+#     8: Delete test bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Delete BP1 from B and C when done
+    
+    getn 2; inext 'bp'; invers -1; extdes
+    getn 3; inext 'bp'; invers -1; extdes
+
+# ------------------------------------------------------------------------------
+#     9: Flag visibilities interactively
+# ------------------------------------------------------------------------------
+
+    # Source
+    tvreset; tvclear;
+    task 'tvflg'; default 'tvflg';
+    inname '4c1609-A';
+    inclass 'uvevla';
+    sources '';
+    docalib -1;
+    flagver 0;
+    dparm(6) 10;
+    indisk 2;
+    in2disk 2;
+    baddisk 1;
+    inp
+    go 'tvflg'
+
+    # BP + phase calibrators
+    tvreset; tvclear;
+    task 'tvflg'; default 'tvflg';
+    inname '4c1609-B';
+    inclass 'uvevla';
+    sources '';
+    docalib -1;
+    flagver 0;
+    dparm(6) 10;
+    indisk 2;
+    in2disk 2;
+    baddisk 1;
+    inp
+    go 'tvflg'
+
+    # BP + phase calibrators
+    tvreset; tvclear;
+    task 'tvflg'; default 'tvflg';
+    inname '4c1609-C';
+    inclass 'uvevla';
+    sources '';
+    docalib -1;
+    flagver 0;
+    dparm(6) 10;
+    indisk 2;
+    in2disk 2;
+    inp
+    go 'tvflg'
+
+# ------------------------------------------------------------------------------
+#     10: Derive bandpass solutions from BP calibrator
+# ------------------------------------------------------------------------------
+
+# Do a real bandpass to look for bad antennas on B & C (BPASS), this creates
+# BP1. Be sure that calsour is set to your bandpass calibrator.
+
+    task 'bpass'; default 'bpass';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsourc '3C147';
+    freqid -1;
+    docalib 1;
+    gainuse 1;
+    ichansel 50 200;
+    refant 28;
+    bpassprm(5) 1; 
+    bpassprm(10) 3;
+    inp
+    go 'bpass'
+
+    task 'bpass'; default 'bpass';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsourc '3C147';
+    freqid -1;
+    docalib 1;
+    gainuse 1;
+    ichansel 50 200;
+    refant 28;
+    bpassprm(5) 1; 
+    bpassprm(10) 3;
+    inp
+    go 'bpass'
+
+# ------------------------------------------------------------------------------
+#     11: Examine bandpass solutions
+# ------------------------------------------------------------------------------
+
+# Use POSSM to view the bandpass just created (check all antennas together and
+# each antenna individually for sick antennas). Make sure sources is set to
+# your bandpass calibrator and APARM(8) = 2.
+
+    # Bandpass gains for config 1
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    freqid -1;
+    gainuse 2;
+    aparm 0 0 0 0 0 0 0 2 0 0;
+    dotv 1;
+    inp
+    go 'possm'
+    
+    # Bandpass gains for config 2
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    freqid -1;
+    gainuse 2;
+    aparm 0 0 0 0 0 0 0 2 0 0;
+    dotv 1;
+    inp
+    go 'possm'
+
+    # Amplitude differences for config 1
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    codetyp 'difa';
+    sort 'ta';
+    freqid 1;
+    bchan 50;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+    
+    # Amplitude differences for config 2
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    codetyp 'difa';
+    sort 'ta';
+    bchan 50;
+    freqid 1;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+
+    # Phase difference for config 1
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    codetyp 'difa';
+    sort 'ta';
+    freqid 1;
+    bchan 50;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+    
+    # Phase difference for config 2
+    tvreset; tvclear;
+    task 'bplot'; default 'bplot';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    codetyp 'difa';
+    sort 'ta';
+    freqid 1;
+    bchan 50;
+    echan 200;
+    inext 'bp';
+    invers 1;
+    dotv 1;
+    inp
+    go 'bplot'
+
+
+# ------------------------------------------------------------------------------
+#     12: Flag visibilities based on bandpass solutions
+# ------------------------------------------------------------------------------
+
+# If any bad antennas or baselines exist, flag with uvflg
+
+    task 'uvflg'; default 'uvflg';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    source '3C147';
+    antenna ;
+    opcode 'flag';
+    stokes 'LL';
+    timerang -1;
+    inp
+    go 'uvflg'
+
+# if there was a mistake in flagging use inext. get the version with invers, -1
+# is the latest flag version.
+
+    inext 'fg'; invers -1; extdes
+
+# ------------------------------------------------------------------------------
+#     13: Calibrate the BP calibrator
+# ------------------------------------------------------------------------------
+
+# Calibrate the BP calibrator in B & C using a model (models can be retrieved
+# with the task CALRD, see page 4-14 in the cookbook). Calsour should be the BP
+# calibrator. Use in2d and get2n to load the model. Running calib will create
+# SN 1 in B and C.
+
+# list the models with caldir
+
+    caldir
+
+# read the model into aips
+
+    task 'calrd'; default 'calrd';
+    object '3C147';
+    band 'L';
+    outdisk 2;
+    inp
+    go 'calrd'
+    
+    # Catalog on disk  2
+    #  Cat Usid Mapname      Class   Seq  Pt     Last access      Stat
+    #   23   83 3C147_L     .MODEL .    1 MA 08-JUL-2014 09:10:34
+
+    task 'calib'; default 'calib';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    freqid 1;
+    indisk 2;
+    in2name '3C147_L';
+    in2class 'MODEL';
+    in2disk 2;
+    outdisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+    
+    task 'calib'; default 'calib';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    indisk 2;
+    calsour '3C147';
+    in2name '3C147_L';
+    in2class 'MODEL';
+    in2disk 2;
+    outdisk 2;
+    freqid -1;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 
+
+# ------------------------------------------------------------------------------
+#     14: Calibrate the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'calib'; default 'calib';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour 'J0503+0203';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+    
+    task 'calib'; default 'calib';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsour 'J0503+0203';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+
+# ------------------------------------------------------------------------------
+#     15: Get the flux of the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'getjy'; default 'getjy';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    sources 'J0503+0203';
+    indisk 2;
+    freqid -1;
+    inp
+    go 'getjy'
+
+    # Output
+    # ------
+    # Calibrator robust averaging used    108 of    108 gain samples
+    #    Source:Qual      CALCODE IF  Flux (Jy)
+    # J0503+0203      :  0         1    2.15153 +/-   0.00627  0.01502
+    #    Source:Qual    CALCODE    used   total     bad used  tot  bad
+    # J0503+0203      :  0           54      54       0   52   54    2
+
+    task 'getjy'; default 'getjy';
+    inname 'src1_34-C';
+    inclass 'UVEVLA';
+    calsour '3C147';
+    sources 'J0503+0203';
+    freqid -1;
+    inp
+    go 'getjy'
+
+    # Output
+    # ------
+    # Calibrator robust averaging used    108 of    108 gain samples
+    #    Source:Qual      CALCODE IF  Flux (Jy)
+    # J0503+0203      :  0         1    2.15576 +/-   0.00613  0.01542
+    #    Source:Qual    CALCODE    used   total     bad used  tot  bad
+    # J0503+0203      :  0           54      54       0   51   54    2
+
+    # Delete model. Need to remove the model file first so A,B,C, and BC files
+    # will be consecutive for the RERED script which comes later
+
+    task 'zap'; default 'zap';
+    inname '3C147_L';
+    inclass 'MODEL';
+    indisk 2;
+    inseq 1;
+    intype 'ma';
+    inp
+    go 'zap'
+
+# ------------------------------------------------------------------------------
+#     16: Combine the gain solutions from the offset frequency bands
+# ------------------------------------------------------------------------------
+
+    task 'dbcon'; default 'dbcon';
+    inname 'src1_34-B';
+    inclass 'UVEVLA';
+    indisk 2;
+    in2name 'src1_34-C';
+    in2class 'UVEVLA';
+    in2disk 2;
+    outname 'src1_34-BC';
+    outdisk 2;
+    dopos -1;
+    inp
+    go 'dbcon'
+
+    # Output
+    # ------
+    # Cat Usid Mapname      Class   Seq  Pt     Last access      Stat
+    # 23    83 SRC1_34-BC  .DBCON .    1 UV 08-JUL-2014 09:56:41
+
+# ------------------------------------------------------------------------------
+#     17: Examine combined bandpass solution
+# ------------------------------------------------------------------------------
+
+    # Bandpass gains for combined set, examine in tv window
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname 'src1_34-BC';
+    inclass 'DBCON';
+    calsour '3C147';
+    freqid -1;
+    gainuse 2;
+    aparm(8) 2;
+    dotv 1;
+    inp
+    go 'possm'
+
+    # Bandpass gains for combined set, save to disk
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname 'src1_34-BC';
+    inclass 'DBCON';
+    calsour '3C147';
+    freqid -1;
+    gainuse 2;
+    aparm(8) 2;
+    dotv -1;
+    inp
+    go 'possm'
+
+    # Print the file
+    task 'lwpla'; default 'lwpla';
+    inname 'src1_34-BC';
+    inclass 'DBCON';
+    plver 1;
+    invers 2;
+    inp
+    go 'lwpla'
+
+# ------------------------------------------------------------------------------
+#     18: Copy bandpass to the source
+# ------------------------------------------------------------------------------
+
+    task 'tacop'; default 'tacop';
+    inname 'src1_34-BC';
+    inclass 'DBCON';
+    indisk 2;
+    inext 'BP';
+    invers 1;
+    outname 'src1_34-A';
+    outclass 'UVEVLA';
+    outdisk 2;
+    inp
+    go 'tacop';
+
+# ------------------------------------------------------------------------------
+#     19: Set the flux of the phase calibrator
+# ------------------------------------------------------------------------------
+
+    # Set the zerosp adverb to be the flux of the phase calibrator in Jy!
+
+    task 'setjy'; default 'setjy';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    sources 'J0503+0203';
+    zerosp 2.15;
+    inp
+    go 'setjy'
+
+
+# ------------------------------------------------------------------------------
+#     20: Calibrate the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'calib'; default 'calib';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    calsour 'J0503+0203';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+    
+
+# ------------------------------------------------------------------------------
+#     21: Examine solution table of target
+# ------------------------------------------------------------------------------
+
+    task 'listr'; default 'listr';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    optype 'gain';
+    inver 1;
+    docrt 132;
+    inp
+    go 'listr'
+
+# ------------------------------------------------------------------------------
+#     22: Flag visibilities based on the solution table
+# ------------------------------------------------------------------------------
+
+#   task 'uvflg'; default 'uvflg';
+#   inname 'src1_34-A';
+#   inclass 'UVEVLA';
+#   antenna 06;
+#   opcode 'flag';
+#   stokes 'RR';
+#   timerang 0 09 22 01 0 09 58 21 ;
+#   inp
+#   go 'uvflg'
+
+# delete the solution table and redo calibration of the phase calibrator in
+# configuration A (Step 20).
+
+    inext 'sn'; invers -1; extdes
+
+    task 'calib'; default 'calib';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    calsour 'J0503+0203';
+    freqid -1;
+    indisk 2;
+    refant 28;
+    solmode 'A&P';
+    solint 0;
+    aparm(6) 2;
+    inp
+    go 'calib'
+
+    task 'listr'; default 'listr';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    optype 'gain';
+    inver 1;
+    docrt 132;
+    inp
+    go 'listr'
+
+
+# ------------------------------------------------------------------------------
+#     23: Interpolate the target to the phase calibrator
+# ------------------------------------------------------------------------------
+
+    task 'clcal'; default 'clcal';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    indisk 2;
+    sources 'J0503+0203';
+    freqid -1;
+    snver 2;
+    gainuse 0;
+    refant 28;
+    inp
+    go 'clcal'
+
+
+# ------------------------------------------------------------------------------
+#     24: Examine solution
+# ------------------------------------------------------------------------------
+
+    tvreset; tvclear;
+    task 'possm'; default 'possm';
+    inname 'src1_34-A';
+    inclass 'UVEVLA';
+    calsour 'J0503+0203';
+    freqid -1;
+    docal 1;
+    doband 1;
+    gainuse 2;
+    aparm 0;
+    dotv 1;
+    inp
+    go 'possm'
+
+# ------------------------------------------------------------------------------
+#     25: Implement the self calibration with the RERED script
+# ------------------------------------------------------------------------------
+
+    # to run an aips script
+    # find aips user number in hexidecimal
+    # >ehex(83)
+    # AIPS 1: Decimal number 83 is '2B ' in extended hex
+    # drop the space on the end, add a 0 to beginning
+    # name extension of script as edited hexidecimal
+    # e.g. RERED.02B
+    # the script must be in the directory aips is running
+
+    restore 0
+    version='pwd'
+    run RERED
+    init_vars
+    reduce(17, 5, 1, 0, 0, 0.001)
+
+    # (where the variables are: file number of A dataset (237 for example),
+    # reference antenna (21 for example), "start" (parameter which, if true
+    # (=1), will create a test image for determining the cell size. If false
+    # (=0) the procedure will ask for the cell size as an input if you happen
+    # to know what it is already), velocity ( 0 km/s), weighting (0 for robust
+    # weighting) and rms flux cutoff for imaging (0.001 for example)).  (Get
+    # velocity from initial printout of data.  Typically it's -5.0 km/s, but
+    # not for this source.) If you run into trouble or need to restart the
+    # code, zap all the auxiliary files it creates and re-execute all of the
+    # above commands (so that it doesn't get hung up with previously-defined
+    # quantities, etc.).
+    # Find cell size from AIPS_MSGSRV_1 window
+    # Look for the line:
+
+    # IMAGR1: Fit Gaussian FWHM =    4.692 x    4.261      arcsec, PA=   -9.6
+
+    # Take a value about 1/4 of the smaller of the two components, in this case
+    # 1/4 of 4.261 is roughly 1.0 arcsec
+
+

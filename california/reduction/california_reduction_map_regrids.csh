@@ -36,7 +36,7 @@ regrid in=av/california_av_planck.mir \
 
 regrid in=av/california_av_error_planck.mir \
     out=av/california_av_error_planck_5arcmin.mir \
-    desc=77.5,0,-0.08333,240,18,0,0.08333,180
+    desc=74.75,0,-0.08333,159,28.066,0,0.08333,144
 
 # regrid galfa hi image to have lower velocity resolution
 regrid in=hi/california_hi_galfa_cube.mir \

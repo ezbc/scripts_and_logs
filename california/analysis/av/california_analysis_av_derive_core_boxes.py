@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the california molecular cloud.
 '''
 
 import pyfits as pf
@@ -112,7 +112,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
 
         ax.annotate(core,
                 xy=[pix_coords[0], pix_coords[1]],
-                xytext=(5,5),
+                xytext=(-20,5),
                 textcoords='offset points',
                 color=(1, 1, 1))
 
@@ -411,7 +411,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'california_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -455,33 +455,33 @@ def main():
     angle_res = 10.0 # resolution to permute through angles
 
     # define directory locations
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/california/figures/maps/'
+    av_dir = '/d/bip3/ezbc/california/data/av/'
+    hi_dir = '/d/bip3/ezbc/california/data/hi/'
+    co_dir = '/d/bip3/ezbc/california/data/co/'
+    core_dir = '/d/bip3/ezbc/california/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/california/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'california_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'california_av_error_planck_5arcmin.fits',
             return_header=True)
 
     # av_data[dec, ra], axes are switched
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'california_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, av_header)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'california_av_boxes_',
             header = av_header)
 
     av_image_list = []
@@ -496,7 +496,7 @@ def main():
             box_dict[core]['box_vertices_rotated'].tolist()
         cores[core]['center_pixel'] = cores[core]['center_pixel']
 
-    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
+    with open(core_dir + 'california_core_properties.txt', 'w') as f:
         json.dump(cores, f)
 
     for core in cores:
@@ -511,9 +511,9 @@ def main():
     for figure_type in figure_types:
         plot_av_image(av_image=av_data, header=av_header,
                 boxes=True, cores=cores, #limits=[50,37,200,160],
-                title=r'taurus: A$_V$ map with core boxed-regions.',
+                title=r'california: A$_V$ map with core boxed-regions.',
                 savedir=figure_dir,
-                filename='taurus_av_cores_map.%s' % \
+                filename='california_av_cores_map.%s' % \
                         figure_type,
                 show=0)
 
