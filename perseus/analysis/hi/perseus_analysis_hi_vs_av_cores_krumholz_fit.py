@@ -761,8 +761,8 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                     )
         if chisq_list is not None:
             conf = (1.0 - p_value) * 100.
-            ax.annotate(r'$\chi^2/\nu$ = %.2f at %i %% conf.' % \
-                    (chisq, conf),
+            ax.annotate(r'$\chi^2/\nu$ = %.2f' % \
+                    chisq,
                     xytext=(0.48, 0.2),
                     xy=(0.48, 0.2),
                     textcoords='axes fraction',
@@ -1430,8 +1430,8 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
     f_H2, f_HI : array-like, optional
         f_H2 = mass fraction of molecular hydrogen
         f_HI = mass fraction of atomic hydrogen
-    chisq, p_value : float, optional
-        Chi squared statistic and p-value.
+    chisq_reduced, p_value : float, optional
+        Reduced chi squared statistic and p-value.
 
     '''
 
@@ -1440,7 +1440,7 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
 
     # fit the krumholz model, choose first element of tuple = parameters
     rh2_fit_params = curve_fit(krumholz_eq_simple, h_sd, rh2,
-            maxfev=10000000, p0 = p0)[0]
+            maxfev=10000000, p0 = p0, sigma=1.0/rh2_error)[0]
 
     # Create large array of h_sd
     h_sd_extended = np.linspace(h_sd_extent[0], h_sd_extent[1], h_sd_extent[2])
@@ -1455,10 +1455,11 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
     if return_chisq:
         dof = len(rh2) - 1
         rh2_fit_grid = krumholz_eq_simple(h_sd, rh2_fit_params)
-        chisq = np.sum((rh2 - rh2_fit_grid)**2)
-        if rh2_error is not None:
-            chisq /= np.sum(rh2_error**2)
-        p_value = 1 - stats.chi2.cdf(chisq, 1)
+        #chisq = np.sum((rh2 - rh2_fit_grid)**2 / rh2_fit_grid)
+        chisq = np.sum((rh2 - rh2_fit_grid)**2 / rh2_error**2)
+        #if rh2_error is not None:
+        #    chisq /= np.sum(rh2_error**2)
+        p_value = 1.0 - stats.chi2.cdf(chisq, dof)
         chisq_reduced = chisq / dof
 
     print('pvalue = %.2f' % p_value)
@@ -1473,7 +1474,7 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
         output.append(f_H2)
         output.append(f_HI)
     if return_chisq:
-        output.append(chisq)
+        output.append(chisq_reduced)
         output.append(p_value)
 
     return output
@@ -1634,12 +1635,11 @@ def main():
     # -------------------------
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
-    hi_co_width = False
-    hi_av_correlation = True
+    hi_co_width = True
+    hi_av_correlation = False
     co_width_scale = 5.0 # for determining N(HI) vel range
-    velocity_centers = np.linspace(-50, 50, 50)
-    velocity_widths = np.linspace(1, 40, 40)
-    #
+    hi_vel_range_scale = 2.0 # scale hi velocity range for Av/N(HI) correlation
+
     dgr = 6.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     rh2_fit_range = [0.001, 1000] # range of fitted values for krumholz model
 
@@ -1787,15 +1787,18 @@ def main():
             hi_vel_range = select_hi_vel_range(co_data_sub, co_header,
                     flux_threshold=0.85, width_scale=co_width_scale)
             hi_vel_range_list.append(hi_vel_range)
-        elif hi_av_correlation:
+
+        if hi_av_correlation:
             hi_vel_range = cores[core]['hi_velocity_range']
             correlation_coeff = cores[core]['correlation_coeff']
+
+            hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
+                    hi_vel_range[1] * hi_vel_range_scale)
+
 
         if 1:
             print('HI velocity integration range:')
             print('%.0f to %.0f km/s' % (hi_vel_range[0], hi_vel_range[1]))
-            print('With correlation of:')
-            print('%.2f' % correlation_coeff)
 
             nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
                     velocity_axis=velocity_axis,
@@ -1825,7 +1828,7 @@ def main():
             h2_sd_image_error = calculate_sd(nh2_image_error,
                     sd_factor=1/0.625)
 
-            # Paradis et al. (2012) gives DGR for taurus
+            # Paradis et al. (2012) gives DGR for perseus
             #h_sd_image = av_data_planck / (1.25 * dgr)
             #h_sd_image_error = av_error_data_planck / (1.25 * dgr)
             h_sd_image = hi_sd_image + h2_sd_image
@@ -1841,6 +1844,7 @@ def main():
             rh2_image_error = rh2_image * (hi_sd_image_error**2 / \
                     hi_sd_image**2 + h2_sd_image_error**2 / \
                     h2_sd_image**2)**0.5
+
 
         av_data_planck_sub = av_data_planck[indices]
         av_error_data_planck_sub = av_error_data_planck[indices]
@@ -1862,17 +1866,22 @@ def main():
         # write indices for only ratios > 0
         indices = np.where(rh2_ravel > 0)
 
+        rh2_ravel = rh2_ravel[indices]
+        rh2_error_ravel = rh2_error_ravel[indices]
+        h_sd_ravel = h_sd_ravel[indices]
+        h_sd_error_ravel = h_sd_error_ravel[indices]
+
         # Fit to krumholz model, init guess of phi_CNM = 10
         rh2_fit_range.append(1e6)
         rh2_fit, h_sd_fit, phi_cnm, f_H2, f_HI, chisq, p_value= \
-                fit_krumholz(h_sd_ravel[indices],
-                             rh2_ravel[indices],
+                fit_krumholz(h_sd_ravel,
+                             rh2_ravel,
                              rh2_fit_range,
                              p0=10.0,
                              return_params=True,
                              return_fractions=True,
                              return_chisq=True,
-                             rh2_error=rh2_image_error_sub)
+                             rh2_error=rh2_error_ravel)
 
         print('phi = %.2f' % phi_cnm)
 
@@ -1907,6 +1916,22 @@ def main():
         chisq_list.append(chisq)
         p_value_list.append(p_value)
         core_name_list.append(core)
+
+    # Write velocity range properties to a file
+    if hi_co_width and hi_av_correlation:
+        with open(core_dir + 'perseus_hi_vel_properties.txt', 'w') as f:
+            f.write('core\tco_range\tco_high\tco_scale\thi_low\thi_high')
+            for i, core in enumerate(cores):
+                f.write('\n{0:s}\t{1:.1f}\t{2:.1f}\t{3:.1f}'.format(
+                            core,
+                            hi_vel_range_list[i][0],
+                            hi_vel_range_list[i][1],
+                            cores[core]['hi_velocity_range'][0]) + \
+                        '\t{0:.1f}\t{1:.1f}'.format(
+                            cores[core]['hi_velocity_range'][1],
+                            co_width_scale
+                            )
+                        )
 
     figure_types = ['png', 'pdf']
     for figure_type in figure_types:
@@ -1948,10 +1973,11 @@ def main():
                 hi_fits = hi_sd_fit_list,
                 h_sd_fits = h_sd_fit_list,
                 #limits = [10**-1, 10**2, 10**0, 10**2],
-                #limits = [-5, 50, 1, 8],
+                limits = [-5, 300, 3, 8],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
-                filename = 'perseus_hi_vs_h_panels_planck.%s' % figure_type,
+                filename = 'perseus_hi_vs_h_panels_planck_linear.%s' % \
+                        figure_type,
                 title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
                         + ' of perseus Cores',
                 core_names=core_name_list,
@@ -1970,7 +1996,7 @@ def main():
                 filename = 'perseus_hi_vs_h_panels_planck_log.%s' %\
                         figure_type,
                 title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of Perseus Cores',
+                        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
