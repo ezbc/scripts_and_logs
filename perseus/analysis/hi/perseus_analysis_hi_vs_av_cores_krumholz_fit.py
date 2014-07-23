@@ -642,7 +642,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         h_sd_error_images=None, rh2_fits = None, h_sd_fits = None, limits =
         None, fit = True, savedir = './', filename = None, show = True, scale =
         'linear', title = '', core_names='', phi_cnm_list=None,
-        chisq_list=None, p_value_list=None):
+        chisq_list=None, p_value_list=None, Z_list=None):
 
     # Import external modules
     import numpy as np
@@ -696,6 +696,8 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         h_sd_fit = h_sd_fits[i]
         if phi_cnm_list is not None:
             phi_cnm = phi_cnm_list[i]
+        if Z_list is not None:
+            Z = Z_list[i]
         if chisq_list is not None:
             chisq = chisq_list[i]
         if p_value_list is not None:
@@ -759,12 +761,20 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                     xycoords='axes fraction',
                     color='k'
                     )
+        if Z_list is not None:
+            ax.annotate(r'Z = %.2f Z$_\odot$' % \
+                    Z,
+                    xytext=(0.60, 0.2),
+                    xy=(0.60, 0.2),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    color='k'
+                    )
         if chisq_list is not None:
-            conf = (1.0 - p_value) * 100.
             ax.annotate(r'$\chi^2/\nu$ = %.2f' % \
                     chisq,
-                    xytext=(0.48, 0.2),
-                    xy=(0.48, 0.2),
+                    xytext=(0.48, 0.3),
+                    xy=(0.48, 0.3),
                     textcoords='axes fraction',
                     xycoords='axes fraction',
                     color='k'
@@ -1016,183 +1026,6 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
 ''' Calculations
 '''
 
-def calculate_nhi(cube=None, velocity_axis=None, velocity_range=[],
-        return_nhi_error=True, noise_cube=None,
-        velocity_noise_range=[90,100], Tsys=30., header=None,
-        fits_filename=None, fits_error_filename=None, verbose=True):
-
-    ''' Calculates an N(HI) image given a velocity range within which to
-    include a SpectralGrid's components.
-
-    Parameters
-    ----------
-    cube : array-like, optional
-        Three dimensional array with velocity axis as 0th axis. Must specify
-        a velocity_axis if cube is used.
-    velocity_axis : array-like, optional
-        One dimensional array containing velocities corresponding to
-    fits_filename : str
-        If specified, and a header is provided, the nhi image will be written.
-    header : pyfits.Header
-        Header from cube.
-
-    '''
-
-    import numpy as np
-
-    # Calculate NHI from cube if set
-    if cube is not None and velocity_axis is not None:
-        image = np.empty((cube.shape[1],
-                          cube.shape[2]))
-        image[:,:] = np.NaN
-        indices = np.where((velocity_axis > velocity_range[0]) & \
-                (velocity_axis < velocity_range[1]))[0]
-        image[:,:] = cube[indices,:,:].sum(axis=0)
-        # Calculate image error
-        if return_nhi_error:
-            image_error = np.empty((cube.shape[1],
-                              cube.shape[2]))
-            image_error[:,:] = np.NaN
-            image_error[:,:] = (noise_cube[indices,:,:]**2).sum(axis=0)**0.5
-
-    # NHI in units of 1e20 cm^-2
-    nhi_image = np.ma.array(image,mask=np.isnan(image)) * 1.823e-2
-    nhi_image = image * 1.823e-2
-
-    if fits_filename is not None and header is not None:
-        if verbose:
-            print('Writing N(HI) image to FITS file %s' % fits_filename)
-        header['BUNIT'] = '1e20 cm^-2'
-        header.remove('CDELT3')
-        header.remove('CRVAL3')
-        header.remove('CRPIX3')
-        header.remove('CTYPE3')
-        header.remove('NAXIS3')
-        header['NAXIS'] = 2
-
-        pf.writeto(fits_filename, image*1.823e-2, header = header, clobber =
-                True, output_verify = 'fix')
-
-    if fits_error_filename is not None and header is not None:
-        if verbose:
-            print('Writing N(HI) error image to FITS file %s' % fits_filename)
-
-        pf.writeto(fits_error_filename, image_error * 1.823e-2, header =
-                header, clobber = True, output_verify = 'fix')
-
-    if return_nhi_error:
-        nhi_image_error = np.ma.array(image_error,
-                mask=np.isnan(image_error)) * 1.823e-2
-        nhi_image_error = image_error * 1.823e-2
-        return nhi_image, nhi_image_error
-    else:
-        return nhi_image
-
-def calculate_noise_cube(cube=None, velocity_axis=None,
-            velocity_noise_range=[-110,-90,90,110], header=None, Tsys=30.,
-            filename=None):
-
-    """ Calcuates noise envelopes for each pixel in a cube
-    """
-
-    import numpy as np
-    import pyfits as pf
-
-    noise_cube = np.zeros(cube.shape)
-    for i in range(cube.shape[1]):
-        for j in range(cube.shape[2]):
-            profile = cube[:,i,j]
-            noise = calculate_noise(profile, velocity_axis,
-                    velocity_noise_range)
-            #noise = 0.1 # measured in line free region
-            noise_cube[:,i,j] = calculate_noise_scale(Tsys,
-                    profile, noise=noise)
-
-    if filename is not None:
-        pf.writeto(filename, noise_cube, header=header)
-
-    return noise_cube
-
-def calculate_noise(profile, velocity_axis, velocity_range):
-    """ Calculates rms noise of Tile profile given velocity ranges.
-    """
-    import numpy as np
-
-    std = 0
-
-    # calculate noises for each individual region
-    for i in range(len(velocity_range) / 2):
-        velMin = velocity_range[2*i + 0]
-        velMax = velocity_range[2*i + 1]
-
-        noise_region = np.where((velocity_axis >= velMin) & \
-                        (velocity_axis <= velMax))
-
-        std += np.std(profile[noise_region])
-
-    std /= len(velocity_range) / 2
-    return std
-
-def calculate_noise_scale(Tsys, profile, noise=None):
-    """ Creates an array for scaling the noise by (Tsys + Tb) / Tsys
-    """
-    import numpy as np
-    n = np.zeros(len(profile))
-    n = (Tsys + profile) / Tsys * noise
-
-    return n
-
-def calculate_sd(image, sd_factor=1/1.25):
-
-    ''' Calculates a surface density image given a velocity range within which
-    to include a SpectralGrid's components.
-
-    Parameters
-    ----------
-    cube : array-like, optional
-        Three dimensional array with velocity axis as 0th axis. Must specify
-        a velocity_axis if cube is used.
-    velocity_axis : array-like, optional
-        One dimensional array containing velocities corresponding to '''
-
-    import numpy as np
-
-    # NHI in units of 1e20 cm^-2
-    sd_image = image * sd_factor
-
-    return sd_image
-
-def calculate_nh2(nhi_image = None, av_image = None, dgr = 1.1e-1):
-
-    ''' Calculates the total gas column density given N(HI), A_v and a
-    dust-to-gas ratio.
-
-    Parameters
-    ----------
-    '''
-
-    import numpy as np
-
-    nh_image = 0.5 * (av_image / dgr - nhi_image)
-
-    return nh_image
-
-def calculate_nh2_error(nhi_image_error=None, av_image_error=None, dgr=1.1e-1):
-
-    ''' Calculates the total gas column density given N(HI), A_v and a
-    dust-to-gas ratio.
-
-    Parameters
-    ----------
-    '''
-
-    import numpy as np
-
-    nh2_image_error = 0.5 * ((av_image_error / dgr)**2 - \
-            nhi_image_error**2)**0.5
-
-    return nh2_image_error
-
 def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         hi_noise_cube=None, av_image=None, av_image_error=None,
         velocity_centers=None, velocity_widths=None, return_correlations=True):
@@ -1322,79 +1155,6 @@ def select_hi_vel_range(co_data, co_header, flux_threshold=0.80,
 ''' Fitting Functions
 '''
 
-def krumholz_eq(h_sd, phi_CNM = None,
-        Z = 1., # metallicity
-        a = 0.2, # ?
-        f_diss = 0.1, # fraction of absorbing H2 which disociates
-        phi_mol = 10.0, # molecular gas fraction
-        mu_H = 2.3e-24, # molecular weight of H, g
-        return_fractions=False
-        ):
-    '''
-    Krumholz et al. 2008
-    '''
-
-    # Constants
-    c = 3.0e10 # speed of light, cm/s
-
-    # solar values
-    sigma_d_solar = 1e-21 # solar dust grain cross section, cm^2
-    R_d_solar = 10**-16.5 # solar cloud radius, cm
-    E_0_solar = 7.5e-4 # Radiation field, erg/s
-
-    # cloud values
-    sigma_d = sigma_d_solar * Z # dust grain cross section, cm^2
-    R_d = R_d_solar * Z # cloud radius, cm
-
-    # normalized radiation field strength, EQ 7
-    chi = ((f_diss * sigma_d_solar * c * E_0_solar) \
-            * (1.0 + (3.1 * Z**0.365))) \
-            / (31.0 * phi_CNM * R_d_solar)
-
-    # dust-adjusted radiation field, EQ 10
-    psi = chi * (2.5 + chi) / (2.5 + (chi * np.e))
-
-    # cloud optical depth, EQ 21
-    tau_c = (3.0 * h_sd * sigma_d) / (4.0 * (3.1 * Z**0.365) * mu_H)
-
-    # cloud optical depth, EQ 21
-    tau_c = 0.067 * Z * h_sd
-
-    f_H2_sub1 = (3.0 * psi) / (3.0 * tau_c)
-    f_H2_sub2 = (4.0 * a * psi * phi_mol) / ((4.0 * tau_c) + (3.0 * (phi_mol \
-            - 1.0) * psi))
-    f_H2 = 1.0 - (f_H2_sub1 / (1.0 + f_H2_sub2))
-    f_HI = 1.0 - f_H2
-
-    # Keep fractions within real fractional value range
-    f_HI[f_HI > 1] = 1.0
-    f_HI[f_HI < 0] = 0.0
-    f_H2[f_H2 > 1] = 1.0
-    f_H2[f_H2 < 0] = 0.0
-
-    # ratio of molecular to atomic fraction, EQ 17 Lee et al. 2012
-    R_H2 = 4 * tau_c / (3 * psi) \
-            * (1+ 0.8 * psi * phi_mol \
-                / (4 * tau_c + 3 * (phi_mol - 1) * psi)) -1
-
-    R_H2 = f_H2 / f_HI
-
-    if not return_fractions:
-        return R_H2
-    elif return_fractions:
-        return R_H2, f_H2, f_HI
-
-def krumholz_eq_simple(h_sd, phi_CNM, return_fractions=False):
-
-   return krumholz_eq(h_sd, phi_CNM = phi_CNM,
-        Z=1.0, # metallicity
-        a=0.2, # ?
-        f_diss=0.1, # fraction of absorbing H2 which disociates
-        phi_mol=10.0, # molecular gas fraction
-        mu_H=2.3e-24, # molecular weight of H, g
-        return_fractions=return_fractions,
-        )
-
 def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
         return_fractions=False, return_chisq=False, rh2_error=None):
 
@@ -1437,24 +1197,48 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
 
     from scipy.optimize import curve_fit
     from scipy import stats
+    from lmfit import minimize, Parameters, report_fit
+    from myscience import krumholz09 as k09
 
     # fit the krumholz model, choose first element of tuple = parameters
-    rh2_fit_params = curve_fit(krumholz_eq_simple, h_sd, rh2,
-            maxfev=10000000, p0 = p0, sigma=1.0/rh2_error)[0]
+    #rh2_fit_params = curve_fit(k09.calc_rh2, h_sd, rh2,
+    #        maxfev=10000000, p0 = p0, sigma=1.0/rh2_error)[0]
+
+    def chisq(params, h_sd, rh2, rh2_error):
+        phi_cnm = params['phi_cnm'].value
+        Z = params['Z'].value
+
+        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z)
+
+        chisq = (rh2 - rh2_model)**2 / rh2_error**2
+
+        return chisq
+
+    # Set parameter limits and initial guesses
+    params = Parameters()
+    params.add('phi_cnm', value=8.0, min=1, max=20)
+    params.add('Z', value=1.0, min=0.1, max=5, vary=True)
+
+    # Perform the fit!
+    result = minimize(chisq, params, args=(h_sd, rh2, rh2_error),
+            method='lbfgsb')
+
+    report_fit(params)
+    rh2_fit_params = (params['phi_cnm'].value, params['Z'].value)
 
     # Create large array of h_sd
     h_sd_extended = np.linspace(h_sd_extent[0], h_sd_extent[1], h_sd_extent[2])
 
     if not return_fractions:
-        rh2_fit = krumholz_eq_simple(h_sd_extended, rh2_fit_params)
+        rh2_fit = k09.calc_rh2(h_sd_extended, rh2_fit_params)
     elif return_fractions:
-        rh2_fit, f_H2, f_HI = krumholz_eq_simple(h_sd_extended,
-                                                 rh2_fit_params,
+        rh2_fit, f_H2, f_HI = k09.calc_rh2(h_sd_extended,
+                                                 *rh2_fit_params,
                                                  return_fractions=True)
 
     if return_chisq:
         dof = len(rh2) - 1
-        rh2_fit_grid = krumholz_eq_simple(h_sd, rh2_fit_params)
+        rh2_fit_grid = k09.calc_rh2(h_sd, *rh2_fit_params)
         #chisq = np.sum((rh2 - rh2_fit_grid)**2 / rh2_fit_grid)
         chisq = np.sum((rh2 - rh2_fit_grid)**2 / rh2_error**2)
         #if rh2_error is not None:
@@ -1469,7 +1253,8 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
     output = [rh2_fit, h_sd_extended]
 
     if return_params:
-        output.append(rh2_fit_params)
+        for param in rh2_fit_params:
+            output.append(param)
     if return_fractions:
         output.append(f_H2)
         output.append(f_HI)
@@ -1630,6 +1415,8 @@ def main():
     reload(myg)
     from mycoords import make_velocity_axis
     import json
+    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
+        calculate_sd, calculate_nh2, calculate_nh2_error
 
     # parameters used in script
     # -------------------------
@@ -1638,9 +1425,11 @@ def main():
     hi_co_width = True
     hi_av_correlation = False
     co_width_scale = 5.0 # for determining N(HI) vel range
+    # 0.758 is fraction of area of Gaussian between FWHM limits
+    co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
     hi_vel_range_scale = 2.0 # scale hi velocity range for Av/N(HI) correlation
 
-    dgr = 6.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
+    dgr = 1.22e-1 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     rh2_fit_range = [0.001, 1000] # range of fitted values for krumholz model
 
 
@@ -1746,6 +1535,7 @@ def main():
     rh2_fit_list = []
     h_sd_fit_list = []
     phi_cnm_list = []
+    Z_list = []
     chisq_list = []
     p_value_list = []
     core_name_list = []
@@ -1784,8 +1574,10 @@ def main():
                     co_data_sub.shape[0])
 
             # fit gaussians to CO data
-            hi_vel_range = select_hi_vel_range(co_data_sub, co_header,
-                    flux_threshold=0.85, width_scale=co_width_scale)
+            hi_vel_range = select_hi_vel_range(co_data_sub,
+                    co_header,
+                    flux_threshold=co_flux_fraction,
+                    width_scale=co_width_scale)
             hi_vel_range_list.append(hi_vel_range)
 
         if hi_av_correlation:
@@ -1794,7 +1586,6 @@ def main():
 
             hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
                     hi_vel_range[1] * hi_vel_range_scale)
-
 
         if 1:
             print('HI velocity integration range:')
@@ -1873,17 +1664,18 @@ def main():
 
         # Fit to krumholz model, init guess of phi_CNM = 10
         rh2_fit_range.append(1e6)
-        rh2_fit, h_sd_fit, phi_cnm, f_H2, f_HI, chisq, p_value= \
+        rh2_fit, h_sd_fit, phi_cnm, Z, f_H2, f_HI, chisq, p_value= \
                 fit_krumholz(h_sd_ravel,
                              rh2_ravel,
                              rh2_fit_range,
-                             p0=10.0,
+                             p0=[10.0, 1.0], # phi_cnm, Z
                              return_params=True,
                              return_fractions=True,
                              return_chisq=True,
                              rh2_error=rh2_error_ravel)
 
         print('phi = %.2f' % phi_cnm)
+        print('Z = %.2f' % Z)
 
         # see eq 6 of krumholz+09
         # phi_cnm is the number density of the CNM over the minimum number
@@ -1913,6 +1705,7 @@ def main():
         h_sd_fit_list.append(h_sd_fit)
         hi_sd_fit_list.append(hi_sd_fit)
         phi_cnm_list.append(phi_cnm)
+        Z_list.append(Z)
         chisq_list.append(chisq)
         p_value_list.append(p_value)
         core_name_list.append(core)
@@ -1964,6 +1757,7 @@ def main():
                 phi_cnm_list=phi_cnm_list,
                 chisq_list=chisq_list,
                 p_value_list=p_value_list,
+                Z_list=Z_list,
                 show = False)
 
         plot_hi_vs_h_grid(hi_sd_image_list,
@@ -1973,7 +1767,7 @@ def main():
                 hi_fits = hi_sd_fit_list,
                 h_sd_fits = h_sd_fit_list,
                 #limits = [10**-1, 10**2, 10**0, 10**2],
-                limits = [-5, 300, 3, 8],
+                #limits = [-5, 300, 3, 8],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
                 filename = 'perseus_hi_vs_h_panels_planck_linear.%s' % \

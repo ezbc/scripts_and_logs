@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Reproduces results from Lee et al. (2012) using Planck Av data.
 '''
 
 import pyfits as pf
@@ -1023,6 +1023,128 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
     if show:
         fig.show()
 
+def plot_av_image(av_image=None, header=None, cores=None, ds9_region=False,
+        title=None, limits=None, boxes=False, savedir='./', filename=None,
+        show=True):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    from mpl_toolkits.axes_grid1 import ImageGrid
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import pywcsgrid2 as wcs
+    import pywcs
+    from pylab import cm # colormaps
+    from matplotlib.patches import Polygon
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    fontScale = 15
+    params = {#'backend': .pdf',
+              'axes.labelsize': fontScale,
+              'axes.titlesize': fontScale,
+              'text.fontsize': fontScale,
+              'legend.fontsize': fontScale*3/4,
+              'xtick.labelsize': fontScale,
+              'ytick.labelsize': fontScale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (8, 7),
+              'figure.titlesize': fontScale
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    nrows_ncols=(1,1)
+    ngrids=1
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
+                 cbar_location='right',
+                 cbar_pad="2%",
+                 cbar_size='3%',
+                 axes_pad=1,
+                 axes_class=(wcs.Axes,
+                             dict(header=header)),
+                 aspect=True,
+                 label_mode='L',
+                 share_all=True)
+
+    # create axes
+    ax = imagegrid[0]
+    cmap = cm.pink # colormap
+    # show the image
+    im = ax.imshow(av_image,
+            interpolation='nearest',origin='lower',
+            cmap=cmap,
+            #norm=matplotlib.colors.LogNorm()
+            )
+
+    # Asthetics
+    ax.set_display_coord_system("fk4")
+    ax.set_ticklabel_type("hms", "dms")
+
+    ax.set_xlabel('Right Ascension (J2000)',)
+    ax.set_ylabel('Declination (J2000)',)
+
+    # colorbar
+    cb = ax.cax.colorbar(im)
+    cmap.set_bad(color='w')
+    # plot limits
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[2])
+        ax.set_ylim(limits[1],limits[3])
+
+    # Write label to colorbar
+    cb.set_label_text(r'A$_V$ (Mag)',)
+
+    # Convert sky to pix coordinates
+    wcs_header = pywcs.WCS(header)
+    for core in cores:
+        pix_coords = cores[core]['center_pixel']
+
+        anno_color = (0.3, 0.5, 1)
+
+        ax.scatter(pix_coords[0],pix_coords[1],
+                color=anno_color,
+                s=200,
+                marker='+',
+                linewidths=2)
+
+        ax.annotate(core,
+                xy=[pix_coords[0], pix_coords[1]],
+                xytext=(5,5),
+                textcoords='offset points',
+                color='w')
+
+        if boxes:
+            if ds9_region:
+            	vertices = np.copy(cores[core]['ds9_region_vertices'])
+            else:
+                vertices = np.copy(cores[core]['box_vertices_rotated'])
+            rect = ax.add_patch(Polygon(
+                    vertices[:, ::-1],
+                    facecolor='none',
+                    edgecolor=anno_color))
+
+    if title is not None:
+        fig.suptitle(title, fontsize=fontScale)
+    if filename is not None:
+        plt.savefig(savedir + filename)
+    if show:
+        fig.show()
+
 ''' Calculations
 '''
 
@@ -1217,7 +1339,7 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
     # Set parameter limits and initial guesses
     params = Parameters()
     params.add('phi_cnm', value=8.0, min=1, max=20)
-    params.add('Z', value=1.0, min=0.1, max=5, vary=True)
+    params.add('Z', value=1.0, min=0.1, max=5, vary=False)
 
     # Perform the fit!
     result = minimize(chisq, params, args=(h_sd, rh2, rh2_error),
@@ -1263,6 +1385,7 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
         output.append(p_value)
 
     return output
+
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -1377,7 +1500,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -1421,43 +1544,35 @@ def main():
     # parameters used in script
     # -------------------------
     # HI velocity integration range
-    # Determine HI integration velocity by CO or correlation with Av?
-    hi_co_width = True
-    hi_av_correlation = False
-    co_width_scale = 5.0 # for determining N(HI) vel range
-    # 0.758 is fraction of area of Gaussian between FWHM limits
-    co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
-    hi_vel_range_scale = 2.0 # scale hi velocity range for Av/N(HI) correlation
-
-    dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
+    hi_vel_range = (-5.0, 15.0) # velocity range with which to integrate HI
+    dgr = 1.1e-1 # dust to gas ratio [10^-22 mag / 10^20 cm^-2]
     rh2_fit_range = [0.001, 1000] # range of fitted values for krumholz model
-
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/lee12_reproduction/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'perseus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'taurus_co_cfa_cube_regrid_planckres.fits',
+                'perseus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -1465,7 +1580,7 @@ def main():
     co_vel_axis = make_velocity_axis(co_header)
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -1479,10 +1594,10 @@ def main():
     nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
         velocity_axis=velocity_axis,
         noise_cube = noise_cube,
-        velocity_range=[0,15],
+        velocity_range=hi_vel_range,
         return_nhi_error=True,
-        fits_filename = hi_dir + 'taurus_nhi_galfa_5arcmin.fits',
-        fits_error_filename = hi_dir + 'taurus_nhi_galfa_5arcmin_error.fits',
+        fits_filename = hi_dir + 'perseus_nhi_galfa_5arcmin.fits',
+        fits_error_filename = hi_dir + 'perseus_nhi_galfa_5arcmin_error.fits',
         header = h)
 
     # calculate N(H2) maps
@@ -1495,7 +1610,7 @@ def main():
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
 
-    # Paradis et al. (2012) gives DGR for taurus
+    # Paradis et al. (2012) gives DGR for perseus
     h_sd_image = av_data_planck / (1.25 * dgr) # DGR = 1.1e-22 mag / cm^-2
     h_sd_image_error = av_error_data_planck / (1.25 * dgr)
 
@@ -1509,18 +1624,13 @@ def main():
                  + h2_sd_image_error**2 / h2_sd_image**2)**0.5
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
 
-    hsd_limits =[0.1,300]
-    hisd_limits = [2,20]
-    av_limits =[0.01,100]
-    nhi_limits = [2,20]
-
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'perseus_av_boxes_',
             header = h)
 
     hi_image_list = []
@@ -1547,45 +1657,27 @@ def main():
         print('\nCalculating for core %s' % core)
 
         # Grab the mask from the DS9 regions
-        '''
         xy = cores[core]['box_center_pix']
         box_width = cores[core]['box_width']
         box_height = cores[core]['box_height']
         box_angle = cores[core]['box_angle']
+
+        cores[core]['ds9_region_vertices'] = myg.get_rect(xy[0],
+                                                          xy[1],
+                                                          box_width,
+                                                          box_height,
+                                                          box_angle)
+
         mask = myg.get_rectangular_mask(nhi_image,
-                xy[0], xy[1],
+                xy[1], xy[0],
                 width = box_width,
                 height = box_height,
                 angle = box_angle)
 
-        # Get indices where there is no mask, and extract those pixels
-        indices = np.where(mask == 1)
-        indices = mask == 1
-        '''
-
-        mask = myg.get_polygon_mask(av_data_planck,
-                cores[core]['box_vertices_rotated'])
+        #mask = myg.get_polygon_mask(av_data_planck,
+        #        cores[core]['box_vertices_rotated'])
 
         indices = mask == 1
-
-        if hi_co_width:
-            co_data_sub = co_data[:, indices]
-            co_image_list.append(np.sum(co_data_sub, axis=1) / \
-                    co_data_sub.shape[0])
-
-            # fit gaussians to CO data
-            hi_vel_range = select_hi_vel_range(co_data_sub,
-                    co_header,
-                    flux_threshold=co_flux_fraction,
-                    width_scale=co_width_scale)
-            hi_vel_range_list.append(hi_vel_range)
-
-        if hi_av_correlation:
-            hi_vel_range = cores[core]['hi_velocity_range']
-            correlation_coeff = cores[core]['correlation_coeff']
-
-            hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
-                    hi_vel_range[1] * hi_vel_range_scale)
 
         if 1:
             print('HI velocity integration range:')
@@ -1619,7 +1711,7 @@ def main():
             h2_sd_image_error = calculate_sd(nh2_image_error,
                     sd_factor=1/0.625)
 
-            # Paradis et al. (2012) gives DGR for taurus
+            # Paradis et al. (2012) gives DGR for perseus
             #h_sd_image = av_data_planck / (1.25 * dgr)
             #h_sd_image_error = av_error_data_planck / (1.25 * dgr)
             h_sd_image = hi_sd_image + h2_sd_image
@@ -1680,7 +1772,7 @@ def main():
         # see eq 6 of krumholz+09
         # phi_cnm is the number density of the CNM over the minimum number
         # density required for pressure balance
-        # the lower phi_cnm values than for taurus mean that taurus
+        # the lower phi_cnm values than for perseus mean that perseus
         # has a more diffuse CNM
 
         # By fitting the model to the observed R_H2 vs total H, you basically
@@ -1704,41 +1796,13 @@ def main():
         rh2_fit_list.append(rh2_fit)
         h_sd_fit_list.append(h_sd_fit)
         hi_sd_fit_list.append(hi_sd_fit)
-        phi_cnm_list.append(phi_cnm)
         Z_list.append(Z)
+        phi_cnm_list.append(phi_cnm)
         chisq_list.append(chisq)
         p_value_list.append(p_value)
         core_name_list.append(core)
 
-    # Write velocity range properties to a file
-    if hi_co_width and hi_av_correlation:
-        with open(core_dir + 'taurus_hi_vel_properties.txt', 'w') as f:
-            f.write('core\tco_range\tco_high\tco_scale\thi_low\thi_high')
-            for i, core in enumerate(cores):
-                f.write('\n{0:s}\t{1:.1f}\t{2:.1f}\t{3:.1f}'.format(
-                            core,
-                            hi_vel_range_list[i][0],
-                            hi_vel_range_list[i][1],
-                            cores[core]['hi_velocity_range'][0]) + \
-                        '\t{0:.1f}\t{1:.1f}'.format(
-                            cores[core]['hi_velocity_range'][1],
-                            co_width_scale
-                            )
-                        )
-
     figure_types = ['png', 'pdf']
-    for figure_type in figure_types:
-        if hi_co_width:
-            plot_co_spectrum_grid(co_vel_axis,
-                    co_image_list,
-                    vel_range_list=hi_vel_range_list,
-                    #limits = [0, 80, 10**-3, 10**2],
-                    savedir = figure_dir + 'panel_cores/',
-                    scale = ('linear', 'linear'),
-                    filename = 'taurus_core_co_spectra_grid.%s' % figure_type,
-                    title = r'Average $^{12}$CO spectra of taurus Cores',
-                    core_names=core_name_list,
-                    show = False)
 
     for figure_type in figure_types:
         plot_rh2_vs_h_grid(rh2_image_list,
@@ -1748,11 +1812,12 @@ def main():
                 rh2_fits = rh2_fit_list,
                 h_sd_fits = h_sd_fit_list,
                 limits = [0, 80, 10**-3, 10**2],
-                savedir = figure_dir + 'panel_cores/',
+                savedir = figure_dir,
                 scale = ('linear', 'log'),
-                filename = 'taurus_rh2_vs_hsd_panels_planck.%s' % figure_type,
+                filename = 'perseus_rh2_vs_hsd_' +\
+                        'lee12_planck_reproduce.%s' % figure_type,
                 title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
-                        + ' of taurus Cores',
+                        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 chisq_list=chisq_list,
@@ -1766,34 +1831,26 @@ def main():
                 h_sd_error_images = h_sd_image_error_list,
                 hi_fits = hi_sd_fit_list,
                 h_sd_fits = h_sd_fit_list,
-                #limits = [10**-1, 10**2, 10**0, 10**2],
-                #limits = [-5, 300, 3, 8],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('linear', 'linear'),
-                filename = 'taurus_hi_vs_h_panels_planck_linear.%s' % \
+                limits = [10**0, 10**2, 10**0, 10**2],
+                savedir = figure_dir,
+                scale = ('log', 'log'),
+                filename = 'perseus_hi_vs_h_lee12_planck_reproduce.%s' %\
                         figure_type,
                 title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of taurus Cores',
+                        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
 
-        plot_hi_vs_h_grid(hi_sd_image_list,
-                h_sd_image_list,
-                hi_sd_error_images = hi_sd_image_error_list,
-                h_sd_error_images = h_sd_image_error_list,
-                hi_fits = hi_sd_fit_list,
-                h_sd_fits = h_sd_fit_list,
-                limits = [10**0, 10**2, 10**0, 10**2],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('log', 'log'),
-                filename = 'taurus_hi_vs_h_panels_planck_log.%s' %\
+        plot_av_image(av_image=av_data_planck, header=av_header,
+                boxes=True, cores=cores,
+                ds9_region=True,
+                #limits=[50,37,200,160],
+                title=r'perseus: A$_V$ map with core boxed-regions.',
+                savedir=figure_dir,
+                filename='perseus_av_cores_map_lee12_planck_reproduce.%s' % \
                         figure_type,
-                title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of taurus Cores',
-                core_names=core_name_list,
-                phi_cnm_list=phi_cnm_list,
-                show = False)
+                show=False)
 
 if __name__ == '__main__':
     main()

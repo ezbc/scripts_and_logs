@@ -294,7 +294,6 @@ def fit_profile(radii, profile, function, sigma=None):
 
     return profile_fit
 
-
 ''' DS9 Region and Coordinate Functions
 '''
 
