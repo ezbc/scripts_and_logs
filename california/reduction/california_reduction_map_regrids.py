@@ -66,6 +66,7 @@ def main():
     '''
 
     from mirpy import fits, regrid, smooth
+    from mycoords import calc_image_origin
 
     os.chdir('/d/bip3/ezbc/california/data')
 
@@ -99,14 +100,28 @@ def main():
     print('\nRegridding Planck images')
 
     images = (im_pl, im_pl_err, im_hi)
+    delta_ra = -0.083333333
+    delta_dec = 0.083333333
+
+    ref_pix, npix = calc_image_origin(x_limits=(74.5, 61.5),
+                                      y_limits=(28.066, 40.0),
+                                      delta_x=delta_ra,
+                                      delta_y=delta_dec)
+
+    desc_av = [0, ref_pix[0], delta_ra, npix[0], \
+               0, ref_pix[1], delta_dec, npix[1]]
+
+    desc_hi = [0, ref_pix[0], delta_ra, npix[0], \
+               0, ref_pix[1], delta_dec, npix[1], \
+               0, 100, 1, 200]
 
     for image in images:
 
         # If HI, regrid the velocity axis as well
         if image == im_hi:
-            desc = (74.75,0,-0.08333,159,28.066,0,0.08333,144, 0,100,1,200)
+            desc = desc_hi
         else:
-            desc = (74.75,0,-0.08333,159,28.066,0,0.08333,144)
+        	desc = desc_av
 
         exists = check_file(image + '_5arcmin.mir', clobber=clobber)
 
@@ -124,7 +139,7 @@ def main():
     im_beams = np.array([3.7,]) # arcsec
     conv_beams = (planck_beam**2 - im_beams**2)**0.5
 
-    images = [im_hi]
+    images = [im_hi,]
 
     for i in xrange(len(images)):
         check_file(images[i] + '_smooth_planckres.mir', clobber=clobber)
@@ -132,11 +147,17 @@ def main():
         print('\t{:s}.mir\n'.format(image))
 
         if not exists:
-            smooth(images[i] + '.mir',
+            if images[i] == im_hi:
+                image = images[i] + '_5arcmin'
+            else:
+            	image = images[i]
+
+            smooth(image + '.mir',
                    out=images[i] + '_smooth_planckres.mir',
                    fwhm=conv_beams[i],
                    pa=0,
                    scale=0.0)
+
 
     # Regrid all images to Planck image
     print('\nRegridding images to Planck grid')

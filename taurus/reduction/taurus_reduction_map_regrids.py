@@ -68,18 +68,21 @@ def main():
     '''
 
     from mirpy import fits, regrid, smooth
+    from mycoords import calc_image_origin
 
     os.chdir('/d/bip3/ezbc/taurus/data')
 
     # If true, deletes files to be written
-    clobber = True
+    clobber = False
 
     in_images = ('av/taurus_av_kainulainen2009_nan',
               'av/taurus_av_pineda2010',
               'hi/taurus_hi_galfa_cube',
               'av/taurus_av_planck',
               'av/taurus_av_error_planck',
-              'co/taurus_co_cfa_cube')
+              'co/taurus_co_cfa_cube',
+              'co/taurus_co_3-2_planck',
+              'co/taurus_co_3-2_error_planck')
 
     im_pl = 'av/taurus_av_planck'
     im_pl_err = 'av/taurus_av_error_planck'
@@ -87,13 +90,16 @@ def main():
     im_co = 'co/taurus_co_cfa_cube'
     im_p10 = 'av/taurus_av_p10'
     im_k09 = 'av/taurus_av_k09'
+    im_pl_co = 'co/taurus_co_3-2_planck'
+    im_pl_co_err = 'co/taurus_co_3-2_error_planck'
 
     # Load the images into miriad
     print('\nLoading images into miriad')
-    out_images = (im_k09, im_p10, im_hi, im_pl, im_pl_err, im_co)
+    out_images = (im_k09, im_p10, im_hi, im_pl, im_pl_err, im_co, im_pl_co,
+            im_pl_co_err)
 
     for i in xrange(len(in_images)):
-        exists = check_file(out_images[i] + '.mir', clobber=True)
+        exists = check_file(out_images[i] + '.mir', clobber=False)
         print('\t{:s}.fits\n'.format(in_images[i]))
         if not exists:
             fits(in_images[i] + '.fits',
@@ -103,15 +109,32 @@ def main():
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
-    images = (im_pl, im_pl_err, im_hi)
+    images = (im_pl, im_pl_err, im_hi, im_pl_co, im_pl_co_err)
+
+    delta_ra = -0.083333333
+    delta_dec = 0.083333333
+    lim_ra_wcs, lim_dec_wcs = 77.5, 18.0
+    ref_ra_wcs, ref_dec_wcs = 0.0, 0.0
+
+    ref_pix, npix = calc_image_origin(x_limits=(77.5, 57.0),
+                                      y_limits=(18.0, 33.0),
+                                      delta_x=delta_ra,
+                                      delta_y=delta_dec)
+
+    desc_av = [0, ref_pix[0], delta_ra, npix[0], \
+               0, ref_pix[1], delta_dec, npix[1]]
+
+    desc_hi = [0, ref_pix[0], delta_ra, npix[0], \
+               0, ref_pix[1], delta_dec, npix[1], \
+               0, 100, 1, 200]
 
     for image in images:
 
         # If HI, regrid the velocity axis as well
         if image == im_hi:
-            desc = (77.5,0,-0.08333,240, 18,0,0.08333,180, 0,100,1,200)
+            desc = desc_hi
         else:
-            desc = (77.5,0,-0.08333,240,18,0,0.08333,180)
+        	desc = desc_av
 
         exists = check_file(image + '_5arcmin.mir', clobber=clobber)
 
@@ -132,12 +155,19 @@ def main():
     images = [im_k09, im_p10, im_hi]
 
     for i in xrange(len(images)):
-        check_file(images[i] + '_smooth_planckres.mir', clobber=clobber)
+
+        exists = check_file(images[i] + '_smooth_planckres.mir',
+                clobber=clobber)
 
         print('\t{:s}.mir\n'.format(image))
 
         if not exists:
-            smooth(images[i] + '.mir',
+            if images[i] == im_hi:
+                image = images[i] + '_5arcmin'
+            else:
+            	image = images[i]
+
+            smooth(image + '.mir',
                    out=images[i] + '_smooth_planckres.mir',
                    fwhm=conv_beams[i],
                    pa=0,
@@ -169,6 +199,8 @@ def main():
 
     images = [im_pl + '_5arcmin',
               im_pl_err + '_5arcmin',
+              im_pl_co + '_5arcmin',
+              im_pl_co_err + '_5arcmin',
               im_k09 + '_regrid_planckres',
               im_p10 + '_regrid_planckres',
               im_co + '_regrid_planckres',

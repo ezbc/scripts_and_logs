@@ -57,6 +57,8 @@ def regrid_images(image, template):
 def main():
 
     from mirpy import fits, regrid, smooth
+    from mycoords import calc_image_origin
+
 
     os.chdir('/d/bip3/ezbc/perseus/data')
 
@@ -92,13 +94,30 @@ def main():
 
     images = (im_pl, im_pl_err, im_hi)
 
+    desc = (59.75,0,-0.08333,180,26.05,0,0.08333,132)
+
+    delta_ra = -0.083333333
+    delta_dec = 0.083333333
+
+    ref_pix, npix = calc_image_origin(x_limits=(59.75, 44.75),
+                                      y_limits=(26.05, 37.05),
+                                      delta_x=delta_ra,
+                                      delta_y=delta_dec)
+
+    desc_av = [0, ref_pix[0], delta_ra, npix[0], \
+               0, ref_pix[1], delta_dec, npix[1]]
+
+    desc_hi = [0, ref_pix[0], delta_ra, npix[0], \
+               0, ref_pix[1], delta_dec, npix[1], \
+               0, 100, 1, 200]
+
     for image in images:
 
         # If HI, regrid the velocity axis as well
         if image == im_hi:
-            desc = (59.75,0,-0.08333,180,26.05,0,0.08333,132, 0,100,1,200)
+            desc = desc_hi
         else:
-            desc = (59.75,0,-0.08333,180,26.05,0,0.08333,132)
+        	desc = desc_av
 
         exists = check_file(image + '_5arcmin.mir', clobber=clobber)
 
@@ -113,10 +132,10 @@ def main():
     print('\nSmoothing images to Planck resolution')
 
     planck_beam = 5.0 # arcsec
-    im_beams = np.array([5.0, 3.7]) # arcsec
+    im_beams = np.array([3.7,]) # arcsec
     conv_beams = (planck_beam**2 - im_beams**2)**0.5
 
-    images = [im_lee, im_hi]
+    images = [im_hi,]
 
     for i in xrange(len(images)):
         check_file(images[i] + '_smooth_planckres.mir', clobber=clobber)
@@ -124,7 +143,12 @@ def main():
         print('\t{:s}.mir\n'.format(image))
 
         if not exists:
-            smooth(images[i] + '.mir',
+            if images[i] == im_hi:
+                image = images[i] + '_5arcmin'
+            else:
+                image = images[i]
+
+            smooth(image + '.mir',
                    out=images[i] + '_smooth_planckres.mir',
                    fwhm=conv_beams[i],
                    pa=0,
@@ -140,7 +164,7 @@ def main():
         print('\t{:s}_smooth_planckres.mir\n'.format(image))
 
         if not exists:
-            if image == im_co:
+            if image == im_co or image == im_lee:
                 regrid(image + '.mir',
                        out=image + '_regrid_planckres.mir',
                        tin=im_pl + '_5arcmin.mir',

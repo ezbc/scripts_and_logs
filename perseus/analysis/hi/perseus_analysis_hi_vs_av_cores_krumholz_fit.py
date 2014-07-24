@@ -1423,7 +1423,7 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_co_width = True
-    hi_av_correlation = False
+    hi_av_correlation = True
     co_width_scale = 5.0 # for determining N(HI) vel range
     # 0.758 is fraction of area of Gaussian between FWHM limits
     co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
