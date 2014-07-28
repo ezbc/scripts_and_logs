@@ -939,6 +939,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
 
 def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
         vel_range_list=None,
+        vel_range_hiav_list=None,
         limits = None, savedir = './', filename = None, show = True,
         scale = 'linear', title = '', core_names='',):
 
@@ -987,7 +988,14 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
     # Cycle through lists
     for i in xrange(len(co_spectrum_list)):
         co_spectrum = co_spectrum_list[i]
-        hi_velocity_range = vel_range_list[i]
+        try:
+            hi_velocity_range = vel_range_list[i]
+        except IndexError:
+            hi_velocity_range = None
+        try:
+            hi_velocity_range_corr = vel_range_hiav_list[i]
+        except IndexError:
+            hi_velocity_range_corr = None
 
         # Create plot
         ax = imagegrid[i]
@@ -996,12 +1004,15 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
                 color='k',
                 marker=None,
                 drawstyle='steps-mid',
-                markersize=3
+                markersize=3,
                 )
 
         if hi_velocity_range is not None:
             ax.axvspan(hi_velocity_range[0], hi_velocity_range[1],
-                    color = 'r', alpha=0.3)
+                    color = 'r', alpha=0.2, label=r'$^{12}$CO Spectrum Width')
+        if hi_velocity_range_corr is not None:
+            ax.axvspan(hi_velocity_range_corr[0], hi_velocity_range_corr[1],
+                    color = 'b', alpha=0.2, label=r'HI/A$_V$ Correlation')
 
         ax.set_xscale(scale[0], nonposx = 'clip')
         ax.set_yscale(scale[1], nonposy = 'clip')
@@ -1015,6 +1026,12 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
         ax.set_ylabel(r'<I$_{\rm CO}$> (K)',)
         ax.set_title(core_names[i])
         ax.grid(True)
+
+    if vel_range_list is not None or vel_range_hiav_list is not None:
+        # Single legend
+        ax.legend(bbox_to_anchor=(3.1, 0.2),
+                loc='lower right',
+                borderaxespad=0.)
 
     if title is not None:
         fig.suptitle(title, fontsize=fontScale*1.5)
@@ -1405,6 +1422,18 @@ The main script
 
 def main():
 
+    '''
+
+    This script requires analysis output from three other scripts.
+    Script                                          Purpose
+    ---------------------------------------------------------------------------
+    hi/taurus_analysis_core_properties.py           Defines core positions
+    av/taurus_analysis_av_derive_core_boxes.py      Calculates box sizes
+    hi/taurus_analysis_hi_av_core_correlations.py   Calculates HI velocity
+                                                    range
+
+    '''
+
     import grid
     import numpy as np
     import numpy
@@ -1429,9 +1458,8 @@ def main():
     co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
     hi_vel_range_scale = 2.0 # scale hi velocity range for Av/N(HI) correlation
 
-    dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
+    #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     rh2_fit_range = [0.001, 1000] # range of fitted values for krumholz model
-
 
     # define directory locations
     # --------------------------
@@ -1441,6 +1469,7 @@ def main():
     hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
     co_dir = '/d/bip3/ezbc/taurus/data/co/'
     core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
@@ -1463,6 +1492,14 @@ def main():
     # make the velocity axis
     velocity_axis = make_velocity_axis(h)
     co_vel_axis = make_velocity_axis(co_header)
+
+    # Load global properties of cloud
+    # global properties written from script
+    # 'av/taurus_analysis_global_properties.txt'
+    with open(property_dir + 'taurus_global_properties.txt', 'r') as f:
+        properties = json.load(f)
+        dgr = properties['dust2gas_ratio']['value']
+        Z = properties['metallicity']['value']
 
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -1496,7 +1533,7 @@ def main():
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
 
     # Paradis et al. (2012) gives DGR for taurus
-    h_sd_image = av_data_planck / (1.25 * dgr) # DGR = 1.1e-22 mag / cm^-2
+    h_sd_image = av_data_planck / (1.25 * dgr)
     h_sd_image_error = av_error_data_planck / (1.25 * dgr)
 
     # h2 surface density
@@ -1513,11 +1550,6 @@ def main():
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
-
-    hsd_limits =[0.1,300]
-    hisd_limits = [2,20]
-    av_limits =[0.01,100]
-    nhi_limits = [2,20]
 
     cores = load_ds9_region(cores,
             filename_base = region_dir + 'taurus_av_boxes_',
@@ -1541,6 +1573,7 @@ def main():
     core_name_list = []
     co_image_list = []
     hi_vel_range_list = []
+    hi_vel_range_corr_list = []
     hi_sd_fit_list = []
 
     for core in cores:
@@ -1586,6 +1619,13 @@ def main():
 
             hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
                     hi_vel_range[1] * hi_vel_range_scale)
+
+            # For plotting velocity range over CO spectra
+            if not hi_co_width:
+                co_data_sub = co_data[:, indices]
+                co_image_list.append(np.sum(co_data_sub, axis=1) / \
+                        co_data_sub.shape[0])
+            hi_vel_range_corr_list.append(hi_vel_range)
 
         if 1:
             print('HI velocity integration range:')
@@ -1728,10 +1768,11 @@ def main():
 
     figure_types = ['png', 'pdf']
     for figure_type in figure_types:
-        if hi_co_width:
+        if hi_co_width or hi_av_correlation:
             plot_co_spectrum_grid(co_vel_axis,
                     co_image_list,
                     vel_range_list=hi_vel_range_list,
+                    vel_range_hiav_list=hi_vel_range_corr_list,
                     #limits = [0, 80, 10**-3, 10**2],
                     savedir = figure_dir + 'panel_cores/',
                     scale = ('linear', 'linear'),

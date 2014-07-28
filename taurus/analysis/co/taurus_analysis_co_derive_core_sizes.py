@@ -10,7 +10,7 @@ import numpy as np
 '''
 
 def plot_co_image(co_image=None, header=None, cores=None, title=None,
-        limits=None, boxes=False, scoedir='./', filename=None, show=True):
+        limits=None, boxes=False, savedir='./', filename=None, show=True):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -23,9 +23,55 @@ def plot_co_image(co_image=None, header=None, cores=None, title=None,
     import pywcs
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
+    from matplotlib.collections import PolyCollection
+
+    if True:
+        contour_vertices = []
+        contour_x = []
+        contour_y = []
+        contour_list = []
+        for core in cores:
+            offset = 2
+            center_pixel = cores[core]['center_pixel']
+            peak_val = np.max(\
+                co_image[center_pixel[1] - offset:center_pixel[1] + offset,
+                         center_pixel[0] - offset:center_pixel[0] + offset])
+
+            #peak_val = co_image[center_pixel[1] + index[1] - 3,
+            #        center_pixel[0] + index[0] - 3]
+
+            fraction =  0.6
+            print ''
+            print core
+            print peak_val
+            print fraction
+            print peak_val * fraction
+
+            contours = plt.contour(co_image, levels=[peak_val * fraction,])
+            paths = contours.collections[0].get_paths()
+
+            count = 0
+            for path in paths:
+
+                contour_vertices.append(path.vertices)
+
+                if path.contains_point(center_pixel):
+                    cores[core]['path_index'] = count
+                    cores[core]['co_region_vertices'] = path.vertices
+
+                    contour_x.append(path.vertices[:, 0])
+                    contour_y.append(path.vertices[:, 1])
+
+                    contour_list.append(path.vertices)
+
+                count += 1
+
+        contour_x = np.asarray(contour_x).ravel()
+        contour_y = np.asarray(contour_y).ravel()
+
+        plt.clf()
 
     # Set up plot aesthetics
-    plt.clf()
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
@@ -76,6 +122,11 @@ def plot_co_image(co_image=None, header=None, cores=None, title=None,
             #norm=matplotlib.colors.LogNorm()
             )
 
+    #
+    #contours = ax.Polygon([contour_x, contour_y], fill=False)
+    coll = PolyCollection(contour_list)
+    ax.add_collection(coll)
+
     # Asthetics
     ax.set_display_coord_system("fk4")
     ax.set_ticklabel_type("hms", "dms")
@@ -88,14 +139,14 @@ def plot_co_image(co_image=None, header=None, cores=None, title=None,
     cmap.set_bad(color='w')
     # plot limits
     if limits is None:
-    	ax.set_xlim(0, co_image.shape[1])
-    	ax.set_ylim(0, co_image.shape[0])
+        ax.set_xlim(0, co_image.shape[1])
+        ax.set_ylim(0, co_image.shape[0])
     if limits is not None:
         ax.set_xlim(limits[0],limits[2])
         ax.set_ylim(limits[1],limits[3])
 
     # Write label to colorbar
-    cb.set_label_text(r'A$_V$ (Mag)',)
+    cb.set_label_text(r'CO ({:s})'.format(header['BUNIT']),)
 
     # Convert sky to pix coordinates
     wcs_header = pywcs.WCS(header)
@@ -127,9 +178,9 @@ def plot_co_image(co_image=None, header=None, cores=None, title=None,
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
-        plt.scoefig(scoedir + filename)
+        plt.savefig(savedir + filename)
     if show:
-        fig.show()
+        plt.show()
 
 ''' Calculations
 '''
@@ -195,26 +246,27 @@ def rotate_box(box_vertices, anchor, angle):
 
     return box_vertices_rotated
 
-def derive_ideal_box(co_image, cores_dict, box_width, box_height,
-        co_image_error=None, core_rel_pos=0.1, angle_res=1.0):
-
-    import mygeometry as myg
+def derive_box_sizes(co_image, cores_dict, co_image_error=None, isoline=0.6):
 
     """
     Parameters
     ----------
-    angle_res : float
-        Resolution with which to rotate each new box in degrees. 1.0 degree
-        gives 360 different box orientations.
-
+    co_image : array-like
+        CO image
+    cores_dict : dict
+        Dictionary including core information.
+    co_image_error : array-like, optional
+        Error on CO.
+    isoline : float, optional
+        Fraction of peak CO core emission to derive the contour. 60% value from
+        Meng et al. (2013, ApJ, 209, 36)
 
     """
 
-    angle_grid = np.arange(0, 360, angle_res)
-    box_dict = {}
+    import mygeometry as myg
 
     for core in cores_dict:
-        print('Calculating optimal angle for core {:s}'.format(core))
+        print('Calculating 12CO size of core {:s}'.format(core))
 
         # axes are reversed
         core_pos = cores_dict[core]['center_pixel'][::-1]
@@ -306,9 +358,17 @@ def calc_contour(image, levels=[1,]):
 
     return contour_vertices
 
-def get_contour_mask():
-    pass
+def get_contour_mask(image, contour_vertices):
 
+    ''' Gets a mask for an image with contours marked at the contour vertices.
+
+    '''
+
+    import mygeometry as myg
+
+    mask = myg.get_polygon_mask(image, contour_vertices)
+
+    return mask
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -415,7 +475,7 @@ def read_ds9_region(filename):
     try:
         region = pyr.open(filename)
     except IOError:
-    	return None
+        return None
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -451,27 +511,20 @@ The main script
 
 def main():
 
-    import grid
     import numpy as np
     from os import system,path
-    import myclumpfinder as clump_finder
-    reload(clump_finder)
     import mygeometry as myg
     reload(myg)
-    from mycoords import make_velocity_axis
     import json
 
     # parameters used in script
-    box_width = 8 # in pixels
-    box_height = 30 # in pixels
-    angle_res = 10.0 # resolution to permute through angles
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_co/'
     figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
     co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
     core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
@@ -480,8 +533,8 @@ def main():
                 'taurus_co_planck_5arcmin.fits',
             return_header=True)
 
-    co_error_data, co_error_header = load_fits(co_dir + \
-                'taurus_co_error_planck_5arcmin.fits',
+    co_data, co_header = load_fits(av_dir + \
+                'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
     # co_data[dec, ra], axes are switched
@@ -500,34 +553,31 @@ def main():
     co_image_error_list = []
     core_name_list = []
 
-    box_dict = derive_ideal_box(co_data, cores, box_width, box_height,
-            core_rel_pos=0.1, angle_res=angle_res, co_image_error=co_error_data)
-
-    for core in cores:
-        cores[core]['box_vertices_rotated'] = \
-            box_dict[core]['box_vertices_rotated'].tolist()
-        cores[core]['center_pixel'] = cores[core]['center_pixel']
-
     with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
         json.dump(cores, f)
 
-    for core in cores:
-        mask = myg.get_polygon_mask(co_data,
-                cores[core]['box_vertices_rotated'])
+    # for core in cores:
+    #     mask = myg.get_polygon_mask(co_data,
+    #             cores[core]['box_vertices_rotated'])
 
-        co_data_mask = np.copy(co_data)
-        co_data_mask[mask == 0] = np.NaN
+    #     co_data_mask = np.copy(co_data)
+    #     co_data_mask[mask == 0] = np.NaN
 
     # Plot
     figure_types = ['pdf', 'png']
     for figure_type in figure_types:
-        plot_co_image(co_image=co_data, header=co_header,
-                boxes=True, cores=cores, #limits=[50,37,200,160],
+        if figure_type == 'png':
+            show = 1
+        else:
+            show = 0
+        plot_co_image(co_image=co_data,
+                header=co_header,
                 title=r'taurus: A$_V$ map with core boxed-regions.',
-                scoedir=figure_dir,
+                savedir=figure_dir,
+                cores=cores,
                 filename='taurus_co_cores_map.%s' % \
                         figure_type,
-                show=0)
+                show=show)
 
 if __name__ == '__main__':
     main()

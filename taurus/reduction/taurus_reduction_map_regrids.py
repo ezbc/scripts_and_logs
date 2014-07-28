@@ -81,8 +81,15 @@ def main():
               'av/taurus_av_planck',
               'av/taurus_av_error_planck',
               'co/taurus_co_cfa_cube',
+              'co/taurus_co_planck',
+              'co/taurus_co_error_planck',
+              'co/taurus_co_1-0_planck',
+              'co/taurus_co_1-0_error_planck',
+              'co/taurus_co_2-1_planck',
+              'co/taurus_co_2-1_error_planck',
               'co/taurus_co_3-2_planck',
-              'co/taurus_co_3-2_error_planck')
+              'co/taurus_co_3-2_error_planck',
+              )
 
     im_pl = 'av/taurus_av_planck'
     im_pl_err = 'av/taurus_av_error_planck'
@@ -90,13 +97,32 @@ def main():
     im_co = 'co/taurus_co_cfa_cube'
     im_p10 = 'av/taurus_av_p10'
     im_k09 = 'av/taurus_av_k09'
-    im_pl_co = 'co/taurus_co_3-2_planck'
-    im_pl_co_err = 'co/taurus_co_3-2_error_planck'
+    im_pl_co = 'co/taurus_co_planck'
+    im_pl_co_err = 'co/taurus_co_error_planck'
+    im_pl_co_10 = 'co/taurus_co_1-0_planck'
+    im_pl_co_10_err = 'co/taurus_co_1-0_error_planck'
+    im_pl_co_21 = 'co/taurus_co_2-1_planck'
+    im_pl_co_21_err = 'co/taurus_co_2-1_error_planck'
+    im_pl_co_32 = 'co/taurus_co_3-2_planck'
+    im_pl_co_32_err = 'co/taurus_co_3-2_error_planck'
 
     # Load the images into miriad
     print('\nLoading images into miriad')
-    out_images = (im_k09, im_p10, im_hi, im_pl, im_pl_err, im_co, im_pl_co,
-            im_pl_co_err)
+    out_images = (im_k09,
+                  im_p10,
+                  im_hi,
+                  im_co,
+                  im_pl,
+                  im_pl_err,
+                  im_pl_co,
+                  im_pl_co_err,
+                  im_pl_co_10,
+                  im_pl_co_10_err,
+                  im_pl_co_21,
+                  im_pl_co_21_err,
+                  im_pl_co_32,
+                  im_pl_co_32_err,
+                  )
 
     for i in xrange(len(in_images)):
         exists = check_file(out_images[i] + '.mir', clobber=False)
@@ -109,7 +135,18 @@ def main():
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
-    images = (im_pl, im_pl_err, im_hi, im_pl_co, im_pl_co_err)
+    images = (im_pl,
+              im_pl_err,
+              im_hi,
+              im_pl_co,
+              im_pl_co_err,
+              im_pl_co_10,
+              im_pl_co_10_err,
+              im_pl_co_21,
+              im_pl_co_21_err,
+              im_pl_co_32,
+              im_pl_co_32_err,
+              )
 
     delta_ra = -0.083333333
     delta_dec = 0.083333333
@@ -138,7 +175,7 @@ def main():
 
         exists = check_file(image + '_5arcmin.mir', clobber=clobber)
 
-        print('\t{:s}_5arcmin.mir\n'.format(image))
+        print('\t{:s}.mir\n'.format(image))
 
         if not exists:
             regrid(image + '.mir',
@@ -201,6 +238,12 @@ def main():
               im_pl_err + '_5arcmin',
               im_pl_co + '_5arcmin',
               im_pl_co_err + '_5arcmin',
+              im_pl_co_10 + '_5arcmin',
+              im_pl_co_10_err + '_5arcmin',
+              im_pl_co_21+ '_5arcmin',
+              im_pl_co_21_err+ '_5arcmin',
+              im_pl_co_32+ '_5arcmin',
+              im_pl_co_32_err+ '_5arcmin',
               im_k09 + '_regrid_planckres',
               im_p10 + '_regrid_planckres',
               im_co + '_regrid_planckres',
