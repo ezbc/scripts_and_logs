@@ -1169,11 +1169,271 @@ def select_hi_vel_range(co_data, co_header, flux_threshold=0.80,
 
     return peak_vel - width_scale * vel_hw, peak_vel + width_scale * vel_hw
 
+def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
+        hi_vel_range=None, hi_header=None, dgr=None, av_image=None,
+        av_image_error=None, sub_image_indices=None):
+
+    '''
+
+    Derives N(HI), Sigma_HI, Sigma_H, Sigma_H2 and RH2, plus errors on each
+    image.
+
+    '''
+
+
+    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
+        calculate_sd, calculate_nh2, calculate_nh2_error
+
+
+    nhi_image, nhi_image_error = calculate_nhi(cube=hi_cube,
+            velocity_axis=hi_velocity_axis,
+            noise_cube=hi_noise_cube,
+            velocity_range=hi_vel_range,
+            return_nhi_error=True,
+            header=hi_header)
+
+    nhi_image = np.ma.array(nhi_image,
+            mask=(nhi_image != nhi_image))
+    nhi_image_error = np.ma.array(nhi_image_error,
+            mask=(nhi_image_error != nhi_image_error))
+
+    # calculate N(H2) maps
+    nh2_image = calculate_nh2(nhi_image = nhi_image,
+            av_image = av_image, dgr = dgr)
+
+    nh2_image_error = \
+        calculate_nh2_error(nhi_image_error=nhi_image_error,
+            av_image_error=av_image_error, dgr = dgr)
+
+    # convert to column density to surface density
+    hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
+    hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
+
+    h2_sd_image = calculate_sd(nh2_image, sd_factor=1/0.625)
+    h2_sd_image_error = calculate_sd(nh2_image_error,
+            sd_factor=1/0.625)
+
+    # Paradis et al. (2012) gives DGR for taurus
+    #h_sd_image = av_data_planck / (1.25 * dgr)
+    #h_sd_image_error = av_error_data_planck / (1.25 * dgr)
+    h_sd_image = hi_sd_image + h2_sd_image
+    h_sd_image_error = (hi_sd_image_error**2 + \
+            h2_sd_image_error**2)**0.5
+
+    # h2 surface density
+    #h2_sd_image = h_sd_image - hi_sd_image
+    #h2_sd_image_error=(h_sd_image_error**2-hi_sd_image_error**2)**0.5
+
+    # Write ratio between H2 and HI
+    rh2_image = h2_sd_image / hi_sd_image
+    rh2_image_error = rh2_image * (hi_sd_image_error**2 / \
+            hi_sd_image**2 + h2_sd_image_error**2 / \
+            h2_sd_image**2)**0.5
+
+    if sub_image_indices is not None:
+        av_image = av_image[sub_image_indices]
+        av_image_error = av_image_error[sub_image_indices]
+        hi_sd_image = hi_sd_image[sub_image_indices]
+        hi_sd_image_error = hi_sd_image_error[sub_image_indices]
+        h_sd_image = h_sd_image[sub_image_indices]
+        h_sd_image_error = h_sd_image_error[sub_image_indices]
+        rh2_image = rh2_image[sub_image_indices]
+        rh2_image_error = rh2_image_error[sub_image_indices]
+        nhi_image = nhi_image[sub_image_indices]
+        nhi_image_error = nhi_image_error[sub_image_indices]
+
+    images = (av_image,
+              av_image_error,
+              hi_sd_image,
+              hi_sd_image_error,
+              h_sd_image,
+              h_sd_image_error,
+              rh2_image,
+              rh2_image_error,
+              nhi_image,
+              nhi_image_error)
+
+    return images
+
+
+def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
+        hi_header=None, dgr=None, dgr_error=None, av_image=None,
+        av_image_error=None, hi_vel_range=None, N_runs=1, verbose=False):
+
+    from numpy.random import normal
+
+    verbose = True
+
+    rh2_fit_range = [0.001, 1000] # range of fitted values for krumholz model
+
+    results_dict = {'phi_cnm fits' : np.empty((N_runs)),
+                    'Z fits' : np.empty((N_runs))}
+
+    hi_error = np.median(hi_noise_cube)
+    av_error = np.median(av_image_error)
+    hi_vel_range_error = 2
+
+    for i in xrange(N_runs):
+
+        hi_random_error = normal(scale=hi_error, size=hi_noise_cube.shape)
+        av_random_error = normal(scale=av_error, size=av_image.shape)
+        dgr_random_error = normal(scale=dgr_error)
+        hi_vel_range_random_error = normal(scale=hi_vel_range_error,
+                                           size=len(hi_vel_range))
+
+        #print('av error')
+        #print(av_random_error)7.369416
+        #print('hi error')
+        #print(hi_random_error)
+
+        hi_cube_noise = np.copy(hi_cube) + hi_random_error
+        av_image_noise = np.copy(av_image) + av_random_error
+        dgr_noise = dgr + dgr_random_error
+        hi_vel_range_noise = np.asarray(hi_vel_range) + \
+            hi_vel_range_random_error
+
+        print('hi_vel_range', hi_vel_range_noise)
+
+        images = derive_images(hi_cube=hi_cube_noise,
+                               hi_velocity_axis=hi_velocity_axis,
+                               hi_noise_cube=hi_noise_cube,
+                               hi_vel_range=hi_vel_range_noise,
+                               hi_header=hi_header,
+                               dgr=dgr,
+                               av_image=av_image_noise,
+                               av_image_error=av_image_error,
+                               )
+
+        av_image_sub, \
+        av_image_error_sub, \
+        hi_sd_image_sub, \
+        hi_sd_image_error_sub, \
+        h_sd_image_sub, \
+        h_sd_image_error_sub, \
+        rh2_image_sub, \
+        rh2_image_error_sub, \
+        nhi_image_sub, \
+        nhi_image_error_sub = images
+
+        # Fit R_H2
+        #---------
+        # Unravel images to single dimension
+        rh2_ravel = rh2_image_sub.ravel()
+        rh2_error_ravel = rh2_image_error_sub.ravel()
+        h_sd_ravel = h_sd_image_sub.ravel()
+        h_sd_error_ravel = h_sd_image_error_sub.ravel()
+
+        # write indices for only ratios > 0
+        indices = np.where(rh2_ravel > 0)
+
+        rh2_ravel = rh2_ravel[indices]
+        rh2_error_ravel = rh2_error_ravel[indices]
+        h_sd_ravel = h_sd_ravel[indices]
+        h_sd_error_ravel = h_sd_error_ravel[indices]
+
+        # Fit to krumholz model, init guess of phi_CNM = 10
+        rh2_fit_range.append(2)
+        phi_cnm, Z = fit_krumholz(h_sd_ravel,
+                                  rh2_ravel,
+                                  guesses=[10.0, 1.0], # phi_cnm, Z
+                                  vary=[True, True,],
+                                  rh2_error=rh2_error_ravel,
+                                  verbose=verbose)
+
+        rh2_fit, h_sd_fit, phi_cnm, Z, f_H2, f_HI, chisq, p_value= \
+                fit_krumholz(h_sd_ravel,
+                             rh2_ravel,
+                             rh2_fit_range,
+                             p0=[10.0, 1.0], # phi_cnm, Z
+                             return_params=True,
+                             return_fractions=True,
+                             return_chisq=True,
+                             rh2_error=rh2_error_ravel,
+                             verbose=verbose)
+
+
+        results_dict['phi_cnm fits'][i] = phi_cnm
+        results_dict['Z fits'][i] = Z
+
+        if verbose:
+            print('phi = %.2f' % phi_cnm)
+            print('Z = %.2f' % Z)
+
+        # see eq 6 of krumholz+09
+        # phi_cnm is the number density of the CNM over the minimum number
+        # density required for pressure balance
+        # the lower phi_cnm values than for taurus mean that taurus
+        # has a more diffuse CNM
+
+        # By fitting the model to the observed R_H2 vs total H, you basically
+        # constrained psi in Equation (35) of Krumholz+09.  This means that
+        # you can calculate f_H2 for a given total hydrogen surface density.
+        # In this case, H2 surface density = f_H2 * total hydrogen surface
+        # density HI surface density = (1 - f_HI) * total hydrogen surface
+        # density
+
+        hi_sd_fit = f_HI * h_sd_fit
+
+    phi_cnm = np.median(results_dict['phi_cnm fits'])
+    phi_cnm_error = np.std(results_dict['phi_cnm fits'])
+    Z = np.median(results_dict['Z fits'])
+    Z_error = np.std(results_dict['Z fits'])
+
+    print('results are:')
+    print('phi_cnm = {0:.2f} +/- {1:.2f}'.format(phi_cnm, phi_cnm_error))
+    print('Z = {0:.2f} +/- {1:.2f}'.format(Z, Z_error))
+
+    return phi_cnm, phi_cnm_error, Z, Z_error
+
 ''' Fitting Functions
 '''
 
-def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
-        return_fractions=False, return_chisq=False, rh2_error=None):
+def calc_krumholz(phi_cnm, Z, h_sd_extent=(0.001, 500), return_fractions=True):
+
+    '''
+    Parameters
+    ----------
+    phi_cnm, Z : float
+        Phi_cnm and Z parameters for Krumholz model.
+    h_sd_extent : tuple
+        Lower and upper bound of hydrogen surface densities with which to
+        build the output model array.
+    return_fractions : bool
+        Return f_H2 and f_HI?
+
+    Returns
+    -------
+    rh2_fit : array-like
+        Model ratio between molecular and atomic hydrogen masses.
+    h_sd_extended : list
+        Model hydrogen surface density in units of solar mass per parsec**2.
+    f_H2, f_HI : array-like, optional
+        f_H2 = mass fraction of molecular hydrogen
+        f_HI = mass fraction of atomic hydrogen
+
+    '''
+
+    # Create large array of h_sd
+    h_sd_extent.append(1e4)
+    h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], h_sd_extent[2])
+
+    if not return_fractions:
+        rh2_fit = k09.calc_rh2(h_sd, rh2_fit_params)
+    elif return_fractions:
+        rh2_fit, f_H2, f_HI = k09.calc_rh2(h_sd,
+                                           *rh2_fit_params,
+                                           return_fractions=True)
+
+    output = [rh2_fit, h_sd]
+
+    if return_fractions:
+        output.append(f_H2)
+        output.append(f_HI)
+
+    return output
+
+def fit_krumholz(h_sd, rh2, p0 = 10, rh2_error=None,
+        verbose=False):
 
     '''
     Parameters
@@ -1182,33 +1442,15 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
         Hydrogen surface density in units of solar mass per parsec**2
     rh2 : array-like
         Ratio between molecular and atomic hydrogen masses.
-    h_sd_extent : tuple
-        Lower and upper bound of hydrogen surface densities with which to
-        build the output model array.
     p0 : None, scalar, or M-length sequence.
         Initial guess for the parameters. See scipy.optimize.curve_fit.
-    return_params : bool
-        Return parameters from fit?
-    return_fractions : bool
-        Return f_H2 and f_HI?
-    return_chisq : bool
-        Return the chi^2 statistic and p-value?
     rh2_error : bool
         Error in rh2 parameter. Calculates a more accurate chi^2 statistic
 
     Returns
     -------
-    rh2_fit : array-like
-        Model ratio between molecular and atomic hydrogen masses.
-    h_sd_extended : array-like
-        Model hydrogen surface density in units of solar mass per parsec**2.
     rh2_fit_params : array-like, optional
         Model parameter fits.
-    f_H2, f_HI : array-like, optional
-        f_H2 = mass fraction of molecular hydrogen
-        f_HI = mass fraction of atomic hydrogen
-    chisq_reduced, p_value : float, optional
-        Reduced chi squared statistic and p-value.
 
     '''
 
@@ -1240,7 +1482,10 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
     result = minimize(chisq, params, args=(h_sd, rh2, rh2_error),
             method='lbfgsb')
 
-    report_fit(params)
+    # Print fit results?
+    if verbose:
+        report_fit(params)
+
     rh2_fit_params = (params['phi_cnm'].value, params['Z'].value)
 
     # Create large array of h_sd
@@ -1263,9 +1508,10 @@ def fit_krumholz(h_sd, rh2, h_sd_extent, p0 = 10, return_params = False,
         p_value = 1.0 - stats.chi2.cdf(chisq, dof)
         chisq_reduced = chisq / dof
 
-    print('pvalue = %.2f' % p_value)
-    print('dof = %.2f' % dof)
-    print('chi2 = %.2f' % chisq)
+    if verbose:
+        print('pvalue = %.4f' % p_value)
+        print('dof = %.2f' % dof)
+        print('chi2 = %.2f' % chisq)
 
     output = [rh2_fit, h_sd_extended]
 
@@ -1420,7 +1666,7 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 The main script
 '''
 
-def main():
+def main(verbose=False):
 
     '''
 
@@ -1453,6 +1699,12 @@ def main():
     # Determine HI integration velocity by CO or correlation with Av?
     hi_co_width = True
     hi_av_correlation = True
+
+    # Error analysis
+    calc_errors = True
+    N_monte_carlo_runs = 100
+
+    # HI velocity width
     co_width_scale = 5.0 # for determining N(HI) vel range
     # 0.758 is fraction of area of Gaussian between FWHM limits
     co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
@@ -1512,39 +1764,6 @@ def main():
         noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
             return_header=True)
 
-    # calculate nhi and error maps, write nhi map to fits file
-    nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
-        velocity_axis=velocity_axis,
-        noise_cube = noise_cube,
-        velocity_range=[0,15],
-        return_nhi_error=True,
-        fits_filename = hi_dir + 'taurus_nhi_galfa_5arcmin.fits',
-        fits_error_filename = hi_dir + 'taurus_nhi_galfa_5arcmin_error.fits',
-        header = h)
-
-    # calculate N(H2) maps
-    nh2_image = calculate_nh2(nhi_image = nhi_image,
-            av_image = av_data_planck, dgr = dgr)
-    nh2_image_error = calculate_nh2(nhi_image = nhi_image_error,
-            av_image = av_error_data_planck, dgr = dgr)
-
-    # convert to column density to surface density
-    hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
-    hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
-
-    # Paradis et al. (2012) gives DGR for taurus
-    h_sd_image = av_data_planck / (1.25 * dgr)
-    h_sd_image_error = av_error_data_planck / (1.25 * dgr)
-
-    # h2 surface density
-    h2_sd_image = h_sd_image - hi_sd_image
-    h2_sd_image_error = (h_sd_image_error**2 - hi_sd_image_error**2)**0.5
-
-    # Write ratio between H2 and HI
-    rh2_image = h2_sd_image / hi_sd_image
-    rh2_image_error = rh2_image * (hi_sd_image_error**2 / hi_sd_image**2 \
-                 + h2_sd_image_error**2 / h2_sd_image**2)**0.5
-
     # define core properties
     with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
         cores = json.load(f)
@@ -1555,6 +1774,7 @@ def main():
             filename_base = region_dir + 'taurus_av_boxes_',
             header = h)
 
+    # Set up lists
     hi_image_list = []
     hi_sd_image_list = []
     hi_sd_image_error_list = []
@@ -1601,6 +1821,13 @@ def main():
 
         indices = mask == 1
 
+        # Get only the relevant pixels to decrease computation time
+        hi_data[indices] = np.NaN
+        noise_cube[indices] = np.NaN
+        av_data_planck[indices] = np.NaN
+        av_error_data_planck[indices] = np.NaN
+
+        # Determine velocity range of HI
         if hi_co_width:
             co_data_sub = co_data[:, indices]
             co_image_list.append(np.sum(co_data_sub, axis=1) / \
@@ -1612,7 +1839,6 @@ def main():
                     flux_threshold=co_flux_fraction,
                     width_scale=co_width_scale)
             hi_vel_range_list.append(hi_vel_range)
-
         if hi_av_correlation:
             hi_vel_range = cores[core]['hi_velocity_range']
             correlation_coeff = cores[core]['correlation_coeff']
@@ -1627,118 +1853,46 @@ def main():
                         co_data_sub.shape[0])
             hi_vel_range_corr_list.append(hi_vel_range)
 
-        if 1:
+        if verbose:
             print('HI velocity integration range:')
             print('%.0f to %.0f km/s' % (hi_vel_range[0], hi_vel_range[1]))
 
-            nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
-                    velocity_axis=velocity_axis,
-                    noise_cube=noise_cube,
-                    velocity_range=hi_vel_range,
-                    return_nhi_error=True,
-                    header=h)
+        # ---------------------------------------------------------------------
+        # Perform analysis on cores, including fitting the Krumholz model.
+        # If calc_errors is True then a monte carlo is run by adding noise to
+        # AV and HI and refitting.
+        # ---------------------------------------------------------------------
+        if calc_errors:
+            run_analysis(hi_cube=hi_data,
+                         hi_noise_cube=noise_cube,
+                         hi_velocity_axis=velocity_axis,
+                         hi_header=h,
+                         dgr=dgr,
+                         dgr_error=0.22e-2,
+                         av_image=av_data_planck,
+                         av_image_error=av_error_data_planck,
+                         hi_vel_range=hi_vel_range,
+                         N_runs=N_monte_carlo_runs)
+        else:
+            run_analysis(hi_cube=hi_data,
+                         hi_noise_cube=noise_cube,
+                         hi_velocity_axis=velocity_axis,
+                         hi_header=h,
+                         dgr=dgr,
+                         dgr_error=0.22e-2,
+                         av_image=av_data_planck,
+                         av_image_error=av_error_data_planck,
+                         hi_vel_range=hi_vel_range,
+                         N_runs=1)
 
-            nhi_image = np.ma.array(nhi_image,
-                    mask=(nhi_image != nhi_image))
-            nhi_image_error = np.ma.array(nhi_image_error,
-                    mask=(nhi_image_error != nhi_image_error))
-
-            # calculate N(H2) maps
-            nh2_image = calculate_nh2(nhi_image = nhi_image,
-                    av_image = av_data_planck, dgr = dgr)
-
-            nh2_image_error = \
-                calculate_nh2_error(nhi_image_error=nhi_image_error,
-                    av_image_error=av_error_data_planck, dgr = dgr)
-
-            # convert to column density to surface density
-            hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
-            hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
-
-            h2_sd_image = calculate_sd(nh2_image, sd_factor=1/0.625)
-            h2_sd_image_error = calculate_sd(nh2_image_error,
-                    sd_factor=1/0.625)
-
-            # Paradis et al. (2012) gives DGR for taurus
-            #h_sd_image = av_data_planck / (1.25 * dgr)
-            #h_sd_image_error = av_error_data_planck / (1.25 * dgr)
-            h_sd_image = hi_sd_image + h2_sd_image
-            h_sd_image_error = (hi_sd_image_error**2 + \
-                    h2_sd_image_error**2)**0.5
-
-            # h2 surface density
-            #h2_sd_image = h_sd_image - hi_sd_image
-            #h2_sd_image_error=(h_sd_image_error**2-hi_sd_image_error**2)**0.5
-
-            # Write ratio between H2 and HI
-            rh2_image = h2_sd_image / hi_sd_image
-            rh2_image_error = rh2_image * (hi_sd_image_error**2 / \
-                    hi_sd_image**2 + h2_sd_image_error**2 / \
-                    h2_sd_image**2)**0.5
-
-
-        av_data_planck_sub = av_data_planck[indices]
-        av_error_data_planck_sub = av_error_data_planck[indices]
-        hi_sd_image_sub = hi_sd_image[indices]
-        hi_sd_image_error_sub = hi_sd_image_error[indices]
-        h_sd_image_sub = h_sd_image[indices]
-        h_sd_image_error_sub = h_sd_image_error[indices]
-        rh2_image_sub = rh2_image[indices]
-        rh2_image_error_sub = rh2_image_error[indices]
-
-        # Fit R_H2
-        #---------
-        # Unravel images to single dimension
-        rh2_ravel = rh2_image_sub.ravel()
-        rh2_error_ravel = rh2_image_error_sub.ravel()
-        h_sd_ravel = h_sd_image_sub.ravel()
-        h_sd_error_ravel = h_sd_image_error_sub.ravel()
-
-        # write indices for only ratios > 0
-        indices = np.where(rh2_ravel > 0)
-
-        rh2_ravel = rh2_ravel[indices]
-        rh2_error_ravel = rh2_error_ravel[indices]
-        h_sd_ravel = h_sd_ravel[indices]
-        h_sd_error_ravel = h_sd_error_ravel[indices]
-
-        # Fit to krumholz model, init guess of phi_CNM = 10
-        rh2_fit_range.append(1e6)
-        rh2_fit, h_sd_fit, phi_cnm, Z, f_H2, f_HI, chisq, p_value= \
-                fit_krumholz(h_sd_ravel,
-                             rh2_ravel,
-                             rh2_fit_range,
-                             p0=[10.0, 1.0], # phi_cnm, Z
-                             return_params=True,
-                             return_fractions=True,
-                             return_chisq=True,
-                             rh2_error=rh2_error_ravel)
-
-        print('phi = %.2f' % phi_cnm)
-        print('Z = %.2f' % Z)
-
-        # see eq 6 of krumholz+09
-        # phi_cnm is the number density of the CNM over the minimum number
-        # density required for pressure balance
-        # the lower phi_cnm values than for taurus mean that taurus
-        # has a more diffuse CNM
-
-        # By fitting the model to the observed R_H2 vs total H, you basically
-        # constrained psi in Equation (35) of Krumholz+09.  This means that
-        # you can calculate f_H2 for a given total hydrogen surface density.
-        # In this case, H2 surface density = f_H2 * total hydrogen surface
-        # density HI surface density = (1 - f_HI) * total hydrogen surface
-        # density
-
-        hi_sd_fit = f_HI * h_sd_fit
 
         # append to the lists
         hi_sd_image_list.append(hi_sd_image_sub)
         hi_sd_image_error_list.append(hi_sd_image_error_sub)
         h_sd_image_list.append(h_sd_image_sub)
         h_sd_image_error_list.append(h_sd_image_error_sub)
-        av_image_list.append(av_data_planck_sub)
-        av_image_error_list.append(av_error_data_planck_sub)
+        av_image_list.append(av_image_sub)
+        av_image_error_list.append(av_image_error_sub)
         rh2_image_list.append(rh2_image_sub)
         rh2_image_error_list.append(rh2_image_error_sub)
         rh2_fit_list.append(rh2_fit)
