@@ -185,7 +185,6 @@ def main():
         arXiv:1303.5073
 
 
-
     '''
 
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
