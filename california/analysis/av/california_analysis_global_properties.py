@@ -6,8 +6,8 @@ def main():
 
     import json
 
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/'
-    filename = 'taurus_global_properties.txt'
+    output_dir = '/d/bip3/ezbc/california/data/python_output/'
+    filename = 'california_global_properties.txt'
 
     # define core properties
     properties = {'dust2gas_ratio' : {'value' : 5.33e-2,

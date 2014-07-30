@@ -653,6 +653,15 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     import matplotlib
     from mpl_toolkits.axes_grid1 import ImageGrid
 
+    n = int(np.ceil(len(rh2_images)**0.5))
+    if n**2 > len(rh2_images) - n:
+    	nrows = n - 1
+    	ncols = n
+        y_scaling = 1.0 - 1.0 / n
+    else:
+    	nrows, ncols = n, n
+    	y_scaling = 1.0
+
     # Set up plot aesthetics
     plt.clf()
     plt.rcdefaults()
@@ -663,13 +672,13 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
               'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
+              'legend.fontsize': font_scale * 3 / 4.0,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': True,
-              'figure.figsize': (10, 10),
+              'figure.figsize': (8, 8 * y_scaling),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -680,7 +689,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     n = int(np.ceil(len(rh2_images)**0.5))
 
     imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
+                 nrows_ncols=(nrows, ncols),
                  ngrids=len(rh2_images),
                  axes_pad=0.25,
                  aspect=False,
@@ -783,19 +792,6 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                         verticalalignment='bottom',
                         )
             else:
-                ax.annotate(r'\begin{eqnarray*}R &=%.2f \\' % (2) + \
-                            r'b &=3\\ \end{eqnarray*}',
-                        xytext=(anno_xpos, 0.05),
-                        xy=(anno_xpos, 0.05),
-                        textcoords='axes fraction',
-                        xycoords='axes fraction',
-                        color='k',
-                        bbox=dict(boxstyle='round',
-                                  facecolor='w',
-                                  alpha=1),
-                        horizontalalignment='right',
-                        verticalalignment='bottom',
-                        )
                 ax.annotate(r'\noindent$\phi_{\rm CNM}$ =' + \
                             r' %.2f' % (phi_cnm) + \
                             r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
@@ -808,6 +804,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                         xy=(anno_xpos, 0.05),
                         textcoords='axes fraction',
                         xycoords='axes fraction',
+                        size=font_scale*3/4.0,
                         color='k',
                         bbox=dict(boxstyle='round',
                                   facecolor='w',
@@ -2033,8 +2030,8 @@ def main(verbose=False):
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
                 filename = 'california_rh2_vs_hsd_panels_planck.%s' % figure_type,
-                title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
-                        + ' of california Cores',
+                #title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
+                #        + ' of california Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
@@ -2056,25 +2053,8 @@ def main(verbose=False):
                 scale = ('linear', 'linear'),
                 filename = 'california_hi_vs_h_panels_planck_linear.%s' % \
                         figure_type,
-                title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of california Cores',
-                core_names=core_name_list,
-                phi_cnm_list=phi_cnm_list,
-                show = False)
-
-        plot_hi_vs_h_grid(hi_sd_image_list,
-                h_sd_image_list,
-                hi_sd_error_images = hi_sd_image_error_list,
-                h_sd_error_images = h_sd_image_error_list,
-                hi_fits = hi_sd_fit_list,
-                h_sd_fits = h_sd_fit_list,
-                limits = [10**0, 10**2, 10**0, 10**2],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('log', 'log'),
-                filename = 'california_hi_vs_h_panels_planck_log.%s' %\
-                        figure_type,
-                title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                        + ' of california Cores',
+                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
+                #        + ' of california Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
