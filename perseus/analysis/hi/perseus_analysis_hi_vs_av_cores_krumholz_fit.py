@@ -1087,7 +1087,7 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
 
 def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         hi_noise_cube=None, av_image=None, av_image_error=None,
-        velocity_centers=None, velocity_widths=None, return_correlations=True):
+        vel_centers=None, vel_widths=None, return_correlations=True):
 
     '''
             hi_vel_range, av_correlations = correlate_hi_av(hi_cube=hi_data,
@@ -1095,8 +1095,8 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
                     hi_noise_cube=noise_cube,
                     av_image=av_data_planck,
                     av_image_error=av_error_data_planck,
-                    velocity_centers=velocity_centers,
-                    velocity_widths=velocity_widths,
+                    vel_centers=vel_centers,
+                    vel_widths=vel_widths,
                     return_correlations=True)
 
     Parameters
@@ -1117,11 +1117,11 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
     from scipy.stats import pearsonr
 
     # calculate the velocity ranges given a set of centers and widths
-    velocity_ranges = np.zeros(shape=[len(velocity_centers) * \
-            len(velocity_widths),2])
+    velocity_ranges = np.zeros(shape=[len(vel_centers) * \
+            len(vel_widths),2])
     count = 0
-    for i, center in enumerate(velocity_centers):
-        for j, width in enumerate(velocity_widths):
+    for i, center in enumerate(vel_centers):
+        for j, width in enumerate(vel_widths):
             velocity_ranges[count,0] = center - width/2.
             velocity_ranges[count,1] = center + width/2.
             count += 1
@@ -1298,7 +1298,7 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
 def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         hi_header=None, dgr=None, dgr_error=None, av_image=None,
         av_image_error=None, hi_vel_range=None, N_runs=1, verbose=False,
-        guesses=(10.0, 1.0), parameter_vary=[True, True]):
+        guesses=(10.0, 1.0), parameter_vary=[True, True], core_dict=None):
 
     '''
 
@@ -1327,6 +1327,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
 
     from numpy.random import normal
     import mystats
+    import random
 
     if N_runs < 1:
     	raise ValueError('N_runs must be >= 1')
@@ -1340,7 +1341,24 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     # Get standard errors on images + the HI velocity range
     hi_error = np.median(hi_noise_cube)
     av_error = np.median(av_image_error)
-    hi_vel_range_error = 2
+    #hi_vel_range_error = core_dict['hi_vel_range_error']
+    center_correlations = core_dict['center_corr']
+    width_correlations = core_dict['width_corr']
+    vel_centers = core_dict['vel_centers']
+    vel_widths = core_dict['vel_widths']
+
+    # Derive PDF of the velocity centers and widths.
+    # The Monte Carlo will draw from this PDF randomly
+    center_pdf = mystats.calc_pdf(vel_centers, center_correlations)
+    width_pdf = mystats.calc_pdf(vel_widths, width_correlations)
+
+    import matplotlib.pyplot as plt
+    #plt.hist(center_correlations)
+    plt.plot(width_correlations)
+    plt.show()
+
+    #print(help(center_pdf))
+    #print(vel_widths, vel_centers)
 
     # Run the Monte Carlo
     # -------------------
@@ -1350,15 +1368,38 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             hi_random_error = normal(scale=hi_error, size=hi_noise_cube.shape)
             av_random_error = normal(scale=av_error, size=av_image.shape)
             dgr_random_error = normal(scale=dgr_error)
-            hi_vel_range_random_error = normal(scale=hi_vel_range_error,
-                                               size=len(hi_vel_range))
+            #hi_vel_range_random_error = normal(scale=hi_vel_range_error,
+            #                                   size=len(hi_vel_range))
+
+            # Get uniform sample in ranges of vel params
+            random_center_sample = random.uniform(vel_centers[0],
+                                                  vel_centers[-1])
+            random_width_sample = random.uniform(vel_widths[0],
+                                                 vel_widths[-1])
+
+            #print('random center sample', random_center_sample)
+            #print('random width sample', random_width_sample)
+
+            # Plug random sample into PDFs to weight probability
+            # http://stackoverflow.com/questions/13476807/probability-density
+            #-function-from-histogram-in-python-to-fit-another-histrogram
+            #print(center_pdf(20))
+            #print(width_pdf(40))
+
+            vel_center_random = center_pdf(random_center_sample)
+            vel_width_random = width_pdf(random_width_sample)
+
+            hi_vel_range_noise = (vel_center_random - vel_width_random / 2.,
+                                  vel_center_random + vel_width_random / 2.)
+
+            #print('hi_vel_range_noise', hi_vel_range_noise)
 
             # Add random error to images
             hi_cube_noise = np.copy(hi_cube) + hi_random_error
             av_image_noise = np.copy(av_image) + av_random_error
             dgr_noise = dgr + dgr_random_error
-            hi_vel_range_noise = np.asarray(hi_vel_range) + \
-                hi_vel_range_random_error
+            #hi_vel_range_noise = np.asarray(hi_vel_range) + \
+            #    hi_vel_range_random_error
         elif N_runs == 1:
             hi_cube_noise = np.copy(hi_cube)
             av_image_noise = np.copy(av_image)
@@ -1423,6 +1464,15 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     #import matplotlib.pyplot as plt
     #plt.hist(results_dict['phi_cnm fits'])
     #plt.show()
+    images = derive_images(hi_cube=hi_cube,
+                           hi_velocity_axis=hi_velocity_axis,
+                           hi_noise_cube=hi_noise_cube,
+                           hi_vel_range=hi_vel_range,
+                           hi_header=hi_header,
+                           dgr=dgr,
+                           av_image=av_image,
+                           av_image_error=av_image_error,
+                           )
 
     samples = mystats.bootstrap(results_dict['phi_cnm fits'], 100)
     phi_cnm_confint = mystats.calc_bootstrap_error(samples, 0.05)
@@ -1718,7 +1768,7 @@ def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 The main script
 '''
 
-def main(verbose=False):
+def main(verbose=True):
 
     '''
 
@@ -1760,7 +1810,7 @@ def main(verbose=False):
     co_width_scale = 5.0 # for determining N(HI) vel range
     # 0.758 is fraction of area of Gaussian between FWHM limits
     co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
-    hi_vel_range_scale = 2.0 # scale hi velocity range for Av/N(HI) correlation
+    hi_vel_range_scale = 1.0 # scale hi velocity range for Av/N(HI) correlation
 
     #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     h_sd_fit_range = [0.001, 1000] # range of fitted values for krumholz model
@@ -1905,7 +1955,7 @@ def main(verbose=False):
             hi_vel_range_list.append(hi_vel_range)
         if hi_av_correlation:
             hi_vel_range = cores[core]['hi_velocity_range']
-            correlation_coeff = cores[core]['correlation_coeff']
+            #correlation_coeff = cores[core]['correlation_coeff']
 
             hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
                     hi_vel_range[1] * hi_vel_range_scale)
@@ -1939,6 +1989,7 @@ def main(verbose=False):
                                  N_runs=N_monte_carlo_runs,
                                  guesses=[10.0, 1.0],
                                  parameter_vary=[True, False],
+                                 core_dict=cores[core]
                                  )
         else:
             images, params = run_analysis(hi_cube=hi_data,

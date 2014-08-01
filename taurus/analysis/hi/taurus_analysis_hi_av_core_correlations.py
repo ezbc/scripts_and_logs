@@ -9,135 +9,107 @@ import numpy as np
 
 ''' Plotting Functions
 '''
+def plot_correlations(correlations,velocity_centers,velocity_widths,
+        savedir='./', filename=None,show=True, returnimage=False):
+    ''' Plots a heat map of correlation values as a function of velocity width
+    and velocity center.
+    '''
+
+    # Import external modules
+    import numpy as np
+    import math
+    from mpl_toolkits.axes_grid1 import ImageGrid
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    fig = plt.figure(figsize=(8,4))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(1,1),
+                 ngrids=1,
+                 cbar_mode="single",
+                 cbar_location='right',
+                 cbar_pad="0.3%",
+                 cbar_size='6%',
+                 axes_pad=0,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=False)
+
+    correlations_image = np.empty((velocity_centers.shape[0],
+                                   velocity_widths.shape[0]))
+    correlations_image[:,:] = np.NaN
+    count = 0
+    try:
+        for i, center in enumerate(velocity_centers):
+            for j, width in enumerate(velocity_widths):
+                correlations_image[i,j] = correlations[count]
+                count += 1
+    except IndexError:
+        print(' plot_correlations: O-d array input, cannot proceed')
+
+    image = np.ma.array(correlations_image, mask=np.isnan(correlations_image))
+
+    ax = imagegrid[0]
+
+    ax.set_xlabel('Velocity Width (km/s)')
+    ax.set_ylabel('Velocity Center (km/s)')
+
+    #ax.set_xticks(np.arange(0,velocity_widths.shape[0],1)[::5],
+    #        velocity_centers[::5])
+
+    plt.rc('text', usetex=False)
+    im = ax.imshow(image, interpolation='nearest', origin='lower',
+            extent=[velocity_widths[0],velocity_widths[-1],
+                    velocity_centers[0],velocity_centers[-1]],
+            cmap=plt.cm.winter)
+    cb = ax.cax.colorbar(im)
+
+    #cb.set_clim(vmin=0.)
+    # Write label to colorbar
+    cb.set_label_text(r'Correlation coefficient')
+
+    fractions = np.array([0.95, 0.85, 0.75, 0.65,])
+    levels = fractions * image.max()
+
+    cs = ax.contour(image, levels=levels, origin='lower',
+            extent=[velocity_widths[0],velocity_widths[-1],
+                    velocity_centers[0],velocity_centers[-1]],
+            colors='k'
+            )
+
+    # Define a class that forces representation of float to look a certain way
+    # This remove trailing zero so '1.0' becomes '1'
+    class nf(float):
+         def __repr__(self):
+             str = '%.1f' % (self.__float__(),)
+             if str[-1]=='0':
+                 return '%.0f' % self.__float__()
+             else:
+                 return '%.1f' % self.__float__()
+
+    # Recast levels to new class
+    cs.levels = [nf(val) for val in fractions*100.0]
+
+    #fmt = {}
+    #for level, fraction in zip(cs.levels, fractions):
+    #    fmt[level] = fraction
+    fmt = '%r %%'
+
+    ax.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
+
+    if filename is not None:
+        plt.savefig(savedir + filename,bbox_inches='tight')
+    if show:
+    	plt.draw()
+        plt.show()
+    if returnimage:
+        return correlations_image
 
 ''' Calculations
 '''
-
-def calculate_nhi(cube=None, velocity_axis=None, velocity_range=[],
-        return_nhi_error=True, noise_cube=None,
-        velocity_noise_range=[90,100], Tsys=30., header=None,
-        fits_filename=None, fits_error_filename=None, verbose=True):
-
-    ''' Calculates an N(HI) image given a velocity range within which to
-    include a SpectralGrid's components.
-
-    Parameters
-    ----------
-    cube : array-like, optional
-        Three dimensional array with velocity axis as 0th axis. Must specify
-        a velocity_axis if cube is used.
-    velocity_axis : array-like, optional
-        One dimensional array containing velocities corresponding to
-    fits_filename : str
-        If specified, and a header is provided, the nhi image will be written.
-    header : pyfits.Header
-        Header from cube.
-
-    '''
-
-    import numpy as np
-
-    # Calculate NHI from cube if set
-    if cube is not None and velocity_axis is not None:
-        image = np.empty((cube.shape[1],
-                          cube.shape[2]))
-        image[:,:] = np.NaN
-        indices = np.where((velocity_axis > velocity_range[0]) & \
-                (velocity_axis < velocity_range[1]))[0]
-        image[:,:] = cube[indices,:,:].sum(axis=0)
-        # Calculate image error
-        if return_nhi_error:
-            image_error = np.empty((cube.shape[1],
-                              cube.shape[2]))
-            image_error[:,:] = np.NaN
-            image_error[:,:] = (noise_cube[indices,:,:]**2).sum(axis=0)**0.5
-
-    # NHI in units of 1e20 cm^-2
-    nhi_image = np.ma.array(image,mask=np.isnan(image)) * 1.823e-2
-    nhi_image = image * 1.823e-2
-
-    if fits_filename is not None and header is not None:
-        if verbose:
-            print('Writing N(HI) image to FITS file %s' % fits_filename)
-        header['BUNIT'] = '1e20 cm^-2'
-        header.remove('CDELT3')
-        header.remove('CRVAL3')
-        header.remove('CRPIX3')
-        header.remove('CTYPE3')
-        header.remove('NAXIS3')
-        header['NAXIS'] = 2
-
-        pf.writeto(fits_filename, image*1.823e-2, header = header, clobber =
-                True, output_verify = 'fix')
-
-    if fits_error_filename is not None and header is not None:
-        if verbose:
-            print('Writing N(HI) error image to FITS file %s' % fits_filename)
-
-        pf.writeto(fits_error_filename, image_error * 1.823e-2, header =
-                header, clobber = True, output_verify = 'fix')
-
-    if return_nhi_error:
-        nhi_image_error = np.ma.array(image_error,
-                mask=np.isnan(image_error)) * 1.823e-2
-        nhi_image_error = image_error * 1.823e-2
-        return nhi_image, nhi_image_error
-    else:
-        return nhi_image
-
-def calculate_noise_cube(cube=None, velocity_axis=None,
-            velocity_noise_range=[-110,-90,90,110], header=None, Tsys=30.,
-            filename=None):
-
-    """ Calcuates noise envelopes for each pixel in a cube
-    """
-
-    import numpy as np
-    import pyfits as pf
-
-    noise_cube = np.zeros(cube.shape)
-    for i in range(cube.shape[1]):
-        for j in range(cube.shape[2]):
-            profile = cube[:,i,j]
-            noise = calculate_noise(profile, velocity_axis,
-                    velocity_noise_range)
-            #noise = 0.1 # measured in line free region
-            noise_cube[:,i,j] = calculate_noise_scale(Tsys,
-                    profile, noise=noise)
-
-    if filename is not None:
-        pf.writeto(filename, noise_cube, header=header)
-
-    return noise_cube
-
-def calculate_noise(profile, velocity_axis, velocity_range):
-    """ Calculates rms noise of Tile profile given velocity ranges.
-    """
-    import numpy as np
-
-    std = 0
-
-    # calculate noises for each individual region
-    for i in range(len(velocity_range) / 2):
-        velMin = velocity_range[2*i + 0]
-        velMax = velocity_range[2*i + 1]
-
-        noise_region = np.where((velocity_axis >= velMin) & \
-                        (velocity_axis <= velMax))
-
-        std += np.std(profile[noise_region])
-
-    std /= len(velocity_range) / 2
-    return std
-
-def calculate_noise_scale(Tsys, profile, noise=None):
-    """ Creates an array for scaling the noise by (Tsys + Tb) / Tsys
-    """
-    import numpy as np
-    n = np.zeros(len(profile))
-    n = (Tsys + profile) / Tsys * noise
-
-    return n
 
 def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         hi_noise_cube=None, av_image=None, av_image_error=None,
@@ -160,6 +132,8 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     import numpy as np
     from scipy.stats import pearsonr
+    from myimage_analysis import calculate_nhi
+    from scipy import signal
 
     # calculate the velocity ranges given a set of centers and widths
     velocity_ranges = np.zeros(shape=[len(velocity_centers) * \
@@ -192,8 +166,18 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
                 (av_image == av_image))
 
         nhi_image_corr = nhi_image_temp[indices]
-        av_image_corr = av_image[indices] #- 0.8 # subtract background of 0.8
+        nhi_image_error_corr = nhi_image_error[indices]
+        av_image_corr = av_image[indices]
+        av_image_error_corr = av_image_error[indices]
         # Use Pearson's correlation test to compare images
+
+        nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
+                          nhi_image_error_corr
+        av_image_corr = (av_image_corr - av_image_corr.mean()) / \
+                          av_image_error_corr
+
+        correlations[i] = np.sum(np.abs(nhi_image_corr - av_image_corr))
+
         correlations[i] = pearsonr(nhi_image_corr.ravel(),
                 av_image_corr.ravel())[0]
 
@@ -203,8 +187,20 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         #if i and not i % abs_step:
         #    print "{0:.2%} processed".format(i/total)
 
+    #correlations /= correlations.max()
+
+    #correlations = 1.0 / correlations
+
     correlations = np.ma.array(correlations,
             mask=(correlations != correlations))
+
+    plot_correlations(correlations,
+                      velocity_centers,
+                      velocity_widths,
+                      show=0,
+                      returnimage=False,
+                      savedir='/usr/users/ezbc/Desktop/',
+                      filename='correlation.png')
 
     # Find best-correlating velocity range
     best_corr = correlations.max()
@@ -212,10 +208,103 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
     best_corr_vel_range = velocity_ranges[best_corr_index][0]
     best_corr_vel_range = best_corr_vel_range.tolist()
 
+    correlations_image = np.empty((velocity_centers.shape[0],
+                                   velocity_widths.shape[0]))
+    correlations_image[:,:] = np.NaN
+    count = 0
+    for i, center in enumerate(velocity_centers):
+        for j, width in enumerate(velocity_widths):
+            correlations_image[i,j] = correlations[count]
+            count += 1
+
+    max_index = np.where(correlations_image == correlations_image.max())
+
+    v1 = np.sum(correlations_image, axis=1)
+    v1 = correlations_image[:, max_index[1][0]]
+    v1_confint = threshold_area(velocity_centers, v1, area_fraction=0.68)
+
+    v2 = np.sum(correlations_image, axis=0)
+    v2 = correlations_image[max_index[0][0], :]
+    v2_confint = threshold_area(velocity_widths, v2, area_fraction=0.68)
+
+    import matplotlib.pyplot as plt
+    #plt.plot(v1, label='centers')
+    #plt.plot(v2, label='widths')
+    #plt.hist(v2)
+    #plt.legend()
+    #plt.show()
+
+    print('vel centers = {0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(v1_confint[0],
+                                                        v1_confint[2],
+                                                        np.abs(v1_confint[1])))
+
+    print('vel widths = {0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(v1_confint[0],
+                                                        v2_confint[2],
+                                                        np.abs(v2_confint[1])))
+
     if not return_correlations:
     	return best_corr_vel_range, best_corr
     else:
     	return best_corr_vel_range, best_corr, correlations
+
+def threshold_area(x, y, area_fraction=0.68):
+
+    '''
+    Finds the limits of a 1D array which includes a given fraction of the
+    integrated data.
+
+    Parameters
+    ----------
+    data : array-like
+        1D array.
+    area_fraction : float
+        Fraction of area.
+
+    Returns
+    -------
+    limits : tuple
+        Lower and upper bound including fraction of area.
+
+    '''
+
+    import numpy as np
+    from scipy.integrate import simps as integrate
+
+    # Step for lowering threshold
+    step = (np.max(y) - np.median(y)) / 100.0
+
+    # initial threshold
+    threshold = np.max(y) - step
+    threshold_area = 0.0
+
+    # area under whole function
+    area = integrate(y, x)
+
+    # Stop when the area below the threshold is greater than the max area
+    while threshold_area < area * area_fraction:
+
+        threshold_indices = np.where(y > threshold)[0]
+
+        try:
+            bounds_indices = (threshold_indices[0], threshold_indices[-1])
+        except IndexError:
+            bounds_indices = ()
+
+        try:
+            threshold_area = integrate(y[bounds_indices[0]:bounds_indices[1]],
+                                       x[bounds_indices[0]:bounds_indices[1]])
+            threshold_area += threshold * (x[bounds_indices[1]] - \
+                                           x[bounds_indices[0]])
+        except IndexError:
+            threshold_area = 0
+
+        threshold -= step
+
+    x_peak = x[y == y.max()][0]
+    low_error, up_error = x_peak - x[bounds_indices[0]], \
+                          x[bounds_indices[1]] - x_peak
+
+    return (x_peak, low_error, up_error)
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -368,14 +457,20 @@ def main():
     reload(myg)
     from mycoords import make_velocity_axis
     import json
+    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
+        calculate_sd, calculate_nh2, calculate_nh2_error
 
     # parameters used in script
     # -------------------------
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
-    velocity_centers = np.linspace(-5, 10, 15)
-    velocity_widths = np.linspace(5, 20, 15)
+    velocity_centers = np.linspace(-10, 10, 20)
+    velocity_widths = np.linspace(2, 30, 27)
+    #velocity_centers = np.linspace(-10, 10, 14)
+    #velocity_widths = np.linspace(2, 30, 15)
+    #velocity_centers = np.linspace(-20, 20, 15)
+    #velocity_widths = np.linspace(2, 40, 15)
 
     # define directory locations
     # --------------------------
@@ -432,22 +527,26 @@ def main():
                 cores[core]['box_vertices_rotated'])
 
         indices = mask == 1
+        indices = ((mask == 0) &\
+                   (av_data_planck / av_error_data_planck > 5))
 
-        hi_data_sub = np.copy(hi_data)
-        hi_data_sub[:, indices] = np.NaN
-        av_data_sub = np.copy(av_data_planck)
-        av_error_data_sub = np.copy(av_error_data_planck)
+        #hi_data_sub = np.copy(hi_data)
+        #hi_data_sub[:, indices] = np.NaN
+        hi_data_sub = np.copy(hi_data[:, indices])
+        noise_cube_sub = np.copy(noise_cube[:, indices])
+        av_data_sub = np.copy(av_data_planck[indices])
+        av_error_data_sub = np.copy(av_error_data_planck[indices])
 
         # Correlate each core region Av and N(HI) for velocity ranges
         hi_vel_range, correlation_coeff, correlations = \
                 correlate_hi_av(hi_cube=hi_data_sub,
-                    hi_velocity_axis=velocity_axis,
-                    hi_noise_cube=noise_cube,
-                    av_image=av_data_sub,
-                    av_image_error=av_error_data_sub,
-                    velocity_centers=velocity_centers,
-                    velocity_widths=velocity_widths,
-                    return_correlations=True)
+                                hi_velocity_axis=velocity_axis,
+                                hi_noise_cube=noise_cube_sub,
+                                av_image=av_data_sub,
+                                av_image_error=av_error_data_sub,
+                                velocity_centers=velocity_centers,
+                                velocity_widths=velocity_widths,
+                                return_correlations=True)
 
         print('HI velocity integration range:')
         print('%.1f to %.1f km/s' % (hi_vel_range[0], hi_vel_range[1]))

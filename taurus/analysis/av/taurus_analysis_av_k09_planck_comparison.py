@@ -27,14 +27,14 @@ def plot_av_residuals(av_image1=None, av_image2=None, title=None, limits=None,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 12
+    font_scale = 12
     params = {#'backend': .pdf',
-              'axes.labelsize': fontScale,
-              'axes.titlesize': fontScale,
-              'text.fontsize': fontScale,
-              'legend.fontsize': fontScale*3/4,
-              'xtick.labelsize': fontScale,
-              'ytick.labelsize': fontScale,
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
@@ -115,6 +115,7 @@ def plot_av(av_x, av_y,
     import matplotlib.pyplot as plt
     import matplotlib
     from matplotlib import cm
+    from mpl_toolkits.axes_grid1 import ImageGrid
 
     # Drop the NaNs from the images
     indices = np.where((av_x == av_x) &\
@@ -146,18 +147,19 @@ def plot_av(av_x, av_y,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 12
+    fig_size = (4,4)
+    font_scale = 10
     params = {#'backend': .pdf',
-              'axes.labelsize': fontScale,
-              'axes.titlesize': fontScale,
-              'text.fontsize': fontScale,
-              'legend.fontsize': fontScale*3/4,
-              'xtick.labelsize': fontScale,
-              'ytick.labelsize': fontScale,
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              'figure.figsize': (6, 6),
+              'figure.figsize': fig_size,
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -166,7 +168,18 @@ def plot_av(av_x, av_y,
     # Create figure
     plt.clf()
     fig = plt.figure()
-    ax = fig.add_subplot(111, aspect = 'equal')
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(1, 1),
+                 ngrids=1,
+                 axes_pad=0.25,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True,
+                 cbar_mode='single',
+                 cbar_pad=0.1,
+                 cbar_size=0.2)
+
+    ax = imagegrid[0]
 
     if av_y_error is None:
         if plot_type is 'hexbin':
@@ -181,9 +194,14 @@ def plot_av(av_x, av_y,
                 	error_bar = ax.errorbar(pos[0], pos[1],
                             xerr = (errorbar[0]),
                             yerr = (errorbar[1]),
-                            color = 'c')
+                            color = 'c',
+                            linewidth = 2.4,
+                            capsize = 2.4)
                 ax.set_xscale(scale, nonposx = 'clip')
                 ax.set_yscale(scale, nonposy = 'clip')
+                cb = ax.cax.colorbar(image,)
+                # Write label to colorbar
+                cb.set_label_text('Bin Counts',)
             elif color_scale == 'log':
                 image = ax.hexbin(av_x_nonans.ravel(),
                     av_y_nonans.ravel(),
@@ -201,8 +219,8 @@ def plot_av(av_x, av_y,
                 ax.set_xscale(scale, nonposx = 'clip')
                 ax.set_yscale(scale, nonposy = 'clip')
             # Adjust color bar of density plot
-            cb = plt.colorbar(image)
-            cb.set_label('Bin Counts')
+            #cb = image.colorbar(image)
+            #cb.set_label('Bin Counts')
         elif plot_type is 'scatter':
             image = ax.scatter(av_x_nonans.ravel(),
                     av_y_nonans.ravel(),
@@ -236,7 +254,7 @@ def plot_av(av_x, av_y,
     ax.grid(True)
 
     if filename is not None:
-        plt.savefig(savedir + filename,bbox_inches='tight')
+        plt.savefig(savedir + filename,bbox_inches='tight', dpi=600)
     if show:
         fig.show()
     if returnimage:
@@ -297,16 +315,16 @@ def main():
 
     # load 2mass Av and GALFA HI images, on same grid
     av_data_2mass, twomass_header = pf.getdata(av_dir + \
-                'taurus_av_k09_regrid.fits',
+                'taurus_av_k09_regrid_planckres.fits',
             header = True)
 
     av_data_planck, planck_header = pf.getdata(av_dir + \
-                '../av/taurus_planck_av_regrid.fits',
+                'taurus_av_planck_5arcmin.fits',
             header=True)
 
     figure_types = ['pdf', 'png']
 
-    if 0:
+    if 1:
         for figure_type in figure_types:
             plot_av(av_data_planck, av_data_2mass,
                     plot_type = 'hexbin',
@@ -317,7 +335,7 @@ def main():
                                     (0.5, 0.5),
                                     (5, 5)),
                     limits = (10**-2, 30, 10**-2, 30),
-                    title = 'Taurus: K+09 / Planck Comparison',
+                    #title = 'Taurus: K+09 / Planck Comparison',
                     savedir = figure_dir,
                     filename = 'taurus_av_k09_planck_compare.%s' % figure_type,
                     show = False,
@@ -341,7 +359,7 @@ def main():
                     av_image2 = av_data_planck,
                     limits=[120,37,290,200],
                     header = twomass_header,
-                    title = 'Taurus: K+09 - Planck Residuals',
+                    #title = 'Taurus: K+09 - Planck Residuals',
                     savedir = figure_dir,
                     filename = 'taurus_av_k09_planck_residual_map.%s' % \
                             figure_type,
