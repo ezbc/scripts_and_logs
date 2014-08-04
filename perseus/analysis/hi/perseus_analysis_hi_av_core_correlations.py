@@ -171,10 +171,10 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         av_image_error_corr = av_image_error[indices]
 
         # Normalize images by their mean
-        #nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
-        #                  nhi_image_error_corr
-        #av_image_corr = (av_image_corr - av_image_corr.mean()) / \
-        #                  av_image_error_corr
+        nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
+                          nhi_image_error_corr
+        av_image_corr = (av_image_corr - av_image_corr.mean()) / \
+                         av_image_error_corr
 
         #correlations[i] = np.sum(np.abs(nhi_image_corr - av_image_corr))
 
@@ -220,23 +220,27 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     max_index = np.where(correlations_image == correlations_image.max())
 
-    center_corr = np.sum(correlations_image, axis=1)
+    # Define parameter resolutions
+    delta_center = velocity_centers[1] - velocity_centers[0]
+    delta_width = velocity_widths[1] - velocity_widths[0]
+
+    center_corr = np.sum(correlations_image, axis=1) * delta_center
     center_corr = correlations_image[:, max_index[1][0]]
     center_confint = threshold_area(velocity_centers,
                                          center_corr,
                                          area_fraction=0.68)
 
-    width_corr = np.sum(correlations_image, axis=0)
+    width_corr = np.sum(correlations_image, axis=0) * delta_width
     width_corr = correlations_image[max_index[0][0], :]
     width_confint = threshold_area(velocity_widths,
                                         width_corr,
                                         area_fraction=0.68)
 
-    print('vel centers = ' + \
+    print('Velocity widths = ' + \
             '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(width_confint[0],
                                                     width_confint[2],
                                                     np.abs(width_confint[1])))
-    print('vel widths = ' + \
+    print('Velocity centers = ' + \
             '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(center_confint[0],
                                                     center_confint[2],
                                                     np.abs(center_confint[1])))
@@ -481,8 +485,8 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
-    velocity_centers = np.linspace(-10, 20, 30)
-    velocity_widths = np.linspace(2, 40, 38)
+    velocity_centers = np.arange(-10, 10, 1)
+    velocity_widths = np.arange(2, 30, 1)
     #velocity_centers = np.linspace(-10, 10, 7)
     #velocity_widths = np.linspace(2, 30, 5)
     #velocity_centers = np.linspace(-10, 10, 14)
@@ -569,6 +573,10 @@ def main():
         print('HI velocity integration range:')
         print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                      vel_range_confint[1]))
+
+        #print('Median center + width correlations')
+        #print(np.median(center_corr))
+        #print(np.median(width_corr))
 
         cores[core]['hi_velocity_range'] = vel_range_confint[0:2]
         cores[core]['hi_velocity_range_error'] = vel_range_confint[2:]

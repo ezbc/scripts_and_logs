@@ -1136,8 +1136,8 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
                 velocity_range=velocity_range,
                 noise_cube=hi_noise_cube)
 
-        nhi_image = np.ma.array(nhi_image_temp,
-                                mask=np.isnan(nhi_image_temp))
+        #nhi_image = np.ma.array(nhi_image_temp,
+        #                        mask=np.isnan(nhi_image_temp))
 
         # Select pixels with Av > 1.0 mag and Av_SNR > 5.0.
         # Av > 1.0 mag is used to avoid too low Av.
@@ -1234,10 +1234,10 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
             header=hi_header)
 
     # mask the image for NaNs
-    nhi_image = np.ma.array(nhi_image,
-            mask=(nhi_image != nhi_image))
-    nhi_image_error = np.ma.array(nhi_image_error,
-            mask=(nhi_image_error != nhi_image_error))
+    #nhi_image = np.ma.array(nhi_image,
+    #        mask=(nhi_image != nhi_image))
+    #nhi_image_error = np.ma.array(nhi_image_error,
+    #        mask=(nhi_image_error != nhi_image_error))
 
     # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image = nhi_image,
@@ -1298,7 +1298,8 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
 def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         hi_header=None, dgr=None, dgr_error=None, av_image=None,
         av_image_error=None, hi_vel_range=None, N_runs=1, verbose=False,
-        guesses=(10.0, 1.0), parameter_vary=[True, True], core_dict=None):
+        guesses=(10.0, 1.0), parameter_vary=[True, True], core_dict=None,
+        results_figure_name=None):
 
     '''
 
@@ -1326,8 +1327,9 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     '''
 
     from numpy.random import normal
+    from scipy.stats import rv_discrete
     import mystats
-    import random
+    import matplotlib.pyplot as plt
 
     if N_runs < 1:
     	raise ValueError('N_runs must be >= 1')
@@ -1336,29 +1338,53 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
 
     # Results of monte carlo will be stored here
     results_dict = {'phi_cnm fits' : np.empty((N_runs)),
-                    'Z fits' : np.empty((N_runs))}
+                    'Z fits' : np.empty((N_runs)),}
+    hi_vel_range_list = np.empty((N_runs, 2))
 
     # Get standard errors on images + the HI velocity range
     hi_error = np.median(hi_noise_cube)
     av_error = np.median(av_image_error)
     #hi_vel_range_error = core_dict['hi_vel_range_error']
-    center_correlations = core_dict['center_corr']
-    width_correlations = core_dict['width_corr']
-    vel_centers = core_dict['vel_centers']
-    vel_widths = core_dict['vel_widths']
+    center_correlations = np.asarray(core_dict['center_corr'])
+    width_correlations = np.asarray(core_dict['width_corr'])
+    vel_centers = np.asarray(core_dict['vel_centers'])
+    vel_widths = np.asarray(core_dict['vel_widths'])
 
     # Derive PDF of the velocity centers and widths.
-    # The Monte Carlo will draw from this PDF randomly
-    center_pdf = mystats.calc_pdf(vel_centers, center_correlations)
-    width_pdf = mystats.calc_pdf(vel_widths, width_correlations)
+    # The Monte Carlo will draw from this PDF randomly.
+    # rv_discrete requires the PDF be normalized to have area of 1
+    if center_correlations.min() < 0:
+    	center_correlations += np.abs(center_correlations.min())
+    if width_correlations.min() < 0:
+    	width_correlations += np.abs(width_correlations.min())
+    center_corr_normed = center_correlations / np.sum(center_correlations)
+    width_corr_normed = width_correlations / np.sum(width_correlations)
 
-    import matplotlib.pyplot as plt
-    #plt.hist(center_correlations)
-    plt.plot(width_correlations)
-    plt.show()
+    center_rv = rv_discrete(values=(vel_centers, center_corr_normed))
+    width_rv = rv_discrete(values=(vel_widths, width_corr_normed))
 
-    #print(help(center_pdf))
-    #print(vel_widths, vel_centers)
+    if results_figure_name is not None:
+        # Recreate the distribution of correlations
+        center_correlations_recreate = np.zeros(10000)
+        width_correlations_recreate = np.zeros(10000)
+        for i in range(len(center_correlations_recreate)):
+            center_correlations_recreate[i] = center_rv.rvs()
+            width_correlations_recreate[i] = width_rv.rvs()
+
+    	fig = plt.figure(figsize=(5, 5))
+    	ax = fig.add_subplot(111)
+        ax.hist(center_correlations_recreate, 20, alpha=0.5,
+                label='Centers Reproduced', color='b', normed=True)
+        ax.hist(width_correlations_recreate, 20, alpha=0.5,
+                label='Widths Reproduced', color='r', normed=True)
+        ax.plot(vel_centers, center_corr_normed, alpha=0.5,
+                label='Centers', color='k')
+        ax.plot(vel_widths, width_corr_normed, alpha=0.5,
+                label='Widths', color='g')
+        ax.legend(fontsize=8)
+        ax.set_xlabel(r'Velocity (km/s)')
+        ax.set_ylabel('Normalized value')
+        plt.savefig(results_figure_name + '_PDF_hist.png')
 
     # Run the Monte Carlo
     # -------------------
@@ -1371,26 +1397,18 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             #hi_vel_range_random_error = normal(scale=hi_vel_range_error,
             #                                   size=len(hi_vel_range))
 
-            # Get uniform sample in ranges of vel params
-            random_center_sample = random.uniform(vel_centers[0],
-                                                  vel_centers[-1])
-            random_width_sample = random.uniform(vel_widths[0],
-                                                 vel_widths[-1])
+            # Randomly sample from discrete distribution
+            vel_center_random = center_rv.rvs()
+            vel_width_random = width_rv.rvs()
 
-            #print('random center sample', random_center_sample)
-            #print('random width sample', random_width_sample)
-
-            # Plug random sample into PDFs to weight probability
-            # http://stackoverflow.com/questions/13476807/probability-density
-            #-function-from-histogram-in-python-to-fit-another-histrogram
-            #print(center_pdf(20))
-            #print(width_pdf(40))
-
-            vel_center_random = center_pdf(random_center_sample)
-            vel_width_random = width_pdf(random_width_sample)
-
+            # Create the velocity range
             hi_vel_range_noise = (vel_center_random - vel_width_random / 2.,
                                   vel_center_random + vel_width_random / 2.)
+
+            #print(hi_vel_range_noise)
+            #hi_vel_range_noise = (-5, 15)
+            hi_vel_range_list[i, 0] = hi_vel_range_noise[0]
+            hi_vel_range_list[i, 1] = hi_vel_range_noise[1]
 
             #print('hi_vel_range_noise', hi_vel_range_noise)
 
@@ -1461,19 +1479,47 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         # density HI surface density = (1 - f_HI) * total hydrogen surface
         # density
 
-    #import matplotlib.pyplot as plt
-    #plt.hist(results_dict['phi_cnm fits'])
-    #plt.show()
+    if results_figure_name is not None:
+    	fig = plt.figure(figsize=(5, 5))
+    	ax = fig.add_subplot(111)
+        ax.hist(results_dict['phi_cnm fits'],
+                bins=np.logspace(0, 3, 100))
+        ax.set_xscale('log')
+        ax.set_xlabel(r'$\phi_{\rm CNM}$')
+        ax.set_ylabel('Counts')
+        plt.savefig(results_figure_name + '_phi_cnm_hist.png')
+
+    	fig = plt.figure(figsize=(5, 5))
+    	ax = fig.add_subplot(111)
+        ax.hist(results_dict['Z fits'],
+                bins=np.logspace(-1, 1, 100))
+        ax.set_xscale('log')
+        ax.set_xlabel(r'$Z$ $(Z_\odot)$')
+        ax.set_ylabel('Counts')
+        plt.savefig(results_figure_name + '_Z_hist.png')
+
+    # Derive images
+    # -------------
+    hi_vel_range_sample = (np.median(hi_vel_range_list[:, 0]),
+                           np.median(hi_vel_range_list[:, 1]))
+
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
                            hi_noise_cube=hi_noise_cube,
-                           hi_vel_range=hi_vel_range,
+                           hi_vel_range=hi_vel_range_sample,
                            hi_header=hi_header,
                            dgr=dgr,
                            av_image=av_image,
                            av_image_error=av_image_error,
                            )
 
+    # Bootstrap for errors
+    # --------------------
+    # Returns errors of a bootstrap simulation at the 100.*(1 - alpha)
+    # confidence interval. Errors are computed by deriving a cumulative
+    # distribution function of the medians of the sampled data and determining
+    # the distance between the median and the value including alpha/2 % of the
+    # data, and the value including alpha/2 % of the data.
     samples = mystats.bootstrap(results_dict['phi_cnm fits'], 100)
     phi_cnm_confint = mystats.calc_bootstrap_error(samples, 0.05)
     samples = mystats.bootstrap(results_dict['Z fits'], 100)
@@ -1484,6 +1530,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     Z = Z_confint[0]
     Z_error = Z_confint[1:]
 
+    # Print results
     print('results are:')
     print('phi_cnm = {0:.2f} +{1:.2f}/-{2:.2f}'.format(phi_cnm_confint[0],
                                                       phi_cnm_confint[1],
@@ -1492,8 +1539,13 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                                                   Z_confint[1],
                                                   Z_confint[2]))
 
+    print('Median HI velocity range:' + \
+          '{0:.1f} to {1:.1f} km/s'.format(hi_vel_range_sample[0],
+                                           hi_vel_range_sample[1],))
+
     if N_runs > 1:
-        return images, (phi_cnm, Z, phi_cnm_error, Z_error)
+        return images, hi_vel_range_sample, (phi_cnm, Z, phi_cnm_error,
+                Z_error)
     if N_runs == 1:
         return images, (phi_cnm, Z)
 
@@ -1589,13 +1641,13 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0], rh2_error=None,
     params = Parameters()
     params.add('phi_cnm',
                value=guesses[0],
-               min=1,
-               max=20,
+               min=0.001,
+               max=1000,
                vary=vary[0])
     params.add('Z',
                value=guesses[1],
-               min=0.1,
-               max=5,
+               min=0.01,
+               max=100,
                vary=vary[1])
 
     # Perform the fit!
@@ -1804,7 +1856,7 @@ def main(verbose=True):
 
     # Error analysis
     calc_errors = True
-    N_monte_carlo_runs = 100
+    N_monte_carlo_runs = 1000
 
     # HI velocity width
     co_width_scale = 5.0 # for determining N(HI) vel range
@@ -1909,24 +1961,18 @@ def main(verbose=True):
         print('\nCalculating for core %s' % core)
 
         # Grab the mask from the DS9 regions
-        '''
         xy = cores[core]['box_center_pix']
         box_width = cores[core]['box_width']
         box_height = cores[core]['box_height']
         box_angle = cores[core]['box_angle']
-        mask = myg.get_rectangular_mask(nhi_image,
+        mask = myg.get_rectangular_mask(av_data_planck_orig,
                 xy[0], xy[1],
                 width = box_width,
                 height = box_height,
                 angle = box_angle)
 
-        # Get indices where there is no mask, and extract those pixels
-        indices = np.where(mask == 1)
-        indices = mask == 1
-        '''
-
-        mask = myg.get_polygon_mask(av_data_planck_orig,
-                cores[core]['box_vertices_rotated'])
+        #mask = myg.get_polygon_mask(av_data_planck_orig,
+        #        cores[core]['box_vertices_rotated'])
 
         indices = mask == 1
 
@@ -1967,17 +2013,14 @@ def main(verbose=True):
                         co_data_sub.shape[0])
             hi_vel_range_corr_list.append(hi_vel_range)
 
-        if verbose:
-            print('HI velocity integration range:')
-            print('%.0f to %.0f km/s' % (hi_vel_range[0], hi_vel_range[1]))
-
         # ---------------------------------------------------------------------
         # Perform analysis on cores, including fitting the Krumholz model.
         # If calc_errors is True then a monte carlo is run by adding noise to
         # AV and HI and refitting.
         # ---------------------------------------------------------------------
         if calc_errors:
-            images, params = run_analysis(hi_cube=hi_data,
+            images, hi_vel_range, params = \
+                    run_analysis(hi_cube=hi_data,
                                  hi_noise_cube=noise_cube,
                                  hi_velocity_axis=velocity_axis,
                                  hi_header=h,
@@ -1988,8 +2031,11 @@ def main(verbose=True):
                                  hi_vel_range=hi_vel_range,
                                  N_runs=N_monte_carlo_runs,
                                  guesses=[10.0, 1.0],
-                                 parameter_vary=[True, False],
-                                 core_dict=cores[core]
+                                 parameter_vary=[True, True],
+                                 core_dict=cores[core],
+                                 results_figure_name=figure_dir + \
+                                         'monte_carlo_results/' + \
+                                         'perseus_%s' % core,
                                  )
         else:
             images, params = run_analysis(hi_cube=hi_data,
