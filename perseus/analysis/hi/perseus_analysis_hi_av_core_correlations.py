@@ -485,7 +485,7 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
-    velocity_centers = np.arange(-10, 10, 1)
+    velocity_centers = np.arange(0, 20, 1)
     velocity_widths = np.arange(2, 30, 1)
     #velocity_centers = np.linspace(-10, 10, 7)
     #velocity_widths = np.linspace(2, 30, 5)

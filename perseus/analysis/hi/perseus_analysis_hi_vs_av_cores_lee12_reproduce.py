@@ -1245,18 +1245,12 @@ def select_hi_vel_range(co_data, co_header, flux_threshold=0.80,
 
 def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
         hi_vel_range=None, hi_header=None, dgr=None, av_image=None,
-        av_image_error=None, sub_image_indices=None, nhi_error=None):
+        av_image_error=None, sub_image_indices=None):
 
     '''
 
     Derives N(HI), Sigma_HI, Sigma_H, Sigma_H2 and RH2, plus errors on each
     image.
-
-    Parameters
-    ----------
-    nhi_error : float, optional
-        If not None, then this error is used in the N(HI) calculation instead
-        of the cube noise.
 
     '''
 
@@ -1270,9 +1264,6 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
             velocity_range=hi_vel_range,
             return_nhi_error=True,
             header=hi_header)
-
-    if nhi_error is not None:
-    	nhi_image_error = nhi_error
 
     # mask the image for NaNs
     #nhi_image = np.ma.array(nhi_image,
@@ -1395,8 +1386,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
 
     # Results of monte carlo will be stored here
     results_dict = {'phi_cnm fits' : np.empty((N_runs)),
-                    'Z fits' : np.empty((N_runs)),
-                    'nhi errors' : np.empty((N_runs))}
+                    'Z fits' : np.empty((N_runs)),}
     hi_vel_range_list = np.empty((N_runs, 2))
 
     # Get standard errors on images + the HI velocity range
@@ -1407,42 +1397,10 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     width_correlations = np.asarray(core_dict['width_corr'])
     vel_centers = np.asarray(core_dict['vel_centers'])
     vel_widths = np.asarray(core_dict['vel_widths'])
-
-    # Derive PDF of the velocity centers and widths.
-    # The Monte Carlo will draw from this PDF randomly.
-    # rv_discrete requires the PDF be normalized to have area of 1
-    if center_correlations.min() < 0:
-    	center_correlations += np.abs(center_correlations.min())
-    if width_correlations.min() < 0:
-    	width_correlations += np.abs(width_correlations.min())
-    center_corr_normed = center_correlations / np.sum(center_correlations)
-    width_corr_normed = width_correlations / np.sum(width_correlations)
-
-    center_rv = rv_discrete(values=(vel_centers, center_corr_normed))
-    width_rv = rv_discrete(values=(vel_widths, width_corr_normed))
-
-    if results_figure_name is not None:
-        # Recreate the distribution of correlations
-        center_correlations_recreate = np.zeros(10000)
-        width_correlations_recreate = np.zeros(10000)
-        for i in range(len(center_correlations_recreate)):
-            center_correlations_recreate[i] = center_rv.rvs()
-            width_correlations_recreate[i] = width_rv.rvs()
-
-    	fig = plt.figure(figsize=(5, 5))
-    	ax = fig.add_subplot(111)
-        ax.hist(center_correlations_recreate, 30, alpha=0.5,
-                label='Centers Reproduced', color='b', normed=True)
-        ax.hist(width_correlations_recreate, 30, alpha=0.5,
-                label='Widths Reproduced', color='r', normed=True)
-        ax.plot(vel_centers, center_corr_normed, alpha=0.5,
-                label='Centers', color='k')
-        ax.plot(vel_widths, width_corr_normed, alpha=0.5,
-                label='Widths', color='g')
-        ax.legend(fontsize=8)
-        ax.set_xlabel(r'Velocity (km/s)')
-        ax.set_ylabel('Normalized value')
-        plt.savefig(results_figure_name + '_PDF_hist.png')
+    if hi_vel_range_error is not None:
+    	vel_error = hi_vel_range_error
+    else:
+        vel_error = cores[core]['hi_velocity_range_error'][0]
 
     # Run the Monte Carlo
     # -------------------
@@ -1452,26 +1410,18 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             hi_random_error = normal(scale=hi_error, size=hi_noise_cube.shape)
             av_random_error = normal(scale=av_error, size=av_image.shape)
             dgr_random_error = normal(scale=dgr_error)
-            #hi_vel_range_random_error = normal(scale=hi_vel_range_error,
-            #                                   size=len(hi_vel_range))
-
-            # Randomly sample from discrete distribution
-            vel_center_random = center_rv.rvs()
-            vel_width_random = width_rv.rvs()
-
-            # Create the velocity range
-            hi_vel_range_noise = (vel_center_random - vel_width_random / 2.,
-                                  vel_center_random + vel_width_random / 2.)
-
-            hi_vel_range_list[i, 0] = hi_vel_range_noise[0]
-            hi_vel_range_list[i, 1] = hi_vel_range_noise[1]
+            hi_vel_range_random_error = normal(scale=vel_error,
+                                               size=1) / 2.
 
             # Add random error to images
             hi_cube_noise = np.copy(hi_cube) + hi_random_error
             av_image_noise = np.copy(av_image) + av_random_error
             dgr_noise = dgr + dgr_random_error
-            #hi_vel_range_noise = np.asarray(hi_vel_range) + \
-            #    hi_vel_range_random_error
+            hi_vel_range_noise = (hi_vel_range[0] - hi_vel_range_random_error,
+                                  hi_vel_range[1] + hi_vel_range_random_error)
+
+            hi_vel_range_list[i, 0] = hi_vel_range_noise[0]
+            hi_vel_range_list[i, 1] = hi_vel_range_noise[1]
         elif N_runs == 1:
             hi_cube_noise = np.copy(hi_cube)
             av_image_noise = np.copy(av_image)
@@ -1488,9 +1438,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                                av_image=av_image_noise,
                                av_image_error=av_image_error,
                                )
-        # grab the N(HI) error
-        results_dict['nhi errors'][i] = \
-                np.mean(images['nhi'][images['nhi'] == images['nhi']])
 
         # Fit R_H2
         #---------
@@ -1560,10 +1507,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     hi_vel_range_sample = (np.median(hi_vel_range_list[:, 0]),
                            np.median(hi_vel_range_list[:, 1]))
 
-    nhi_error = np.std(results_dict['nhi errors'])
-
-    print('N(HI) error = %.2f K' % nhi_error)
-
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
                            hi_noise_cube=hi_noise_cube,
@@ -1572,10 +1515,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                            dgr=dgr,
                            av_image=av_image,
                            av_image_error=av_image_error,
-                           #nhi_error=nhi_error
                            )
-
-    print('rh2 size', images['rh2'][images['rh2'] == images['rh2']].size)
 
     # Bootstrap for errors
     # --------------------
@@ -1593,7 +1533,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     phi_cnm_error = phi_cnm_confint[1:]
     Z = Z_confint[0]
     Z_error = Z_confint[1:]
-
 
     # Print results
     print('results are:')
@@ -1918,23 +1857,14 @@ def main(verbose=True):
     # Determine HI integration velocity by CO or correlation with Av?
     hi_co_width = True
     hi_av_correlation = True
-    reproduce_lee12 = True
 
     # Error analysis
     calc_errors = True
     N_monte_carlo_runs = 1000
-    vary_phi_cnm = True
-    vary_Z = True
-
-    # Regions
-    # Options are 'ds9' or 'av_gradient'
-    box_method = 'av_gradient'
 
     # HI velocity width
-    co_width_scale = 5.0 # for determining N(HI) vel range
-    # 0.758 is fraction of area of Gaussian between FWHM limits
-    co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
-    hi_vel_range_scale = 1.0 # scale hi velocity range for Av/N(HI) correlation
+    hi_vel_range = (-5, 15) # km/s
+    hi_vel_range_error = 4
 
     #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     h_sd_fit_range = [0.001, 1000] # range of fitted values for krumholz model
@@ -1997,8 +1927,8 @@ def main(verbose=True):
     cores = convert_core_coordinates(cores, h)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'perseus_av_boxes_',
-            header = h)
+                            filename_base = region_dir + 'perseus_av_boxes_',
+                            header = h)
 
     # Set up lists
     hi_image_list = []
@@ -2032,22 +1962,19 @@ def main(verbose=True):
     for core in cores:
         print('\nCalculating for core %s' % core)
 
-        if box_method == 'ds9':
-            # Grab the mask from the DS9 regions
-            xy = cores[core]['box_center_pix']
-            box_width = cores[core]['box_width']
-            box_height = cores[core]['box_height']
-            box_angle = cores[core]['box_angle']
-            mask = myg.get_rectangular_mask(av_data_planck_orig,
-                    xy[0], xy[1],
-                    width = box_width,
-                    height = box_height,
-                    angle = box_angle)
-        elif box_method == 'av_gradient':
-            mask = myg.get_polygon_mask(av_data_planck_orig,
-                    cores[core]['box_vertices_rotated'])
-        else:
-        	raise ValueError('Method for boxes is either ds9 or av_gradient')
+        # Grab the mask from the DS9 regions
+        xy = cores[core]['box_center_pix']
+        box_width = cores[core]['box_width']
+        box_height = cores[core]['box_height']
+        box_angle = cores[core]['box_angle']
+        mask = myg.get_rectangular_mask(av_data_planck_orig,
+                xy[0], xy[1],
+                width = box_width,
+                height = box_height,
+                angle = box_angle)
+
+        mask = myg.get_polygon_mask(av_data_planck_orig,
+                cores[core]['box_vertices_rotated'])
 
         indices = mask == 1
 
@@ -2056,32 +1983,6 @@ def main(verbose=True):
         noise_cube = np.copy(noise_cube_orig[:, indices])
         av_data_planck = np.copy(av_data_planck_orig[indices])
         av_error_data_planck = np.copy(av_error_data_planck_orig[indices])
-
-        # Determine velocity range of HI
-        if hi_co_width:
-            co_data_sub = co_data[:, indices]
-            co_image_list.append(np.sum(co_data_sub, axis=1) / \
-                    co_data_sub.shape[0])
-
-            # fit gaussians to CO data
-            hi_vel_range = select_hi_vel_range(co_data_sub,
-                    co_header,
-                    flux_threshold=co_flux_fraction,
-                    width_scale=co_width_scale)
-            hi_vel_range_list.append(hi_vel_range)
-        if hi_av_correlation:
-            hi_vel_range = cores[core]['hi_velocity_range']
-            #correlation_coeff = cores[core]['correlation_coeff']
-
-            hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
-                    hi_vel_range[1] * hi_vel_range_scale)
-
-            # For plotting velocity range over CO spectra
-            if not hi_co_width:
-                co_data_sub = co_data[:, indices]
-                co_image_list.append(np.sum(co_data_sub, axis=1) / \
-                        co_data_sub.shape[0])
-            hi_vel_range_corr_list.append(hi_vel_range)
 
         # ---------------------------------------------------------------------
         # Perform analysis on cores, including fitting the Krumholz model.
@@ -2099,13 +2000,14 @@ def main(verbose=True):
                                  av_image=av_data_planck,
                                  av_image_error=av_error_data_planck,
                                  hi_vel_range=hi_vel_range,
+                                 hi_vel_range_error=hi_vel_range_error,
                                  N_runs=N_monte_carlo_runs,
                                  guesses=[10.0, 1.0],
-                                 parameter_vary=[vary_phi_cnm, vary_Z],
+                                 parameter_vary=[True, False],
                                  core_dict=cores[core],
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
-                                         'perseus_%s' % core,
+                                         'perseus_lee12_reproduce_%s' % core,
                                  )
         else:
             images, params = run_analysis(hi_cube=hi_data,
@@ -2119,7 +2021,7 @@ def main(verbose=True):
                                  hi_vel_range=hi_vel_range,
                                  N_runs=1,
                                  guesses=[10.0, 1.0],
-                                 parameter_vary=[vary_phi_cnm, vary_Z])
+                                 parameter_vary=[True, False])
 
         rh2_fit, h_sd_fit, f_H2, f_HI = calc_krumholz(params=params[:2],
                                             h_sd_extent=h_sd_fit_range,
@@ -2151,40 +2053,11 @@ def main(verbose=True):
         #p_value_list.append(p_value)
         core_name_list.append(core)
 
-    # Write velocity range properties to a file
-    if hi_co_width and hi_av_correlation:
-        with open(core_dir + 'perseus_hi_vel_properties.txt', 'w') as f:
-            f.write('core\tco_range\tco_high\tco_scale\thi_low\thi_high')
-            for i, core in enumerate(cores):
-                f.write('\n{0:s}\t{1:.1f}\t{2:.1f}\t{3:.1f}'.format(
-                            core,
-                            hi_vel_range_list[i][0],
-                            hi_vel_range_list[i][1],
-                            cores[core]['hi_velocity_range'][0]) + \
-                        '\t{0:.1f}\t{1:.1f}'.format(
-                            cores[core]['hi_velocity_range'][1],
-                            co_width_scale
-                            )
-                        )
-
     # Create the figures!
     # -------------------
     print('\nCreating figures...')
 
     figure_types = ['png', 'pdf']
-    for figure_type in figure_types:
-        if hi_co_width or hi_av_correlation:
-            plot_co_spectrum_grid(co_vel_axis,
-                    co_image_list,
-                    vel_range_list=hi_vel_range_list,
-                    vel_range_hiav_list=hi_vel_range_corr_list,
-                    #limits = [0, 80, 10**-3, 10**2],
-                    savedir = figure_dir + 'panel_cores/',
-                    scale = ('linear', 'linear'),
-                    filename = 'perseus_core_co_spectra_grid.%s' % figure_type,
-                    title = r'Average $^{12}$CO spectra of perseus Cores',
-                    core_names=core_name_list,
-                    show = False)
 
     for figure_type in figure_types:
         plot_rh2_vs_h_grid(rh2_image_list,
@@ -2196,7 +2069,8 @@ def main(verbose=True):
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'perseus_rh2_vs_hsd_panels_planck.%s' % figure_type,
+                filename = 'perseus_rh2_vs_hsd_panels_planck_lee12_' + \
+                        'reproduce.%s' % figure_type,
                 #title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
                 #        + ' of perseus Cores',
                 core_names=core_name_list,
@@ -2218,8 +2092,8 @@ def main(verbose=True):
                 #limits = [-5, 300, 3, 8],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
-                filename = 'perseus_hi_vs_h_panels_planck_linear.%s' % \
-                        figure_type,
+                filename = 'perseus_hi_vs_h_panels_planck_linear_lee12_' + \
+                        'reproduce.%s' % figure_type,
                 #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
                 #        + ' of perseus Cores',
                 core_names=core_name_list,
