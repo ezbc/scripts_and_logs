@@ -1971,8 +1971,8 @@ def main(verbose=True):
                 height = box_height,
                 angle = box_angle)
 
-        #mask = myg.get_polygon_mask(av_data_planck_orig,
-        #        cores[core]['box_vertices_rotated'])
+        mask = myg.get_polygon_mask(av_data_planck_orig,
+                cores[core]['box_vertices_rotated'])
 
         indices = mask == 1
 
