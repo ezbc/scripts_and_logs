@@ -24,14 +24,36 @@ def plot_correlations(correlations,velocity_centers,velocity_widths,
     import matplotlib
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    fig = plt.figure(figsize=(8,4))
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    font_scale = 8
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale * 3 / 4.0,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              #'figure.figsize': (8, 8 * y_scaling),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+
+    fig = plt.figure(figsize=(3,2))
 
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(1,1),
                  ngrids=1,
                  cbar_mode="single",
                  cbar_location='right',
-                 cbar_pad="0.3%",
+                 cbar_pad="3%",
                  cbar_size='6%',
                  axes_pad=0,
                  aspect=False,
@@ -64,7 +86,7 @@ def plot_correlations(correlations,velocity_centers,velocity_widths,
     im = ax.imshow(image, interpolation='nearest', origin='lower',
             extent=[velocity_widths[0],velocity_widths[-1],
                     velocity_centers[0],velocity_centers[-1]],
-            cmap=plt.cm.winter)
+            cmap=plt.cm.gray)
     cb = ax.cax.colorbar(im)
 
     #cb.set_clim(vmin=0.)
@@ -171,10 +193,10 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         av_image_error_corr = av_image_error[indices]
 
         # Normalize images by their mean
-        nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
-                          nhi_image_error_corr
-        av_image_corr = (av_image_corr - av_image_corr.mean()) / \
-                         av_image_error_corr
+        #nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
+        #                  nhi_image_error_corr
+        #av_image_corr = (av_image_corr - av_image_corr.mean()) / \
+        #                 av_image_error_corr
 
         #correlations[i] = np.sum(np.abs(nhi_image_corr - av_image_corr))
 
@@ -486,7 +508,7 @@ def main():
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
     velocity_centers = np.arange(0, 20, 1)
-    velocity_widths = np.arange(2, 30, 1)
+    velocity_widths = np.arange(1, 30, 1)
     #velocity_centers = np.linspace(-10, 10, 7)
     #velocity_widths = np.linspace(2, 30, 5)
     #velocity_centers = np.linspace(-10, 10, 14)

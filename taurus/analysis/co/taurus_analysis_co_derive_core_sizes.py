@@ -575,7 +575,7 @@ def main():
                 title=r'taurus: A$_V$ map with core boxed-regions.',
                 savedir=figure_dir,
                 cores=cores,
-                filename='taurus_co_cores_map.%s' % \
+                filename='taurus_av_cores_map.%s' % \
                         figure_type,
                 show=show)
 

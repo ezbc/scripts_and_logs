@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
 '''
 
 import pyfits as pf
@@ -24,14 +24,36 @@ def plot_correlations(correlations,velocity_centers,velocity_widths,
     import matplotlib
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-    fig = plt.figure(figsize=(8,4))
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    font_scale = 8
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale * 3 / 4.0,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              #'figure.figsize': (8, 8 * y_scaling),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+
+    fig = plt.figure(figsize=(3,2))
 
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(1,1),
                  ngrids=1,
                  cbar_mode="single",
                  cbar_location='right',
-                 cbar_pad="0.3%",
+                 cbar_pad="3%",
                  cbar_size='6%',
                  axes_pad=0,
                  aspect=False,
@@ -64,7 +86,7 @@ def plot_correlations(correlations,velocity_centers,velocity_widths,
     im = ax.imshow(image, interpolation='nearest', origin='lower',
             extent=[velocity_widths[0],velocity_widths[-1],
                     velocity_centers[0],velocity_centers[-1]],
-            cmap=plt.cm.winter)
+            cmap=plt.cm.gray)
     cb = ax.cax.colorbar(im)
 
     #cb.set_clim(vmin=0.)
@@ -169,15 +191,16 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         nhi_image_error_corr = nhi_image_error[indices]
         av_image_corr = av_image[indices]
         av_image_error_corr = av_image_error[indices]
+
+        # Normalize images by their mean
+        #nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
+        #                  nhi_image_error_corr
+        #av_image_corr = (av_image_corr - av_image_corr.mean()) / \
+        #                 av_image_error_corr
+
+        #correlations[i] = np.sum(np.abs(nhi_image_corr - av_image_corr))
+
         # Use Pearson's correlation test to compare images
-
-        nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
-                          nhi_image_error_corr
-        av_image_corr = (av_image_corr - av_image_corr.mean()) / \
-                          av_image_error_corr
-
-        correlations[i] = np.sum(np.abs(nhi_image_corr - av_image_corr))
-
         correlations[i] = pearsonr(nhi_image_corr.ravel(),
                 av_image_corr.ravel())[0]
 
@@ -203,10 +226,10 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
                       filename='correlation.png')
 
     # Find best-correlating velocity range
-    best_corr = correlations.max()
-    best_corr_index = np.where(correlations == best_corr)
-    best_corr_vel_range = velocity_ranges[best_corr_index][0]
-    best_corr_vel_range = best_corr_vel_range.tolist()
+    #best_corr = correlations.max()
+    #best_corr_index = np.where(correlations == best_corr)
+    #best_corr_vel_range = velocity_ranges[best_corr_index][0]
+    #best_corr_vel_range = best_corr_vel_range.tolist()
 
     correlations_image = np.empty((velocity_centers.shape[0],
                                    velocity_widths.shape[0]))
@@ -219,33 +242,52 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     max_index = np.where(correlations_image == correlations_image.max())
 
-    v1 = np.sum(correlations_image, axis=1)
-    v1 = correlations_image[:, max_index[1][0]]
-    v1_confint = threshold_area(velocity_centers, v1, area_fraction=0.68)
+    # Define parameter resolutions
+    delta_center = velocity_centers[1] - velocity_centers[0]
+    delta_width = velocity_widths[1] - velocity_widths[0]
 
-    v2 = np.sum(correlations_image, axis=0)
-    v2 = correlations_image[max_index[0][0], :]
-    v2_confint = threshold_area(velocity_widths, v2, area_fraction=0.68)
+    center_corr = np.sum(correlations_image, axis=1) * delta_center
+    center_corr = correlations_image[:, max_index[1][0]]
+    center_confint = threshold_area(velocity_centers,
+                                         center_corr,
+                                         area_fraction=0.68)
 
-    import matplotlib.pyplot as plt
-    #plt.plot(v1, label='centers')
-    #plt.plot(v2, label='widths')
-    #plt.hist(v2)
-    #plt.legend()
-    #plt.show()
+    width_corr = np.sum(correlations_image, axis=0) * delta_width
+    width_corr = correlations_image[max_index[0][0], :]
+    width_confint = threshold_area(velocity_widths,
+                                        width_corr,
+                                        area_fraction=0.68)
 
-    print('vel centers = {0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(v1_confint[0],
-                                                        v1_confint[2],
-                                                        np.abs(v1_confint[1])))
+    print('Velocity widths = ' + \
+            '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(width_confint[0],
+                                                    width_confint[2],
+                                                    np.abs(width_confint[1])))
+    print('Velocity centers = ' + \
+            '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(center_confint[0],
+                                                    center_confint[2],
+                                                    np.abs(center_confint[1])))
 
-    print('vel widths = {0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(v1_confint[0],
-                                                        v2_confint[2],
-                                                        np.abs(v2_confint[1])))
+    # Write PDF
 
+    center = center_confint[0]
+    upper_lim = (center_confint[0] + width_confint[0]/2.)
+    lower_lim = (center_confint[0] - width_confint[0]/2.)
+    upper_lim_error = (center_confint[2]**2 + width_confint[2]**2)**0.5
+    lower_lim_error = (center_confint[1]**2 + width_confint[1]**2)**0.5
+
+    vel_range_confint = (lower_lim, upper_lim, lower_lim_error, upper_lim_error)
+
+    '''
     if not return_correlations:
     	return best_corr_vel_range, best_corr
     else:
     	return best_corr_vel_range, best_corr, correlations
+    '''
+
+    if not return_correlations:
+        return vel_range_confint
+    else:
+        return vel_range_confint, correlations, center_corr, width_corr
 
 def threshold_area(x, y, area_fraction=0.68):
 
@@ -419,7 +461,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -465,8 +507,10 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
-    velocity_centers = np.linspace(-10, 10, 20)
-    velocity_widths = np.linspace(2, 30, 27)
+    velocity_centers = np.arange(0, 20, 1)
+    velocity_widths = np.arange(1, 30, 1)
+    #velocity_centers = np.linspace(-10, 10, 7)
+    #velocity_widths = np.linspace(2, 30, 5)
     #velocity_centers = np.linspace(-10, 10, 14)
     #velocity_widths = np.linspace(2, 30, 15)
     #velocity_centers = np.linspace(-20, 20, 15)
@@ -474,32 +518,32 @@ def main():
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'perseus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
     velocity_axis = make_velocity_axis(h)
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -510,13 +554,13 @@ def main():
             return_header=True)
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'perseus_av_boxes_',
             header = h)
 
     for core in cores:
@@ -526,7 +570,7 @@ def main():
         mask = myg.get_polygon_mask(av_data_planck,
                 cores[core]['box_vertices_rotated'])
 
-        indices = mask == 1
+        #indices = mask == 1
         indices = ((mask == 0) &\
                    (av_data_planck / av_error_data_planck > 5))
 
@@ -538,7 +582,7 @@ def main():
         av_error_data_sub = np.copy(av_error_data_planck[indices])
 
         # Correlate each core region Av and N(HI) for velocity ranges
-        hi_vel_range, correlation_coeff, correlations = \
+        vel_range_confint, correlations, center_corr, width_corr = \
                 correlate_hi_av(hi_cube=hi_data_sub,
                                 hi_velocity_axis=velocity_axis,
                                 hi_noise_cube=noise_cube_sub,
@@ -549,14 +593,22 @@ def main():
                                 return_correlations=True)
 
         print('HI velocity integration range:')
-        print('%.1f to %.1f km/s' % (hi_vel_range[0], hi_vel_range[1]))
-        print('With correlation of:')
-        print('%.2f' % correlation_coeff)
+        print('%.1f to %.1f km/s' % (vel_range_confint[0],
+                                     vel_range_confint[1]))
 
-        cores[core]['hi_velocity_range'] = hi_vel_range
-        cores[core]['correlation_coeff'] = correlation_coeff
+        #print('Median center + width correlations')
+        #print(np.median(center_corr))
+        #print(np.median(width_corr))
 
-    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
+        cores[core]['hi_velocity_range'] = vel_range_confint[0:2]
+        cores[core]['hi_velocity_range_error'] = vel_range_confint[2:]
+        cores[core]['center_corr'] = center_corr.tolist()
+        cores[core]['width_corr'] = width_corr.tolist()
+        cores[core]['vel_centers'] = velocity_centers.tolist()
+        cores[core]['vel_widths'] = velocity_widths.tolist()
+        #cores[core]['correlation_coeff'] = correlation_coeff
+
+    with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
         json.dump(cores, f)
 
 if __name__ == '__main__':

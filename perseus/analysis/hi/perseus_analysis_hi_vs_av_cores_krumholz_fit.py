@@ -1429,17 +1429,38 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             center_correlations_recreate[i] = center_rv.rvs()
             width_correlations_recreate[i] = width_rv.rvs()
 
-    	fig = plt.figure(figsize=(5, 5))
+        plt.clf()
+        plt.rcdefaults()
+        colormap = plt.cm.gist_ncar
+        font_scale = 8
+        params = {#'backend': .pdf',
+                  'axes.labelsize': font_scale,
+                  'axes.titlesize': font_scale,
+                  'text.fontsize': font_scale,
+                  'legend.fontsize': font_scale * 3 / 4.0,
+                  'xtick.labelsize': font_scale,
+                  'ytick.labelsize': font_scale,
+                  'font.weight': 500,
+                  'axes.labelweight': 500,
+                  'text.usetex': False,
+                  #'figure.figsize': (8, 8 * y_scaling),
+                  #'axes.color_cycle': color_cycle # colors of different plots
+                 }
+        plt.rcParams.update(params)
+
+    	fig = plt.figure(figsize=(4, 4))
     	ax = fig.add_subplot(111)
-        ax.hist(center_correlations_recreate, 30, alpha=0.5,
+    	center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
+    	width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
+        ax.hist(center_correlations_recreate, bins=center_bins, alpha=0.5,
                 label='Centers Reproduced', color='b', normed=True)
-        ax.hist(width_correlations_recreate, 30, alpha=0.5,
+        ax.hist(width_correlations_recreate, bins=width_bins, alpha=0.5,
                 label='Widths Reproduced', color='r', normed=True)
         ax.plot(vel_centers, center_corr_normed, alpha=0.5,
                 label='Centers', color='k')
         ax.plot(vel_widths, width_corr_normed, alpha=0.5,
                 label='Widths', color='g')
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=font_scale * 3/4.0)
         ax.set_xlabel(r'Velocity (km/s)')
         ax.set_ylabel('Normalized value')
         plt.savefig(results_figure_name + '_PDF_hist.png')
@@ -1612,7 +1633,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         return images, hi_vel_range_sample, (phi_cnm, Z, phi_cnm_error,
                 Z_error)
     if N_runs == 1:
-        return images, (phi_cnm, Z)
+        return images, hi_vel_range_sample, (phi_cnm, Z)
 
 ''' Fitting Functions
 '''
@@ -1903,7 +1924,6 @@ def main(verbose=True):
     import numpy as np
     import numpy
     from os import system,path
-    import myclumpfinder as clump_finder
     reload(clump_finder)
     import mygeometry as myg
     reload(myg)
