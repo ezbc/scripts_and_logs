@@ -52,6 +52,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     nrows_ncols=(1,1)
     ngrids=1
 
+    '''
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
@@ -68,6 +69,9 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
 
     # create axes
     ax = imagegrid[0]
+    '''
+    ax = wcs.Axes(fig, [0.2, 0.15, 0.75, 0.8], header=header)
+    fig.add_axes(ax)
     cmap = cm.pink # colormap
     # show the image
     im = ax.imshow(av_image,
@@ -77,25 +81,26 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
             )
 
     # Asthetics
-    ax.set_display_coord_system("fk4")
+    ax.set_display_coord_system("fk5")
     ax.set_ticklabel_type("hms", "dms")
 
     ax.set_xlabel('Right Ascension (J2000)',)
     ax.set_ylabel('Declination (J2000)',)
 
+    ax.grid()
+    ax.locator_params(axis="x", nbins=6)
+    ax.locator_params(axis="y", nbins=6)
+
     # colorbar
-    cb = ax.cax.colorbar(im)
-    cmap.set_bad(color='w')
+    #cb = ax.cax.colorbar(im)
+    #cmap.set_bad(color='w')
     # plot limits
-    if limits is None:
-    	ax.set_xlim(0, av_image.shape[1])
-    	ax.set_ylim(0, av_image.shape[0])
     if limits is not None:
         ax.set_xlim(limits[0],limits[2])
         ax.set_ylim(limits[1],limits[3])
 
     # Write label to colorbar
-    cb.set_label_text(r'A$_V$ (Mag)',)
+    #cb.set_label_text(r'A$_V$ (Mag)',)
 
     # Convert sky to pix coordinates
     wcs_header = pywcs.WCS(header)
@@ -112,9 +117,9 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
 
         ax.annotate(core,
                 xy=[pix_coords[0], pix_coords[1]],
-                xytext=(-20,5),
+                xytext=(5,5),
                 textcoords='offset points',
-                color=(1, 1, 1))
+                color=anno_color)
 
         if boxes:
             vertices = np.copy(cores[core]['box_vertices_rotated'])
@@ -127,6 +132,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
+    	plt.draw()
         plt.savefig(savedir + filename)
     if show:
         fig.show()
@@ -297,7 +303,6 @@ def fit_profile(radii, profile, function, sigma=None):
 
     return profile_fit
 
-
 ''' DS9 Region and Coordinate Functions
 '''
 
@@ -403,7 +408,7 @@ def read_ds9_region(filename):
     try:
         region = pyr.open(filename)
     except IOError:
-    	return None
+        return None
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -450,9 +455,8 @@ def main():
     import json
 
     # parameters used in script
-    box_width = 8 # in pixels
-    box_height = 30 # in pixels
-    angle_res = 10.0 # resolution to permute through angles
+    box_width = 10 # in pixels
+    box_height = 40 # in pixels
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
@@ -489,12 +493,15 @@ def main():
     core_name_list = []
 
     box_dict = derive_ideal_box(av_data, cores, box_width, box_height,
-            core_rel_pos=0.1, angle_res=angle_res, av_image_error=av_error_data)
+            core_rel_pos=0.1, angle_res=10., av_image_error=av_error_data)
 
     for core in cores:
         cores[core]['box_vertices_rotated'] = \
             box_dict[core]['box_vertices_rotated'].tolist()
-        cores[core]['center_pixel'] = cores[core]['center_pixel']
+        try:
+            cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
+        except AttributeError:
+            cores[core]['center_pixel'] = cores[core]['center_pixel']
 
     with open(core_dir + 'california_core_properties.txt', 'w') as f:
         json.dump(cores, f)
@@ -510,7 +517,8 @@ def main():
     figure_types = ['pdf', 'png']
     for figure_type in figure_types:
         plot_av_image(av_image=av_data, header=av_header,
-                boxes=True, cores=cores, #limits=[50,37,200,160],
+                boxes=True, cores=cores,
+                limits=[50,50,340,230],
                 title=r'california: A$_V$ map with core boxed-regions.',
                 savedir=figure_dir,
                 filename='california_av_cores_map.%s' % \

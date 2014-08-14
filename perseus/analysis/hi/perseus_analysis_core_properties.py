@@ -22,25 +22,19 @@ def main():
                  'threshold': None,
                  'box_wcs': None,
                  },
-             #'B4':
-             #   {'center_wcs': [(3, 44, 18), (32, 05, 20)],
-             #    'map': None,
-             #    'threshold': None,
-             #    'box_wcs': None,
-             #    },
              'B5':
                 {'center_wcs': [(3, 47, 34), (32, 48, 17)],
                  'map': None,
                  'threshold': None,
                  'box_wcs': None,
                  },
-             'B1':
+             'B1E':
                 {'center_wcs': [(3, 36, 27), (31, 07, 18)],
                  'map': None,
                  'threshold': None,
                  'box_wcs': None,
                  },
-             'B1E':
+             'B1':
                 {'center_wcs': [(3, 33, 31), (31, 10, 31)],
                  'map': None,
                  'threshold': None,

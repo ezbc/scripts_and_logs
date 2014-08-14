@@ -103,8 +103,9 @@ def main():
     delta_ra = -0.083333333
     delta_dec = 0.083333333
 
-    ref_pix, npix = calc_image_origin(x_limits=(74.5, 61.5),
-                                      y_limits=(28.066, 40.0),
+    # Greater RA value comes first
+    ref_pix, npix = calc_image_origin(x_limits=(81, 55),
+                                      y_limits=(25, 45),
                                       delta_x=delta_ra,
                                       delta_y=delta_dec)
 

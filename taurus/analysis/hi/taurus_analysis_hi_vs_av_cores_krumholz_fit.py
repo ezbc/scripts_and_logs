@@ -552,13 +552,13 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     from mpl_toolkits.axes_grid1 import ImageGrid
 
     n = int(np.ceil(len(rh2_images)**0.5))
-    if n**2 > len(rh2_images) - n:
-    	nrows = n - 1
-    	ncols = n
+    if n**2 - n > len(rh2_images):
+        nrows = n - 1
+        ncols = n
         y_scaling = 1.0 - 1.0 / n
     else:
-    	nrows, ncols = n, n
-    	y_scaling = 1.0
+        nrows, ncols = n, n
+        y_scaling = 1.0
 
     # Set up plot aesthetics
     plt.clf()
@@ -584,8 +584,6 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     # Create figure instance
     fig = plt.figure()
 
-    n = int(np.ceil(len(rh2_images)**0.5))
-
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
                  ngrids=len(rh2_images),
@@ -597,9 +595,9 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     # Cycle through lists
 
     if len(phi_cnm_error_list) == 0:
-    	phi_cnm_error_list = None
+        phi_cnm_error_list = None
     if len(Z_error_list) == 0:
-    	Z_error_list = None
+        Z_error_list = None
 
     for i in xrange(len(rh2_images)):
         rh2 = rh2_images[i]
@@ -753,13 +751,13 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
     from mpl_toolkits.axes_grid1 import ImageGrid
 
     n = int(np.ceil(len(hi_images)**0.5))
-    if n**2 > len(hi_images) - n:
-    	nrows = n - 1
-    	ncols = n
+    if n**2  - n > len(hi_images):
+        nrows = n - 1
+        ncols = n
         y_scaling = 1.0 - 1.0 / n
     else:
-    	nrows, ncols = n, n
-    	y_scaling = 1.0
+        nrows, ncols = n, n
+        y_scaling = 1.0
 
     # Set up plot aesthetics
     plt.clf()
@@ -785,8 +783,6 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
     # Create figure instance
     fig = plt.figure()
 
-    n = int(np.ceil(len(hi_images)**0.5))
-
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
                  ngrids=len(hi_images),
@@ -801,8 +797,6 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
         av = av_images[i]
         hi_error = hi_error_images[i]
         av_error = av_error_images[i]
-        hi_fit = hi_fits[i]
-        av_fit = av_fits[i]
 
         # Drop the NaNs from the images
         if type(hi_error) is float:
@@ -849,10 +843,6 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
                 marker='^',ecolor='k',linestyle='none',
                 markersize=4
                 )
-
-        if hi_fit is not None:
-            ax.plot(av_fit, hi_fit,
-                    color = 'r')
 
         ax.set_xscale(scale[0], nonposx = 'clip')
         ax.set_yscale(scale[1], nonposy = 'clip')
@@ -1196,9 +1186,9 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
     best_corr_vel_range = velocity_ranges[best_corr_index][0]
 
     if not return_correlations:
-    	return best_corr_vel_range, best_corr
+        return best_corr_vel_range, best_corr
     else:
-    	return best_corr_vel_range, best_corr, correlations
+        return best_corr_vel_range, best_corr, correlations
 
 def select_hi_vel_range(co_data, co_header, flux_threshold=0.80,
         width_scale=1.):
@@ -1272,7 +1262,7 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
             header=hi_header)
 
     if nhi_error is not None:
-    	nhi_image_error = nhi_error
+        nhi_image_error = nhi_error
 
     # mask the image for NaNs
     #nhi_image = np.ma.array(nhi_image,
@@ -1341,7 +1331,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         av_image_error=None, hi_vel_range=None, hi_vel_range_error=None,
         N_runs=1, verbose=False, guesses=(10.0,1.0),
         parameter_vary=[True,True], core_dict=None, results_figure_name=None,
-        error_method='bootstrap'):
+        error_method='bootstrap', alpha=0.05):
 
     '''
 
@@ -1370,7 +1360,9 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         added.
     error_method : str
         Method with which to vary the hi_velocity_range. Options are
-        'bootstrap' and 'gaussian'.
+        'bootstrap' and 'gaussian' and 'threshold'.
+    alpha : float
+        Significance level of confidence interval.
 
     Returns
     -------
@@ -1387,9 +1379,10 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     from scipy.stats import rv_discrete
     import mystats
     import matplotlib.pyplot as plt
+    from scikits.bootstrap import ci
 
     if N_runs < 1:
-    	raise ValueError('N_runs must be >= 1')
+        raise ValueError('N_runs must be >= 1')
 
     verbose = False
 
@@ -1412,9 +1405,9 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     # The Monte Carlo will draw from this PDF randomly.
     # rv_discrete requires the PDF be normalized to have area of 1
     if center_correlations.min() < 0:
-    	center_correlations += np.abs(center_correlations.min())
+        center_correlations += np.abs(center_correlations.min())
     if width_correlations.min() < 0:
-    	width_correlations += np.abs(width_correlations.min())
+        width_correlations += np.abs(width_correlations.min())
     center_corr_normed = center_correlations / np.sum(center_correlations)
     width_corr_normed = width_correlations / np.sum(width_correlations)
 
@@ -1448,10 +1441,10 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                  }
         plt.rcParams.update(params)
 
-    	fig = plt.figure(figsize=(4, 4))
-    	ax = fig.add_subplot(111)
-    	center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
-    	width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
+        fig = plt.figure(figsize=(4, 4))
+        ax = fig.add_subplot(111)
+        center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
+        width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
         ax.hist(center_correlations_recreate, bins=center_bins, alpha=0.5,
                 label='Centers Reproduced', color='b', normed=True)
         ax.hist(width_correlations_recreate, bins=width_bins, alpha=0.5,
@@ -1540,6 +1533,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         results_dict['phi_cnm fits'][i] = phi_cnm
         results_dict['Z fits'][i] = Z
 
+
         if verbose:
             print('phi = %.2f' % phi_cnm)
             print('Z = %.2f' % Z)
@@ -1547,7 +1541,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         # see eq 6 of krumholz+09
         # phi_cnm is the number density of the CNM over the minimum number
         # density required for pressure balance
-        # the lower phi_cnm values than for taurus mean that perseus
+        # the lower phi_cnm values than for taurus mean that taurus
         # has a more diffuse CNM
 
         # By fitting the model to the observed R_H2 vs total H, you basically
@@ -1557,9 +1551,17 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         # density HI surface density = (1 - f_HI) * total hydrogen surface
         # density
 
+    # Remove failed fits
+    results_dict['phi_cnm fits'] = \
+        results_dict['phi_cnm fits']\
+            [~np.isnan(results_dict['phi_cnm fits'])]
+    results_dict['Z fits'] = \
+        results_dict['Z fits'] \
+            [~np.isnan(results_dict['Z fits'])]
+
     if results_figure_name is not None:
-    	fig = plt.figure(figsize=(5, 5))
-    	ax = fig.add_subplot(111)
+        fig = plt.figure(figsize=(5, 5))
+        ax = fig.add_subplot(111)
         ax.hist(results_dict['phi_cnm fits'],
                 bins=np.logspace(0, 3, 100))
         ax.set_xscale('log')
@@ -1567,8 +1569,18 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         ax.set_ylabel('Counts')
         plt.savefig(results_figure_name + '_phi_cnm_hist.png')
 
-    	fig = plt.figure(figsize=(5, 5))
-    	ax = fig.add_subplot(111)
+        fig = plt.figure(figsize=(5, 5))
+        ax = fig.add_subplot(111)
+        ax.hist(results_dict['phi_cnm fits'],
+                bins=1000)
+        ax.set_xscale('linear')
+        ax.set_xlim([0,40])
+        ax.set_xlabel(r'$\phi_{\rm CNM}$')
+        ax.set_ylabel('Counts')
+        plt.savefig(results_figure_name + '_phi_cnm_hist_linear.png')
+
+        fig = plt.figure(figsize=(5, 5))
+        ax = fig.add_subplot(111)
         ax.hist(results_dict['Z fits'],
                 bins=np.logspace(-1, 1, 100))
         ax.set_xscale('log')
@@ -1583,7 +1595,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
 
     nhi_error = np.std(results_dict['nhi errors'])
 
-    print('N(HI) error = %.2f K' % nhi_error)
+    #print('N(HI) error = %.2f K' % nhi_error)
 
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
@@ -1596,25 +1608,89 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                            #nhi_error=nhi_error
                            )
 
-    print('rh2 size', images['rh2'][images['rh2'] == images['rh2']].size)
+    #print('rh2 size', images['rh2'][images['rh2'] == images['rh2']].size)
 
-    # Bootstrap for errors
-    # --------------------
-    # Returns errors of a bootstrap simulation at the 100.*(1 - alpha)
-    # confidence interval. Errors are computed by deriving a cumulative
-    # distribution function of the medians of the sampled data and determining
-    # the distance between the median and the value including alpha/2 % of the
-    # data, and the value including alpha/2 % of the data.
-    samples = mystats.bootstrap(results_dict['phi_cnm fits'], 100)
-    phi_cnm_confint = mystats.calc_bootstrap_error(samples, 0.05)
-    samples = mystats.bootstrap(results_dict['Z fits'], 100)
-    Z_confint = mystats.calc_bootstrap_error(samples, 0.05)
+    if error_method == 'bootstrap':
+        # Bootstrap for errors
+        # --------------------
+        # Returns errors of a bootstrap simulation at the 100.*(1 - alpha)
+        # confidence interval. Errors are computed by deriving a cumulative
+        # distribution function of the medians of the sampled data and
+        # determining the distance between the median and the value including
+        # alpha/2 % of the data, and the value including alpha / 2 % of the
+        # data.
+        # samples = mystats.bootstrap(results_dict['phi_cnm fits'], 1000)
+        # phi_cnm_confint = mystats.calc_bootstrap_error(samples, alpha)
+        # samples = mystats.bootstrap(results_dict['Z fits'], 1000)
+        # Z_confint = mystats.calc_bootstrap_error(samples, alpha)
+        if parameter_vary[0]:
+            phi_cnm_confint = ci(results_dict['phi_cnm fits'],
+                                 statfunction=np.median,
+                                 alpha=alpha,
+                                 method='pi')
+            phi_cnm = np.median(results_dict['phi_cnm fits'])
+            phi_cnm_confint = (phi_cnm,
+                               phi_cnm + phi_cnm_confint[1],
+                               phi_cnm - phi_cnm_confint[0],
+                               )
+        else:
+            phi_cnm_confint = (results_dict['phi_cnm fits'][0], 0.0, 0.0)
+
+        if parameter_vary[1]:
+            Z_confint = ci(results_dict['Z fits'],
+                           statfunction=np.mean,
+                           alpha=alpha)
+            Z = np.median(results_dict['Z fits'])
+            Z_confint = (Z,
+                         Z + Z_confint[0],
+                         Z - Z_confint[1],
+                         )
+        else:
+            Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
+
+    elif error_method == 'threshold':
+        # If there is a distribution of the parameter, then find the
+        # confidence interval
+        if parameter_vary[0]:
+            # Create bins
+            phi_cnm_upper_lim = np.log10(np.max(results_dict['phi_cnm fits']))
+            phi_cnm_lower_lim = np.log10(np.min(results_dict['phi_cnm fits']))
+
+            # Histogram will act as distribution of parameter values
+            counts, bins = np.histogram(results_dict['phi_cnm fits'],
+                bins=np.logspace(phi_cnm_lower_lim, phi_cnm_upper_lim, 100))
+
+            # Lower threshold from peak until fraction of distribution included
+            phi_cnm_confint = threshold_area(bins[:-1], counts,
+                    area_fraction = 1.0 - alpha)
+
+            phi_cnm_confint = (phi_cnm_confint[0],
+                               phi_cnm_confint[2],
+                               phi_cnm_confint[1])
+
+        else:
+            phi_cnm_confint = (results_dict['phi_cnm fits'][0], 0.0, 0.0)
+
+        if parameter_vary[1]:
+            Z_upper_lim = np.log10(np.max(results_dict['Z fits']))
+            Z_lower_lim = np.log10(np.min(results_dict['Z fits']))
+            counts, bins = np.histogram(results_dict['Z fits'],
+                    bins=np.logspace(Z_lower_lim, Z_upper_lim, 100))
+            Z_confint = threshold_area(bins[:-1], counts,
+                    area_fraction = 1.0 - alpha)
+
+            Z_confint = (Z_confint[0],
+                         Z_confint[2],
+                         Z_confint[1])
+        else:
+            Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
+    else:
+        raise ValueError('Error method must be "bootstrap" or "threshold"')
 
     phi_cnm = phi_cnm_confint[0]
     phi_cnm_error = phi_cnm_confint[1:]
     Z = Z_confint[0]
     Z_error = Z_confint[1:]
-
 
     # Print results
     print('results are:')
@@ -1633,7 +1709,74 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         return images, hi_vel_range_sample, (phi_cnm, Z, phi_cnm_error,
                 Z_error)
     if N_runs == 1:
-        return images, (phi_cnm, Z)
+        return images, hi_vel_range_sample, (phi_cnm, Z)
+
+def threshold_area(x, y, area_fraction=0.68):
+
+    '''
+    Finds the limits of a 1D array which includes a given fraction of the
+    integrated data.
+
+    Parameters
+    ----------
+    data : array-like
+        1D array.
+    area_fraction : float
+        Fraction of area.
+
+    Returns
+    -------
+    limits : tuple
+        Lower and upper bound including fraction of area.
+
+    '''
+
+    import numpy as np
+    import numpy
+    from scipy.integrate import simps as integrate
+
+    # Step for lowering threshold
+    step = (np.max(y) - np.median(y)) / 100.0
+
+    # initial threshold
+    threshold = np.max(y) - step
+    threshold_area = 0.0
+
+    # area under whole function
+    area = integrate(y, x)
+
+    print area
+    print y
+
+    if type(area) != numpy.float64 or np.isnan(area):
+        raise ValueError('Integration of y and x failed. Check types.')
+
+    # Stop when the area below the threshold is greater than the max area
+    while threshold_area < area * area_fraction and threshold > 0:
+
+        threshold_indices = np.where(y > threshold)[0]
+
+        try:
+            bounds_indices = (threshold_indices[0], threshold_indices[-1])
+        except IndexError:
+            bounds_indices = ()
+
+        try:
+            threshold_area = integrate(y[bounds_indices[0]:bounds_indices[1]],
+                                       x[bounds_indices[0]:bounds_indices[1]])
+            threshold_area += threshold * (x[bounds_indices[1]] - \
+                                           x[bounds_indices[0]])
+        except IndexError:
+            threshold_area = 0
+
+        threshold -= step
+
+    x_peak = x[y == y.max()][0]
+    print x_peak, x[bounds_indices[0]]
+    low_error, up_error = x_peak - x[bounds_indices[0]], \
+                          x[bounds_indices[1]] - x_peak
+
+    return (x_peak, low_error, up_error)
 
 ''' Fitting Functions
 '''
@@ -1924,10 +2067,7 @@ def main(verbose=True):
     import numpy as np
     import numpy
     from os import system,path
-    import myclumpfinder as clump_finder
-    reload(clump_finder)
     import mygeometry as myg
-    reload(myg)
     from mycoords import make_velocity_axis
     import json
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
@@ -1942,10 +2082,15 @@ def main(verbose=True):
     reproduce_lee12 = True
 
     # Error analysis
-    calc_errors = True
-    N_monte_carlo_runs = 1000
-    vary_phi_cnm = True
-    vary_Z = True
+    calc_errors = True # Run monte carlo error analysis?
+    N_monte_carlo_runs = 500 # Number of monte carlo runs
+    vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
+    vary_Z = False # Vary metallicity in K+09 fit?
+    # Error method:
+    # options are 'threshold', 'bootstrap', 'gaussian'
+    error_method = 'threshold'
+    error_method = 'bootstrap'
+    alpha=0.05 # 1 - alpha = confidence
 
     # Regions
     # Options are 'ds9' or 'av_gradient'
@@ -1959,6 +2104,9 @@ def main(verbose=True):
 
     #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     h_sd_fit_range = [0.001, 1000] # range of fitted values for krumholz model
+
+    # Figures
+    write_pdf_figures = True
 
     # define directory locations
     # --------------------------
@@ -1998,6 +2146,7 @@ def main(verbose=True):
     with open(property_dir + 'taurus_global_properties.txt', 'r') as f:
         properties = json.load(f)
         dgr = properties['dust2gas_ratio']['value']
+        dgr_error = properties['dust2gas_ratio_error']['value']
         Z = properties['metallicity']['value']
 
     # Plot NHI vs. Av for a given velocity range
@@ -2068,7 +2217,7 @@ def main(verbose=True):
             mask = myg.get_polygon_mask(av_data_planck_orig,
                     cores[core]['box_vertices_rotated'])
         else:
-        	raise ValueError('Method for boxes is either ds9 or av_gradient')
+            raise ValueError('Method for boxes is either ds9 or av_gradient')
 
         indices = mask == 1
 
@@ -2116,7 +2265,7 @@ def main(verbose=True):
                                  hi_velocity_axis=velocity_axis,
                                  hi_header=h,
                                  dgr=dgr,
-                                 dgr_error=0.22e-2,
+                                 dgr_error=dgr_error,
                                  av_image=av_data_planck,
                                  av_image_error=av_error_data_planck,
                                  hi_vel_range=hi_vel_range,
@@ -2127,6 +2276,8 @@ def main(verbose=True):
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
                                          'taurus_%s' % core,
+                                 error_method=error_method,
+                                 alpha=alpha
                                  )
         else:
             images, params = run_analysis(hi_cube=hi_data,
@@ -2134,7 +2285,7 @@ def main(verbose=True):
                                  hi_velocity_axis=velocity_axis,
                                  hi_header=h,
                                  dgr=dgr,
-                                 dgr_error=0.22e-2,
+                                 dgr_error=dgr_error,
                                  av_image=av_data_planck,
                                  av_image_error=av_error_data_planck,
                                  hi_vel_range=hi_vel_range,
@@ -2192,7 +2343,10 @@ def main(verbose=True):
     # -------------------
     print('\nCreating figures...')
 
-    figure_types = ['png', 'pdf']
+    figure_types = ['png',]
+    if write_pdf_figures:
+        figure_types.append('pdf')
+
     for figure_type in figure_types:
         if hi_co_width or hi_av_correlation:
             plot_co_spectrum_grid(co_vel_axis,
@@ -2207,7 +2361,6 @@ def main(verbose=True):
                     core_names=core_name_list,
                     show = False)
 
-    for figure_type in figure_types:
         plot_rh2_vs_h_grid(rh2_image_list,
                 h_sd_image_list,
                 rh2_error_images = rh2_image_error_list,
@@ -2235,8 +2388,7 @@ def main(verbose=True):
                 h_sd_error_images = h_sd_image_error_list,
                 hi_fits = hi_sd_fit_list,
                 h_sd_fits = h_sd_fit_list,
-                #limits = [10**-1, 10**2, 10**0, 10**2],
-                #limits = [-5, 300, 3, 8],
+                #limits = [1, 100, 1, 100],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
                 filename = 'taurus_hi_vs_h_panels_planck_linear.%s' % \
@@ -2246,6 +2398,39 @@ def main(verbose=True):
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
+
+        plot_hi_vs_h_grid(hi_sd_image_list,
+                h_sd_image_list,
+                hi_sd_error_images = hi_sd_image_error_list,
+                h_sd_error_images = h_sd_image_error_list,
+                hi_fits = hi_sd_fit_list,
+                h_sd_fits = h_sd_fit_list,
+                limits = [1, 100, 1, 100],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('log', 'log'),
+                filename = 'taurus_hi_vs_h_panels_planck_log.%s' % \
+                        figure_type,
+                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
+                #        + ' of taurus Cores',
+                core_names=core_name_list,
+                phi_cnm_list=phi_cnm_list,
+                show = False)
+
+        plot_hi_vs_av_grid(hi_sd_image_list,
+                av_image_list,
+                hi_error_images = hi_sd_image_error_list,
+                av_error_images = h_sd_image_error_list,
+                #limits = [10**-1, 10**2, 10**0, 10**2],
+                limits = [1e-1, 70, 2, 10],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('log', 'linear'),
+                filename = 'taurus_hi_vs_av_panels_planck_log.%s' % \
+                        figure_type,
+                core_names=core_name_list,
+                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
+                #        + ' of taurus Cores',
+                show = False)
+
 
 if __name__ == '__main__':
     main()

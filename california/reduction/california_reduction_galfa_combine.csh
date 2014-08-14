@@ -1,6 +1,6 @@
 #!/bin/csh
 
-cd /d/bip3/ezbc/california/data/galfa
+cd /d/bip3/ezbc/california/data/hi/archive_files/
 
 foreach filename (GALFA*.fits)
   set base=`basename ${filename} .fits`
@@ -18,10 +18,10 @@ foreach mirdata (GALFA_HI*.mir)
 end
 
 imcomb "in=*_sub.mir"\
-out=california_galfa_cube.mir
+out=../california_hi_galfa_cube.mir
 
-fits in=california_galfa_cube.mir \
-out=california_galfa_cube.fits \
+fits in=../california_hi_galfa_cube.mir \
+out=../california_hi_galfa_cube.fits \
 op=xyout
 
 

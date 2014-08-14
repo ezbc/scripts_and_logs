@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
 '''
 
 import pyfits as pf
@@ -154,6 +154,7 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     import numpy as np
     from scipy.stats import pearsonr
+    from scipy.stats import kendalltau
     from myimage_analysis import calculate_nhi
     from scipy import signal
 
@@ -201,14 +202,16 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         #correlations[i] = np.sum(np.abs(nhi_image_corr - av_image_corr))
 
         # Use Pearson's correlation test to compare images
-        correlations[i] = pearsonr(nhi_image_corr.ravel(),
-                av_image_corr.ravel())[0]
+        #correlations[i] = pearsonr(nhi_image_corr.ravel(),
+        #        av_image_corr.ravel())[0]
+        correlations[i], pvalues[i] = kendalltau(nhi_image_corr.ravel(),
+                                                 av_image_corr.ravel())
 
         # Shows progress each 10%
-        #total = float(velocity_ranges.shape[0])
-        #abs_step = int((total * 1)/100) or 1
-        #if i and not i % abs_step:
-        #    print "{0:.2%} processed".format(i/total)
+        total = float(correlations.shape[0])
+        abs_step = int((total * 1)/100) or 1
+        if i and not i % abs_step:
+            print "\t{0:.2%} processed".format(i/total)
 
     #correlations /= correlations.max()
 
@@ -216,6 +219,8 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     correlations = np.ma.array(correlations,
             mask=(correlations != correlations))
+    pvalues = np.ma.array(pvalues,
+            mask=np.isnan(pvalues))
 
     plot_correlations(correlations,
                       velocity_centers,
@@ -461,7 +466,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -507,43 +512,39 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
-    velocity_centers = np.arange(0, 20, 1)
-    velocity_widths = np.arange(1, 30, 1)
-    #velocity_centers = np.linspace(-10, 10, 7)
-    #velocity_widths = np.linspace(2, 30, 5)
-    #velocity_centers = np.linspace(-10, 10, 14)
-    #velocity_widths = np.linspace(2, 30, 15)
-    #velocity_centers = np.linspace(-20, 20, 15)
-    #velocity_widths = np.linspace(2, 40, 15)
+    velocity_centers = np.arange(0, 10, 2)
+    velocity_widths = np.arange(1, 20, 4)
+    #velocity_centers = np.arange(-25, 15, 5)
+    #velocity_widths = np.arange(1, 50, 5)
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/perseus/data/av/'
-    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
-    co_dir = '/d/bip3/ezbc/perseus/data/co/'
-    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'perseus_av_planck_5arcmin.fits',
+                'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'perseus_av_error_planck_5arcmin.fits',
+                'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'perseus_hi_galfa_cube_regrid_planckres.fits',
+                'taurus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
     velocity_axis = make_velocity_axis(h)
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -554,13 +555,13 @@ def main():
             return_header=True)
 
     # define core properties
-    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'perseus_av_boxes_',
+            filename_base = region_dir + 'taurus_av_boxes_',
             header = h)
 
     for core in cores:
@@ -608,10 +609,16 @@ def main():
         cores[core]['vel_widths'] = velocity_widths.tolist()
         #cores[core]['correlation_coeff'] = correlation_coeff
 
-    with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
+    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
         json.dump(cores, f)
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
 
 

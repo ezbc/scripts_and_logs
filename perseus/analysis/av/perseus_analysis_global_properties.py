@@ -13,6 +13,9 @@ def main():
     properties = {'dust2gas_ratio' : {'value' : 1.1e-1,
                                       'unit' : '10^-22 mag / 10^20 cm^-2'
                                       },
+                  'dust2gas_ratio_error' : {'value' : 2.22e-2,
+                                            'unit' : '10^-22 mag / 10^20 cm^-2'
+                                      },
                   'metallicity' : {'value' : 1.00,
                                    'unit' : 'Z_solar'},
                   }

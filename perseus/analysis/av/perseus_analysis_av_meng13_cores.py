@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
 '''
 
 import pyfits as pf
@@ -9,8 +9,9 @@ import numpy as np
 ''' Plotting Functions
 '''
 
-def plot_av_image(av_image=None, header=None, cores=None, title=None,
-        limits=None, boxes=False, savedir='./', filename=None, show=True):
+def plot_av_image(av_image=None, header=None, cores=None, meng_cores=None,
+        title=None, limits=None, boxes=False, savedir='./', filename=None,
+        show=True):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -94,6 +95,17 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     # Write label to colorbar
     cb.set_label_text(r'A$_V$ (Mag)',)
 
+    # Plot Meng+13 cores
+    for i in xrange(meng_cores.shape[0]):
+    	if meng_cores[i, 0] > 0 and meng_cores[i, 0] < av_image.shape[1] and \
+           meng_cores[i, 1] > 0 and meng_cores[i, 1] < av_image.shape[0]:
+            ax.scatter(meng_cores[i, 0], meng_cores[i, 1],
+                    color='c',
+                    s=40,
+                    marker='^',
+                    linewidths=2,
+                    alpha=0.3)
+
     # Convert sky to pix coordinates
     wcs_header = pywcs.WCS(header)
     for core in cores:
@@ -106,6 +118,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
                 s=200,
                 marker='+',
                 linewidths=2)
+
 
         ax.annotate(core,
                 xy=[pix_coords[0], pix_coords[1]],
@@ -357,7 +370,7 @@ def get_pix_coords(ra=None, dec=None, header=None):
         ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
-    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
+    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg]], 0)[0]
 
     return pix_coords
 
@@ -407,7 +420,50 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def switch_coords(x_coords, y_coords, coord_type='equatorial'):
+
+    ''' Switches coordinates between equatorial and galactic.
+
+    Parameters
+    ----------
+    x_coords, y_coords : array-like
+        N-dimensional x and y coordinates
+    coord_type : str
+        Coordinate system of x_coords and y_coords. Options are 'equatorial'
+        and 'galactic'. Default is to switch between 'equatorial' to 'galactic'.
+
+    Returns
+    -------
+    x_coords_sw, y_coords_sw : array-like
+        N-dimensional x and y coordinates in the switched coordinate system.
+
+    '''
+
+    from astropy.coordinates import ICRS as eq
+    from astropy.coordinates import Galactic as gal
+    from astropy import units
+
+    # Convert coordinates to arrays
+    x_coords, y_coords = np.copy(x_coords), np.copy(y_coords)
+
+    if coord_type.lower() == 'galactic':
+        coords = gal(l=x_coords,
+                  b=y_coords,
+                  unit=(units.degree, units.degree)
+                  )
+        x_coords_sw = coords.icrs.ra.deg
+        y_coords_sw = coords.icrs.dec.deg
+    elif coord_type.lower() == 'equatorial':
+        coords = eq(ra=x_coords,
+                  dec=y_coords,
+                  unit=(units.degree, units.degree)
+                  )
+        x_coords_sw = coords.galactic.l.deg
+        y_coords_sw = coords.galactic.b.deg
+
+    return x_coords_sw, y_coords_sw
+
+def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -438,82 +494,87 @@ def main():
     import grid
     import numpy as np
     from os import system,path
-    import myclumpfinder as clump_finder
-    reload(clump_finder)
     import mygeometry as myg
-    reload(myg)
     from mycoords import make_velocity_axis
     import json
+    from astropy.io import ascii
 
-    # parameters used in script
-    box_width = 10 # in pixels
-    box_height = 40 # in pixels
 
     # define directory locations
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/maps/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
+    meng_dir = '/d/bip3/ezbc/perseus/data/meng13/'
 
-    # load Planck Av and GALFA HI images, on same grid
+    # load Planck Av images, on same grid
     av_data, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     # av_data[dec, ra], axes are switched
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
+    # write WCS to pixel coordinates
     cores = convert_core_coordinates(cores, av_header)
-
-    cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
-            header = av_header)
 
     av_image_list = []
     av_image_error_list = []
     core_name_list = []
 
-    box_dict = derive_ideal_box(av_data, cores, box_width, box_height,
-            core_rel_pos=0.1, angle_res=10., av_image_error=av_error_data)
+    # Read in table
+    meng13_data = ascii.read(meng_dir + 'meng13_core_properties.tsv')
 
-    for core in cores:
-        cores[core]['box_vertices_rotated'] = \
-            box_dict[core]['box_vertices_rotated'].tolist()
-        try:
-            cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
-        except AttributeError:
-            cores[core]['center_pixel'] = cores[core]['center_pixel']
+    glon, glat = meng13_data['GLON'], meng13_data['GLAT']
 
-    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
-        json.dump(cores, f)
+    # Only galactic longitude and latitude are in degrees, convert to Av image
+    # coordinates
+    (ra, dec) = switch_coords(glon, glat, coord_type='galactic')
 
-    for core in cores:
-        mask = myg.get_polygon_mask(av_data,
-                cores[core]['box_vertices_rotated'])
+    meng_core_pix = np.empty((len(ra), 2))
 
-        av_data_mask = np.copy(av_data)
-        av_data_mask[mask == 0] = np.NaN
+    # Get pixel coordinates
+    for i in xrange(len(ra)):
+        #if meng13_data['Reg'][i] == 'PMC':
+            #print ra[i], dec[i]
+            #print glon[i], glat[i]
+            #print  get_pix_coords(ra=ra[i],
+            #                      dec=dec[i],
+            #                      header=av_header)[0:2]
+        meng_core_pix[i, 0], meng_core_pix[i, 1] = get_pix_coords(ra=ra[i],
+                                                      dec=dec[i],
+                                                      header=av_header)[0:2]
+
+
+
+    # Write out new coords
+    #with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
+    #    json.dump(cores, f)
 
     # Plot
     figure_types = ['pdf', 'png']
     for figure_type in figure_types:
-        plot_av_image(av_image=av_data, header=av_header,
-                boxes=True, cores=cores, #limits=[50,37,200,160],
-                title=r'taurus: A$_V$ map with core boxed-regions.',
-                savedir=figure_dir,
-                filename='taurus_av_cores_map.%s' % \
-                        figure_type,
-                show=0)
+        plot_av_image(av_image=av_data,
+                      header=av_header,
+                      boxes=True,
+                      cores=cores,
+                      meng_cores=meng_core_pix,
+                      limits=[0,  0, 145, 105],
+                      #title=r'perseus: A$_V$ map with core boxed-regions.',
+                      savedir=figure_dir,
+                      filename='perseus_av_cores_map_meng13_cores.%s' % \
+                              figure_type,
+                      show=0)
 
 if __name__ == '__main__':
     main()

@@ -154,6 +154,7 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     import numpy as np
     from scipy.stats import pearsonr
+    from scipy.stats import kendalltau
     from myimage_analysis import calculate_nhi
     from scipy import signal
 
@@ -201,14 +202,16 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         #correlations[i] = np.sum(np.abs(nhi_image_corr - av_image_corr))
 
         # Use Pearson's correlation test to compare images
-        correlations[i] = pearsonr(nhi_image_corr.ravel(),
-                av_image_corr.ravel())[0]
+        #correlations[i] = pearsonr(nhi_image_corr.ravel(),
+        #        av_image_corr.ravel())[0]
+        correlations[i], pvalues[i] = kendalltau(nhi_image_corr.ravel(),
+                                                 av_image_corr.ravel())
 
         # Shows progress each 10%
-        #total = float(velocity_ranges.shape[0])
-        #abs_step = int((total * 1)/100) or 1
-        #if i and not i % abs_step:
-        #    print "{0:.2%} processed".format(i/total)
+        total = float(correlations.shape[0])
+        abs_step = int((total * 1)/100) or 1
+        if i and not i % abs_step:
+            print "\t{0:.2%} processed".format(i/total)
 
     #correlations /= correlations.max()
 
@@ -216,6 +219,8 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     correlations = np.ma.array(correlations,
             mask=(correlations != correlations))
+    pvalues = np.ma.array(pvalues,
+            mask=np.isnan(pvalues))
 
     plot_correlations(correlations,
                       velocity_centers,
@@ -613,5 +618,11 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
 
 

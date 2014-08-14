@@ -489,7 +489,10 @@ def main():
     for core in cores:
         cores[core]['box_vertices_rotated'] = \
             box_dict[core]['box_vertices_rotated'].tolist()
-        cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
+        try:
+            cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
+        except AttributeError:
+            cores[core]['center_pixel'] = cores[core]['center_pixel']
 
     with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
         json.dump(cores, f)
