@@ -10,7 +10,7 @@ import numpy as np
 ''' Plotting Functions
 '''
 def plot_correlations(correlations,velocity_centers,velocity_widths,
-        filename=None,show=True, returnimage=False):
+        savedir='./', filename=None,show=True, returnimage=False):
     ''' Plots a heat map of correlation values as a function of velocity width
     and velocity center.
     '''
@@ -72,9 +72,6 @@ def plot_correlations(correlations,velocity_centers,velocity_widths,
     except IndexError:
         print(' plot_correlations: O-d array input, cannot proceed')
 
-    # Normalize likelihoods
-    correlations_image /= np.sum(correlations_image)
-
     image = np.ma.array(correlations_image, mask=np.isnan(correlations_image))
 
     ax = imagegrid[0]
@@ -89,18 +86,15 @@ def plot_correlations(correlations,velocity_centers,velocity_widths,
     im = ax.imshow(image, interpolation='nearest', origin='lower',
             extent=[velocity_widths[0],velocity_widths[-1],
                     velocity_centers[0],velocity_centers[-1]],
-            cmap=plt.cm.gist_stern,
-            #cmap=plt.cm.gray,
-            #norm=matplotlib.colors.LogNorm(),
-            )
+            cmap=plt.cm.gray)
     cb = ax.cax.colorbar(im)
 
     #cb.set_clim(vmin=0.)
     # Write label to colorbar
-    cb.set_label_text(r'log L')
+    cb.set_label_text(r'Correlation coefficient')
 
-    fractions = np.array([0.95, 0.68])
-    levels = (1 + fractions * image.min())
+    fractions = np.array([0.95, 0.85, 0.75, 0.65,])
+    levels = fractions * image.max()
 
     cs = ax.contour(image, levels=levels, origin='lower',
             extent=[velocity_widths[0],velocity_widths[-1],
@@ -129,186 +123,7 @@ def plot_correlations(correlations,velocity_centers,velocity_widths,
     ax.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
 
     if filename is not None:
-        plt.savefig(filename,bbox_inches='tight')
-    if show:
-    	plt.draw()
-        plt.show()
-    if returnimage:
-        return correlations_image
-
-def plot_correlations_hist(correlations, velocity_centers, velocity_widths,
-        center_pdf=None, width_pdf=None, center_confint=None,
-        width_confint=None, filename=None, show=True, returnimage=False):
-
-    ''' Plots a heat map of correlation values as a function of velocity width
-    and velocity center.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 8
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    fig, ax_image = plt.subplots(figsize=(8,8))
-
-    # Unravel the correlations
-    correlations_image = np.empty((velocity_centers.shape[0],
-                                   velocity_widths.shape[0]))
-    correlations_image[:,:] = np.NaN
-    count = 0
-    try:
-        for i, center in enumerate(velocity_centers):
-            for j, width in enumerate(velocity_widths):
-                correlations_image[i,j] = correlations[count]
-                count += 1
-    except IndexError:
-        print(' plot_correlations: O-d array input, cannot proceed')
-
-    # Mask NaNs
-    image = np.ma.array(correlations_image, mask=np.isnan(correlations_image))
-
-    #plt.rc('text', usetex=False)
-    im = ax_image.imshow(image, interpolation='nearest', origin='lower',
-            extent=[velocity_widths[0], velocity_widths[-1],
-                    velocity_centers[0], velocity_centers[-1]],
-            cmap=plt.cm.gist_stern,
-            #cmap=plt.cm.gray,
-            #norm=matplotlib.colors.LogNorm(),
-            )
-
-    ax_image.set_aspect(1.)
-
-    ax_image.set_xlabel(r'Velocity Width (km/s)')
-    ax_image.set_ylabel(r'Velocity Center (km/s)')
-
-    # Ticks only every 5 km/s
-    #ax_image.set_xticks(np.arange(0, velocity_widths.shape[0], 1),#[::],
-    #                    velocity_centers)#[::])
-    #ax_image.set_yticks(np.arange(0, velocity_centers.shape[0], 1)[::5],
-    #                    velocity_centers[::5])
-
-    show_pdfs = 1
-
-    if show_pdfs:
-        divider = make_axes_locatable(ax_image)
-        ax_pdf_width = divider.append_axes("top", 1, pad=0.1, sharex=ax_image)
-        ax_pdf_center = divider.append_axes("right", 1, pad=0.1,
-                sharey=ax_image)
-
-        # make some labels invisible
-        plt.setp(ax_pdf_width.get_xticklabels() + \
-                 ax_pdf_center.get_yticklabels(),
-                 visible=False)
-
-        ax_pdf_width.plot(velocity_widths,
-                          width_pdf,
-                          color='k',
-                          drawstyle='steps-pre',
-                          linewidth=3,
-                          )
-        ax_pdf_center.plot(center_pdf,
-                           velocity_centers,
-                           color='k',
-                           drawstyle='steps-pre',
-                           linewidth=4,
-                           )
-
-        #axHistx.axis["bottom"].major_ticklabels.set_visible(False)
-        for tl in ax_pdf_width.get_xticklabels():
-            tl.set_visible(False)
-        wmax = width_pdf.max()
-        ticks = [0, 0.5*wmax, 1.0*wmax]
-        tick_labels = ['{0:.1f}'.format(ticks[0]),
-                       '{0:.1f}'.format(ticks[1]),
-                       '{0:.1f}'.format(ticks[2]),
-                        ]
-        ax_pdf_width.set_yticks(ticks)
-        ax_pdf_width.set_yticklabels(tick_labels)
-
-        for tl in ax_pdf_center.get_yticklabels():
-            tl.set_visible(False)
-        cmax = center_pdf.max()
-        ticks = [0, 0.5*cmax, 1.0*cmax]
-        tick_labels = ['{0:.1f}'.format(ticks[0]),
-                       '{0:.1f}'.format(ticks[1]),
-                       '{0:.1f}'.format(ticks[2]),
-                        ]
-        ax_pdf_center.set_xticks(ticks)
-        ax_pdf_center.set_xticklabels(tick_labels)
-
-        # Show confidence limits
-        if center_confint is not None:
-        	ax_pdf_center.axhspan(center_confint[0] - center_confint[1],
-        	                      center_confint[0] + center_confint[2],
-        	                      color='k',
-        	                      alpha=0.2)
-        if width_confint is not None:
-        	ax_pdf_width.axvspan(width_confint[0] - width_confint[1],
-        	                     width_confint[0] + width_confint[2],
-        	                      color='k',
-        	                      alpha=0.2)
-
-    #cb.set_clim(vmin=0.)
-    # Write label to colorbar
-    #cb.set_label_text(r'log L')
-
-    fractions = np.array([0.95, 0.68])
-    levels = (1 + fractions * image.min())
-
-    cs = ax_image.contour(image, levels=levels, origin='lower',
-            extent=[velocity_widths[0],velocity_widths[-1],
-                    velocity_centers[0],velocity_centers[-1]],
-            colors='k'
-            )
-
-    # Define a class that forces representation of float to look a certain way
-    # This remove trailing zero so '1.0' becomes '1'
-    class nf(float):
-         def __repr__(self):
-             str = '%.1f' % (self.__float__(),)
-             if str[-1]=='0':
-                 return '%.0f' % self.__float__()
-             else:
-                 return '%.1f' % self.__float__()
-
-    # Recast levels to new class
-    cs.levels = [nf(val) for val in fractions*100.0]
-
-    #fmt = {}
-    #for level, fraction in zip(cs.levels, fractions):
-    #    fmt[level] = fraction
-    fmt = '%r %%'
-
-    ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
-
-    if filename is not None:
-    	plt.draw()
-        plt.savefig(filename, bbox_inches='tight')
+        plt.savefig(savedir + filename,bbox_inches='tight')
     if show:
     	plt.draw()
         plt.show()
@@ -320,8 +135,7 @@ def plot_correlations_hist(correlations, velocity_centers, velocity_widths,
 
 def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         hi_noise_cube=None, av_image=None, av_image_error=None,
-        velocity_centers=None, velocity_widths=None, return_correlations=True,
-        dgr=None, plot_results=True, results_filename=''):
+        velocity_centers=None, velocity_widths=None, return_correlations=True):
 
     '''
     Parameters
@@ -350,8 +164,8 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
     count = 0
     for i, center in enumerate(velocity_centers):
         for j, width in enumerate(velocity_widths):
-            velocity_ranges[count, 0] = center - width/2.
-            velocity_ranges[count, 1] = center + width/2.
+            velocity_ranges[count,0] = center - width/2.
+            velocity_ranges[count,1] = center + width/2.
             count += 1
 
     # calculate the correlation coefficient for each velocity range
@@ -372,15 +186,12 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         # 1.0 mag corresponds to SNR = 1 / 0.2 ~ 5
         # (see Table 2 of Ridge et al. 2006).
         indices = np.where((nhi_image_temp == nhi_image_temp) & \
-                           (av_image == av_image))
+                (av_image == av_image))
 
         nhi_image_corr = nhi_image_temp[indices]
         nhi_image_error_corr = nhi_image_error[indices]
         av_image_corr = av_image[indices]
-        if type(av_image_error) != float:
-            av_image_error_corr = av_image_error[indices]
-        else:
-        	av_image_error_corr = av_image_error
+        av_image_error_corr = av_image_error[indices]
 
         # Normalize images by their mean
         #nhi_image_corr = (nhi_image_corr - nhi_image_corr.mean()) / \
@@ -393,42 +204,31 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         # Use Pearson's correlation test to compare images
         #correlations[i] = pearsonr(nhi_image_corr.ravel(),
         #        av_image_corr.ravel())[0]
-
-        av_image_model = nhi_image_corr * dgr
-        av_image_model_error = nhi_image_error_corr * dgr
-
-        logL = calc_logL(av_image_model,
-                         av_image_corr,
-                         data_error=av_image_error_corr)
-
-        correlations[i] = -logL
+        correlations[i], pvalues[i] = kendalltau(nhi_image_corr.ravel(),
+                                                 av_image_corr.ravel())
 
         # Shows progress each 10%
         total = float(correlations.shape[0])
-        abs_step = int((total * 1)/10) or 10
+        abs_step = int((total * 1)/100) or 1
         if i and not i % abs_step:
-            print "\t{0:.0%} processed".format(i/total)
+            print "\t{0:.2%} processed".format(i/total)
 
-    #correlations = np.exp(correlations / np.sum(correlations))
+    #correlations /= correlations.max()
 
-    # The following link is a great example for how to convert small log
-    # likelihoods to likelihoods
-    # http://stats.stackexchange.com/questions/66616/converting-normalizing-very-small-likelihood-values-to-probability
+    #correlations = 1.0 / correlations
 
-
-    # Normalize the log likelihoods
-    correlations -= correlations.max()
-
-    # Convert to likelihoods
-    correlations = np.exp(correlations)
-
-    # Normalize the likelihoods
-    correlations = correlations / np.sum(correlations)
-
-    # Avoid nans
     correlations = np.ma.array(correlations,
             mask=(correlations != correlations))
+    pvalues = np.ma.array(pvalues,
+            mask=np.isnan(pvalues))
 
+    plot_correlations(correlations,
+                      velocity_centers,
+                      velocity_widths,
+                      show=0,
+                      returnimage=False,
+                      savedir='/usr/users/ezbc/Desktop/',
+                      filename='correlation.png')
 
     # Find best-correlating velocity range
     #best_corr = correlations.max()
@@ -436,7 +236,6 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
     #best_corr_vel_range = velocity_ranges[best_corr_index][0]
     #best_corr_vel_range = best_corr_vel_range.tolist()
 
-    # Reshape array
     correlations_image = np.empty((velocity_centers.shape[0],
                                    velocity_widths.shape[0]))
     correlations_image[:,:] = np.NaN
@@ -452,19 +251,17 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
     delta_center = velocity_centers[1] - velocity_centers[0]
     delta_width = velocity_widths[1] - velocity_widths[0]
 
-    center_corr = np.sum(correlations_image, axis=1) / \
-            np.sum(correlations_image)
-    #center_corr = correlations_image[:, max_index[1][0]]
+    center_corr = np.sum(correlations_image, axis=1) * delta_center
+    center_corr = correlations_image[:, max_index[1][0]]
     center_confint = threshold_area(velocity_centers,
                                          center_corr,
-                                         area_fraction=0.95)
+                                         area_fraction=0.68)
 
-    width_corr = np.sum(correlations_image, axis=0) / \
-            np.sum(correlations_image)
-    #width_corr = correlations_image[max_index[0][0], :]
+    width_corr = np.sum(correlations_image, axis=0) * delta_width
+    width_corr = correlations_image[max_index[0][0], :]
     width_confint = threshold_area(velocity_widths,
                                         width_corr,
-                                        area_fraction=0.95)
+                                        area_fraction=0.68)
 
     print('Velocity widths = ' + \
             '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(width_confint[0],
@@ -485,24 +282,6 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     vel_range_confint = (lower_lim, upper_lim, lower_lim_error, upper_lim_error)
 
-    if plot_results:
-        plot_correlations(correlations,
-                          velocity_centers,
-                          velocity_widths,
-                          show=0,
-                          returnimage=False,
-                          filename=results_filename)
-        plot_correlations_hist(correlations,
-                              velocity_centers,
-                              velocity_widths,
-                              center_pdf=center_corr,
-                              width_pdf=width_corr,
-                              center_confint=center_confint,
-                              width_confint=width_confint,
-                              show=0,
-                              returnimage=False,
-                              filename=results_filename)
-
     '''
     if not return_correlations:
     	return best_corr_vel_range, best_corr
@@ -514,107 +293,6 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
         return vel_range_confint
     else:
         return vel_range_confint, correlations, center_corr, width_corr
-
-def calc_logL(model, data, data_error=None):
-
-    '''
-    Calculates log likelihood
-
-    http://www.physics.utah.edu/~detar/phys6720/handouts/curve_fit/curve_fit/node2.html
-
-    '''
-
-    if data_error is None:
-    	data_error = np.std(data)
-
-    logL = -np.sum(-(data - model)**2 / (2 * data_error**2)) / data.size
-
-    return logL
-
-def calc_model_chisq(params, av_image=None, av_image_error=None, hi_cube=None,
-        hi_velocity_axis=None, hi_noise_cube=None, dgr=None):
-
-    from myimage_analysis import calculate_nhi
-
-    velocity_range = params['low_vel'].value, params['high_vel'].value
-
-    nhi_image_temp, nhi_image_error = calculate_nhi(cube=hi_cube,
-            velocity_axis=hi_velocity_axis,
-            velocity_range=velocity_range,
-            noise_cube=hi_noise_cube)
-
-    # Select pixels with Av > 1.0 mag and Av_SNR > 5.0.
-    # Av > 1.0 mag is used to avoid too low Av.
-    # 1.0 mag corresponds to SNR = 1 / 0.2 ~ 5
-    # (see Table 2 of Ridge et al. 2006).
-    indices = np.where((nhi_image_temp == nhi_image_temp) & \
-                       (av_image == av_image) & \
-                       (av_image_error == av_image_error))
-
-    nhi_image_corr = nhi_image_temp[indices]
-    nhi_image_error_corr = nhi_image_error[indices]
-    av_image_data = av_image[indices]
-    av_image_error_data = av_image_error[indices]
-
-    # Create model image
-    av_image_model = nhi_image_corr * dgr
-    av_image_error_model = nhi_image_error_corr * dgr
-
-    chisq = np.sum((av_image_data - av_image_model)**2 / \
-                   (av_image_error_data**2))
-
-    return chisq
-
-def fit_hi_vel_range(guesses=None, av_image=None, av_image_error=None,
-        hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None, dgr=None):
-
-    from scipy.optimize import curve_fit
-    from scipy import stats
-    from lmfit import minimize, Parameters, report_fit, report_errors
-    from pprint import pprint
-
-    params = Parameters()
-    params.add('low_vel',
-               value=guesses[0],
-               min=-100,
-               max=100,
-               vary=True)
-    params.add('high_vel',
-               value=guesses[1],
-               min=-100,
-               max=100,
-               vary=True)
-
-    result = minimize(calc_model_chisq,
-                      params,
-                      kws={'av_image': av_image,
-                           'av_image_error': av_image_error,
-                           'hi_cube': hi_cube,
-                           'hi_velocity_axis': hi_velocity_axis,
-                           'hi_noise_cube': hi_noise_cube,
-                           'dgr': dgr},
-                      #method='BFGS',
-                      method='anneal',
-                      #method='powell',
-                      #method='SLSQP',
-                      options={'gtol': 1e-6,
-                               'disp': True,
-                               'maxiter' : 1e9}
-                      )
-
-    report_fit(params)
-    report_errors(params)
-    print result.values
-    print result.errorbars
-    #print(result.__dict__)
-    #print(dir(result))
-    #print result.vars
-    #print help(result)
-    print result.view_items()
-    print result.Bopt
-
-
-    #report_fit(result)
 
 def threshold_area(x, y, area_fraction=0.68):
 
@@ -820,7 +498,10 @@ def main():
     import numpy as np
     import numpy
     from os import system,path
+    import myclumpfinder as clump_finder
+    reload(clump_finder)
     import mygeometry as myg
+    reload(myg)
     from mycoords import make_velocity_axis
     import json
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
@@ -831,29 +512,23 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
-    velocity_centers = np.arange(0, 20, 3)
-    velocity_widths = np.arange(1, 50, 3)
-
-    # Which likelihood fits should be performed?
-    core_correlation = 0
-    global_correlation = 1
-
-    # Name of property files results are written to
-    global_property_file = 'perseus_global_properties.txt'
-    core_property_file = 'perseus_core_properties.txt'
-
-    # Threshold of Av below which we expect only atomic gas, in mag
-    av_threshold = 1
+    velocity_centers = np.arange(0, 20, 1)
+    velocity_widths = np.arange(1, 30, 1)
+    #velocity_centers = np.linspace(-10, 10, 7)
+    #velocity_widths = np.linspace(2, 30, 5)
+    #velocity_centers = np.linspace(-10, 10, 14)
+    #velocity_widths = np.linspace(2, 30, 15)
+    #velocity_centers = np.linspace(-20, 20, 15)
+    #velocity_widths = np.linspace(2, 40, 15)
 
     # define directory locations
     # --------------------------
     output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/perseus/figures/hi_velocity_range/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
     av_dir = '/d/bip3/ezbc/perseus/data/av/'
     hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
     co_dir = '/d/bip3/ezbc/perseus/data/co/'
     core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
     region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
@@ -884,12 +559,8 @@ def main():
             return_header=True)
 
     # define core properties
-    with open(core_dir + core_property_file, 'r') as f:
+    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
         cores = json.load(f)
-    with open(property_dir + global_property_file, 'r') as f:
-        global_props = json.load(f)
-
-    dgr = global_props['dust2gas_ratio']['value']
 
     cores = convert_core_coordinates(cores, h)
 
@@ -897,65 +568,23 @@ def main():
             filename_base = region_dir + 'perseus_av_boxes_',
             header = h)
 
-    if core_correlation:
-        for core in cores:
-            print('\nCalculating for core %s' % core)
+    for core in cores:
+        print('\nCalculating for core %s' % core)
 
-            # Grab the mask
-            mask = myg.get_polygon_mask(av_data_planck,
-                    cores[core]['box_vertices_rotated'])
+        # Grab the mask
+        mask = myg.get_polygon_mask(av_data_planck,
+                cores[core]['box_vertices_rotated'])
 
-            indices = ((mask == 0) &\
-                       (av_data_planck < av_threshold))
+        #indices = mask == 1
+        indices = ((mask == 0) &\
+                   (av_data_planck / av_error_data_planck > 5))
 
-            hi_data_sub = np.copy(hi_data[:, indices])
-            noise_cube_sub = np.copy(noise_cube[:, indices])
-            av_data_sub = np.copy(av_data_planck[indices])
-            av_error_data_sub = np.copy(av_error_data_planck[indices])
-
-            # Define filename for plotting results
-            results_filename = figure_dir + 'perseus_logL_%s.png' % core
-
-            # Correlate each core region Av and N(HI) for velocity ranges
-            vel_range_confint, correlations, center_corr, width_corr = \
-                    correlate_hi_av(hi_cube=hi_data_sub,
-                                    hi_velocity_axis=velocity_axis,
-                                    hi_noise_cube=noise_cube_sub,
-                                    av_image=av_data_sub,
-                                    av_image_error=av_error_data_sub,
-                                    dgr=dgr,
-                                    velocity_centers=velocity_centers,
-                                    velocity_widths=velocity_widths,
-                                    return_correlations=True,
-                                    plot_results=True,
-                                    results_filename=results_filename)
-
-            print('HI velocity integration range:')
-            print('%.1f to %.1f km/s' % (vel_range_confint[0],
-                                         vel_range_confint[1]))
-
-            cores[core]['hi_velocity_range'] = vel_range_confint[0:2]
-            cores[core]['hi_velocity_range_error'] = vel_range_confint[2:]
-            cores[core]['center_corr'] = center_corr.tolist()
-            cores[core]['width_corr'] = width_corr.tolist()
-            cores[core]['vel_centers'] = velocity_centers.tolist()
-            cores[core]['vel_widths'] = velocity_widths.tolist()
-
-        with open(core_dir + core_property_file, 'w') as f:
-            json.dump(cores, f)
-
-    if global_correlation:
-        print('\nCalculating correlations globally')
-
-        indices = ((av_data_planck < av_threshold))
-
+        #hi_data_sub = np.copy(hi_data)
+        #hi_data_sub[:, indices] = np.NaN
         hi_data_sub = np.copy(hi_data[:, indices])
         noise_cube_sub = np.copy(noise_cube[:, indices])
         av_data_sub = np.copy(av_data_planck[indices])
         av_error_data_sub = np.copy(av_error_data_planck[indices])
-
-        # Define filename for plotting results
-        results_filename = figure_dir + 'perseus_logL_global.png'
 
         # Correlate each core region Av and N(HI) for velocity ranges
         vel_range_confint, correlations, center_corr, width_corr = \
@@ -963,37 +592,29 @@ def main():
                                 hi_velocity_axis=velocity_axis,
                                 hi_noise_cube=noise_cube_sub,
                                 av_image=av_data_sub,
-                                av_image_error=0.25, #av_error_data_sub,
-                                dgr=dgr,
+                                av_image_error=av_error_data_sub,
                                 velocity_centers=velocity_centers,
                                 velocity_widths=velocity_widths,
-                                return_correlations=True,
-                                plot_results=True,
-                                results_filename=results_filename)
-
-        '''
-        fit_hi_vel_range(guesses=(0, 30),
-                         av_image=av_data_sub,
-                         av_image_error=av_error_data_sub,
-                         hi_cube=hi_data_sub,
-                         hi_velocity_axis=velocity_axis,
-                         hi_noise_cube=noise_cube_sub,
-                         dgr=dgr)
-        '''
+                                return_correlations=True)
 
         print('HI velocity integration range:')
         print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                      vel_range_confint[1]))
 
-        global_props['hi_velocity_range'] = vel_range_confint[0:2]
-        global_props['hi_velocity_range_error'] = vel_range_confint[2:]
-        global_props['center_corr'] = center_corr.tolist()
-        global_props['width_corr'] = width_corr.tolist()
-        global_props['vel_centers'] = velocity_centers.tolist()
-        global_props['vel_widths'] = velocity_widths.tolist()
+        #print('Median center + width correlations')
+        #print(np.median(center_corr))
+        #print(np.median(width_corr))
 
-        with open(property_dir + global_property_file, 'w') as f:
-            json.dump(global_props, f)
+        cores[core]['hi_velocity_range'] = vel_range_confint[0:2]
+        cores[core]['hi_velocity_range_error'] = vel_range_confint[2:]
+        cores[core]['center_corr'] = center_corr.tolist()
+        cores[core]['width_corr'] = width_corr.tolist()
+        cores[core]['vel_centers'] = velocity_centers.tolist()
+        cores[core]['vel_widths'] = velocity_widths.tolist()
+        #cores[core]['correlation_coeff'] = correlation_coeff
+
+    with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
+        json.dump(cores, f)
 
 if __name__ == '__main__':
     main()
