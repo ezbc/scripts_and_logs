@@ -1387,124 +1387,34 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     verbose = False
 
     # Results of monte carlo will be stored here
-    results_dict = {'phi_cnm fits' : np.empty((N_runs)),
-                    'Z fits' : np.empty((N_runs)),
-                    'nhi errors' : np.empty((N_runs))}
-    hi_vel_range_list = np.empty((N_runs, 2))
+    phi_cnm_fits = np.empty((3))
+    Z_fits = np.empty((3))
+    hi_vel_range_list = np.empty((3, 2))
 
-    # Get standard errors on images + the HI velocity range
-    hi_error = np.median(hi_noise_cube)
-    av_error = np.median(av_image_error)
-    #hi_vel_range_error = core_dict['hi_vel_range_error']
-    center_correlations = np.asarray(core_dict['center_corr'])
-    width_correlations = np.asarray(core_dict['width_corr'])
-    vel_centers = np.asarray(core_dict['vel_centers'])
-    vel_widths = np.asarray(core_dict['vel_widths'])
+    # Get smallest and largest HI velocity intervals
+    hi_vel_range_list[0, 0] = hi_vel_range[0] - hi_vel_range_error[0]
+    hi_vel_range_list[0, 1] = hi_vel_range[1] + hi_vel_range_error[1]
+    hi_vel_range_list[1, 0] = hi_vel_range[0]
+    hi_vel_range_list[1, 1] = hi_vel_range[1]
+    hi_vel_range_list[2, 0] = hi_vel_range[0] + hi_vel_range_error[0]
+    hi_vel_range_list[2, 1] = hi_vel_range[1] - hi_vel_range_error[1]
 
-    # Derive PDF of the velocity centers and widths.
-    # The Monte Carlo will draw from this PDF randomly.
-    # rv_discrete requires the PDF be normalized to have area of 1
-    if center_correlations.min() < 0:
-        center_correlations += np.abs(center_correlations.min())
-    if width_correlations.min() < 0:
-        width_correlations += np.abs(width_correlations.min())
-    center_corr_normed = center_correlations / np.sum(center_correlations)
-    width_corr_normed = width_correlations / np.sum(width_correlations)
-
-    center_rv = rv_discrete(values=(vel_centers, center_corr_normed))
-    width_rv = rv_discrete(values=(vel_widths, width_corr_normed))
-
-    if results_figure_name is not None:
-        # Recreate the distribution of correlations
-        center_correlations_recreate = np.zeros(10000)
-        width_correlations_recreate = np.zeros(10000)
-        for i in range(len(center_correlations_recreate)):
-            center_correlations_recreate[i] = center_rv.rvs()
-            width_correlations_recreate[i] = width_rv.rvs()
-
-        plt.clf()
-        plt.rcdefaults()
-        colormap = plt.cm.gist_ncar
-        font_scale = 8
-        params = {#'backend': .pdf',
-                  'axes.labelsize': font_scale,
-                  'axes.titlesize': font_scale,
-                  'text.fontsize': font_scale,
-                  'legend.fontsize': font_scale * 3 / 4.0,
-                  'xtick.labelsize': font_scale,
-                  'ytick.labelsize': font_scale,
-                  'font.weight': 500,
-                  'axes.labelweight': 500,
-                  'text.usetex': False,
-                  #'figure.figsize': (8, 8 * y_scaling),
-                  #'axes.color_cycle': color_cycle # colors of different plots
-                 }
-        plt.rcParams.update(params)
-
-        fig = plt.figure(figsize=(4, 4))
-        ax = fig.add_subplot(111)
-        center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
-        width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
-        ax.hist(center_correlations_recreate, bins=center_bins, alpha=0.5,
-                label='Centers Reproduced', color='b', normed=True)
-        ax.hist(width_correlations_recreate, bins=width_bins, alpha=0.5,
-                label='Widths Reproduced', color='r', normed=True)
-        ax.plot(vel_centers, center_corr_normed, alpha=0.5,
-                label='Centers', color='k')
-        ax.plot(vel_widths, width_corr_normed, alpha=0.5,
-                label='Widths', color='g')
-        ax.legend(fontsize=font_scale * 3/4.0)
-        ax.set_xlabel(r'Velocity (km/s)')
-        ax.set_ylabel('Normalized value')
-        plt.savefig(results_figure_name + '_PDF_hist.png')
-
-    # Run the Monte Carlo
+    # Run error analysis
     # -------------------
-    for i in xrange(N_runs):
-        if N_runs > 1:
-            # Randomly sample from Gaussian distribution
-            hi_random_error = normal(scale=hi_error, size=hi_noise_cube.shape)
-            av_random_error = normal(scale=av_error, size=av_image.shape)
-            dgr_random_error = normal(scale=dgr_error)
-            #hi_vel_range_random_error = normal(scale=hi_vel_range_error,
-            #                                   size=len(hi_vel_range))
+    for i in xrange(3):
 
-            # Randomly sample from discrete distribution
-            vel_center_random = center_rv.rvs()
-            vel_width_random = width_rv.rvs()
-
-            # Create the velocity range
-            hi_vel_range_noise = (vel_center_random - vel_width_random / 2.,
-                                  vel_center_random + vel_width_random / 2.)
-
-            hi_vel_range_list[i, 0] = hi_vel_range_noise[0]
-            hi_vel_range_list[i, 1] = hi_vel_range_noise[1]
-
-            # Add random error to images
-            hi_cube_noise = np.copy(hi_cube) + hi_random_error
-            av_image_noise = np.copy(av_image) + av_random_error
-            dgr_noise = dgr + dgr_random_error
-            #hi_vel_range_noise = np.asarray(hi_vel_range) + \
-            #    hi_vel_range_random_error
-        elif N_runs == 1:
-            hi_cube_noise = np.copy(hi_cube)
-            av_image_noise = np.copy(av_image)
-            dgr_noise = dgr
-            hi_vel_range_noise = np.asarray(hi_vel_range)
+        hi_vel_range = hi_vel_range_list[i]
 
         # Derive new images
-        images = derive_images(hi_cube=hi_cube_noise,
+        images = derive_images(hi_cube=hi_cube,
                                hi_velocity_axis=hi_velocity_axis,
                                hi_noise_cube=hi_noise_cube,
-                               hi_vel_range=hi_vel_range_noise,
+                               hi_vel_range=hi_vel_range,
                                hi_header=hi_header,
                                dgr=dgr,
-                               av_image=av_image_noise,
+                               av_image=av_image,
                                av_image_error=av_image_error,
                                )
-        # grab the N(HI) error
-        results_dict['nhi errors'][i] = \
-                np.mean(images['nhi'][images['nhi'] == images['nhi']])
 
         # Fit R_H2
         #---------
@@ -1530,9 +1440,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                                   rh2_error=rh2_error_ravel,
                                   verbose=verbose)
 
-        results_dict['phi_cnm fits'][i] = phi_cnm
-        results_dict['Z fits'][i] = Z
-
+        phi_cnm_fits[i] = phi_cnm
+        Z_fits[i] = Z
 
         if verbose:
             print('phi = %.2f' % phi_cnm)
@@ -1551,141 +1460,29 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         # density HI surface density = (1 - f_HI) * total hydrogen surface
         # density
 
-    # Remove failed fits
-    results_dict['phi_cnm fits'] = \
-        results_dict['phi_cnm fits']\
-            [~np.isnan(results_dict['phi_cnm fits'])]
-    results_dict['Z fits'] = \
-        results_dict['Z fits'] \
-            [~np.isnan(results_dict['Z fits'])]
-
-    if results_figure_name is not None:
-        fig = plt.figure(figsize=(5, 5))
-        ax = fig.add_subplot(111)
-        ax.hist(results_dict['phi_cnm fits'],
-                bins=np.logspace(0, 3, 100))
-        ax.set_xscale('log')
-        ax.set_xlabel(r'$\phi_{\rm CNM}$')
-        ax.set_ylabel('Counts')
-        plt.savefig(results_figure_name + '_phi_cnm_hist.png')
-
-        fig = plt.figure(figsize=(5, 5))
-        ax = fig.add_subplot(111)
-        ax.hist(results_dict['phi_cnm fits'],
-                bins=1000)
-        ax.set_xscale('linear')
-        ax.set_xlim([0,40])
-        ax.set_xlabel(r'$\phi_{\rm CNM}$')
-        ax.set_ylabel('Counts')
-        plt.savefig(results_figure_name + '_phi_cnm_hist_linear.png')
-
-        fig = plt.figure(figsize=(5, 5))
-        ax = fig.add_subplot(111)
-        ax.hist(results_dict['Z fits'],
-                bins=np.logspace(-1, 1, 100))
-        ax.set_xscale('log')
-        ax.set_xlabel(r'$Z$ $(Z_\odot)$')
-        ax.set_ylabel('Counts')
-        plt.savefig(results_figure_name + '_Z_hist.png')
-
     # Derive images
     # -------------
-    hi_vel_range_sample = (np.median(hi_vel_range_list[:, 0]),
-                           np.median(hi_vel_range_list[:, 1]))
-
-    nhi_error = np.std(results_dict['nhi errors'])
-
-    #print('N(HI) error = %.2f K' % nhi_error)
-
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
                            hi_noise_cube=hi_noise_cube,
-                           hi_vel_range=hi_vel_range_sample,
+                           hi_vel_range=hi_vel_range_list[1],
                            hi_header=hi_header,
                            dgr=dgr,
                            av_image=av_image,
                            av_image_error=av_image_error,
-                           #nhi_error=nhi_error
                            )
 
-    #print('rh2 size', images['rh2'][images['rh2'] == images['rh2']].size)
+    np.sort(phi_cnm_fits)
+    np.sort(Z_fits)
 
-    if error_method == 'bootstrap':
-        # Bootstrap for errors
-        # --------------------
-        # Returns errors of a bootstrap simulation at the 100.*(1 - alpha)
-        # confidence interval. Errors are computed by deriving a cumulative
-        # distribution function of the medians of the sampled data and
-        # determining the distance between the median and the value including
-        # alpha/2 % of the data, and the value including alpha / 2 % of the
-        # data.
-        # samples = mystats.bootstrap(results_dict['phi_cnm fits'], 1000)
-        # phi_cnm_confint = mystats.calc_bootstrap_error(samples, alpha)
-        # samples = mystats.bootstrap(results_dict['Z fits'], 1000)
-        # Z_confint = mystats.calc_bootstrap_error(samples, alpha)
-        if parameter_vary[0]:
-            phi_cnm_confint = ci(results_dict['phi_cnm fits'],
-                                 statfunction=np.median,
-                                 alpha=alpha,
-                                 method='pi')
-            phi_cnm = np.median(results_dict['phi_cnm fits'])
-            phi_cnm_confint = (phi_cnm,
-                               phi_cnm + phi_cnm_confint[1],
-                               phi_cnm - phi_cnm_confint[0],
-                               )
-        else:
-            phi_cnm_confint = (results_dict['phi_cnm fits'][0], 0.0, 0.0)
-
-        if parameter_vary[1]:
-            Z_confint = ci(results_dict['Z fits'],
-                           statfunction=np.mean,
-                           alpha=alpha)
-            Z = np.median(results_dict['Z fits'])
-            Z_confint = (Z,
-                         Z + Z_confint[0],
-                         Z - Z_confint[1],
-                         )
-        else:
-            Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
-
-    elif error_method == 'threshold':
-        # If there is a distribution of the parameter, then find the
-        # confidence interval
-        if parameter_vary[0]:
-            # Create bins
-            phi_cnm_upper_lim = np.log10(np.max(results_dict['phi_cnm fits']))
-            phi_cnm_lower_lim = np.log10(np.min(results_dict['phi_cnm fits']))
-
-            # Histogram will act as distribution of parameter values
-            counts, bins = np.histogram(results_dict['phi_cnm fits'],
-                bins=np.logspace(phi_cnm_lower_lim, phi_cnm_upper_lim, 100))
-
-            # Lower threshold from peak until fraction of distribution included
-            phi_cnm_confint = threshold_area(bins[:-1], counts,
-                    area_fraction = 1.0 - alpha)
-
-            phi_cnm_confint = (phi_cnm_confint[0],
-                               phi_cnm_confint[2],
-                               phi_cnm_confint[1])
-
-        else:
-            phi_cnm_confint = (results_dict['phi_cnm fits'][0], 0.0, 0.0)
-
-        if parameter_vary[1]:
-            Z_upper_lim = np.log10(np.max(results_dict['Z fits']))
-            Z_lower_lim = np.log10(np.min(results_dict['Z fits']))
-            counts, bins = np.histogram(results_dict['Z fits'],
-                    bins=np.logspace(Z_lower_lim, Z_upper_lim, 100))
-            Z_confint = threshold_area(bins[:-1], counts,
-                    area_fraction = 1.0 - alpha)
-
-            Z_confint = (Z_confint[0],
-                         Z_confint[2],
-                         Z_confint[1])
-        else:
-            Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
-    else:
-        raise ValueError('Error method must be "bootstrap" or "threshold"')
+    phi_cnm_confint = (phi_cnm_fits[1],
+                       phi_cnm_fits[1] - phi_cnm_fits[0],
+                       phi_cnm_fits[2] - phi_cnm_fits[1],
+                       )
+    Z_confint = (Z_fits[1],
+                 Z_fits[1] - Z_fits[0],
+                 Z_fits[2] - Z_fits[1],
+                 )
 
     phi_cnm = phi_cnm_confint[0]
     phi_cnm_error = phi_cnm_confint[1:]
@@ -1693,7 +1490,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     Z_error = Z_confint[1:]
 
     # Print results
-    print('results are:')
+    print('Results:')
     print('phi_cnm = {0:.2f} +{1:.2f}/-{2:.2f}'.format(phi_cnm_confint[0],
                                                       phi_cnm_confint[1],
                                                       phi_cnm_confint[2]))
@@ -1701,15 +1498,11 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                                                   Z_confint[1],
                                                   Z_confint[2]))
 
-    print('Median HI velocity range:' + \
-          '{0:.1f} to {1:.1f} km/s'.format(hi_vel_range_sample[0],
-                                           hi_vel_range_sample[1],))
+    print('HI velocity range:' + \
+          '{0:.1f} to {1:.1f} km/s'.format(hi_vel_range[0],
+                                           hi_vel_range[1],))
 
-    if N_runs > 1:
-        return images, hi_vel_range_sample, (phi_cnm, Z, phi_cnm_error,
-                Z_error)
-    if N_runs == 1:
-        return images, hi_vel_range_sample, (phi_cnm, Z)
+    return images, (phi_cnm, Z, phi_cnm_error, Z_error)
 
 def threshold_area(x, y, area_fraction=0.68):
 
@@ -1883,7 +1676,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0], rh2_error=None,
     result = minimize(chisq,
                       params,
                       args=(h_sd, rh2, rh2_error),
-                      method='lbfgsb')
+                      method='L-BFGS-B')
 
     # Print fit results?
     #if verbose:
@@ -2083,24 +1876,12 @@ def main(verbose=True):
 
     # Error analysis
     calc_errors = True # Run monte carlo error analysis?
-    N_monte_carlo_runs = 500 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
-    # Error method:
-    # options are 'threshold', 'bootstrap', 'gaussian'
-    error_method = 'threshold'
-    error_method = 'bootstrap'
-    alpha=0.05 # 1 - alpha = confidence
 
     # Regions
     # Options are 'ds9' or 'av_gradient'
     box_method = 'av_gradient'
-
-    # HI velocity width
-    co_width_scale = 5.0 # for determining N(HI) vel range
-    # 0.758 is fraction of area of Gaussian between FWHM limits
-    co_flux_fraction = 0.758 # fraction of flux of average CO spectrum
-    hi_vel_range_scale = 1.0 # scale hi velocity range for Av/N(HI) correlation
 
     #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     h_sd_fit_range = [0.001, 1000] # range of fitted values for krumholz model
@@ -2148,6 +1929,9 @@ def main(verbose=True):
         dgr = properties['dust2gas_ratio']['value']
         dgr_error = properties['dust2gas_ratio_error']['value']
         Z = properties['metallicity']['value']
+        hi_vel_range_conf = properties['hi_velocity_range_conf']
+        hi_vel_range = properties['hi_velocity_range']
+        hi_vel_range_error = properties['hi_velocity_range_error']
 
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -2227,71 +2011,27 @@ def main(verbose=True):
         av_data_planck = np.copy(av_data_planck_orig[indices])
         av_error_data_planck = np.copy(av_error_data_planck_orig[indices])
 
-        # Determine velocity range of HI
-        if hi_co_width:
-            co_data_sub = co_data[:, indices]
-            co_image_list.append(np.sum(co_data_sub, axis=1) / \
-                    co_data_sub.shape[0])
-
-            # fit gaussians to CO data
-            hi_vel_range = select_hi_vel_range(co_data_sub,
-                    co_header,
-                    flux_threshold=co_flux_fraction,
-                    width_scale=co_width_scale)
-            hi_vel_range_list.append(hi_vel_range)
-        if hi_av_correlation:
-            hi_vel_range = cores[core]['hi_velocity_range']
-            #correlation_coeff = cores[core]['correlation_coeff']
-
-            hi_vel_range = (hi_vel_range[0] * hi_vel_range_scale,
-                    hi_vel_range[1] * hi_vel_range_scale)
-
-            # For plotting velocity range over CO spectra
-            if not hi_co_width:
-                co_data_sub = co_data[:, indices]
-                co_image_list.append(np.sum(co_data_sub, axis=1) / \
-                        co_data_sub.shape[0])
-            hi_vel_range_corr_list.append(hi_vel_range)
-
         # ---------------------------------------------------------------------
         # Perform analysis on cores, including fitting the Krumholz model.
-        # If calc_errors is True then a monte carlo is run by adding noise to
-        # AV and HI and refitting.
         # ---------------------------------------------------------------------
-        if calc_errors:
-            images, hi_vel_range, params = \
-                    run_analysis(hi_cube=hi_data,
-                                 hi_noise_cube=noise_cube,
-                                 hi_velocity_axis=velocity_axis,
-                                 hi_header=h,
-                                 dgr=dgr,
-                                 dgr_error=dgr_error,
-                                 av_image=av_data_planck,
-                                 av_image_error=av_error_data_planck,
-                                 hi_vel_range=hi_vel_range,
-                                 N_runs=N_monte_carlo_runs,
-                                 guesses=[10.0, 1.0],
-                                 parameter_vary=[vary_phi_cnm, vary_Z],
-                                 core_dict=cores[core],
-                                 results_figure_name=figure_dir + \
-                                         'monte_carlo_results/' + \
-                                         'taurus_%s' % core,
-                                 error_method=error_method,
-                                 alpha=alpha
-                                 )
-        else:
-            images, params = run_analysis(hi_cube=hi_data,
-                                 hi_noise_cube=noise_cube,
-                                 hi_velocity_axis=velocity_axis,
-                                 hi_header=h,
-                                 dgr=dgr,
-                                 dgr_error=dgr_error,
-                                 av_image=av_data_planck,
-                                 av_image_error=av_error_data_planck,
-                                 hi_vel_range=hi_vel_range,
-                                 N_runs=1,
-                                 guesses=[10.0, 1.0],
-                                 parameter_vary=[vary_phi_cnm, vary_Z])
+        images, params = \
+                run_analysis(hi_cube=hi_data,
+                             hi_noise_cube=noise_cube,
+                             hi_velocity_axis=velocity_axis,
+                             hi_header=h,
+                             dgr=dgr,
+                             dgr_error=dgr_error,
+                             av_image=av_data_planck,
+                             av_image_error=av_error_data_planck,
+                             hi_vel_range=hi_vel_range,
+                             hi_vel_range_error=hi_vel_range_error,
+                             guesses=[10.0, 1.0],
+                             parameter_vary=[vary_phi_cnm, vary_Z],
+                             core_dict=cores[core],
+                             results_figure_name=figure_dir + \
+                                     'monte_carlo_results/' + \
+                                     'taurus_%s' % core,
+                             )
 
         rh2_fit, h_sd_fit, f_H2, f_HI = calc_krumholz(params=params[:2],
                                             h_sd_extent=h_sd_fit_range,
@@ -2323,22 +2063,6 @@ def main(verbose=True):
         #p_value_list.append(p_value)
         core_name_list.append(core)
 
-    # Write velocity range properties to a file
-    if hi_co_width and hi_av_correlation:
-        with open(core_dir + 'taurus_hi_vel_properties.txt', 'w') as f:
-            f.write('core\tco_range\tco_high\tco_scale\thi_low\thi_high')
-            for i, core in enumerate(cores):
-                f.write('\n{0:s}\t{1:.1f}\t{2:.1f}\t{3:.1f}'.format(
-                            core,
-                            hi_vel_range_list[i][0],
-                            hi_vel_range_list[i][1],
-                            cores[core]['hi_velocity_range'][0]) + \
-                        '\t{0:.1f}\t{1:.1f}'.format(
-                            cores[core]['hi_velocity_range'][1],
-                            co_width_scale
-                            )
-                        )
-
     # Create the figures!
     # -------------------
     print('\nCreating figures...')
@@ -2348,19 +2072,6 @@ def main(verbose=True):
         figure_types.append('pdf')
 
     for figure_type in figure_types:
-        if hi_co_width or hi_av_correlation:
-            plot_co_spectrum_grid(co_vel_axis,
-                    co_image_list,
-                    vel_range_list=hi_vel_range_list,
-                    vel_range_hiav_list=hi_vel_range_corr_list,
-                    #limits = [0, 80, 10**-3, 10**2],
-                    savedir = figure_dir + 'panel_cores/',
-                    scale = ('linear', 'linear'),
-                    filename = 'taurus_core_co_spectra_grid.%s' % figure_type,
-                    title = r'Average $^{12}$CO spectra of taurus Cores',
-                    core_names=core_name_list,
-                    show = False)
-
         plot_rh2_vs_h_grid(rh2_image_list,
                 h_sd_image_list,
                 rh2_error_images = rh2_image_error_list,
@@ -2376,8 +2087,6 @@ def main(verbose=True):
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
-                #chisq_list=chisq_list,
-                #p_value_list=p_value_list,
                 Z_list=Z_list,
                 Z_error_list=Z_error_list,
                 show = False)
