@@ -40,7 +40,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              'figure.figsize': (8, 7),
+              'figure.figsize': (8, 8),
               'figure.titlesize': fontScale
               #'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -77,7 +77,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
             )
 
     # Asthetics
-    ax.set_display_coord_system("fk4")
+    ax.set_display_coord_system("fk5")
     ax.set_ticklabel_type("hms", "dms")
 
     ax.set_xlabel('Right Ascension (J2000)',)
@@ -109,9 +109,10 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
 
         ax.annotate(core,
                 xy=[pix_coords[0], pix_coords[1]],
-                xytext=(5,5),
+                xytext=(4,10),
                 textcoords='offset points',
-                color=anno_color)
+                #arrowprops=dict(facecolor='w'),
+                color='w')
 
         if boxes:
             vertices = np.copy(cores[core]['box_vertices_rotated'])
@@ -124,7 +125,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
-        plt.savefig(savedir + filename)
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -446,8 +447,9 @@ def main():
     import json
 
     # parameters used in script
-    box_width = 10 # in pixels
-    box_height = 40 # in pixels
+    box_width = 7 # in pixels
+    box_height = 22 # in pixels
+    angle_res = 15.0 # degrees
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
@@ -484,7 +486,7 @@ def main():
     core_name_list = []
 
     box_dict = derive_ideal_box(av_data, cores, box_width, box_height,
-            core_rel_pos=0.1, angle_res=10., av_image_error=av_error_data)
+            core_rel_pos=0.1, angle_res=angle_res, av_image_error=av_error_data)
 
     for core in cores:
         cores[core]['box_vertices_rotated'] = \
@@ -507,13 +509,28 @@ def main():
     # Plot
     figure_types = ['pdf', 'png']
     for figure_type in figure_types:
-        plot_av_image(av_image=av_data, header=av_header,
-                boxes=True, cores=cores, #limits=[50,37,200,160],
-                title=r'taurus: A$_V$ map with core boxed-regions.',
-                savedir=figure_dir,
-                filename='taurus_av_cores_map.%s' % \
-                        figure_type,
-                show=0)
+        plot_av_image(av_image=av_data,
+                      header=av_header,
+                      boxes=True,
+                      cores=cores,
+                      limits=[50,37,200,160],
+                      title=r'taurus: A$_V$ map with core boxed-regions.',
+                      savedir=figure_dir,
+                      filename='taurus_av_cores_map.%s' % \
+                      figure_type,
+                      show=0)
+
+        # For a poster
+        plot_av_image(av_image=av_data,
+                      header=av_header,
+                      boxes=True,
+                      cores=cores,
+                      limits=[50,37,200,160],
+                      #title=r'taurus: A$_V$ map with core boxed-regions.',
+                      savedir=figure_dir,
+                      filename='taurus_av_cores_map_poster.%s' % \
+                      figure_type,
+                      show=0)
 
 if __name__ == '__main__':
     main()

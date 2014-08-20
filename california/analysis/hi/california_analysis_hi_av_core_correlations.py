@@ -420,6 +420,9 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
             av_image_model = nhi_image_corr * dgr
             av_image_model_error = nhi_image_error_corr * dgr
 
+            print('median of model and data (mag)')
+            print(np.median(av_image_model), np.median(av_image_corr))
+
             logL = calc_logL(av_image_model,
                              av_image_corr,
                              data_error=av_image_error_corr)
@@ -865,8 +868,8 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or correlation with Av?
     hi_av_correlation = True
-    velocity_centers = np.arange(-15, 30, 1)
-    velocity_widths = np.arange(1, 80, 1)
+    velocity_centers = np.arange(-15, 30, 4)
+    velocity_widths = np.arange(1, 80, 4)
 
     # Which likelihood fits should be performed?
     core_correlation = 0
@@ -877,12 +880,12 @@ def main():
     core_property_file = 'california_core_properties.txt'
 
     # Threshold of Av below which we expect only atomic gas, in mag
-    av_threshold = 1
+    av_threshold = 100
 
     # Check if likelihood file already written, rewrite?>
     likelihood_filename = 'california_nhi_av_likelihoods'
     clobber = 0
-    hi_vel_range_conf = 0.68
+    hi_vel_range_conf = 0.50
 
     # Name of noise cube
     noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'

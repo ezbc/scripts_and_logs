@@ -734,7 +734,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename) #, bbox_inches='tight')
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -1399,6 +1399,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     hi_vel_range_list[2, 0] = hi_vel_range[0] + hi_vel_range_error[0]
     hi_vel_range_list[2, 1] = hi_vel_range[1] - hi_vel_range_error[1]
 
+    print 'hivel ranges', hi_vel_range_list
+
     # Run error analysis
     # -------------------
     for i in xrange(3):
@@ -1476,8 +1478,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     np.sort(Z_fits)
 
     phi_cnm_confint = (phi_cnm_fits[1],
-                       phi_cnm_fits[1] - phi_cnm_fits[0],
                        phi_cnm_fits[2] - phi_cnm_fits[1],
+                       phi_cnm_fits[1] - phi_cnm_fits[0],
                        )
     Z_confint = (Z_fits[1],
                  Z_fits[1] - Z_fits[0],
