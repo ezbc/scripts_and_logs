@@ -1935,6 +1935,8 @@ def main(verbose=True):
         hi_vel_range = properties['hi_velocity_range']
         hi_vel_range_error = properties['hi_velocity_range_error']
 
+    print dgr
+
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):

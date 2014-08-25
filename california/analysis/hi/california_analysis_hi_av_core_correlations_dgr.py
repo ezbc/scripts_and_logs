@@ -516,6 +516,14 @@ def correlate_hi_av(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
     dgr_corr = np.sum(correlations, axis=(0,1)) / \
             np.sum(correlations)
 
+    import matplotlib.pyplot as plt
+    plt.plot(velocity_centers, center_corr)
+    plt.show()
+    plt.plot(velocity_widths, width_corr)
+    plt.show()
+    plt.plot(dgrs, dgr_corr)
+    plt.show()
+
     # Derive confidence intervals of parameters
     center_confint = threshold_area(velocity_centers,
                                     center_corr,
@@ -930,7 +938,7 @@ def main():
 
     # Check if likelihood file already written, rewrite?>
     likelihood_filename = 'california_nhi_av_likelihoods'
-    clobber = 1
+    clobber = 0
     conf = 0.68
 
     # Name of noise cube
