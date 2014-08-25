@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av likelihoodelation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av likelihoodelation for the perseus molecular cloud.
 '''
 
 import pyfits as pf
@@ -221,7 +221,6 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
     extent = np.ravel(np.array((x_extent, y_extent)))
 
     print extent
-
     print 'x_grid', x_grid.size
     print 'x_grid', x_grid
     print 'y_grid', y_grid.size
@@ -348,7 +347,6 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
 
     if filename is not None:
         plt.draw()
-        print filename
         plt.savefig(filename, bbox_inches='tight')
     if show:
         plt.draw()
@@ -559,12 +557,12 @@ def calc_likelihood_hi_av(hi_cube=None, hi_velocity_axis=None,
             upper_lim_error)
 
     if plot_results:
-        plot_likelihoods(likelihoods[:,:, len(dgrs)/2],
-                          velocity_centers,
-                          velocity_widths,
-                          show=0,
-                          returnimage=False,
-                          filename=results_filename)
+        #plot_likelihoods(likelihoods[:,:, len(dgrs)/2],
+        #                  velocity_centers,
+        #                  velocity_widths,
+        #                  show=0,
+        #                  returnimage=False,
+        #                  filename=results_filename)
         plot_likelihoods_hist(likelihoods,
                               velocity_centers,
                               velocity_widths,
@@ -916,7 +914,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -959,57 +957,87 @@ def main():
     # HI velocity integration range
     # Determine HI integration velocity by CO or likelihoodelation with Av?
     hi_av_likelihoodelation = True
-    velocity_centers = np.arange(7, 8, 1)
-    velocity_widths = np.arange(1, 80, 1)
-    dgrs = np.arange(0.11, 0.12, 0.01)
-    #velocity_centers = np.arange(-15, 30, 10)
-    #velocity_widths = np.arange(1, 80, 10)
-    #dgrs = np.arange(1e-2, 1, 0.1)
+
+    center_vary = True
+    width_vary = True
+    dgr_vary = True
+
+    # Check if likelihood file already written, rewrite?
+    clobber = 0
+    conf = 0.68
+
+    # Results and fits filenames
+    likelihood_filename = 'perseus_nhi_av_likelihoods'
+    results_filename = 'perseus_likelihood'
+
+    # Define ranges of parameters
+    if center_vary and width_vary and dgr_vary:
+        likelihood_filename += '_width_dgr_center'
+        results_filename += '_width_dgr_center'
+
+        velocity_centers = np.arange(-15, 30, 1)
+        velocity_widths = np.arange(1, 80, 1)
+        dgrs = np.arange(1e-2, 1, 2e-2)
+    elif not center_vary and width_vary and dgr_vary:
+        likelihood_filename += '_dgr_center'
+        results_filename += '_dgr_center'
+
+        velocity_centers = np.arange(5, 6, 1)
+        velocity_widths = np.arange(1, 80, 1)
+        dgrs = np.arange(1e-2, 1, 2e-2)
+    elif center_vary and width_vary and not dgr_vary:
+        likelihood_filename += '_width_center'
+        results_filename += '_width_center'
+
+        velocity_centers = np.arange(5, 6, 1)
+        velocity_widths = np.arange(1, 80, 1)
+        dgrs = np.arange(1.1e-1, 1.2e-1, 0.1e-1)
+    elif not center_vary and width_vary and not dgr_vary:
+        likelihood_filename += '_center'
+        results_filename += '_center'
+
+        velocity_centers = np.arange(5, 6, 1)
+        velocity_widths = np.arange(1, 80, 1)
+        dgrs = np.arange(1.1e-1, 1.2e-1, 0.1e-1)
 
     # Which likelihood fits should be performed?
     core_likelihoodelation = 0
     global_likelihoodelation = 1
 
     # Name of property files results are written to
-    global_property_file = 'taurus_global_properties.txt'
-    core_property_file = 'taurus_core_properties.txt'
+    global_property_file = 'perseus_global_properties.txt'
+    core_property_file = 'perseus_core_properties.txt'
 
     # Threshold of Av below which we expect only atomic gas, in mag
     av_threshold = 1
 
-    # Check if likelihood file already written, rewrite?>
-    #likelihood_filename = 'taurus_nhi_av_likelihoods_av1thresh'
-    likelihood_filename = 'taurus_nhi_av_likelihoods'
-    likelihood_filename = 'taurus_nhi_av_likelihoods_centeronly'
-    clobber = 1
-    conf = 0.68
 
     # Name of noise cube
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/hi_velocity_range/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
-    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/hi_velocity_range/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
+    likelihood_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'perseus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -1037,7 +1065,7 @@ def main():
     cores = convert_core_coordinates(cores, h)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'perseus_av_boxes_',
             header = h)
 
     if core_likelihoodelation:
@@ -1057,7 +1085,7 @@ def main():
             av_error_data_sub = np.copy(av_error_data_planck[indices])
 
             # Define filename for plotting results
-            results_filename = figure_dir + 'taurus_logL_%s.png' % core
+            results_filename = figure_dir + 'perseus_logL_%s.png' % core
 
             # likelihoodelate each core region Av and N(HI) for velocity ranges
             vel_range_confint, dgr_confint, likelihoods, center_likelihood,\
@@ -1107,7 +1135,7 @@ def main():
         av_error_data_sub = np.copy(av_error_data_planck[indices])
 
         # Define filename for plotting results
-        results_filename = figure_dir + 'taurus_likelihood_global'
+        results_filename = figure_dir + results_filename
 
         # likelihoodelate each core region Av and N(HI) for velocity ranges
         vel_range_confint, dgr_confint, likelihoods, center_likelihood,\
