@@ -139,7 +139,8 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
 
 def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         x_pdf=None, x_confint=None, y_confint=None, filename=None, show=True,
-        returnimage=False, plot_axes=('centers', 'widths')):
+        returnimage=False, plot_axes=('centers', 'widths'),
+        contour_confs=None):
 
     ''' Plots a heat map of likelihoodelation values as a function of velocity width
     and velocity center.
@@ -184,26 +185,32 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
     	x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'Velocity Center (km/s)')
         x_sum_axes = (1, 2)
+        y_pdf_label = r'Centers PDF'
     if plot_axes[1] == 'centers':
     	y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'Velocity Center (km/s)')
         y_sum_axes = (1, 2)
+        x_pdf_label = r'Centers PDF'
     if plot_axes[0] == 'widths':
     	x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'Velocity Width (km/s)')
         x_sum_axes = (0, 2)
+        y_pdf_label = r'Width PDF'
     if plot_axes[1] == 'widths':
     	y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'Velocity Width (km/s)')
         y_sum_axes = (0, 2)
+        x_pdf_label = r'Width PDF'
     if plot_axes[0] == 'dgrs':
     	x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'DGR (1 $\times$ 10$^{-20}$ cm$^2$ mag$^1$)')
         x_sum_axes = (0, 1)
+        y_pdf_label = r'DGR PDF'
     if plot_axes[1] == 'dgrs':
     	y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'DGR (1 $\times$ 10$^{-20}$ cm$^2$ mag$^1$)')
         y_sum_axes = (0, 1)
+        x_pdf_label = r'DGR PDF'
 
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
@@ -220,22 +227,13 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
 
     extent = np.ravel(np.array((x_extent, y_extent)))
 
-    print extent
-    print 'x_grid', x_grid.size
-    print 'x_grid', x_grid
-    print 'y_grid', y_grid.size
-    print 'y_grid', y_grid
-    print 'x_pdf', x_pdf.size
-    print 'y_pdf', y_pdf.size
-    print 'sum axis', sum_axis
-    print 'image shape', image.shape
-
     #plt.rc('text', usetex=False)
-    im = ax_image.imshow(image, interpolation='nearest', origin='lower',
+    im = ax_image.imshow(image.T, interpolation='nearest', origin='lower',
             extent=extent,
             #cmap=plt.cm.gist_stern,
-            cmap=plt.cm.gray,
-            norm=matplotlib.colors.LogNorm(),
+            #cmap=plt.cm.gray,
+            cmap=plt.cm.binary,
+            #norm=matplotlib.colors.LogNorm(),
             aspect='auto',
             )
 
@@ -267,27 +265,44 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
                       )
 
         #axHistx.axis["bottom"].major_ticklabels.set_visible(False)
+
+        # Tick marks on the pdf?
+        pdf_ticks = False
+
         for tl in ax_pdf_x.get_xticklabels():
             tl.set_visible(False)
-        wmax = x_pdf.max()
-        ticks = [0, 0.5*wmax, 1.0*wmax]
-        tick_labels = ['{0:.1f}'.format(ticks[0]),
-                       '{0:.1f}'.format(ticks[1]),
-                       '{0:.1f}'.format(ticks[2]),
-                        ]
-        ax_pdf_x.set_yticks(ticks)
-        ax_pdf_x.set_yticklabels(tick_labels)
+
+        if pdf_ticks:
+            wmax = x_pdf.max()
+            ticks = [0, 0.5*wmax, 1.0*wmax]
+            tick_labels = ['{0:.1f}'.format(ticks[0]),
+                           '{0:.1f}'.format(ticks[1]),
+                           '{0:.1f}'.format(ticks[2]),
+                            ]
+            ax_pdf_x.set_yticks(ticks)
+            ax_pdf_x.set_yticklabels(tick_labels)
+        else:
+            for tl in ax_pdf_x.get_yticklabels():
+                tl.set_visible(False)
+
+        ax_pdf_x.set_ylabel(y_pdf_label)
 
         for tl in ax_pdf_y.get_yticklabels():
             tl.set_visible(False)
-        cmax = y_pdf.max()
-        ticks = [0, 0.5*cmax, 1.0*cmax]
-        tick_labels = ['{0:.1f}'.format(ticks[0]),
-                       '{0:.1f}'.format(ticks[1]),
-                       '{0:.1f}'.format(ticks[2]),
-                        ]
-        ax_pdf_y.set_xticks(ticks)
-        ax_pdf_y.set_xticklabels(tick_labels)
+        if pdf_ticks:
+            cmax = y_pdf.max()
+            ticks = [0, 0.5*cmax, 1.0*cmax]
+            tick_labels = ['{0:.1f}'.format(ticks[0]),
+                           '{0:.1f}'.format(ticks[1]),
+                           '{0:.1f}'.format(ticks[2]),
+                            ]
+            ax_pdf_y.set_xticks(ticks)
+            ax_pdf_y.set_xticklabels(tick_labels)
+        else:
+            for tl in ax_pdf_y.get_xticklabels():
+                tl.set_visible(False)
+
+        ax_pdf_y.set_xlabel(x_pdf_label)
 
         # Show confidence limits
         if y_confint is not None:
@@ -317,37 +332,40 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
     # Write label to colorbar
     #cb.set_label_text(r'log L')
 
-    fractions = np.array([0.1, 0.01])
-    levels = (fractions * image.max())
+    # Plot contours
+    if contour_confs is not None:
 
-    cs = ax_image.contour(image, levels=levels, origin='lower',
-            extent=extent,
-            colors='k'
-            )
+        fractions = (1.0 - np.asarray(contour_confs))
+        levels = (fractions * image.max())
 
-    # Define a class that forces representation of float to look a certain way
-    # This remove trailing zero so '1.0' becomes '1'
-    class nf(float):
-         def __repr__(self):
-             str = '%.1f' % (self.__float__(),)
-             if str[-1]=='0':
-                 return '%.0f' % self.__float__()
-             else:
-                 return '%.1f' % self.__float__()
+        cs = ax_image.contour(image.T, levels=levels, origin='lower',
+                extent=extent,
+                colors='k'
+                )
 
-    # Recast levels to new class
-    cs.levels = [nf(val) for val in fractions*100.0]
+        # Define a class that forces representation of float to look a certain
+        # way This remove trailing zero so '1.0' becomes '1'
+        class nf(float):
+             def __repr__(self):
+                 str = '%.1f' % (self.__float__(),)
+                 if str[-1]=='0':
+                     return '%.0f' % self.__float__()
+                 else:
+                     return '%.1f' % self.__float__()
 
-    #fmt = {}
-    #for level, fraction in zip(cs.levels, fractions):
-    #    fmt[level] = fraction
-    fmt = '%r %%'
+        # Recast levels to new class
+        cs.levels = [nf(val) for val in np.asarray(contour_confs)*100.0]
 
-    ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
+        #fmt = {}
+        #for level, fraction in zip(cs.levels, fractions):
+        #    fmt[level] = fraction
+        fmt = '%r %%'
+
+        ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
 
     if filename is not None:
         plt.draw()
-        plt.savefig(filename, bbox_inches='tight')
+        plt.savefig(filename)#, bbox_inches='tight')
     if show:
         plt.draw()
         plt.show()
@@ -361,7 +379,8 @@ def calc_likelihood_hi_av(hi_cube=None, hi_velocity_axis=None,
         hi_noise_cube=None, av_image=None, av_image_error=None,
         velocity_centers=None, velocity_widths=None, return_likelihoods=True,
         dgrs=None, plot_results=True, results_filename='',
-        likelihood_filename=None, clobber=False, conf=0.68):
+        likelihood_filename=None, clobber=False, conf=0.68,
+        contour_confs=None):
 
     '''
     Parameters
@@ -514,14 +533,6 @@ def calc_likelihood_hi_av(hi_cube=None, hi_velocity_axis=None,
     dgr_likelihood = np.sum(likelihoods, axis=(0,1)) / \
             np.sum(likelihoods)
 
-    print('L shape', likelihoods.shape)
-    print('L dgrs', len(likelihoods[0,0,:]))
-    print('dgrs shape', dgrs.shape)
-    print('centers shape', velocity_centers.shape)
-    print('widths shape', velocity_widths.shape)
-    print('dgr likelihood shape', dgr_likelihood.shape)
-    print('width likelihood shape', width_likelihood.shape)
-
     # Derive confidence intervals of parameters
     center_confint = threshold_area(velocity_centers,
                                     center_likelihood,
@@ -571,7 +582,8 @@ def calc_likelihood_hi_av(hi_cube=None, hi_velocity_axis=None,
                               plot_axes=('centers', 'widths'),
                               show=0,
                               returnimage=False,
-                              filename=results_filename + '_cw.png')
+                              filename=results_filename + '_cw.png',
+                              contour_confs=contour_confs)
         plot_likelihoods_hist(likelihoods,
                               velocity_centers,
                               dgrs,
@@ -580,7 +592,8 @@ def calc_likelihood_hi_av(hi_cube=None, hi_velocity_axis=None,
                               plot_axes=('centers', 'dgrs'),
                               show=0,
                               returnimage=False,
-                              filename=results_filename + '_cd.png')
+                              filename=results_filename + '_cd.png',
+                              contour_confs=contour_confs)
         plot_likelihoods_hist(likelihoods,
                               velocity_widths,
                               dgrs,
@@ -589,7 +602,8 @@ def calc_likelihood_hi_av(hi_cube=None, hi_velocity_axis=None,
                               plot_axes=('widths', 'dgrs'),
                               show=0,
                               returnimage=False,
-                              filename=results_filename + '_wd.png')
+                              filename=results_filename + '_wd.png',
+                              contour_confs=contour_confs)
 
     if not return_likelihoods:
         return vel_range_confint, dgr_confint
@@ -958,13 +972,21 @@ def main():
     # Determine HI integration velocity by CO or likelihoodelation with Av?
     hi_av_likelihoodelation = True
 
-    center_vary = True
+    center_vary = False
     width_vary = True
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
     clobber = 0
-    conf = 0.68
+
+    # Confidence of parameter errors
+    conf = 0.98
+    # Confidence of contour levels
+    contour_confs = (0.68, 0.98)
+
+    # Course, large grid or fine, small grid?
+    grid_res = 'course'
+    grid_res = 'fine'
 
     # Results and fits filenames
     likelihood_filename = 'perseus_nhi_av_likelihoods'
@@ -979,22 +1001,29 @@ def main():
         velocity_widths = np.arange(1, 80, 1)
         dgrs = np.arange(1e-2, 1, 2e-2)
     elif not center_vary and width_vary and dgr_vary:
-        likelihood_filename += '_dgr_center'
-        results_filename += '_dgr_center'
 
-        velocity_centers = np.arange(5, 6, 1)
-        velocity_widths = np.arange(1, 80, 1)
-        dgrs = np.arange(1e-2, 1, 2e-2)
+        if grid_res == 'course':
+            likelihood_filename += '_dgr_width_lowres'
+            results_filename += '_dgr_width_lowres'
+            velocity_centers = np.arange(5, 6, 1)
+            velocity_widths = np.arange(1, 80, 1)
+            dgrs = np.arange(1e-2, 1, 2e-2)
+        elif grid_res == 'fine':
+            likelihood_filename += '_dgr_width_highres'
+            results_filename += '_dgr_width_highres'
+            velocity_centers = np.arange(5, 6, 1)
+            velocity_widths = np.arange(1, 40, 0.16667)
+            dgrs = np.arange(0.05, 0.5, 1e-3)
     elif center_vary and width_vary and not dgr_vary:
         likelihood_filename += '_width_center'
         results_filename += '_width_center'
 
-        velocity_centers = np.arange(5, 6, 1)
+        velocity_centers = np.arange(-15, 30, 1)
         velocity_widths = np.arange(1, 80, 1)
         dgrs = np.arange(1.1e-1, 1.2e-1, 0.1e-1)
     elif not center_vary and width_vary and not dgr_vary:
-        likelihood_filename += '_center'
-        results_filename += '_center'
+        likelihood_filename += '_width'
+        results_filename += '_width'
 
         velocity_centers = np.arange(5, 6, 1)
         velocity_widths = np.arange(1, 80, 1)
@@ -1010,7 +1039,6 @@ def main():
 
     # Threshold of Av below which we expect only atomic gas, in mag
     av_threshold = 1
-
 
     # Name of noise cube
     noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -1155,7 +1183,8 @@ def main():
                                         likelihood_filename + \
                                         '_global.fits',
                                 clobber=clobber,
-                                conf=conf)
+                                conf=conf,
+                                contour_confs=contour_confs)
 
         print('HI velocity integration range:')
         print('%.1f to %.1f km/s' % (vel_range_confint[0],

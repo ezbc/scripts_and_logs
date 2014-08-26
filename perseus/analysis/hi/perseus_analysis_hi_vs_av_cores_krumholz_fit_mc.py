@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
 '''
 
 import pyfits as pf
@@ -1104,91 +1104,76 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
     if show:
         fig.show()
 
+def recreate_PDFs(vel_centers=None, vel_widths=None, dgrs=None,
+        center_likelihoods=None, width_likelihoods=None, dgr_likelihoods=None,
+        center_rv=None, width_rv=None, dgr_rv=None, results_figure_name=None):
+
+    import matplotlib.pyplot as plt
+
+    # Recreate the distribution of likelihoods
+    center_likelihoods_recreate = np.zeros(10000)
+    width_likelihoods_recreate = np.zeros(10000)
+    dgr_likelihoods_recreate = np.zeros(10000)
+    for i in range(len(center_likelihoods_recreate)):
+        center_likelihoods_recreate[i] = center_rv.rvs()
+        width_likelihoods_recreate[i] = width_rv.rvs()
+        dgr_likelihoods_recreate[i] = dgr_rv.rvs() * 1000.0
+
+    center_likelihood_normed = center_likelihoods / np.sum(center_likelihoods)
+    width_likelihood_normed = width_likelihoods / np.sum(width_likelihoods)
+    dgr_likelihood_normed = dgr_likelihoods / np.sum(dgr_likelihoods)
+
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    font_scale = 8
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale * 3 / 4.0,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              #'figure.figsize': (8, 8 * y_scaling),
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    fig = plt.figure(figsize=(4, 4))
+    ax = fig.add_subplot(111)
+    center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
+    width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
+    ax.hist(center_likelihoods_recreate, bins=center_bins, alpha=0.5,
+            label='Centers Reproduced', color='b', normed=True)
+    ax.hist(width_likelihoods_recreate, bins=width_bins, alpha=0.5,
+            label='Widths Reproduced', color='r', normed=True)
+    ax.plot(vel_centers, center_likelihood_normed, alpha=0.5,
+            label='Centers', color='k')
+    ax.plot(vel_widths, width_likelihood_normed, alpha=0.5,
+            label='Widths', color='g')
+    ax.legend(fontsize=font_scale * 3/4.0)
+    ax.set_xlabel(r'Velocity (km/s)')
+    ax.set_ylabel('Normalized value')
+    plt.savefig(results_figure_name + '_PDF_hist.png')
+
+    fig = plt.figure(figsize=(4, 4))
+    ax = fig.add_subplot(111)
+    dgr_bins = np.arange(dgrs[0], dgrs[-1] + 2, 0.02)
+    ax.hist(dgr_likelihoods_recreate, bins=dgr_bins, alpha=0.5,
+            label='DGRs Reproduced', color='k', normed=True)
+    ax.plot(dgrs, dgr_likelihood_normed, alpha=0.5,
+            label='Widths', color='k')
+    ax.legend(fontsize=font_scale * 3/4.0)
+    ax.set_xlabel(r'DGR')
+    ax.set_ylabel('Normalized value')
+    plt.savefig(results_figure_name + '_PDF_dgr_hist.png')
+
 ''' Calculations
 '''
 
-def correlate_hi_av(hi_cube=None, hi_velocity_axis=None,
-        hi_noise_cube=None, av_image=None, av_image_error=None,
-        vel_centers=None, vel_widths=None, return_likelihoods=True):
-
-    '''
-            hi_vel_range, av_likelihoods = correlate_hi_av(hi_cube=hi_data,
-                    hi_velocity_axis=velocity_axis,
-                    hi_noise_cube=noise_cube,
-                    av_image=av_data_planck,
-                    av_image_error=av_error_data_planck,
-                    vel_centers=vel_centers,
-                    vel_widths=vel_widths,
-                    return_likelihoods=True)
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-    hi_vel_range : tuple
-        Lower and upper bound of HI velocity range in km/s which provides the
-        best correlated N(HI) distribution with Av.
-    likelihoods : array-like, optional
-        Array of Pearson correlation coefficients corresponding to each
-        permutation through the velocity centers and velocity widths.
-
-    '''
-
-    import numpy as np
-    from scipy.stats import pearsonr
-
-    # calculate the velocity ranges given a set of centers and widths
-    velocity_ranges = np.zeros(shape=[len(vel_centers) * \
-            len(vel_widths),2])
-    count = 0
-    for i, center in enumerate(vel_centers):
-        for j, width in enumerate(vel_widths):
-            velocity_ranges[count,0] = center - width/2.
-            velocity_ranges[count,1] = center + width/2.
-            count += 1
-
-    # calculate the correlation coefficient for each velocity range
-    likelihoods = np.zeros(velocity_ranges.shape[0])
-    pvalues = np.zeros(velocity_ranges.shape[0])
-
-    for i, velocity_range in enumerate(velocity_ranges):
-        nhi_image_temp, nhi_image_error = calculate_nhi(cube=hi_cube,
-                velocity_axis=hi_velocity_axis,
-                velocity_range=velocity_range,
-                noise_cube=hi_noise_cube)
-
-        #nhi_image = np.ma.array(nhi_image_temp,
-        #                        mask=np.isnan(nhi_image_temp))
-
-        # Select pixels with Av > 1.0 mag and Av_SNR > 5.0.
-        # Av > 1.0 mag is used to avoid too low Av.
-        # 1.0 mag corresponds to SNR = 1 / 0.2 ~ 5
-        # (see Table 2 of Ridge et al. 2006).
-        indices = np.where((nhi_image_temp == nhi_image_temp) & \
-                (av_image == av_image))
-
-        nhi_image_likelihood = nhi_image_temp[indices]
-        av_image_likelihood = av_image[indices] #- 0.8 # subtract background of 0.8
-        # Use Pearson's correlation test to compare images
-        likelihoods[i] = pearsonr(nhi_image_likelihood.ravel(),
-                av_image_likelihood.ravel())[0]
-
-        # Shows progress each 10%
-        #total = float(velocity_ranges.shape[0])
-        #abs_step = int((total * 1)/100) or 1
-        #if i and not i % abs_step:
-        #    print "{0:.2%} processed".format(i/total)
-
-    # Find best-correlating velocity range
-    best_likelihood = likelihoods.max()
-    best_likelihood_index = np.where(likelihoods == best_likelihood)
-    best_likelihood_vel_range = velocity_ranges[best_likelihood_index][0]
-
-    if not return_likelihoods:
-        return best_likelihood_vel_range, best_likelihood
-    else:
-        return best_likelihood_vel_range, best_likelihood, likelihoods
 
 def select_hi_vel_range(co_data, co_header, flux_threshold=0.80,
         width_scale=1.):
@@ -1379,6 +1364,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     from numpy.random import normal
     from scipy.stats import rv_discrete
     import mystats
+    from mystats import calc_symmetric_error
     import matplotlib.pyplot as plt
     from scikits.bootstrap import ci
     import json
@@ -1433,65 +1419,19 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     # by minimum to create the RV
     center_rv = rv_discrete(values=(vel_centers, center_likelihood_normed))
     width_rv = rv_discrete(values=(vel_widths, width_likelihood_normed))
-    dgr_rv = rv_discrete(values=(dgrs / dgrs.min(), dgr_likelihood_normed))
+    dgr_rv = rv_discrete(values=(dgrs / 1000., dgr_likelihood_normed))
 
     if results_figure_name is not None:
-        # Recreate the distribution of likelihoods
-        center_likelihoods_recreate = np.zeros(10000)
-        width_likelihoods_recreate = np.zeros(10000)
-        dgr_likelihoods_recreate = np.zeros(10000)
-        for i in range(len(center_likelihoods_recreate)):
-            center_likelihoods_recreate[i] = center_rv.rvs()
-            width_likelihoods_recreate[i] = width_rv.rvs()
-            dgr_likelihoods_recreate[i] = dgr_rv.rvs() * dgrs.min()
-
-        plt.clf()
-        plt.rcdefaults()
-        colormap = plt.cm.gist_ncar
-        font_scale = 8
-        params = {#'backend': .pdf',
-                  'axes.labelsize': font_scale,
-                  'axes.titlesize': font_scale,
-                  'text.fontsize': font_scale,
-                  'legend.fontsize': font_scale * 3 / 4.0,
-                  'xtick.labelsize': font_scale,
-                  'ytick.labelsize': font_scale,
-                  'font.weight': 500,
-                  'axes.labelweight': 500,
-                  'text.usetex': False,
-                  #'figure.figsize': (8, 8 * y_scaling),
-                  #'axes.color_cycle': color_cycle # colors of different plots
-                 }
-        plt.rcParams.update(params)
-
-        fig = plt.figure(figsize=(4, 4))
-        ax = fig.add_subplot(111)
-        center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
-        width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
-        ax.hist(center_likelihoods_recreate, bins=center_bins, alpha=0.5,
-                label='Centers Reproduced', color='b', normed=True)
-        ax.hist(width_likelihoods_recreate, bins=width_bins, alpha=0.5,
-                label='Widths Reproduced', color='r', normed=True)
-        ax.plot(vel_centers, center_likelihood_normed, alpha=0.5,
-                label='Centers', color='k')
-        ax.plot(vel_widths, width_likelihood_normed, alpha=0.5,
-                label='Widths', color='g')
-        ax.legend(fontsize=font_scale * 3/4.0)
-        ax.set_xlabel(r'Velocity (km/s)')
-        ax.set_ylabel('Normalized value')
-        plt.savefig(results_figure_name + '_PDF_hist.png')
-
-        fig = plt.figure(figsize=(4, 4))
-        ax = fig.add_subplot(111)
-        dgr_bins = np.arange(dgrs[0], dgrs[-1] + 2, 0.02)
-        ax.hist(dgr_likelihoods_recreate, bins=dgr_bins, alpha=0.5,
-                label='DGRs Reproduced', color='k', normed=True)
-        ax.plot(dgrs, dgr_likelihood_normed, alpha=0.5,
-                label='Widths', color='k')
-        ax.legend(fontsize=font_scale * 3/4.0)
-        ax.set_xlabel(r'DGR')
-        ax.set_ylabel('Normalized value')
-        plt.savefig(results_figure_name + '_PDF_dgr_hist.png')
+        recreate_PDFs(vel_centers=vel_centers,
+                      vel_widths=vel_widths,
+                      dgrs=dgrs,
+                      center_likelihoods=center_likelihoods,
+                      width_likelihoods=width_likelihoods,
+                      dgr_likelihoods=dgr_likelihoods,
+                      center_rv=center_rv,
+                      width_rv=width_rv,
+                      dgr_rv=dgr_rv,
+                      results_figure_name=results_figure_name)
 
     if perform_mc:
         # Run the Monte Carlo
@@ -1508,7 +1448,9 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 # Randomly sample from discrete distribution
                 vel_center_random = center_rv.rvs()
                 vel_width_random = width_rv.rvs()
-                dgr_random = dgr_rv.rvs() * dgrs.min()
+                dgr_random = dgr_rv.rvs() * 1000.
+
+                print dgr_random
 
                 # Create the velocity range
                 hi_vel_range_noise = (vel_center_random - \
@@ -1554,12 +1496,15 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             h_sd_error_ravel = images['h_sd_error'].ravel()
 
             # write indices for only ratios > 0
-            indices = np.where(rh2_ravel > 0)
+            indices = np.where((rh2_ravel > 0) & (rh2_ravel == rh2_ravel))
 
             rh2_ravel = rh2_ravel[indices]
             rh2_error_ravel = rh2_error_ravel[indices]
             h_sd_ravel = h_sd_ravel[indices]
             h_sd_error_ravel = h_sd_error_ravel[indices]
+
+            #print 'rh2 median', np.median(rh2_ravel)
+            #print 'rh2', rh2_ravel
 
             # Fit to krumholz model, init guess of phi_CNM = 10
             phi_cnm, Z = fit_krumholz(h_sd_ravel,
@@ -1579,7 +1524,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             # see eq 6 of krumholz+09
             # phi_cnm is the number density of the CNM over the minimum number
             # density required for pressure balance
-            # the lower phi_cnm values than for taurus mean that taurus
+            # the lower phi_cnm values than for perseus mean that perseus
             # has a more diffuse CNM
 
             # By fitting the model to the observed R_H2 vs total H, you
@@ -1650,6 +1595,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         ax.set_xlabel(r'$Z$ $(Z_\odot)$')
         ax.set_ylabel('Counts')
         plt.savefig(results_figure_name + '_Z_hist.png')
+        plt.close()
 
     # Derive images
     # -------------
@@ -1737,7 +1683,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             #errors = np.percentile(results_dict['phi_cnm fits'],
             #                       (alpha / 2.0, 1.0 - alpha / 2.0))
 
-            median = np.median(results_dict['phi_cnm fits'])
+            #median = np.median(results_dict['phi_cnm fits'])
 
             #print errors, median
 
@@ -1751,14 +1697,11 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         if parameter_vary[1]:
             Z_upper_lim = np.log10(np.max(results_dict['Z fits']))
             Z_lower_lim = np.log10(np.min(results_dict['Z fits']))
+            Z = results_dict['Z fits']
             counts, bins = np.histogram(results_dict['Z fits'],
-                    bins=np.logspace(Z_lower_lim, Z_upper_lim, 10000))
-            Z_confint = threshold_area(bins[:-1], counts,
-                    area_fraction = 1.0 - alpha)
-
-            Z_confint = (Z_confint[0],
-                         Z_confint[2],
-                         Z_confint[1])
+                bins=np.linspace(Z.min(), Z.max(), 1000))
+            Z_confint = calc_symmetric_error(bins[:-1], counts,
+                    alpha=alpha)
         else:
             Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
     else:
@@ -1787,150 +1730,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 Z_error)
     if N_runs == 1:
         return images, hi_vel_range_sample, (phi_cnm, Z)
-
-def threshold_area(x, y, area_fraction=0.68):
-
-    '''
-    Finds the limits of a 1D array which includes a given fraction of the
-    integrated data.
-
-    Parameters
-    ----------
-    data : array-like
-        1D array.
-    area_fraction : float
-        Fraction of area.
-
-    Returns
-    -------
-    limits : tuple
-        Lower and upper bound including fraction of area.
-
-    '''
-
-    import numpy as np
-    from scipy.integrate import simps as integrate
-
-
-    # Check if size of data
-    if x.size == 1:
-    	return x[0], 0, 0
-
-    # Step for lowering threshold
-    step = (np.max(y) - np.median(y)) / 10000.0
-
-    # initial threshold
-    threshold = np.max(y) - step
-    threshold_area = 0.0
-
-    # area under whole function
-    area = integrate(y, x)
-
-    # Stop when the area below the threshold is greater than the max area
-    while threshold_area < area * area_fraction and threshold > 0:
-
-        threshold_indices = np.where(y > threshold)[0]
-
-        try:
-            bounds_indices = (threshold_indices[0], threshold_indices[-1])
-        except IndexError:
-            bounds_indices = ()
-
-        try:
-            threshold_area = integrate(y[bounds_indices[0]:bounds_indices[1]],
-                                       x[bounds_indices[0]:bounds_indices[1]])
-            threshold_area += threshold * (x[bounds_indices[1]] - \
-                                           x[bounds_indices[0]])
-        except IndexError:
-            threshold_area = 0
-
-        threshold -= step
-
-    if threshold < 0:
-    	bounds_indices = (0, len(x) - 1)
-
-    x_peak = x[y == y.max()][0]
-    low_error, up_error = x_peak - x[bounds_indices[0]], \
-                          x[bounds_indices[1]] - x_peak
-
-    print x_peak, low_error, up_error
-
-    return (x_peak, low_error, up_error)
-
-def calc_symmetric_error(x, y, alpha):
-
-    import numpy as np
-
-    from scipy.integrate import simps as integrate
-
-    #x = np.arange(0, 10, 0.1)
-    #y = np.exp(-(x - 5.0)**2 / 2*1.0)
-
-    if len(x) != len(y):
-    	raise ValueError('x and y must be the same shape')
-    if len(x) < 4:
-    	raise ValueError('x and y must have lengths > 3')
-
-    confidence = (1.0 - alpha)
-
-    # area under whole function
-    area = integrate(y, x)
-
-    mid_pos = np.where(y == np.median(y))
-
-    # Get weighted average of PDF
-    mid_pos = int(np.average(x, weights=y))
-
-    print mid_pos
-
-    # If the cum sum had duplicates, then multiple median pos will be derived,
-    # take the one in the middle.
-    try:
-        if len(mid_pos) > 1:
-            mid_pos = mid_pos[len(mid_pos) / 2]
-    except TypeError:
-        pass
-
-    # lower error
-    pos = mid_pos - 1
-    while pos >= 0 and pos < mid_pos:
-        y_clip = y[pos:mid_pos]
-        x_clip = x[pos:mid_pos]
-
-        low_area = integrate(y_clip, x_clip)
-
-        if low_area >= area * confidence / 2.0:
-        	low_pos = pos
-        	break
-
-        pos -= 1
-
-    if pos == -1:
-    	low_pos = np.min(np.where(y != 0))
-
-    # higher error
-    pos = mid_pos + 1
-    max_pos = len(x)
-    while pos <= max_pos and pos > mid_pos:
-        y_clip = y[mid_pos:pos]
-        x_clip = x[mid_pos:pos]
-
-        high_area = integrate(y_clip, x_clip)
-
-        if high_area >= area * confidence / 2.0:
-        	high_pos = pos
-        	break
-
-        pos += 1
-
-    if pos == max_pos + 1:
-    	high_pos = np.max(np.where(y != 0))
-
-    median = x[mid_pos]
-    low_error = x[mid_pos] - x[low_pos]
-    high_error = x[high_pos] - x[mid_pos]
-
-    return median, low_error, high_error
 
 ''' Fitting Functions
 '''
@@ -2177,7 +1976,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -2210,9 +2009,9 @@ def main(verbose=True):
     This script requires analysis output from three other scripts.
     Script                                          Purpose
     ---------------------------------------------------------------------------
-    hi/taurus_analysis_core_properties.py           Defines core positions
-    av/taurus_analysis_av_derive_core_boxes.py      Calculates box sizes
-    hi/taurus_analysis_hi_av_core_likelihoods.py   Calculates HI velocity
+    hi/perseus_analysis_core_properties.py           Defines core positions
+    av/perseus_analysis_av_derive_core_boxes.py      Calculates box sizes
+    hi/perseus_analysis_hi_av_core_likelihoods.py   Calculates HI velocity
                                                     range
 
     '''
@@ -2245,9 +2044,9 @@ def main(verbose=True):
     error_method = 'bootstrap'
     error_method = 'threshold'
     alpha = 0.32 # 1 - alpha = confidence
-    results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
-            'monte_carlo_results/taurus_mc_results_'
-    clobber = 0 # perform MC and write over current results?
+    results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
+            'monte_carlo_results/perseus_mc_results_'
+    clobber = 1 # perform MC and write over current results?
 
     # Regions
     # Options are 'ds9' or 'av_gradient'
@@ -2267,30 +2066,30 @@ def main(verbose=True):
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'perseus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'taurus_co_cfa_cube_regrid_planckres.fits',
+                'perseus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -2299,15 +2098,15 @@ def main(verbose=True):
 
     # Load global properties of cloud
     # global properties written from script
-    # 'av/taurus_analysis_global_properties.txt'
-    with open(property_dir + 'taurus_global_properties.txt', 'r') as f:
+    # 'av/perseus_analysis_global_properties.txt'
+    with open(property_dir + 'perseus_global_properties.txt', 'r') as f:
         properties = json.load(f)
         dgr = properties['dust2gas_ratio']['value']
         dgr_error = properties['dust2gas_ratio_error']['value']
         Z = properties['metallicity']['value']
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -2318,13 +2117,13 @@ def main(verbose=True):
             return_header=True)
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'perseus_av_boxes_',
             header = h)
 
     # Set up lists
@@ -2432,7 +2231,7 @@ def main(verbose=True):
                                  core_dict=cores[core],
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
-                                         'taurus_%s' % core,
+                                         'perseus_%s' % core,
                                  error_method=error_method,
                                  alpha=alpha,
                                  properties=properties,
@@ -2485,7 +2284,7 @@ def main(verbose=True):
 
     # Write velocity range properties to a file
     if hi_co_width and hi_av_likelihoodelation:
-        with open(core_dir + 'taurus_hi_vel_properties.txt', 'w') as f:
+        with open(core_dir + 'perseus_hi_vel_properties.txt', 'w') as f:
             f.write('core\tco_range\tco_high\tco_scale\thi_low\thi_high')
             for i, core in enumerate(cores):
                 f.write('\n{0:s}\t{1:.1f}\t{2:.1f}\t{3:.1f}'.format(
@@ -2516,8 +2315,8 @@ def main(verbose=True):
                     #limits = [0, 80, 10**-3, 10**2],
                     savedir = figure_dir + 'panel_cores/',
                     scale = ('linear', 'linear'),
-                    filename = 'taurus_core_co_spectra_grid.%s' % figure_type,
-                    title = r'Average $^{12}$CO spectra of taurus Cores',
+                    filename = 'perseus_core_co_spectra_grid.%s' % figure_type,
+                    title = r'Average $^{12}$CO spectra of perseus Cores',
                     core_names=core_name_list,
                     show = False)
 
@@ -2530,9 +2329,9 @@ def main(verbose=True):
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'taurus_rh2_vs_hsd_panels_planck.%s' % figure_type,
+                filename = 'perseus_rh2_vs_hsd_panels_planck.%s' % figure_type,
                 #title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
-                #        + ' of taurus Cores',
+                #        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
@@ -2551,10 +2350,10 @@ def main(verbose=True):
                 #limits = [1, 100, 1, 100],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
-                filename = 'taurus_hi_vs_h_panels_planck_linear.%s' % \
+                filename = 'perseus_hi_vs_h_panels_planck_linear.%s' % \
                         figure_type,
                 #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of taurus Cores',
+                #        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
@@ -2568,10 +2367,10 @@ def main(verbose=True):
                 limits = [1, 100, 1, 100],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('log', 'log'),
-                filename = 'taurus_hi_vs_h_panels_planck_log.%s' % \
+                filename = 'perseus_hi_vs_h_panels_planck_log.%s' % \
                         figure_type,
                 #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of taurus Cores',
+                #        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 show = False)
@@ -2584,11 +2383,11 @@ def main(verbose=True):
                 limits = [1e-1, 70, 2, 10],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('log', 'linear'),
-                filename = 'taurus_hi_vs_av_panels_planck_log.%s' % \
+                filename = 'perseus_hi_vs_av_panels_planck_log.%s' % \
                         figure_type,
                 core_names=core_name_list,
                 #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of taurus Cores',
+                #        + ' of perseus Cores',
                 show = False)
 
 
