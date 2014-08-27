@@ -977,7 +977,7 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 0
+    clobber = 1
 
     # Confidence of parameter errors
     conf = 0.98
@@ -1207,6 +1207,7 @@ def main():
         global_props['vel_centers'] = velocity_centers.tolist()
         global_props['vel_widths'] = velocity_widths.tolist()
         global_props['dgrs'] = dgrs.tolist()
+        global_props['likelihoods'] = likelihoods.tolist()
 
         with open(property_dir + global_property_file, 'w') as f:
             json.dump(global_props, f)

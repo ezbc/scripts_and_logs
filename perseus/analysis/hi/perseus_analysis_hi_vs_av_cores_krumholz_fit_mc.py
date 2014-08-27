@@ -1267,9 +1267,11 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
     hi_sd_image = calculate_sd(nhi_image, sd_factor=1/1.25)
     hi_sd_image_error = calculate_sd(nhi_image_error, sd_factor=1/1.25)
 
+
     h2_sd_image = calculate_sd(nh2_image, sd_factor=1/0.625)
     h2_sd_image_error = calculate_sd(nh2_image_error,
             sd_factor=1/0.625)
+
 
     h_sd_image = hi_sd_image + h2_sd_image
     h_sd_image_error = (hi_sd_image_error**2 + \
@@ -1284,6 +1286,7 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
     rh2_image_error = rh2_image * (hi_sd_image_error**2 / \
             hi_sd_image**2 + h2_sd_image_error**2 / \
             h2_sd_image**2)**0.5
+
 
     if sub_image_indices is not None:
         av_image = av_image[sub_image_indices]
@@ -1364,7 +1367,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     from numpy.random import normal
     from scipy.stats import rv_discrete
     import mystats
-    from mystats import calc_symmetric_error
+    from mystats import calc_symmetric_error, pdf2d
     import matplotlib.pyplot as plt
     from scikits.bootstrap import ci
     import json
@@ -1404,6 +1407,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     center_likelihoods = np.asarray(properties['center_likelihood'])
     width_likelihoods = np.asarray(properties['width_likelihood'])
     dgr_likelihoods = np.asarray(properties['dgr_likelihood'])
+    likelihoods = np.asarray(properties['likelihoods'])
     vel_centers = np.asarray(properties['vel_centers'])
     vel_widths = np.asarray(properties['vel_widths'])
     dgrs = np.asarray(properties['dgrs'])
@@ -1414,7 +1418,9 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     center_likelihood_normed = center_likelihoods / np.sum(center_likelihoods)
     width_likelihood_normed = width_likelihoods / np.sum(width_likelihoods)
     dgr_likelihood_normed = dgr_likelihoods / np.sum(dgr_likelihoods)
+    likelihoods_normed = likelihoods / np.sum(likelihoods)
 
+    '''
     # The .rvs() method returns the closest integer, so DGR RV is normalized
     # by minimum to create the RV
     center_rv = rv_discrete(values=(vel_centers, center_likelihood_normed))
@@ -1432,10 +1438,24 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                       width_rv=width_rv,
                       dgr_rv=dgr_rv,
                       results_figure_name=results_figure_name)
+    '''
+
+    # Create 2-D PDF of velocity widths + DGRs
+    likelihood_pdf = pdf2d(likelihoods=likelihoods_normed,
+                           param_grid1=vel_widths,
+                           param_grid2=dgrs,
+                           param_name1='widths',
+                           param_name2='dgrs',
+                           L_scalar=N_runs)
 
     if perform_mc:
         # Run the Monte Carlo
         # -------------------
+
+        # Progress bar parameters
+        total = float(N_runs)
+        count = 0
+
         for i in xrange(N_runs):
             if N_runs > 1:
                 # Randomly sample from Gaussian distribution
@@ -1445,12 +1465,16 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 #hi_vel_range_random_error = normal(scale=hi_vel_range_error,
                 #                                   size=len(hi_vel_range))
 
+                '''
+
                 # Randomly sample from discrete distribution
                 vel_center_random = center_rv.rvs()
                 vel_width_random = width_rv.rvs()
                 dgr_random = dgr_rv.rvs() * 1000.
+                '''
 
-                print dgr_random
+                vel_center_random = vel_centers[0]
+                vel_width_random, dgr_random = likelihood_pdf.rvs()
 
                 # Create the velocity range
                 hi_vel_range_noise = (vel_center_random - \
@@ -1503,9 +1527,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             h_sd_ravel = h_sd_ravel[indices]
             h_sd_error_ravel = h_sd_error_ravel[indices]
 
-            #print 'rh2 median', np.median(rh2_ravel)
-            #print 'rh2', rh2_ravel
-
             # Fit to krumholz model, init guess of phi_CNM = 10
             phi_cnm, Z = fit_krumholz(h_sd_ravel,
                                       rh2_ravel,
@@ -1533,6 +1554,12 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             # surface density.  In this case, H2 surface density = f_H2 *
             # total hydrogen surface density HI surface density = (1 - f_HI) *
             # total hydrogen surface density
+
+            # Shows progress each 10%
+            count += 1
+            abs_step = int((total * 1)/10) or 10
+            if count and not count % abs_step:
+                print "\t{0:.0%} processed".format(count/total)
 
         if write_mc:
             phi_cnms = results_dict['phi_cnm fits'].tolist()
@@ -1604,8 +1631,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
 
     nhi_error = np.std(results_dict['nhi errors'])
 
-    #print('N(HI) error = %.2f K' % nhi_error)
-
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
                            hi_noise_cube=hi_noise_cube,
@@ -1616,8 +1641,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                            av_image_error=av_image_error,
                            #nhi_error=nhi_error
                            )
-
-    #print('rh2 size', images['rh2'][images['rh2'] == images['rh2']].size)
 
     if error_method == 'bootstrap':
         # Bootstrap for errors
@@ -1684,8 +1707,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             #                       (alpha / 2.0, 1.0 - alpha / 2.0))
 
             #median = np.median(results_dict['phi_cnm fits'])
-
-            #print errors, median
 
             #phi_cnm_confint = (median,
             #                   median - errors[0],
@@ -1838,10 +1859,6 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0], rh2_error=None,
                       args=(h_sd, rh2, rh2_error),
                       method='lbfgsb')
 
-    # Print fit results?
-    #if verbose:
-    #    report_fit(params)
-
     rh2_fit_params = (params['phi_cnm'].value, params['Z'].value)
 
     return_chisq = False
@@ -1854,12 +1871,6 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0], rh2_error=None,
         #    chisq /= np.sum(rh2_error**2)
         p_value = 1.0 - stats.chi2.cdf(chisq, dof)
         chisq_reduced = chisq / dof
-
-    if verbose:
-        #print('pvalue = %.4f' % p_value)
-        #print('dof = %.2f' % dof)
-        #print('chi2 = %.2f' % chisq)
-        pass
 
     return rh2_fit_params
 
