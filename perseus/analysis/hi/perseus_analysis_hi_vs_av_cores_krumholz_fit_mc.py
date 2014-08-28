@@ -1104,26 +1104,43 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
     if show:
         fig.show()
 
-def recreate_PDFs(vel_centers=None, vel_widths=None, dgrs=None,
-        center_likelihoods=None, width_likelihoods=None, dgr_likelihoods=None,
-        center_rv=None, width_rv=None, dgr_rv=None, results_figure_name=None):
+def plot_parameter_hist(results_dict, parameter='Z fits',
+        results_figure_name=None):
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    if parameter == 'Z fits':
+        bins = np.linspace(0, 10, 100)
+    elif parameter == 'phi_cnm fits':
+        bins = 100
+
+    fig = plt.figure(figsize=(5, 5))
+    ax = fig.add_subplot(111)
+    ax.hist(results_dict[parameter],
+            bins=bins)
+    ax.set_ylabel('Counts')
+    if parameter == 'Z fits':
+        ax.set_xlabel(r'$Z$ $(Z_\odot)$')
+        plt.savefig(results_figure_name + '_Z_hist.png')
+    elif parameter == 'phi_cnm fits':
+        ax.set_xlabel(r'$\phi_{\rm CNM}$')
+        plt.savefig(results_figure_name + '_phi_cnm_hist.png')
+
+    plt.close()
+
+def recreate_PDF(likelihoods=None, vel_widths=None, dgrs=None,
+        results_filename=None):
 
     import matplotlib.pyplot as plt
 
     # Recreate the distribution of likelihoods
-    center_likelihoods_recreate = np.zeros(10000)
-    width_likelihoods_recreate = np.zeros(10000)
-    dgr_likelihoods_recreate = np.zeros(10000)
-    for i in range(len(center_likelihoods_recreate)):
-        center_likelihoods_recreate[i] = center_rv.rvs()
-        width_likelihoods_recreate[i] = width_rv.rvs()
-        dgr_likelihoods_recreate[i] = dgr_rv.rvs() * 1000.0
+    widths_recreate = np.zeros(10000)
+    dgrs_recreate = np.zeros(10000)
+    for i in range(len(widths_recreate)):
+        widths_recreate[i], dgrs_recreate[i] = likelihoods.rvs()
 
-    center_likelihood_normed = center_likelihoods / np.sum(center_likelihoods)
-    width_likelihood_normed = width_likelihoods / np.sum(width_likelihoods)
-    dgr_likelihood_normed = dgr_likelihoods / np.sum(dgr_likelihoods)
-
-    plt.clf()
+    plt.close()
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     font_scale = 8
@@ -1144,36 +1161,15 @@ def recreate_PDFs(vel_centers=None, vel_widths=None, dgrs=None,
 
     fig = plt.figure(figsize=(4, 4))
     ax = fig.add_subplot(111)
-    center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
-    width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
-    ax.hist(center_likelihoods_recreate, bins=center_bins, alpha=0.5,
-            label='Centers Reproduced', color='b', normed=True)
-    ax.hist(width_likelihoods_recreate, bins=width_bins, alpha=0.5,
-            label='Widths Reproduced', color='r', normed=True)
-    ax.plot(vel_centers, center_likelihood_normed, alpha=0.5,
-            label='Centers', color='k')
-    ax.plot(vel_widths, width_likelihood_normed, alpha=0.5,
-            label='Widths', color='g')
-    ax.legend(fontsize=font_scale * 3/4.0)
-    ax.set_xlabel(r'Velocity (km/s)')
-    ax.set_ylabel('Normalized value')
-    plt.savefig(results_figure_name + '_PDF_hist.png')
 
-    fig = plt.figure(figsize=(4, 4))
-    ax = fig.add_subplot(111)
-    dgr_bins = np.arange(dgrs[0], dgrs[-1] + 2, 0.02)
-    ax.hist(dgr_likelihoods_recreate, bins=dgr_bins, alpha=0.5,
-            label='DGRs Reproduced', color='k', normed=True)
-    ax.plot(dgrs, dgr_likelihood_normed, alpha=0.5,
-            label='Widths', color='k')
-    ax.legend(fontsize=font_scale * 3/4.0)
-    ax.set_xlabel(r'DGR')
-    ax.set_ylabel('Normalized value')
-    plt.savefig(results_figure_name + '_PDF_dgr_hist.png')
+    ax.plot(widths_recreate, dgrs_recreate, alpha=0.3, marker='+',
+            linestyle='', color='k')
+    ax.set_xlabel(r'Widths (km/s)')
+    ax.set_ylabel('DGR')
+    plt.savefig(results_filename + '_PDF_hist.png')
 
 ''' Calculations
 '''
-
 
 def select_hi_vel_range(co_data, co_header, flux_threshold=0.80,
         width_scale=1.):
@@ -1367,9 +1363,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     from numpy.random import normal
     from scipy.stats import rv_discrete
     import mystats
-    from mystats import calc_symmetric_error, pdf2d
+    from mystats import rv2d_discrete
     import matplotlib.pyplot as plt
-    from scikits.bootstrap import ci
     import json
     from os import path
 
@@ -1403,7 +1398,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     # Get standard errors on images + the HI velocity range
     hi_error = np.median(hi_noise_cube)
     av_error = np.median(av_image_error)
-    #hi_vel_range_error = core_dict['hi_vel_range_error']
     center_likelihoods = np.asarray(properties['center_likelihood'])
     width_likelihoods = np.asarray(properties['width_likelihood'])
     dgr_likelihoods = np.asarray(properties['dgr_likelihood'])
@@ -1420,33 +1414,16 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     dgr_likelihood_normed = dgr_likelihoods / np.sum(dgr_likelihoods)
     likelihoods_normed = likelihoods / np.sum(likelihoods)
 
-    '''
-    # The .rvs() method returns the closest integer, so DGR RV is normalized
-    # by minimum to create the RV
-    center_rv = rv_discrete(values=(vel_centers, center_likelihood_normed))
-    width_rv = rv_discrete(values=(vel_widths, width_likelihood_normed))
-    dgr_rv = rv_discrete(values=(dgrs / 1000., dgr_likelihood_normed))
-
-    if results_figure_name is not None:
-        recreate_PDFs(vel_centers=vel_centers,
-                      vel_widths=vel_widths,
-                      dgrs=dgrs,
-                      center_likelihoods=center_likelihoods,
-                      width_likelihoods=width_likelihoods,
-                      dgr_likelihoods=dgr_likelihoods,
-                      center_rv=center_rv,
-                      width_rv=width_rv,
-                      dgr_rv=dgr_rv,
-                      results_figure_name=results_figure_name)
-    '''
-
     # Create 2-D PDF of velocity widths + DGRs
-    likelihood_pdf = pdf2d(likelihoods=likelihoods_normed,
+    likelihood_pdf = rv2d_discrete(likelihoods=likelihoods_normed,
                            param_grid1=vel_widths,
                            param_grid2=dgrs,
                            param_name1='widths',
                            param_name2='dgrs',
                            L_scalar=N_runs)
+
+    recreate_PDF(likelihoods=likelihood_pdf, vel_widths=vel_widths, dgrs=dgrs,
+            results_filename=results_filename)
 
     if perform_mc:
         # Run the Monte Carlo
@@ -1462,24 +1439,14 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 hi_random_error = normal(scale=hi_error,\
                         size=hi_noise_cube.shape)
                 av_random_error = normal(scale=av_error, size=av_image.shape)
-                #hi_vel_range_random_error = normal(scale=hi_vel_range_error,
-                #                                   size=len(hi_vel_range))
 
-                '''
-
-                # Randomly sample from discrete distribution
-                vel_center_random = center_rv.rvs()
-                vel_width_random = width_rv.rvs()
-                dgr_random = dgr_rv.rvs() * 1000.
-                '''
-
-                vel_center_random = vel_centers[0]
+                # Get a random sample from the DGR / width likelihood space
                 vel_width_random, dgr_random = likelihood_pdf.rvs()
 
                 # Create the velocity range
-                hi_vel_range_noise = (vel_center_random - \
+                hi_vel_range_noise = (vel_centers[0] - \
                                         vel_width_random / 2.,
-                                      vel_center_random + \
+                                      vel_centers[0] + \
                                         vel_width_random / 2.)
 
                 hi_vel_range_list[i, 0] = hi_vel_range_noise[0]
@@ -1489,8 +1456,6 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 # Add random error to images
                 hi_cube_noise = np.copy(hi_cube) + hi_random_error
                 av_image_noise = np.copy(av_image) + av_random_error
-                #hi_vel_range_noise = np.asarray(hi_vel_range) + \
-                #    hi_vel_range_random_error
             elif N_runs == 1:
                 hi_cube_noise = np.copy(hi_cube)
                 av_image_noise = np.copy(av_image)
@@ -1520,8 +1485,9 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             h_sd_error_ravel = images['h_sd_error'].ravel()
 
             # write indices for only ratios > 0
-            indices = np.where((rh2_ravel > 0) & (rh2_ravel == rh2_ravel))
-
+            indices = np.where((rh2_ravel > 1) & \
+                               (rh2_ravel == rh2_ravel) & \
+                               (rh2_error_ravel == rh2_error_ravel))
             rh2_ravel = rh2_ravel[indices]
             rh2_error_ravel = rh2_error_ravel[indices]
             h_sd_ravel = h_sd_ravel[indices]
@@ -1535,6 +1501,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                                       rh2_error=rh2_error_ravel,
                                       verbose=verbose)
 
+            # keep results
             results_dict['phi_cnm fits'][i] = phi_cnm
             results_dict['Z fits'][i] = Z
 
@@ -1561,6 +1528,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             if count and not count % abs_step:
                 print "\t{0:.0%} processed".format(count/total)
 
+        # Write the MC results in JSON human readable txt format
         if write_mc:
             phi_cnms = results_dict['phi_cnm fits'].tolist()
             Zs = results_dict['Z fits'].tolist()
@@ -1574,6 +1542,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
 
             with open(results_filename, 'w') as f:
                 json.dump(results, f)
+
+    # If not performing the MC, read a previously written MC file
     elif not perform_mc:
         print('Reading monte carlo results file:')
         print(results_filename)
@@ -1594,35 +1564,14 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         results_dict['Z fits'] \
             [~np.isnan(results_dict['Z fits'])]
 
+    # Plot the distributions of parameters from the MC
     if results_figure_name is not None:
-        fig = plt.figure(figsize=(5, 5))
-        ax = fig.add_subplot(111)
-        ax.hist(results_dict['phi_cnm fits'],
-                bins=np.logspace(0, 3, 100))
-        ax.set_xscale('log')
-        ax.set_xlabel(r'$\phi_{\rm CNM}$')
-        ax.set_ylabel('Counts')
-        plt.savefig(results_figure_name + '_phi_cnm_hist.png')
-
-        fig = plt.figure(figsize=(5, 5))
-        ax = fig.add_subplot(111)
-        ax.hist(results_dict['phi_cnm fits'],
-                bins=1000)
-        ax.set_xscale('linear')
-        ax.set_xlim([0,40])
-        ax.set_xlabel(r'$\phi_{\rm CNM}$')
-        ax.set_ylabel('Counts')
-        plt.savefig(results_figure_name + '_phi_cnm_hist_linear.png')
-
-        fig = plt.figure(figsize=(5, 5))
-        ax = fig.add_subplot(111)
-        ax.hist(results_dict['Z fits'],
-                bins=np.logspace(-1, 1, 100))
-        ax.set_xscale('log')
-        ax.set_xlabel(r'$Z$ $(Z_\odot)$')
-        ax.set_ylabel('Counts')
-        plt.savefig(results_figure_name + '_Z_hist.png')
-        plt.close()
+    	plot_parameter_hist(results_dict,
+    	                    parameter='phi_cnm fits',
+    	                    results_figure_name=results_figure_name)
+    	plot_parameter_hist(results_dict,
+    	                    parameter='Z fits',
+    	                    results_figure_name=results_figure_name)
 
     # Derive images
     # -------------
@@ -1639,8 +1588,43 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                            dgr=dgr,
                            av_image=av_image,
                            av_image_error=av_image_error,
-                           #nhi_error=nhi_error
                            )
+
+    phi_cnm_confint, Z_confint = calc_MC_errors(results_dict,
+                                                error_method=error_method,
+                                                alpha=alpha,
+                                                parameter_vary=parameter_vary)
+
+    phi_cnm = phi_cnm_confint[0]
+    phi_cnm_error = phi_cnm_confint[1:]
+    Z = Z_confint[0]
+    Z_error = Z_confint[1:]
+
+    # Print results
+    print('results are:')
+    print('phi_cnm = {0:.2f} +{1:.2f}/-{2:.2f}'.format(phi_cnm_confint[0],
+                                                      phi_cnm_confint[1],
+                                                      phi_cnm_confint[2]))
+    print('Z = {0:.2f} +{1:.2f}/-{2:.2f}'.format(Z_confint[0],
+                                                  Z_confint[1],
+                                                  Z_confint[2]))
+
+    print('Median HI velocity range:' + \
+          '{0:.1f} to {1:.1f} km/s'.format(hi_vel_range_sample[0],
+                                           hi_vel_range_sample[1],))
+
+    if N_runs > 1:
+        return images, hi_vel_range_sample, (phi_cnm, Z, phi_cnm_error,
+                Z_error)
+    if N_runs == 1:
+        return images, hi_vel_range_sample, (phi_cnm, Z)
+
+def calc_MC_errors(results_dict, error_method='edges', alpha=0.05,
+        parameter_vary=[True, False]):
+
+    from mystats import calc_symmetric_error
+    from scikits.bootstrap import ci
+    import numpy as np
 
     if error_method == 'bootstrap':
         # Bootstrap for errors
@@ -1679,38 +1663,24 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                          )
         else:
             Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
-
-    elif error_method == 'threshold':
+    elif error_method == 'edges':
         # If there is a distribution of the parameter, then find the
         # confidence interval
         if parameter_vary[0]:
-            # Create bins
-            phi_cnm_upper_lim = np.log10(np.max(results_dict['phi_cnm fits']))
-            phi_cnm_lower_lim = np.log10(np.min(results_dict['phi_cnm fits']))
-
             phi_cnm = results_dict['phi_cnm fits']
 
             # Histogram will act as distribution of parameter values
             counts, bins = np.histogram(results_dict['phi_cnm fits'],
-                bins=np.logspace(phi_cnm_lower_lim, phi_cnm_upper_lim, 1000))
+                bins=np.linspace(phi_cnm.min(), phi_cnm.max(), 500))
 
-            counts, bins = np.histogram(results_dict['phi_cnm fits'],
-                bins=np.linspace(phi_cnm.min(), phi_cnm.max(), 1000))
-
-            # Lower threshold from peak until fraction of distribution included
-            #phi_cnm_confint = threshold_area(bins[:-1], counts,
-            #        area_fraction = 1.0 - alpha)
-            phi_cnm_confint = calc_symmetric_error(bins[:-1], counts,
-                    alpha=alpha)
-
-            #errors = np.percentile(results_dict['phi_cnm fits'],
-            #                       (alpha / 2.0, 1.0 - alpha / 2.0))
-
-            #median = np.median(results_dict['phi_cnm fits'])
-
-            #phi_cnm_confint = (median,
-            #                   median - errors[0],
-            #                   errors[1] - median)
+            # Calculate confidence interval by taking the PDF weighted mean as
+            # value, where errors are calculated by moving vertical threshold
+            # from edges towards mean until alpha/2 *100 % of the area of the
+            # PDF is included within the threshold
+            #phi_cnm_confint = calc_symmetric_error(bins[:-1], counts,
+            #        alpha=alpha)
+            phi_cnm_confint = calc_symmetric_error(phi_cnm,
+                                                   alpha=alpha)
 
         else:
             phi_cnm_confint = (results_dict['phi_cnm fits'][0], 0.0, 0.0)
@@ -1721,36 +1691,15 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             Z = results_dict['Z fits']
             counts, bins = np.histogram(results_dict['Z fits'],
                 bins=np.linspace(Z.min(), Z.max(), 1000))
-            Z_confint = calc_symmetric_error(bins[:-1], counts,
+            Z_confint = calc_symmetric_error(Z,
                     alpha=alpha)
         else:
             Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
+
     else:
         raise ValueError('Error method must be "bootstrap" or "threshold"')
 
-    phi_cnm = phi_cnm_confint[0]
-    phi_cnm_error = phi_cnm_confint[1:]
-    Z = Z_confint[0]
-    Z_error = Z_confint[1:]
-
-    # Print results
-    print('results are:')
-    print('phi_cnm = {0:.2f} +{1:.2f}/-{2:.2f}'.format(phi_cnm_confint[0],
-                                                      phi_cnm_confint[1],
-                                                      phi_cnm_confint[2]))
-    print('Z = {0:.2f} +{1:.2f}/-{2:.2f}'.format(Z_confint[0],
-                                                  Z_confint[1],
-                                                  Z_confint[2]))
-
-    print('Median HI velocity range:' + \
-          '{0:.1f} to {1:.1f} km/s'.format(hi_vel_range_sample[0],
-                                           hi_vel_range_sample[1],))
-
-    if N_runs > 1:
-        return images, hi_vel_range_sample, (phi_cnm, Z, phi_cnm_error,
-                Z_error)
-    if N_runs == 1:
-        return images, hi_vel_range_sample, (phi_cnm, Z)
+    return phi_cnm_confint, Z_confint
 
 ''' Fitting Functions
 '''
@@ -2051,13 +2000,12 @@ def main(verbose=True):
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     # Error method:
-    # options are 'threshold', 'bootstrap', 'gaussian'
-    error_method = 'bootstrap'
-    error_method = 'threshold'
+    # options are 'edges', 'bootstrap'
+    error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
     results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
             'monte_carlo_results/perseus_mc_results_'
-    clobber = 1 # perform MC and write over current results?
+    clobber = 0 # perform MC and write over current results?
 
     # Regions
     # Options are 'ds9' or 'av_gradient'

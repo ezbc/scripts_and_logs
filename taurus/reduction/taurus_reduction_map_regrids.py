@@ -73,7 +73,7 @@ def main():
     os.chdir('/d/bip3/ezbc/taurus/data')
 
     # If true, deletes files to be written
-    clobber = False
+    clobber = True
 
     in_images = ('av/taurus_av_kainulainen2009_nan',
               'av/taurus_av_pineda2010',
@@ -111,9 +111,9 @@ def main():
     out_images = (im_k09,
                   im_p10,
                   im_hi,
-                  im_co,
                   im_pl,
                   im_pl_err,
+                  im_co,
                   im_pl_co,
                   im_pl_co_err,
                   im_pl_co_10,
@@ -125,8 +125,8 @@ def main():
                   )
 
     for i in xrange(len(in_images)):
-        exists = check_file(out_images[i] + '.mir', clobber=False)
-        print('\t{:s}.fits\n'.format(in_images[i]))
+        exists = check_file(out_images[i] + '.mir', clobber=clobber)
+        print('\tReading {:s}.fits\n'.format(in_images[i]))
         if not exists:
             fits(in_images[i] + '.fits',
                     out=out_images[i] + '.mir',
@@ -138,14 +138,14 @@ def main():
     images = (im_pl,
               im_pl_err,
               im_hi,
-              im_pl_co,
-              im_pl_co_err,
-              im_pl_co_10,
-              im_pl_co_10_err,
-              im_pl_co_21,
-              im_pl_co_21_err,
-              im_pl_co_32,
-              im_pl_co_32_err,
+              #im_pl_co,
+              #im_pl_co_err,
+              #im_pl_co_10,
+              #im_pl_co_10_err,
+              #im_pl_co_21,
+              #im_pl_co_21_err,
+              #im_pl_co_32,
+              #im_pl_co_32_err,
               )
 
     delta_ra = -0.083333333
@@ -161,9 +161,16 @@ def main():
     desc_av = [0, ref_pix[0], delta_ra, npix[0], \
                0, ref_pix[1], delta_dec, npix[1]]
 
+    low_vel = -100.0
+    high_vel = 100.0
+    vel_res = 0.16667
+    vel_npix = int((high_vel - low_vel) / vel_res)
+    ref_pix_vel = int(vel_npix / 2.0) * vel_res
+    ref_pix_vel = vel_npix / 2.0
+
     desc_hi = [0, ref_pix[0], delta_ra, npix[0], \
                0, ref_pix[1], delta_dec, npix[1], \
-               0, 100, 1, 200]
+               0, ref_pix_vel, vel_res, vel_npix]
 
     for image in images:
 
@@ -175,7 +182,8 @@ def main():
 
         exists = check_file(image + '_5arcmin.mir', clobber=clobber)
 
-        print('\t{:s}.mir\n'.format(image))
+        print('\tReading image {:s}.mir'.format(image))
+        print('\tWriting image {:s}_5arcmin.mir\n'.format(image))
 
         if not exists:
             regrid(image + '.mir',
