@@ -352,6 +352,14 @@ applycal(vis = my_vis,
         gaintable = ['bandpass.bcal', 'amp.gcal'],
         flagbackup = False)
 
+
+# delete all of before_apply_cal tables
+for i in xrange(0, 58):
+    flagmanager(vis = my_vis,
+                mode = 'delete',
+                versionname = 'before_applycal_%s' % i)
+
+
 # ==============================================================================
 # 17: Split the source
 # ==============================================================================

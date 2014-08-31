@@ -44,7 +44,7 @@ bandpass(vis = my_vis,
 
 bandpass(vis = my_vis,
         caltable = 'bandpass_source.bcal',
-	    field = '2',
+	    field = '1, 2',
 	    spw = '1, 2',
         refant = 'ea28',
 	    solint = 'inf',
@@ -69,6 +69,7 @@ gaincal(vis = my_vis,
 gaincal(vis = my_vis,
         caltable = 'amp.gcal',
         field = '1, 2',
+        spw = '1, 2',
         refant = 'ea28',
         calmode = 'ap',
         solint = 'inf',
@@ -80,13 +81,24 @@ gaincal(vis = my_vis,
 
 gaincal(vis=my_vis,
         caltable='amp_source.gcal',
-        field='0, 1',
-        combine='spw, field',
+        field='0, 1, 2',
+        combine='',
         refant='ea28',
         calmode='ap',
         solint='inf',
         spwmap=[[1, 1, 2], [1, 1, 2]],
         gaintable=['bandpass_source.bcal', 'scanphase.gcal'])
+
+gaincal(vis=my_vis,
+        caltable='amp.gcal',
+        append=True,
+        field='0',
+        combine='',
+        refant='ea28',
+        calmode='ap',
+        solint='inf',
+        spwmap=[[1]],
+        gaintable=['bandpass_source.bcal'])
 
 ################################################################################
 # 6: Apply the flux scaling
@@ -95,14 +107,8 @@ gaincal(vis=my_vis,
 fluxscale(vis = my_vis,
           caltable = 'amp.gcal',
           fluxtable = 'flux.cal',
-          reference = '2')
-
-fluxscale(vis = my_vis,
-          caltable = 'amp_source.gcal',
-          fluxtable = 'flux_source.cal',
           reference = '2',
-          transfer = '0',
-          refspwmap = [0])
+          refspwmap=[0, 1, 2])
 
     # VLA calibrator manual reports J0138+1629 20cm flux as 7.81 Jy
     # Calculated 7.59 Jy for field 1
@@ -128,8 +134,9 @@ applycal(vis = my_vis,
         field = '0',
         spw = '0',
         spwmap = [[1], [0], [0]],
-        gainfield = ['2', '0', '0'],
+        gainfield = ['1', '0', '0'],
         gaintable = ['bandpass_source.bcal', 'amp_source.gcal',
-            'flux_source.cal'])
+            'flux.cal'])
+
 
 
