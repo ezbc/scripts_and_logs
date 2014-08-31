@@ -558,7 +558,6 @@ def calc_likelihood_hi_av(hi_cube=None, hi_velocity_axis=None,
 
     # Vel widths
     if len(velocity_widths) > 3:
-    	print width_likelihood
         width_confint = calc_symmetric_error(velocity_widths,
                                        width_likelihood,
                                        alpha=1-conf)
@@ -1042,7 +1041,9 @@ def main():
             results_filename += '_dgr_width_highres'
             velocity_centers = np.arange(5, 6, 1)
             velocity_widths = np.arange(1, 40, 0.16667)
+            #velocity_widths = np.arange(1, 4, 0.16667*4)
             dgrs = np.arange(0.05, 0.5, 1e-3)
+            #dgrs = np.arange(0.05, 0.09, 2e-2)
     elif center_vary and width_vary and not dgr_vary:
         likelihood_filename += '_width_center'
         results_filename += '_width_center'
@@ -1162,21 +1163,31 @@ def main():
                                             likelihood_filename + \
                                             '{0:s}.fits'.format(core),
                                     clobber=clobber,
-                                    conf=conf)
+                                    conf=conf,
+                                    contour_confs=contour_confs)
 
             print('HI velocity integration range:')
             print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                          vel_range_confint[1]))
             print('DGR:')
-            print('%.1f to %.1f km/s' % (vel_range_confint[0],
-                                         vel_range_confint[1]))
+            print('%.1f to %.1f km/s' % (dgr_confint[0],
+                                         dgr_confint[1]))
+
+            cores[core]['dust2gas_ratio'] = {}
+            cores[core]['dust2gas_ratio_error'] = {}
 
             cores[core]['hi_velocity_range'] = vel_range_confint[0:2]
             cores[core]['hi_velocity_range_error'] = vel_range_confint[2:]
+            cores[core]['dust2gas_ratio']['value'] = dgr_confint[0]
+            cores[core]['dust2gas_ratio_error']['value'] = dgr_confint[1:]
+            cores[core]['hi_velocity_range_conf'] = conf
             cores[core]['center_likelihood'] = center_likelihood.tolist()
             cores[core]['width_likelihood'] = width_likelihood.tolist()
+            cores[core]['dgr_likelihood'] = dgr_likelihood.tolist()
             cores[core]['vel_centers'] = velocity_centers.tolist()
             cores[core]['vel_widths'] = velocity_widths.tolist()
+            cores[core]['dgrs'] = dgrs.tolist()
+            cores[core]['likelihoods'] = likelihoods.tolist()
 
         with open(core_dir + core_property_file, 'w') as f:
             json.dump(cores, f)
