@@ -1922,9 +1922,11 @@ def convert_core_coordinates(cores, header):
         center_wcs = cores[core]['center_wcs']
 
         # convert centers to pixel coords
-        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
-                                                     dec=center_wcs[1],
-                                                     header=header)[:2]
+        center_pixel = get_pix_coords(ra=center_wcs[0],
+                                      dec=center_wcs[1],
+                                      header=header)[:2]
+        cores[core]['center_pixel'] = center_pixel.tolist()
+
         # convert box corners to pixel coords
         #for i in range(len(box_wcs)/2):
         #    pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
@@ -2070,6 +2072,7 @@ def main(verbose=True):
     import json
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
         calculate_sd, calculate_nh2, calculate_nh2_error
+    from myscience.krumholz09 import calc_T_cnm
 
     # parameters used in script
     # -------------------------
@@ -2284,6 +2287,34 @@ def main(verbose=True):
         phi_mol = params[4]
         phi_mol_error = params[5]
 
+        # Calculate T_cnm from Krumholz et al. (2009) Eq 19
+        T_cnm = calc_T_cnm(phi_cnm, Z=Z)
+        T_cnm_error = []
+        T_cnm_error.append(\
+                T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
+        T_cnm_error.append(\
+                T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
+
+        cores[core]['hi_sd_fit'] = hi_sd_fit.tolist()
+        cores[core]['rh2'] = images['rh2'].tolist()
+        cores[core]['rh2_error'] = images['rh2_error'].tolist()
+        cores[core]['hi_sd'] = images['hi_sd'].tolist()
+        cores[core]['hi_sd_error'] = images['hi_sd_error'].tolist()
+        cores[core]['h_sd'] = images['h_sd'].tolist()
+        cores[core]['h_sd_error'] = images['h_sd_error'].tolist()
+        cores[core]['phi_cnm'] = phi_cnm
+        cores[core]['phi_cnm_error'] = phi_cnm_error
+        cores[core]['T_cnm'] = T_cnm
+        cores[core]['T_cnm_error'] = T_cnm_error
+        cores[core]['Z'] = Z
+        cores[core]['Z_error'] = Z_error
+        cores[core]['phi_mol'] = phi_mol
+        cores[core]['phi_mol_error'] = phi_mol_error
+        cores[core]['rh2_fit'] = rh2_fit.tolist()
+        cores[core]['h_sd_fit'] = h_sd_fit.tolist()
+        cores[core]['f_H2'] = f_H2.tolist()
+        cores[core]['f_HI_fit'] = f_HI.tolist()
+
         # append to the lists
         hi_sd_image_list.append(images['hi_sd'])
         hi_sd_image_error_list.append(images['hi_sd_error'])
@@ -2302,9 +2333,10 @@ def main(verbose=True):
         Z_error_list.append(Z_error)
         phi_mol_list.append(phi_mol)
         phi_mol_error_list.append(phi_mol_error)
-        #chisq_list.append(chisq)
-        #p_value_list.append(p_value)
         core_name_list.append(core)
+
+    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
+        json.dump(cores, f)
 
     # Create the figures!
     # -------------------
