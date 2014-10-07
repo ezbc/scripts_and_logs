@@ -75,7 +75,7 @@ def plot_nhi_vs_av(nhi_image, av_image,
                 yerr=(nhi_image_error_nonans.ravel()),
                 alpha=0.3,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=2
                 )
 
@@ -172,7 +172,7 @@ def plot_hisd_vs_hsd(hi_sd_image, h_sd_image,
                 yerr=(hi_sd_image_error_nonans.ravel()),
                 alpha=0.3,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=2
                 )
 
@@ -287,7 +287,7 @@ def plot_sd_vs_av(sd_image, av_image,
                 yerr=(sd_image_error_nonans.ravel()),
                 alpha=0.3,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=2
                 )
 
@@ -397,7 +397,7 @@ def plot_sd_vs_av_grid(sd_images, av_images,
                 yerr=(sd_image_error_nonans.ravel()),
                 alpha=0.3,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=2
                 )
 
@@ -426,7 +426,10 @@ def plot_sd_vs_av_grid(sd_images, av_images,
 def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
         hi_sd_image_errors=None, h_sd_image_errors=None, limits=None,
         savedir='./', filename=None, show=True, scale=('linear', 'linear'),
-        returnimage=False, title=None, core_names=''):
+        returnimage=False, title=None, core_names='', phi_cnm_list=None,
+        phi_cnm_error_list=None, Z_list=None,
+        Z_error_list=None, phi_mol_list=None,
+        phi_mol_error_list=None,):
     ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
     and an Av image.
     '''
@@ -510,7 +513,7 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
                 yerr=(hi_sd_image_error_nonans.ravel()),
                 alpha=0.3,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=2
                 )
 
@@ -621,10 +624,6 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
             phi_mol = phi_mol_list[i]
         if phi_mol_error_list is not None:
             phi_mol_error = phi_mol_error_list[i]
-        if chisq_list is not None:
-            chisq = chisq_list[i]
-        if p_value_list is not None:
-            p_value = p_value_list[i]
 
         # Drop the NaNs from the images
         if type(rh2_error) is float:
@@ -668,7 +667,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                 yerr=(rh2_error_nonans.ravel()),
                 alpha=0.75,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=4
                 )
 
@@ -739,15 +738,6 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                         horizontalalignment='right',
                         verticalalignment='bottom',
                         )
-        if chisq_list is not None:
-            ax.annotate(r'$\chi^2/\nu$ = %.2f' % \
-                    chisq,
-                    xytext=(0.48, 0.3),
-                    xy=(0.48, 0.3),
-                    textcoords='axes fraction',
-                    xycoords='axes fraction',
-                    color='k'
-                    )
 
         ax.set_xscale(scale[0], nonposx = 'clip')
         ax.set_yscale(scale[1], nonposy = 'clip')
@@ -871,7 +861,7 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
                 yerr=(hi_error_nonans.ravel()),
                 alpha=0.5,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=4
                 )
 
@@ -898,7 +888,9 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
 def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         h_sd_error_images=None, hi_fits = None, h_sd_fits = None, limits =
         None, fit = True, savedir = './', filename = None, show = True, scale =
-        'linear', title = '', core_names='', phi_cnm_list=None):
+        'linear', title = '', core_names='', phi_cnm_list=None,
+        phi_cnm_error_list=None, Z_list=None, Z_error_list=None,
+        phi_mol_list=None, phi_mol_error_list=None,):
 
     # Import external modules
     import numpy as np
@@ -907,6 +899,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     import matplotlib.pyplot as plt
     import matplotlib
     from mpl_toolkits.axes_grid1 import ImageGrid
+    from myscience.krumholz09 import calc_T_cnm
 
     # Set up plot aesthetics
     plt.clf()
@@ -923,7 +916,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
               'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
-              'text.usetex': False,
+              'text.usetex': True,
               'figure.figsize': (10, 10),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -952,7 +945,16 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         h_sd_fit = h_sd_fits[i]
         if phi_cnm_list is not None:
             phi_cnm = phi_cnm_list[i]
-
+        if phi_cnm_error_list is not None:
+            phi_cnm_error = phi_cnm_error_list[i]
+        if Z_list is not None:
+            Z = Z_list[i]
+        if Z_error_list is not None:
+            Z_error = Z_error_list[i]
+        if phi_mol_list is not None:
+            phi_mol = phi_mol_list[i]
+        if phi_mol_error_list is not None:
+            phi_mol_error = phi_mol_error_list[i]
 
         # Drop the NaNs from the images
         if type(hi_sd_error) is float:
@@ -996,21 +998,74 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                 yerr=(hi_sd_error_nonans.ravel()),
                 alpha=0.3,
                 color='k',
-                marker='^',ecolor='k',linestyle='none',
+                marker='^',ecolor='k',linestyle='None',
                 markersize=3
                 )
         if hi_sd_fit is not None:
             ax.plot(h_sd_fit, hi_sd_fit,
                     color = 'r')
+        # Annotations
+        anno_xpos = 0.95
 
-        if phi_cnm_list is not None:
-            ax.annotate(r'$\phi$ = %.2f' % phi_cnm,
-                    xytext=(0.6, 0.1),
-                    xy=(0.6, 0.1),
-                    textcoords='axes fraction',
-                    xycoords='axes fraction',
-                    color='k'
-                    )
+        if phi_cnm_list is not None and Z_list is not None:
+            if phi_cnm_error_list is None and Z_error_list is not None:
+                ax.annotate(r'$\phi_{\rm CNM}$ = {0:.2f}\n'.format(phi_cnm) + \
+                            r'Z = {0:.2f} Z$_\odot$'.format(Z),
+                        xytext=(anno_xpos, 0.05),
+                        xy=(anno_xpos, 0.05),
+                        textcoords='axes fraction',
+                        xycoords='axes fraction',
+                        color='k',
+                        bbox=dict(boxstyle='round',
+                                  facecolor='w',
+                                  alpha=0.3),
+                        horizontalalignment='right',
+                        verticalalignment='bottom',
+                        )
+            else:
+            	T_cnm = calc_T_cnm(phi_cnm, Z=Z)
+            	T_cnm_error = []
+            	T_cnm_error.append(\
+            	        T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
+            	T_cnm_error.append(\
+            	        T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
+
+                phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
+                               r' %.2f' % (phi_cnm) + \
+                               r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
+                                                         phi_cnm_error[1])
+                T_cnm_text = r'\noindent T$_{\rm CNM}$ =' + \
+                             r' %.2f' % (T_cnm) + \
+                             r'$^{+%.2f}_{-%.2f}$ \\' % (T_cnm_error[0],
+                                                         T_cnm_error[1])
+                if Z_error == (0.0, 0.0):
+                	Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
+                else:
+                	Z_text = r'Z = %.2f' % (Z) + \
+                    r'$^{+%.2f}_{-%.2f}$ Z$_\odot$ \\' % (Z_error[0],
+                                                          Z_error[1])
+                if phi_mol_error == (0.0, 0.0):
+                    phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
+                                     '%.1f \\' % (phi_mol)
+                else:
+                    phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
+                                r' %.2f' % (phi_mol) + \
+                                r'$^{+%.2f}_{-%.2f}$ \\' % (phi_mol_error[0],
+                                                         phi_mol_error[1])
+
+                ax.annotate(phi_cnm_text + T_cnm_text + Z_text + phi_mol_text,
+                        xytext=(anno_xpos, 0.05),
+                        xy=(anno_xpos, 0.05),
+                        textcoords='axes fraction',
+                        xycoords='axes fraction',
+                        size=font_scale*3/4.0,
+                        color='k',
+                        bbox=dict(boxstyle='round',
+                                  facecolor='w',
+                                  alpha=1),
+                        horizontalalignment='right',
+                        verticalalignment='bottom',
+                        )
 
         ax.set_xscale(scale[0])
         ax.set_yscale(scale[1])
@@ -1023,7 +1078,6 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
         ax.set_ylabel(r'$\Sigma_{HI}$',)
         ax.set_title(core_names[i])
-        ax.grid(True)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
@@ -1372,17 +1426,14 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
 def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         hi_header=None, dgr=None, dgr_error=None, av_image=None,
         av_image_error=None, hi_vel_range=None, hi_vel_range_error=None,
-        N_runs=1, verbose=False, guesses=(10.0,1.0),
-        parameter_vary=[True,True, True], core_dict=None,
-        results_figure_name=None, error_method='bootstrap', alpha=0.05,
-        properties=None, results_filename=None, clobber=True,
-        likelihood_derivation='global'):
+        verbose=False, core_dict=None, results_figure_name=None,
+        properties=None, results_filename=None):
 
     '''
 
     Runs Monte Carlo to vary measure the error induced in RH2 from the HI
-    integration velocity range. If N_runs = 1 then a simple fit without adding
-    any random errors is performed.
+    integration velocity range. If N_monte_carlo_runs = 1 then a simple fit
+    without adding any random errors is performed.
 
     Parameters
     ----------
@@ -1396,7 +1447,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         1 sigma Gaussian error on hi_vel_range limits. If error_method ==
         'gaussian', and hi_vel_range_error is None then the confidence limit
         from the HI velocity range error in the core dict will be used.
-    N_runs : int
+    N_monte_carlo_runs : int
         Number of runs in the Monte Carlo simulation
     core_dict : dict
         Dictionary of core parameters.
@@ -1414,7 +1465,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     images : dict
         Dictionary of output images.
     params : dict
-        Parameters in Krumholz fit. If N_runs > 1, then errors on the
+        Parameters in Krumholz fit. If N_monte_carlo_runs > 1, then errors on the
         parameters are returned as well.
 
 
@@ -1428,8 +1479,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     import json
     from os import path
 
-    if N_runs < 1:
-        raise ValueError('N_runs must be >= 1')
+    if N_monte_carlo_runs < 1:
+        raise ValueError('N_monte_carlo_runs must be >= 1')
 
     verbose = False
 
@@ -1449,12 +1500,12 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         perform_mc = True
 
     # Results of monte carlo will be stored here
-    results_dict = {'phi_cnm fits' : np.empty((N_runs)),
-                    'Z fits' : np.empty((N_runs)),
-                    'phi_mol fits' : np.empty((N_runs)),
-                    'nhi errors' : np.empty((N_runs))}
-    hi_vel_range_list = np.empty((N_runs, 2))
-    dgr_list = np.empty((N_runs))
+    results_dict = {'phi_cnm fits' : np.empty((N_monte_carlo_runs)),
+                    'Z fits' : np.empty((N_monte_carlo_runs)),
+                    'phi_mol fits' : np.empty((N_monte_carlo_runs)),
+                    'nhi errors' : np.empty((N_monte_carlo_runs))}
+    hi_vel_range_list = np.empty((N_monte_carlo_runs, 2))
+    dgr_list = np.empty((N_monte_carlo_runs))
 
     # Get standard errors on images + the HI velocity range
     hi_error = np.median(hi_noise_cube)
@@ -1490,18 +1541,18 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                            param_grid2=dgrs,
                            param_name1='widths',
                            param_name2='dgrs',
-                           L_scalar=N_runs)
+                           L_scalar=N_monte_carlo_runs)
 
     if perform_mc:
         # Run the Monte Carlo
         # -------------------
 
         # Progress bar parameters
-        total = float(N_runs)
+        total = float(N_monte_carlo_runs)
         count = 0
 
-        for i in xrange(N_runs):
-            if N_runs > 1:
+        for i in xrange(N_monte_carlo_runs):
+            if N_monte_carlo_runs > 1:
                 # Randomly sample from Gaussian distribution
                 hi_random_error = normal(scale=hi_error,\
                         size=hi_noise_cube.shape)
@@ -1523,7 +1574,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 # Add random error to images
                 hi_cube_noise = np.copy(hi_cube) + hi_random_error
                 av_image_noise = np.copy(av_image) + av_random_error
-            elif N_runs == 1:
+            elif N_monte_carlo_runs == 1:
                 hi_cube_noise = np.copy(hi_cube)
                 av_image_noise = np.copy(av_image)
                 dgr_noise = dgr
@@ -1564,7 +1615,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             phi_cnm, Z, phi_mol = fit_krumholz(h_sd_ravel,
                                       rh2_ravel,
                                       guesses=guesses, # phi_cnm, Z
-                                      vary=parameter_vary,
+                                      vary=[vary_phi_cnm,
+                                            vary_Z, vary_phi_mol],
                                       rh2_error=rh2_error_ravel,
                                       verbose=verbose)
 
@@ -1668,7 +1720,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     phi_cnm_confint, Z_confint, phi_mol_confint = calc_MC_errors(results_dict,
                                                 error_method=error_method,
                                                 alpha=alpha,
-                                                parameter_vary=parameter_vary)
+                                                parameter_vary=[vary_phi_cnm,
+                                                    vary_Z, vary_phi_mol])
 
     phi_cnm = phi_cnm_confint[0]
     phi_cnm_error = phi_cnm_confint[1:]
@@ -1693,10 +1746,10 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
           '{0:.1f} to {1:.1f} km/s'.format(hi_vel_range_sample[0],
                                            hi_vel_range_sample[1],))
 
-    if N_runs > 1:
+    if N_monte_carlo_runs > 1:
         return images, hi_vel_range_sample, (phi_cnm, Z, phi_cnm_error,
                 Z_error, phi_mol, phi_mol_error)
-    if N_runs == 1:
+    if N_monte_carlo_runs == 1:
         return images, hi_vel_range_sample, (phi_cnm, Z, phi_mol)
 
 def calc_MC_errors(results_dict, error_method='edges', alpha=0.05,
@@ -2083,8 +2136,18 @@ def main(verbose=True):
     reproduce_lee12 = True
 
     # Error analysis
+    global clobber
+    global vary_phi_cnm
+    global vary_Z
+    global vary_phi_mol
+    global error_method
+    global alpha
+    global N_monte_carlo_runs
+    global calc_errors
+    global guesses
+
     calc_errors = True # Run monte carlo error analysis?
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
+    N_monte_carlo_runs = 10000 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
@@ -2094,17 +2157,23 @@ def main(verbose=True):
     alpha = 0.32 # 1 - alpha = confidence
     results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
             'monte_carlo_results/perseus_mc_results_'
-    clobber = 0 # perform MC and write over current results?
+    clobber = 1 # perform MC and write over current results?
+    guesses=(10.0, 1.0, 10.0)
 
     # Use core-derived or global-derived likelihoods for DGR - vel width
     # combinations. Options are 'cores' and 'global'
+    global likelihood_derivation
     likelihood_derivation = 'global'
 
     # Regions
     # Options are 'ds9' or 'av_gradient'
+    global box_method
+    global region_type
     box_method = 'av_gradient'
+    region_type = 'wedge' # Shape of core region, box or wedge
 
     #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
+    global h_sd_fit_range
     h_sd_fit_range = [0.001, 1000] # range of fitted values for krumholz model
 
     # Figures
@@ -2219,7 +2288,7 @@ def main(verbose=True):
                     angle = box_angle)
         elif box_method == 'av_gradient':
             mask = myg.get_polygon_mask(av_data_planck_orig,
-                    cores[core]['box_vertices_rotated'])
+                    cores[core]['{0:s}_vertices_rotated'.format(region_type)])
         else:
             raise ValueError('Method for boxes is either ds9 or av_gradient')
 
@@ -2246,20 +2315,12 @@ def main(verbose=True):
                                  dgr_error=dgr_error,
                                  av_image=av_data_planck,
                                  av_image_error=av_error_data_planck,
-                                 N_runs=N_monte_carlo_runs,
-                                 guesses=[10.0, 1.0, 10.0],
-                                 parameter_vary=[vary_phi_cnm, vary_Z,
-                                                 vary_phi_mol],
                                  core_dict=cores[core],
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
                                          'perseus_%s' % core,
-                                 error_method=error_method,
-                                 alpha=alpha,
                                  properties=properties,
                                  results_filename=results_filename + core,
-                                 clobber=clobber,
-                                 likelihood_derivation=likelihood_derivation,
                                  )
         else:
             images, params = run_analysis(hi_cube=hi_data,
@@ -2271,8 +2332,6 @@ def main(verbose=True):
                                  av_image=av_data_planck,
                                  av_image_error=av_error_data_planck,
                                  hi_vel_range=hi_vel_range,
-                                 N_runs=1,
-                                 guesses=[10.0, 1.0],
                                  parameter_vary=[vary_phi_cnm, vary_Z])
 
         rh2_fit, h_sd_fit, f_H2, f_HI = calc_krumholz(params=params[:2],
@@ -2376,7 +2435,7 @@ def main(verbose=True):
                 h_sd_error_images = h_sd_image_error_list,
                 hi_fits = hi_sd_fit_list,
                 h_sd_fits = h_sd_fit_list,
-                #limits = [1, 100, 1, 100],
+                limits = [0, 50, 0, 6.5],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
                 filename = 'perseus_hi_vs_h_panels_planck_linear.%s' % \
@@ -2385,23 +2444,31 @@ def main(verbose=True):
                 #        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
+                phi_cnm_error_list=phi_cnm_error_list,
+                phi_mol_list=phi_mol_list,
+                phi_mol_error_list=phi_mol_error_list,
+                Z_list=Z_list,
+                Z_error_list=Z_error_list,
                 show = False)
 
         plot_hi_vs_h_grid(hi_sd_image_list,
                 h_sd_image_list,
-                hi_sd_error_images = hi_sd_image_error_list,
-                h_sd_error_images = h_sd_image_error_list,
-                hi_fits = hi_sd_fit_list,
-                h_sd_fits = h_sd_fit_list,
-                limits = [1, 100, 1, 100],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('log', 'log'),
-                filename = 'perseus_hi_vs_h_panels_planck_log.%s' % \
+                hi_sd_error_images=hi_sd_image_error_list,
+                h_sd_error_images=h_sd_image_error_list,
+                hi_fits=hi_sd_fit_list,
+                h_sd_fits=h_sd_fit_list,
+                limits=[1, 100, 1, 100],
+                savedir=figure_dir + 'panel_cores/',
+                scale=('log', 'log'),
+                filename='perseus_hi_vs_h_panels_planck_log.%s' % \
                         figure_type,
-                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of perseus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
+                phi_cnm_error_list=phi_cnm_error_list,
+                phi_mol_list=phi_mol_list,
+                phi_mol_error_list=phi_mol_error_list,
+                Z_list=Z_list,
+                Z_error_list=Z_error_list,
                 show = False)
 
         plot_hi_vs_av_grid(hi_sd_image_list,
@@ -2409,10 +2476,10 @@ def main(verbose=True):
                 hi_error_images = hi_sd_image_error_list,
                 av_error_images = h_sd_image_error_list,
                 #limits = [10**-1, 10**2, 10**0, 10**2],
-                limits = [1e-1, 70, 2, 10],
+                limits = [0, 50, 1, 8],
                 savedir = figure_dir + 'panel_cores/',
-                scale = ('log', 'linear'),
-                filename = 'perseus_hi_vs_av_panels_planck_log.%s' % \
+                scale = ('linear', 'linear'),
+                filename = 'perseus_hi_vs_av_panels_planck_linear.%s' % \
                         figure_type,
                 core_names=core_name_list,
                 #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\

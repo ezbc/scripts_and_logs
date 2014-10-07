@@ -44,7 +44,7 @@ def plot_av_images(cloud_dict, title=None, boxes=False, savedir='./',
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': True,
-              'figure.figsize': (19, 20),
+              'figure.figsize': (20, 10),
               'figure.titlesize': font_scale
               #'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -54,14 +54,17 @@ def plot_av_images(cloud_dict, title=None, boxes=False, savedir='./',
 
     fig.subplots_adjust(hspace=0.1)
 
-    gs1 = GridSpec(3, 1)
-    gs1.update(left=0.02, right=0.6, bottom=0.02, top=0.98, wspace=0.00,
-            hspace=0.12)
+    gs1 = GridSpec(1, 2)
+    #gs1.update(left=0.02, right=0.6, bottom=0.02, top=0.98, wspace=0.00,
+    #        hspace=0.12)
 
     #grid_helper = pywcsgrid2.GridHelper(wcs=cloud_dict[cloud]['av_header'])
 
     grid_pos = 0
     cloud_list = []
+
+    cloud_dict = {'taurus':cloud_dict['taurus'],
+                  'california':cloud_dict['california']}
 
     for i, cloud in enumerate(cloud_dict):
         av_image = cloud_dict[cloud]['av_data']
@@ -110,6 +113,7 @@ def plot_av_images(cloud_dict, title=None, boxes=False, savedir='./',
         # Convert sky to pix coordinates
         cores = cloud_dict[cloud]['cores']
 
+        '''
         # Colorbar
         if cloud == 'perseus':
             cb = fig.colorbar(im, ax=ax)
@@ -121,6 +125,7 @@ def plot_av_images(cloud_dict, title=None, boxes=False, savedir='./',
 
             # Write label to colorbar
             cb.set_label(r'A$_V$ (Mag)',)
+        '''
 
         for core in cores:
             if core in cloud_dict[cloud]['plot_cores']:
@@ -162,11 +167,6 @@ def plot_av_images(cloud_dict, title=None, boxes=False, savedir='./',
 
         cloud_list.append(cloud)
         grid_pos += 1
-
-    # Plot RH2 and HISD vs. HSD
-    plot_rh2_hi_vs_h(cloud_dict, fig, font_scale=font_scale,
-            rh2_limits=rh2_limits, cloud_list=cloud_list,
-            hi_sd_limits=hi_sd_limits)
 
     #plt.tight_layout()
 
@@ -841,7 +841,7 @@ def main():
                        boxes=True,
                        #title=r'taurus: A$_V$ map with core boxed-regions.',
                        savedir=figure_dir,
-                       filename='multicloud_av_cores_map' + \
+                       filename='multicloud_av_cores_map_flashpres' + \
                                 '.{0:s}'.format(figure_type),
                        show=0,
                        rh2_limits=[0, 79, 1.1*10**-3, 0.5*10**2],

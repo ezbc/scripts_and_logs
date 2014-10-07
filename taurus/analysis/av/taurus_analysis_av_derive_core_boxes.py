@@ -439,17 +439,18 @@ def main():
     import grid
     import numpy as np
     from os import system,path
-    import myclumpfinder as clump_finder
-    reload(clump_finder)
     import mygeometry as myg
-    reload(myg)
     from mycoords import make_velocity_axis
     import json
 
     # parameters used in script
-    box_width = 7 # in pixels
-    box_height = 22 # in pixels
-    angle_res = 15.0 # degrees
+    box_width = 4 # in pixels
+    box_height = 10 # in pixels
+    #box_width = 7 # in pixels
+    #box_height = 22 # in pixels
+    box_width = 8 # in pixels
+    box_height = 40 # in pixels
+    angle_res = 10.0 # degrees
 
     # define directory locations
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'

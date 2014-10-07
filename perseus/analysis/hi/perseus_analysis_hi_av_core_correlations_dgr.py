@@ -176,7 +176,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
              }
     plt.rcParams.update(params)
 
-    fig, ax_image = plt.subplots(figsize=(8,8))
+    fig, ax_image = plt.subplots(figsize=(6,6))
 
     # Mask NaNs
     image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
@@ -196,6 +196,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         ax_image.set_xlabel(r'Velocity Width (km/s)')
         x_sum_axes = (0, 2)
         y_pdf_label = r'Width PDF'
+        x_limits = (0, 25)
     if plot_axes[1] == 'widths':
     	y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'Velocity Width (km/s)')
@@ -203,14 +204,15 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         x_pdf_label = r'Width PDF'
     if plot_axes[0] == 'dgrs':
     	x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'DGR (1 $\times$ 10$^{-20}$ cm$^2$ mag$^1$)')
+        ax_image.set_xlabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
         x_sum_axes = (0, 1)
         y_pdf_label = r'DGR PDF'
     if plot_axes[1] == 'dgrs':
     	y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'DGR (1 $\times$ 10$^{-20}$ cm$^2$ mag$^1$)')
+        ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
         y_sum_axes = (0, 1)
         x_pdf_label = r'DGR PDF'
+        y_limits = (0, 0.3)
 
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
@@ -363,9 +365,17 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
 
         ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
 
+    try:
+        print 'yes'
+        ax_image.set_xlim(x_limits)
+        ax_image.set_ylim(y_limits)
+    except UnboundLocalError:
+        pass
+
+
     if filename is not None:
         plt.draw()
-        plt.savefig(filename)#, bbox_inches='tight')
+        plt.savefig(filename, bbox_inches='tight')
     if show:
         plt.draw()
         plt.show()
@@ -977,12 +987,12 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 1
+    clobber = 0
 
     # Confidence of parameter errors
-    conf = 0.98
+    conf = 0.68
     # Confidence of contour levels
-    contour_confs = (0.68, 0.98)
+    contour_confs = (0.68, 0.95)
 
     # Course, large grid or fine, small grid?
     grid_res = 'course'
@@ -1155,7 +1165,20 @@ def main():
     if global_likelihoodelation:
         print('\nCalculating likelihoods globally')
 
-        indices = ((av_data_planck < av_threshold))
+
+        mask = np.zeros(av_data_planck.shape)
+        for core in cores:
+            # Grab the mask
+            mask += myg.get_polygon_mask(av_data_planck,
+                    cores[core]['box_vertices_rotated'])
+
+        indices = ((mask == 0) &\
+                   (av_data_planck < av_threshold))
+
+        print('\nTotal number of pixels in analysis = ' + \
+                '{0:.0f}'.format(indices[indices].size))
+
+        #indices = ((av_data_planck < av_threshold))
 
         hi_data_sub = np.copy(hi_data[:, indices])
         noise_cube_sub = np.copy(noise_cube[:, indices])

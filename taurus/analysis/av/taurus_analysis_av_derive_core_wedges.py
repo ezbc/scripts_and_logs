@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
 '''
 
 import pyfits as pf
@@ -77,7 +77,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
             )
 
     # Asthetics
-    ax.set_display_coord_system("fk4")
+    ax.set_display_coord_system("fk5")
     ax.set_ticklabel_type("hms", "dms")
 
     ax.set_xlabel('Right Ascension (J2000)',)
@@ -102,7 +102,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
         anno_color = (0.3, 0.5, 1)
 
         ax.scatter(pix_coords[0],pix_coords[1],
-                color=anno_color,
+                color='r',
                 s=200,
                 marker='+',
                 linewidths=2)
@@ -111,10 +111,10 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
                 xy=[pix_coords[0], pix_coords[1]],
                 xytext=(5,5),
                 textcoords='offset points',
-                color=anno_color)
+                color='c')
 
         if boxes:
-            vertices = np.copy(cores[core]['box_vertices_rotated'])
+            vertices = np.copy(cores[core]['wedge_vertices_rotated'])
             #[:, ::-1]
             rect = ax.add_patch(Polygon(
                     vertices[:, ::-1],
@@ -124,14 +124,14 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
-        plt.savefig(savedir + filename)
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
 ''' Calculations
 '''
 
-def create_box(core_pos, width, height, core_rel_pos=0.1):
+def create_wedge(core_pos, radius, angle, core_rel_pos=0.1):
 
     '''
     Parameters
@@ -148,31 +148,27 @@ def create_box(core_pos, width, height, core_rel_pos=0.1):
 
     Returns
     -------
-    box_vertices : numpy.array
+    wedge_vertices : numpy.array
         4 x 2 array with box pixel vertices, starting from lower-left going
         clockwise.
 
     '''
 
-    box_vertices = np.empty((4, 2))
+    from matplotlib.patches import Circle, Wedge, Polygon
 
-    # x-coords
-    box_vertices[:2, 0] = core_pos[0] - width / 2.
-    box_vertices[2:4, 0] = core_pos[0] + width / 2.
+    center_pos = (core_pos[0] - core_rel_pos * radius,
+                  core_pos[1])
 
-    # y-coords
-    offset = height * core_rel_pos
-    box_vertices[1:3, 1] = core_pos[1] + height - offset
-    box_vertices[(0, 3), 1] = core_pos[1] - offset
+    wedge_vertices = Wedge(center_pos, radius, -angle/2., angle/2.).get_verts()
 
-    return box_vertices
+    return wedge_vertices
 
-def rotate_box(box_vertices, anchor, angle):
+def rotate_wedge(wedge_vertices, anchor, angle):
 
     '''
     Parameters
     ----------
-    box_vertices : numpy.array
+    wedge_vertices : numpy.array
         4 x 2 array with box pixel vertices, starting from lower-left going
         clockwise.
     anchor : tuple
@@ -182,17 +178,17 @@ def rotate_box(box_vertices, anchor, angle):
 
     Returns
     -------
-    box_vertices_rotated : numpy.array
+    wedge_vertices_rotated : numpy.array
         4 x 2 array with rotated box pixel vertices.
     '''
 
     from mygeometry import rotate_polygon
 
-    box_vertices_rotated = rotate_polygon(box_vertices, anchor, angle)
+    wedge_vertices_rotated = rotate_polygon(wedge_vertices, anchor, angle)
 
-    return box_vertices_rotated
+    return wedge_vertices_rotated
 
-def derive_ideal_box(av_image, cores_dict, box_width, box_height,
+def derive_ideal_wedge(av_image, cores_dict, wedge_angle, wedge_radius,
         av_image_error=None, core_rel_pos=0.1, angle_res=1.0):
 
     import mygeometry as myg
@@ -208,7 +204,7 @@ def derive_ideal_box(av_image, cores_dict, box_width, box_height,
     """
 
     angle_grid = np.arange(0, 360, angle_res)
-    box_dict = {}
+    wedge_dict = {}
 
     for core in cores_dict:
         print('Calculating optimal angle for core {:s}'.format(core))
@@ -216,15 +212,15 @@ def derive_ideal_box(av_image, cores_dict, box_width, box_height,
         # axes are reversed
         core_pos = cores_dict[core]['center_pixel'][::-1]
 
-        box_vertices = create_box(core_pos, box_width, box_height,
+        wedge_vertices = create_wedge(core_pos, wedge_radius, wedge_angle,
                 core_rel_pos=core_rel_pos)
 
         gradient_sums = np.zeros((len(angle_grid)))
 
         for i, angle in enumerate(angle_grid):
-            box_vertices_rotated = rotate_box(box_vertices, core_pos, angle)
+            wedge_vertices_rotated = rotate_wedge(wedge_vertices, core_pos, angle)
 
-            mask = myg.get_polygon_mask(av_image, box_vertices_rotated)
+            mask = myg.get_polygon_mask(av_image, wedge_vertices_rotated)
 
             av_image_masked = np.copy(av_image)
 
@@ -237,7 +233,7 @@ def derive_ideal_box(av_image, cores_dict, box_width, box_height,
 
             if angle == 90:
                 av_image_masked = np.copy(av_image)
-                mask = myg.get_polygon_mask(av_image_masked, box_vertices)
+                mask = myg.get_polygon_mask(av_image_masked, wedge_vertices)
                 av_image_masked[mask==0]=np.NaN
 
             indices = np.where((radii == radii) & \
@@ -251,12 +247,12 @@ def derive_ideal_box(av_image, cores_dict, box_width, box_height,
         # find steepest profile and recreate the box mask
         angle_ideal = angle_grid[gradient_sums == np.min(gradient_sums)][0]
 
-        box_vertices_rotated = rotate_box(box_vertices, core_pos, angle_ideal)
+        wedge_vertices_rotated = rotate_wedge(wedge_vertices, core_pos, angle_ideal)
 
-        box_dict[core] = {}
-        box_dict[core]['box_vertices_rotated'] = box_vertices_rotated
+        wedge_dict[core] = {}
+        wedge_dict[core]['wedge_vertices_rotated'] = wedge_vertices_rotated
 
-    return box_dict
+    return wedge_dict
 
 def get_radial_profile(image, center=None, stddev=False, binsize=1,
         mask=None, weights=None):
@@ -438,11 +434,11 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
                                               header = header)
             box_center_pixel = (int(box_center_pixel[1]),
                     int(box_center_pixel[0]))
-            box_height = region[2] / header['CDELT1']
-            box_width = region[3] / header['CDELT2']
+            wedge_radius = region[2] / header['CDELT1']
+            wedge_angle = region[3] / header['CDELT2']
             cores[core].update({'box_center_pix': box_center_pixel})
-            cores[core].update({'box_width': box_width})
-            cores[core].update({'box_height': box_height})
+            cores[core].update({'wedge_angle': wedge_angle})
+            cores[core].update({'wedge_radius': wedge_radius})
             cores[core].update({'box_angle': region[4]})
 
     return cores
@@ -461,74 +457,75 @@ def main():
     import json
 
     # parameters used in script
-    #box_width = 3 # in pixels
-    #box_height = 10 # in pixels
-    box_width = 6 # in pixels
-    box_height = 30 # in pixels
-    #box_width = 12 # in pixels
-    #box_height = 60 # in pixels
+    # -------------------------
+    # wedge should be a few tens of pc.
+    # D = 300 pc
+    # res = 5'
+    # d/pix = 0.43 pc/pix
+    wedge_angle = 40.0 # degrees
+    wedge_radius = 10.0 / 0.43 # pixels,
+    core_rel_pos = 0.15 # fraction of radius core is within wedge
 
     # define directory locations
-    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/perseus/figures/maps/'
-    av_dir = '/d/bip3/ezbc/perseus/data/av/'
-    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
-    co_dir = '/d/bip3/ezbc/perseus/data/co/'
-    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data, av_header = load_fits(av_dir + \
-                'perseus_av_planck_5arcmin.fits',
+                'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data, av_error_header = load_fits(av_dir + \
-                'perseus_av_error_planck_5arcmin.fits',
+                'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     # av_data[dec, ra], axes are switched
 
     # define core properties
-    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, av_header)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'perseus_av_boxes_',
+            filename_base = region_dir + 'taurus_av_boxes_',
             header = av_header)
 
     av_image_list = []
     av_image_error_list = []
     core_name_list = []
 
-    box_dict = derive_ideal_box(av_data, cores, box_width, box_height,
-            core_rel_pos=0.1, angle_res=10., av_image_error=av_error_data)
+    wedge_dict = derive_ideal_wedge(av_data, cores, wedge_angle, wedge_radius,
+            core_rel_pos=core_rel_pos, angle_res=5.,
+            av_image_error=av_error_data)
 
     for core in cores:
-        cores[core]['box_vertices_rotated'] = \
-            box_dict[core]['box_vertices_rotated'].tolist()
+        cores[core]['wedge_vertices_rotated'] = \
+            wedge_dict[core]['wedge_vertices_rotated'].tolist()
         try:
             cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
         except AttributeError:
             cores[core]['center_pixel'] = cores[core]['center_pixel']
 
-    with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
+    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
         json.dump(cores, f)
 
     for core in cores:
         mask = myg.get_polygon_mask(av_data,
-                cores[core]['box_vertices_rotated'])
+                cores[core]['wedge_vertices_rotated'])
 
         av_data_mask = np.copy(av_data)
         av_data_mask[mask == 0] = np.NaN
 
     # Define limits for plotting the map
     prop_dict = {}
-    prop_dict['limit_wcs'] = (((3, 58, 0), (27, 6, 0)),
-                              ((3, 20, 0), (35, 0, 0)))
-    prop_dict['limit_wcs'] = (((3, 58, 0), (26, 6, 0)),
-                              ((3, 0, 0), (35, 0, 0)))
+    prop_dict['limit_wcs'] = (((4, 50,  0), (21, 0, 0)),
+                              ((4, 0, 0), (31, 0, 0)))
     prop_dict['av_header'] = av_header
 
     prop_dict = convert_limit_coordinates(prop_dict)
@@ -538,10 +535,10 @@ def main():
     for figure_type in figure_types:
         plot_av_image(av_image=av_data, header=av_header,
                 boxes=True, cores=cores, #limits=[50,37,200,160],
-                #title=r'perseus: A$_V$ map with core boxed-regions.',
+                #title=r'taurus: A$_V$ map with core boxed-regions.',
                 savedir=figure_dir,
                 limits=prop_dict['limit_pixels'],
-                filename='perseus_av_cores_map.%s' % \
+                filename='taurus_av_cores_map.%s' % \
                         figure_type,
                 show=0)
 

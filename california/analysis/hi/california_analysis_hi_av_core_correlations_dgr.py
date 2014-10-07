@@ -29,7 +29,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 8
+    font_scale = 6
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
@@ -46,7 +46,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
     plt.rcParams.update(params)
 
 
-    fig = plt.figure(figsize=(3,2))
+    fig = plt.figure(figsize=(4,2))
 
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(1,1),
@@ -160,7 +160,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
+    font_scale = 10
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
@@ -176,7 +176,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
              }
     plt.rcParams.update(params)
 
-    fig, ax_image = plt.subplots(figsize=(8,8))
+    fig, ax_image = plt.subplots(figsize=(5,3))
 
     # Mask NaNs
     image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
@@ -196,6 +196,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         ax_image.set_xlabel(r'Velocity Width (km/s)')
         x_sum_axes = (0, 2)
         y_pdf_label = r'Width PDF'
+        x_limits = (3, 20)
     if plot_axes[1] == 'widths':
     	y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'Velocity Width (km/s)')
@@ -203,14 +204,15 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         x_pdf_label = r'Width PDF'
     if plot_axes[0] == 'dgrs':
     	x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'DGR (1 $\times$ 10$^{-20}$ cm$^2$ mag$^1$)')
+        ax_image.set_xlabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
         x_sum_axes = (0, 1)
         y_pdf_label = r'DGR PDF'
     if plot_axes[1] == 'dgrs':
     	y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'DGR (1 $\times$ 10$^{-20}$ cm$^2$ mag$^1$)')
+        ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
         y_sum_axes = (0, 1)
         x_pdf_label = r'DGR PDF'
+        y_limits = (0.09, 0.23)
 
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
@@ -241,8 +243,8 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
 
     if show_pdfs:
         divider = make_axes_locatable(ax_image)
-        ax_pdf_x = divider.append_axes("top", 1, pad=0.1, sharex=ax_image)
-        ax_pdf_y  = divider.append_axes("right", 1, pad=0.1,
+        ax_pdf_x = divider.append_axes("top", 0.8, pad=0.05, sharex=ax_image)
+        ax_pdf_y  = divider.append_axes("right", 0.8, pad=0.05,
                 sharey=ax_image)
 
         # make some labels invisible
@@ -363,9 +365,16 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
 
         ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
 
+    try:
+        ax_image.set_xlim(x_limits)
+        ax_image.set_ylim(y_limits)
+    except UnboundLocalError:
+        pass
+
+
     if filename is not None:
         plt.draw()
-        plt.savefig(filename)#, bbox_inches='tight')
+        plt.savefig(filename, bbox_inches='tight')
     if show:
         plt.draw()
         plt.show()
@@ -977,12 +986,12 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 1
+    clobber = 0
 
     # Confidence of parameter errors
-    conf = 0.98
+    conf = 0.68
     # Confidence of contour levels
-    contour_confs = (0.68, 0.98)
+    contour_confs = (0.68, 0.95)
 
     # Course, large grid or fine, small grid?
     grid_res = 'course'
@@ -1155,7 +1164,18 @@ def main():
     if global_likelihoodelation:
         print('\nCalculating likelihoods globally')
 
-        indices = ((av_data_planck < av_threshold))
+
+        mask = np.zeros(av_data_planck.shape)
+        for core in cores:
+            # Grab the mask
+            mask += myg.get_polygon_mask(av_data_planck,
+                    cores[core]['box_vertices_rotated'])
+
+        indices = ((mask == 0) &\
+                   (av_data_planck < av_threshold))
+
+
+        #indices = ((av_data_planck < av_threshold))
 
         hi_data_sub = np.copy(hi_data[:, indices])
         noise_cube_sub = np.copy(noise_cube[:, indices])
