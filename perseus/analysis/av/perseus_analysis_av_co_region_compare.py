@@ -11,7 +11,7 @@ import numpy as np
 
 def plot_av_image(av_image=None, header=None, title=None, limits=None,
         savedir='./', filename=None, show=True, av_mask=None, co_mask=None,
-        av_threshold=None):
+        av_threshold=None, av_thresholds=None):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -24,6 +24,7 @@ def plot_av_image(av_image=None, header=None, title=None, limits=None,
     import pywcs
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
+    import matplotlib.cm as cm
     import matplotlib.lines as mlines
 
     # Set up plot aesthetics
@@ -102,22 +103,33 @@ def plot_av_image(av_image=None, header=None, title=None, limits=None,
                        levels=(bad_pix,),
                        origin='lower',
                        colors='r',
-                       linestyles='solid')
-    cs_av = ax.contour(av_mask,
-                       levels=(bad_pix,),
-                       origin='lower',
-                       colors='c',
-                       linestyles='solid')
+                       linestyles='--')
+    if av_mask is not None:
+        cs_av = ax.contour(av_mask,
+                           levels=(bad_pix,),
+                           origin='lower',
+                           colors='c',
+                           linestyles='solid')
 
     # Legend
     co_line = mlines.Line2D([], [],
                 color='r',
-                linestyle='solid',
+                linestyle='--',
                 label=r'CO threshold = 2$\times \sigma_{\rm CO}$')
-    av_line = mlines.Line2D([], [],
-                color='c',
-                linestyle='solid',
-                label=r'$A_V$ threshold = {0:1f} mag'.format(av_threshold))
+    if av_thresholds is not None:
+    	colors = cm.rainbow(np.linspace(0, 1, len(av_thresholds)))
+        for i, av_threshold in enumerate(av_thresholds):
+            label = r'$A_V$ threshold = {0:1f} mag'.format(av_threshold)
+            av_line = mlines.Line2D([], [],
+                        color=colors[i],
+                        linestyle='solid',
+                        label=label)
+    elif av_threshold is not None and av_mask is not None:
+        label = r'$A_V$ threshold = {0:1f} mag'.format(av_threshold)
+        av_line = mlines.Line2D([], [],
+                    color='c',
+                    linestyle='solid',
+                    label=label)
 
     #ax.clabel(cs_co, inline=1, fontsize=10)
     #ax.clabel(cs_av, inline=1, fontsize=10)
@@ -476,13 +488,6 @@ def main():
 
     # parameters used in script
     # -------------------------
-    #box_width = 3 # in pixels
-    #box_height = 10 # in pixels
-    box_width = 6 # in pixels
-    box_height = 30 # in pixels
-    #box_width = 12 # in pixels
-    #box_height = 60 # in pixels
-
     # WCS limits of boxed region without emission
     noise_dict = {}
     noise_region = noise_dict['limit_wcs'] = (((3, 34, 40), (33, 3, 0)),
@@ -566,6 +571,16 @@ def main():
                 av_mask=av_image_av_masked,
                 co_mask=av_image_co_masked,
                 av_threshold=av_threshold,
+                savedir=figure_dir,
+                limits=prop_dict['limit_pixels'],
+                filename='perseus_av_co_masks_map.%s' % \
+                        figure_type,
+                show=0)
+
+        plot_av_image(av_image=av_data,
+                header=av_header,
+                co_mask=av_image_co_masked,
+                av_thresholds=av_thresholds,
                 savedir=figure_dir,
                 limits=prop_dict['limit_pixels'],
                 filename='perseus_av_co_masks_map.%s' % \
