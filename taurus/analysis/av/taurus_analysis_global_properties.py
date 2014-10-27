@@ -17,7 +17,17 @@ def main():
                                             'unit' : '10^-22 mag / 10^20 cm^-2'
                                       },
                   'metallicity' : {'value' : 1.00,
-                                   'unit' : 'Z_solar'},
+                                   'unit' : 'Z_solar',
+                                   },
+                  'region_limit' : {'wcs' : (((4, 50,  0), (21, 0, 0)),
+                                             ((4, 0, 0), (31, 0, 0))),
+                                    'pixel' : ()
+                                    },
+                  'co_noise_limits' : {'wcs' : [(((4, 8, 0), (18, 15, 0)),
+                                                ((3, 49, 0), (22, 10, 0))),
+                                                ],
+                                       'pixel' : ()
+                                       }
                   }
 
     with open(output_dir + filename, 'w') as f:

@@ -717,13 +717,12 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                                                           Z_error[1])
                 if phi_mol_error == (0.0, 0.0):
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
-                                     '%.1f \\' % (phi_mol)
+                                     '%.1f' % (phi_mol)
                 else:
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
                                 r' %.2f' % (phi_mol) + \
-                                r'$^{+%.2f}_{-%.2f}$ \\' % (phi_mol_error[0],
-                                                         phi_mol_error[1]) + \
-                                r''
+                                r'$^{+%.2f}_{-%.2f}$' % (phi_mol_error[0],
+                                                         phi_mol_error[1])
 
                 ax.annotate(phi_cnm_text + T_cnm_text + Z_text + phi_mol_text,
                         xytext=(anno_xpos, 0.05),
@@ -748,14 +747,14 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
 
         # Adjust asthetics
         ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'R$_{H2}$',)
+        ax.set_ylabel(r'R$_{H2}$ = $\Sigma_{H2}$ + $\Sigma_{HI}$',)
         ax.set_title(core_names[i])
         ax.grid(False)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename) #, bbox_inches='tight')
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -901,6 +900,15 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     from mpl_toolkits.axes_grid1 import ImageGrid
     from myscience.krumholz09 import calc_T_cnm
 
+    n = int(np.ceil(len(hi_images)**0.5))
+    if n**2 - n > len(hi_images):
+        nrows = n - 1
+        ncols = n
+        y_scaling = 1.0 - 1.0 / n
+    else:
+        nrows, ncols = n, n
+        y_scaling = 1.0
+
     # Set up plot aesthetics
     plt.clf()
     plt.rcdefaults()
@@ -911,16 +919,17 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
               'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
+              'legend.fontsize': font_scale * 3 / 4.0,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': True,
-              'figure.figsize': (10, 10),
+              'figure.figsize': (8, 8 * y_scaling),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
+
 
     # Create figure instance
     fig = plt.figure()
@@ -1046,7 +1055,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                                                           Z_error[1])
                 if phi_mol_error == (0.0, 0.0):
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
-                                     '%.1f \\' % (phi_mol)
+                                     '%.1f' % (phi_mol)
                 else:
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
                                 r' %.2f' % (phi_mol) + \
@@ -1082,7 +1091,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename) #, bbox_inches='tight')
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -2157,7 +2166,7 @@ def main(verbose=True):
     alpha = 0.32 # 1 - alpha = confidence
     results_filename = '/d/bip3/ezbc/california/data/python_output/' + \
             'monte_carlo_results/california_mc_results_'
-    clobber = 1 # perform MC and write over current results?
+    clobber = 0 # perform MC and write over current results?
     guesses=(10.0, 1.0, 10.0)
 
     # Use core-derived or global-derived likelihoods for DGR - vel width
@@ -2374,25 +2383,26 @@ def main(verbose=True):
         cores[core]['f_H2'] = f_H2.tolist()
         cores[core]['f_HI_fit'] = f_HI.tolist()
 
-        # append to the lists
-        hi_sd_image_list.append(images['hi_sd'])
-        hi_sd_image_error_list.append(images['hi_sd_error'])
-        h_sd_image_list.append(images['h_sd'])
-        h_sd_image_error_list.append(images['h_sd_error'])
-        av_image_list.append(images['av'])
-        av_image_error_list.append(images['av_error'])
-        rh2_image_list.append(images['rh2'])
-        rh2_image_error_list.append(images['rh2_error'])
-        rh2_fit_list.append(rh2_fit)
-        h_sd_fit_list.append(h_sd_fit)
-        hi_sd_fit_list.append(hi_sd_fit)
-        phi_cnm_list.append(phi_cnm)
-        phi_cnm_error_list.append(phi_cnm_error)
-        Z_list.append(Z)
-        Z_error_list.append(Z_error)
-        phi_mol_list.append(phi_mol)
-        phi_mol_error_list.append(phi_mol_error)
-        core_name_list.append(core)
+        if core != 'L1449' and core != 'L1442':
+            # append to the lists
+            hi_sd_image_list.append(images['hi_sd'])
+            hi_sd_image_error_list.append(images['hi_sd_error'])
+            h_sd_image_list.append(images['h_sd'])
+            h_sd_image_error_list.append(images['h_sd_error'])
+            av_image_list.append(images['av'])
+            av_image_error_list.append(images['av_error'])
+            rh2_image_list.append(images['rh2'])
+            rh2_image_error_list.append(images['rh2_error'])
+            rh2_fit_list.append(rh2_fit)
+            h_sd_fit_list.append(h_sd_fit)
+            hi_sd_fit_list.append(hi_sd_fit)
+            phi_cnm_list.append(phi_cnm)
+            phi_cnm_error_list.append(phi_cnm_error)
+            Z_list.append(Z)
+            Z_error_list.append(Z_error)
+            phi_mol_list.append(phi_mol)
+            phi_mol_error_list.append(phi_mol_error)
+            core_name_list.append(core)
 
     with open(core_dir + 'california_core_properties.txt', 'w') as f:
         json.dump(cores, f)
@@ -2429,19 +2439,20 @@ def main(verbose=True):
                 Z_error_list=Z_error_list,
                 show = False)
 
+        # Calif limits = [0, 80, 0, 8]
+        # taur limits = [0, 80, 0, 6.5]
+        # Pers limits = [0, 80, 1, 8],
         plot_hi_vs_h_grid(hi_sd_image_list,
                 h_sd_image_list,
-                hi_sd_error_images = hi_sd_image_error_list,
-                h_sd_error_images = h_sd_image_error_list,
-                hi_fits = hi_sd_fit_list,
-                h_sd_fits = h_sd_fit_list,
-                limits = [0, 50, 0, 6.5],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('linear', 'linear'),
-                filename = 'california_hi_vs_h_panels_planck_linear.%s' % \
+                hi_sd_error_images=hi_sd_image_error_list,
+                h_sd_error_images=h_sd_image_error_list,
+                hi_fits=hi_sd_fit_list,
+                h_sd_fits=h_sd_fit_list,
+                limits=[0, 80, 0, 8],
+                savedir=figure_dir + 'panel_cores/',
+                scale=('linear', 'linear'),
+                filename='california_hi_vs_h_panels_planck_linear.%s' % \
                         figure_type,
-                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of california Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
