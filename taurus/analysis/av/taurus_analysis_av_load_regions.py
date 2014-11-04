@@ -114,10 +114,10 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
                 color='c')
 
         if boxes:
-            vertices = np.copy(cores[core]['wedge_vertices_rotated'])
+            vertices = np.copy(cores[core]['poly_verts']['pixel'])
             #[:, ::-1]
             rect = ax.add_patch(Polygon(
-                    vertices[:, ::-1],
+                    vertices,
                     facecolor='none',
                     edgecolor=anno_color))
 
@@ -436,27 +436,35 @@ def read_ds9_region(filename):
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
     # [ra center, dec center, width, height, rotation angle]
 
-    return region[0].coord_list
+    return region
 
 def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
     # [ra center, dec center, width, height, rotation angle]
-    for core in cores:
-        region = read_ds9_region(filename_base + core + '.reg')
-        if region is not None:
-            box_center_pixel = get_pix_coords(ra = region[0],
-                                              dec = region[1],
-                                              header = header)
-            box_center_pixel = (int(box_center_pixel[1]),
-                    int(box_center_pixel[0]))
-            wedge_radius = region[2] / header['CDELT1']
-            wedge_angle = region[3] / header['CDELT2']
-            cores[core].update({'box_center_pix': box_center_pixel})
-            cores[core].update({'wedge_angle': wedge_angle})
-            cores[core].update({'wedge_radius': wedge_radius})
-            cores[core].update({'box_angle': region[4]})
+    regions = read_ds9_region(filename_base + '.reg')
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+    	tag = region.comment
+        core = tag[tag.find('{')+1:tag.find('}')]
+
+        # Format vertices to be 2 x N array
+        poly_verts = []
+        for i in xrange(0, len(region.coord_list)/2):
+        	poly_verts.append((region.coord_list[2*i],
+        	                   region.coord_list[2*i+1]))
+
+        poly_verts_pix = []
+        for i in xrange(0, len(poly_verts)):
+        	poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+        	                                   dec=poly_verts[i][1],
+                                               header=header)[:-1].tolist())
+
+        cores[core]['poly_verts'] = {}
+        cores[core]['poly_verts']['wcs'] = poly_verts
+        cores[core]['poly_verts']['pixel'] = poly_verts_pix
 
     return cores
 
@@ -514,36 +522,12 @@ def main():
     cores = convert_core_coordinates(cores, av_header)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'taurus_av_poly_cores',
             header = av_header)
-
-    av_image_list = []
-    av_image_error_list = []
-    core_name_list = []
-
-    wedge_dict = derive_ideal_wedge(av_data, cores, wedge_angle, wedge_radius,
-            core_rel_pos=core_rel_pos, angle_res=5.,
-            av_image_error=av_error_data)
-
-    for core in cores:
-        cores[core]['wedge_vertices_rotated'] = \
-            wedge_dict[core]['wedge_vertices_rotated'].tolist()
-        try:
-            cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
-        except AttributeError:
-            cores[core]['center_pixel'] = cores[core]['center_pixel']
 
     # Open core properties
     with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
         json.dump(cores, f)
-
-    # Derive mask from wedges
-    for core in cores:
-        mask = myg.get_polygon_mask(av_data,
-                cores[core]['wedge_vertices_rotated'])
-
-        av_data_mask = np.copy(av_data)
-        av_data_mask[mask == 0] = np.NaN
 
     # Open file with WCS region limits
     with open(property_dir + global_property_file, 'r') as f:

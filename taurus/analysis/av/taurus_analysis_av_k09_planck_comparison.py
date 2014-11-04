@@ -177,7 +177,8 @@ def plot_av(av_x, av_y,
                  share_all=True,
                  cbar_mode='single',
                  cbar_pad=0.1,
-                 cbar_size=0.2)
+                 cbar_size=0.2,
+                 )
 
     ax = imagegrid[0]
 

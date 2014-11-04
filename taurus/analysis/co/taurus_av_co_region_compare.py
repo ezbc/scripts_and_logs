@@ -9,8 +9,9 @@ import numpy as np
 ''' Plotting Functions
 '''
 
-def plot_av_image(av_image=None, header=None, cores=None, title=None,
-        limits=None, boxes=False, savedir='./', filename=None, show=True):
+def plot_av_image(av_image=None, header=None, title=None, limits=None,
+        savedir='./', filename=None, show=True, av_mask=None, co_mask=None,
+        av_threshold=None, av_thresholds=None):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -23,6 +24,8 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     import pywcs
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
+    import matplotlib.cm as cm
+    import matplotlib.lines as mlines
 
     # Set up plot aesthetics
     plt.clf()
@@ -69,6 +72,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     # create axes
     ax = imagegrid[0]
     cmap = cm.pink # colormap
+    cmap = cm.gray # colormap
     # show the image
     im = ax.imshow(av_image,
             interpolation='nearest',origin='lower',
@@ -77,7 +81,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
             )
 
     # Asthetics
-    ax.set_display_coord_system("fk5")
+    ax.set_display_coord_system("fk4")
     ax.set_ticklabel_type("hms", "dms")
 
     ax.set_xlabel('Right Ascension (J2000)',)
@@ -94,32 +98,57 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     # Write label to colorbar
     cb.set_label_text(r'A$_V$ (Mag)',)
 
-    # Convert sky to pix coordinates
-    wcs_header = pywcs.WCS(header)
-    for core in cores:
-        pix_coords = cores[core]['center_pixel']
+    # Show contour masks
+    cs_co = ax.contour(co_mask,
+                       levels=(bad_pix,),
+                       origin='lower',
+                       colors='r',
+                       linestyles='-')
+    if av_mask is not None:
+        cs_av = ax.contour(av_mask,
+                           levels=(bad_pix,),
+                           origin='lower',
+                           colors='c',
+                           linestyles='solid')
 
-        anno_color = (0.3, 0.5, 1)
-
-        ax.scatter(pix_coords[0],pix_coords[1],
+    # Legend
+    co_line = mlines.Line2D([], [],
                 color='r',
-                s=200,
-                marker='+',
-                linewidths=2)
+                linestyle='--',
+                #label=r'CO threshold = 2$\times \sigma_{\rm CO}$',
+                label=r'CO threshold = 6 K km/s',
+                )
+    if av_thresholds is not None:
+    	colors = cm.rainbow(np.linspace(0, 1, len(av_thresholds)))
+        for i, av_threshold in enumerate(av_thresholds):
+            label = r'$A_V$ threshold = {0:1f} mag'.format(av_threshold)
+            av_line = mlines.Line2D([], [],
+                        color=colors[i],
+                        linestyle='solid',
+                        label=label)
+    elif av_threshold is not None and av_mask is not None:
+        label = r'$A_V$ threshold = {0:1f} mag'.format(av_threshold)
+        av_line = mlines.Line2D([], [],
+                    color='c',
+                    linestyle='solid',
+                    label=label)
 
-        ax.annotate(core,
-                xy=[pix_coords[0], pix_coords[1]],
-                xytext=(5,5),
-                textcoords='offset points',
-                color='c')
+    #ax.clabel(cs_co, inline=1, fontsize=10)
+    #ax.clabel(cs_av, inline=1, fontsize=10)
 
-        if boxes:
-            vertices = np.copy(cores[core]['wedge_vertices_rotated'])
-            #[:, ::-1]
-            rect = ax.add_patch(Polygon(
-                    vertices[:, ::-1],
-                    facecolor='none',
-                    edgecolor=anno_color))
+    #cs_co.collections.set_label(r'CO threshold = 2$\times \sigma_{\rm CO}$')
+    #cs_av.collections.set_label(r'$A_V$ threshold = ' + \
+    #                             '{0:1f} mag'.format(av_threshold))
+    lines = [cs_co.collections[0], cs_av.collections[0]]
+    labels = [#r'CO threshold = 2$\times\ \sigma_{\rm CO}$',
+              r'CO threshold = 6 K km/s',
+              r'$A_V$ threshold = {0:.1f} mag'.format(av_threshold)]
+    ax.legend(lines, labels,)
+              #bbox_to_anchor=(1,1),
+              #loc=3,
+              #ncol=2,
+              #mode="expand",
+              #borderaxespad=0.)
 
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
@@ -131,7 +160,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
 ''' Calculations
 '''
 
-def create_wedge(core_pos, radius, angle, core_rel_pos=0.1):
+def create_box(core_pos, width, height, core_rel_pos=0.1):
 
     '''
     Parameters
@@ -148,27 +177,31 @@ def create_wedge(core_pos, radius, angle, core_rel_pos=0.1):
 
     Returns
     -------
-    wedge_vertices : numpy.array
+    box_vertices : numpy.array
         4 x 2 array with box pixel vertices, starting from lower-left going
         clockwise.
 
     '''
 
-    from matplotlib.patches import Circle, Wedge, Polygon
+    box_vertices = np.empty((4, 2))
 
-    center_pos = (core_pos[0] - core_rel_pos * radius,
-                  core_pos[1])
+    # x-coords
+    box_vertices[:2, 0] = core_pos[0] - width / 2.
+    box_vertices[2:4, 0] = core_pos[0] + width / 2.
 
-    wedge_vertices = Wedge(center_pos, radius, -angle/2., angle/2.).get_verts()
+    # y-coords
+    offset = height * core_rel_pos
+    box_vertices[1:3, 1] = core_pos[1] + height - offset
+    box_vertices[(0, 3), 1] = core_pos[1] - offset
 
-    return wedge_vertices
+    return box_vertices
 
-def rotate_wedge(wedge_vertices, anchor, angle):
+def rotate_box(box_vertices, anchor, angle):
 
     '''
     Parameters
     ----------
-    wedge_vertices : numpy.array
+    box_vertices : numpy.array
         4 x 2 array with box pixel vertices, starting from lower-left going
         clockwise.
     anchor : tuple
@@ -178,17 +211,17 @@ def rotate_wedge(wedge_vertices, anchor, angle):
 
     Returns
     -------
-    wedge_vertices_rotated : numpy.array
+    box_vertices_rotated : numpy.array
         4 x 2 array with rotated box pixel vertices.
     '''
 
     from mygeometry import rotate_polygon
 
-    wedge_vertices_rotated = rotate_polygon(wedge_vertices, anchor, angle)
+    box_vertices_rotated = rotate_polygon(box_vertices, anchor, angle)
 
-    return wedge_vertices_rotated
+    return box_vertices_rotated
 
-def derive_ideal_wedge(av_image, cores_dict, wedge_angle, wedge_radius,
+def derive_ideal_box(av_image, cores_dict, box_width, box_height,
         av_image_error=None, core_rel_pos=0.1, angle_res=1.0):
 
     import mygeometry as myg
@@ -204,7 +237,7 @@ def derive_ideal_wedge(av_image, cores_dict, wedge_angle, wedge_radius,
     """
 
     angle_grid = np.arange(0, 360, angle_res)
-    wedge_dict = {}
+    box_dict = {}
 
     for core in cores_dict:
         print('Calculating optimal angle for core {:s}'.format(core))
@@ -212,15 +245,15 @@ def derive_ideal_wedge(av_image, cores_dict, wedge_angle, wedge_radius,
         # axes are reversed
         core_pos = cores_dict[core]['center_pixel'][::-1]
 
-        wedge_vertices = create_wedge(core_pos, wedge_radius, wedge_angle,
+        box_vertices = create_box(core_pos, box_width, box_height,
                 core_rel_pos=core_rel_pos)
 
         gradient_sums = np.zeros((len(angle_grid)))
 
         for i, angle in enumerate(angle_grid):
-            wedge_vertices_rotated = rotate_wedge(wedge_vertices, core_pos, angle)
+            box_vertices_rotated = rotate_box(box_vertices, core_pos, angle)
 
-            mask = myg.get_polygon_mask(av_image, wedge_vertices_rotated)
+            mask = myg.get_polygon_mask(av_image, box_vertices_rotated)
 
             av_image_masked = np.copy(av_image)
 
@@ -233,7 +266,7 @@ def derive_ideal_wedge(av_image, cores_dict, wedge_angle, wedge_radius,
 
             if angle == 90:
                 av_image_masked = np.copy(av_image)
-                mask = myg.get_polygon_mask(av_image_masked, wedge_vertices)
+                mask = myg.get_polygon_mask(av_image_masked, box_vertices)
                 av_image_masked[mask==0]=np.NaN
 
             indices = np.where((radii == radii) & \
@@ -247,12 +280,12 @@ def derive_ideal_wedge(av_image, cores_dict, wedge_angle, wedge_radius,
         # find steepest profile and recreate the box mask
         angle_ideal = angle_grid[gradient_sums == np.min(gradient_sums)][0]
 
-        wedge_vertices_rotated = rotate_wedge(wedge_vertices, core_pos, angle_ideal)
+        box_vertices_rotated = rotate_box(box_vertices, core_pos, angle_ideal)
 
-        wedge_dict[core] = {}
-        wedge_dict[core]['wedge_vertices_rotated'] = wedge_vertices_rotated
+        box_dict[core] = {}
+        box_dict[core]['box_vertices_rotated'] = box_vertices_rotated
 
-    return wedge_dict
+    return box_dict
 
 def get_radial_profile(image, center=None, stddev=False, binsize=1,
         mask=None, weights=None):
@@ -289,6 +322,26 @@ def fit_profile(radii, profile, function, sigma=None):
             maxfev=1000000,)
 
     return profile_fit
+
+def calc_co_noise(co_mom0, prop_dict):
+
+    co_noise_region = []
+
+    # Append pixels from each region to CO region map
+    for region in prop_dict['co_noise_limits']['pixel']:
+        co_noise_region.append(co_mom0[region[0][1]:region[1][1],
+                                       region[0][0]:region[1][0]])
+
+    # Calc noise
+    noise = 0.0
+    for region in co_noise_region:
+    	std = np.std(np.array(region)[~np.isnan(region)])
+    	noise += std
+
+    # Take average of stds
+    noise = noise / len(co_noise_region)
+
+    return noise
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -451,11 +504,11 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
                                               header = header)
             box_center_pixel = (int(box_center_pixel[1]),
                     int(box_center_pixel[0]))
-            wedge_radius = region[2] / header['CDELT1']
-            wedge_angle = region[3] / header['CDELT2']
+            box_height = region[2] / header['CDELT1']
+            box_width = region[3] / header['CDELT2']
             cores[core].update({'box_center_pix': box_center_pixel})
-            cores[core].update({'wedge_angle': wedge_angle})
-            cores[core].update({'wedge_radius': wedge_radius})
+            cores[core].update({'box_width': box_width})
+            cores[core].update({'box_height': box_height})
             cores[core].update({'box_angle': region[4]})
 
     return cores
@@ -475,28 +528,25 @@ def main():
 
     # parameters used in script
     # -------------------------
-    # wedge should be a few tens of pc.
-    # D = 300 pc
-    # res = 5'
-    # d/pix = 0.43 pc/pix
-    wedge_angle = 40.0 # degrees
-    wedge_radius = 10.0 / 0.43 # pixels,
-    core_rel_pos = 0.15 # fraction of radius core is within wedge
+    # Pixel value of masks
+    global bad_pix
+    bad_pix = -1e8
 
-    # Name of property files
     global_property_file = 'taurus_global_properties.txt'
 
     # define directory locations
+    # --------------------------
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
     figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
     co_dir = '/d/bip3/ezbc/taurus/data/co/'
     core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
     property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
 
-    # load Planck Av and GALFA HI images, on same grid
+    # load Planck Av and CfA CO images, on same grid
     av_data, av_header = load_fits(av_dir + \
                 'taurus_av_planck_5arcmin.fits',
             return_header=True)
@@ -505,61 +555,62 @@ def main():
                 'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
-    # av_data[dec, ra], axes are switched
+    co_data, co_header = load_fits(co_dir + \
+                'taurus_co_cfa_cube_regrid_planckres.fits',
+            return_header=True)
 
-    # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
-        cores = json.load(f)
-
-    cores = convert_core_coordinates(cores, av_header)
-
-    cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
-            header = av_header)
-
-    av_image_list = []
-    av_image_error_list = []
-    core_name_list = []
-
-    wedge_dict = derive_ideal_wedge(av_data, cores, wedge_angle, wedge_radius,
-            core_rel_pos=core_rel_pos, angle_res=5.,
-            av_image_error=av_error_data)
-
-    for core in cores:
-        cores[core]['wedge_vertices_rotated'] = \
-            wedge_dict[core]['wedge_vertices_rotated'].tolist()
-        try:
-            cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
-        except AttributeError:
-            cores[core]['center_pixel'] = cores[core]['center_pixel']
-
-    # Open core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
-        json.dump(cores, f)
-
-    # Derive mask from wedges
-    for core in cores:
-        mask = myg.get_polygon_mask(av_data,
-                cores[core]['wedge_vertices_rotated'])
-
-        av_data_mask = np.copy(av_data)
-        av_data_mask[mask == 0] = np.NaN
-
-    # Open file with WCS region limits
+    # Load global properties
     with open(property_dir + global_property_file, 'r') as f:
         global_props = json.load(f)
-
     global_props = convert_limit_coordinates(global_props, header=av_header)
 
+    # Create moment 0 map of CO
+    co_mom0 = np.sum(co_data, axis=0)
+
+    # Extract pixels where only CO noise is present
+    std = calc_co_noise(co_mom0, global_props)
+    std = 6.0
+
+    print ''
+    print('CO noise = {0:.2f} K km/s'.format(std))
+    print ''
+
+    # Extract locations of diffuse gas traced by lack of CO emission
+    co_indices = ((co_mom0 < std * 2.0) & \
+                  (av_data == av_data))
+    av_image_co_masked = np.copy(av_data)
+    av_image_co_masked[co_indices] = bad_pix
+
+    # Extract locations of diffuse gas traced by low Av. Raise Av threshold
+    # until the same number of solely atomic gas column pixels are recovered
+    # for both the Av and CO priors
+    num_co_pix = co_indices[co_indices].size
+    num_av_pix = 0
+    av_threshold = 0.0 # mag
+    while num_av_pix <= num_co_pix:
+    	av_threshold += 0.05
+    	av_indices = ((av_data < av_threshold) & \
+    	              (co_mom0 == co_mom0))
+    	num_av_pix = av_indices[av_indices].size
+
+    av_threshold = 1.0
+
+    av_image_av_masked = np.copy(av_data)
+    av_image_av_masked[av_data < av_threshold] = bad_pix
+
+    print('\nAv threshold = {0:.1f} mag'.format(av_threshold))
+
     # Plot
-    figure_types = ['pdf', 'png']
+    figure_types = ['png', 'pdf']
     for figure_type in figure_types:
-        plot_av_image(av_image=av_data, header=av_header,
-                boxes=True, cores=cores, #limits=[50,37,200,160],
-                #title=r'taurus: A$_V$ map with core boxed-regions.',
+        plot_av_image(av_image=av_data,
+                header=av_header,
+                av_mask=av_image_av_masked,
+                co_mask=av_image_co_masked,
+                av_threshold=av_threshold,
                 savedir=figure_dir,
                 limits=global_props['region_limit']['pixel'],
-                filename='taurus_av_cores_map.%s' % \
+                filename='taurus_av_co_masks_map.%s' % \
                         figure_type,
                 show=0)
 

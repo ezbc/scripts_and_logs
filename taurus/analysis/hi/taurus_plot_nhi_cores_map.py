@@ -153,11 +153,12 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # ------------------
     # create axes
     ax = imagegrid[0]
-    cmap = cm.pink # colormap
+    cmap = cm.Greys # colormap
     # show the image
     im = ax.imshow(nhi_image,
             interpolation='nearest',origin='lower',
             cmap=cmap,
+            vmin=0,
             #norm=matplotlib.colors.LogNorm()
             )
 
@@ -185,28 +186,29 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
 
     # Convert sky to pix coordinates
     wcs_header = pywcs.WCS(header)
-    for core in cores:
-        pix_coords = cores[core]['center_pixel']
+    if type(cores) is dict:
+        for core in cores:
+            pix_coords = cores[core]['center_pixel']
 
-        anno_color = (0.3, 0.5, 1)
+            anno_color = (0.3, 0.5, 1)
 
-        ax.scatter(pix_coords[0],pix_coords[1],
-                color=anno_color,
-                s=200,
-                marker='+',
-                linewidths=2)
+            ax.scatter(pix_coords[0],pix_coords[1],
+                    color=anno_color,
+                    s=200,
+                    marker='+',
+                    linewidths=2)
 
-        ax.annotate(core,
-                xy=[pix_coords[0], pix_coords[1]],
-                xytext=(5,5),
-                textcoords='offset points',
-                color=anno_color)
+            ax.annotate(core,
+                    xy=[pix_coords[0], pix_coords[1]],
+                    xytext=(5,5),
+                    textcoords='offset points',
+                    color=anno_color)
 
-        if boxes:
-            rect = ax.add_patch(Polygon(
-                cores[core]['box_vertices'][:, ::-1],
-                    facecolor='none',
-                    edgecolor=anno_color))
+            if boxes:
+                rect = ax.add_patch(Polygon(
+                    cores[core]['box_vertices'][:, ::-1],
+                        facecolor='none',
+                        edgecolor=anno_color))
 
     # ------------------
     # Av image
@@ -214,7 +216,6 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     if av_image is not None:
         # create axes
         ax = imagegrid[1]
-        cmap = cm.pink # colormap
         # show the image
         im = ax.imshow(av_image,
                 interpolation='nearest',origin='lower',
@@ -246,21 +247,22 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
 
         # Convert sky to pix coordinates
         wcs_header = pywcs.WCS(header)
-        for core in cores:
-            pix_coords = cores[core]['center_pixel']
+        if type(cores) is dict:
+            for core in cores:
+                pix_coords = cores[core]['center_pixel']
 
-            anno_color = (0.3, 0.5, 1)
+                anno_color = (0.3, 0.5, 1)
 
-            if boxes:
-                rect = ax.add_patch(Polygon(
-                    cores[core]['box_vertices'][:, ::-1],
-                        facecolor='none',
-                        edgecolor=anno_color))
+                if boxes:
+                    rect = ax.add_patch(Polygon(
+                        cores[core]['box_vertices'][:, ::-1],
+                            facecolor='none',
+                            edgecolor=anno_color))
 
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
-        plt.savefig(savedir + filename)
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -352,7 +354,7 @@ def main():
 
     # create nhi image
     nhi_image = calculate_nhi(hi_cube=hi_image,
-            velocity_axis=velocity_axis, velocity_range=[-100,100])
+            velocity_axis=velocity_axis, velocity_range=[-16.53,28.83])
 
     if False:
         # trim hi_image to av_image size
@@ -458,28 +460,37 @@ def main():
 
         # trim hi_image to av_image size
         nhi_image_trim = np.ma.array(nhi_image,
-                mask = (av_image != av_image))
+                mask = ((av_image != av_image) & \
+                        (av_image > 1.0)))
+        av_image_trim = np.ma.array(av_image,
+                mask = ((nhi_image != nhi_image) & \
+                        (av_image > 1.0)))
+
+        nhi_image_trim = np.copy(nhi_image)
+        nhi_image_trim[av_image > 1.] = np.nan
+        av_image_trim = np.copy(av_image)
+        av_image_trim[av_image > 1.] = np.nan
 
         # Plot
-        figure_types = ['pdf', 'png']
+        figure_types = ['png',]
         for figure_type in figure_types:
             # N(HI) alone
             plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
-                    #contour_image=av_image, contours=[5,10,15],
-                    boxes=True, cores = cores, limits=[50,37,200,160],
-                    title='Taurus: N(HI) map with core boxed-regions.',
+                    contour_image=av_image, contours=[5,10,15],
+                    boxes=True, cores = cores,
+                    limits=[50,37,200,160],
                     savedir=figure_dir,
                     filename='taurus_nhi_cores_map.%s' % \
                             figure_type,
                     show=0)
+
             # N(HI) + Av
             plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
-                    av_image=av_image,
-                    boxes=True, cores = cores, limits=[50,37,200,160],
-                    title='Taurus: N(HI) and $A_{V}$ maps ' + \
-                            'with core boxed-regions.',
+                    av_image=av_image_trim,
+                    #boxes=True, cores = cores,
+                    limits=[50,37,200,160],
                     savedir=figure_dir,
-                    filename='taurus_nhi_av_cores_map.%s' % \
+                    filename='taurus_nhi_av_map.%s' % \
                             figure_type,
                     show=0)
 

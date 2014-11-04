@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av likelihoodelation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av likelihoodelation for the california molecular cloud.
 '''
 
 import pyfits as pf
@@ -197,7 +197,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         ax_image.set_xlabel(r'Velocity Width (km/s)')
         x_sum_axes = (0, 2)
         y_pdf_label = r'Width PDF'
-        x_limits = (0, 25)
+        x_limits = (0, 80)
     if plot_axes[1] == 'widths':
         y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'Velocity Width (km/s)')
@@ -213,7 +213,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
         y_sum_axes = (0, 1)
         x_pdf_label = r'DGR PDF'
-        y_limits = (0.15, 0.9)
+        y_limits = (0.0, 0.4)
 
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
@@ -367,7 +367,6 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
 
     try:
-        print 'yes'
         ax_image.set_xlim(x_limits)
         ax_image.set_ylim(y_limits)
     except UnboundLocalError:
@@ -382,6 +381,100 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         plt.show()
     if returnimage:
         return likelihoods
+
+def plot_av_image(av_image=None, header=None, title=None,
+        limits=None, savedir='./', filename=None, show=True):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    from mpl_toolkits.axes_grid1 import ImageGrid
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import pywcsgrid2 as wcs
+    import pywcs
+    from pylab import cm # colormaps
+    from matplotlib.patches import Polygon
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    font_scale = 15
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (8, 7),
+              'figure.titlesize': font_scale
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    nrows_ncols=(1,1)
+    ngrids=1
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
+                 cbar_location='right',
+                 cbar_pad="2%",
+                 cbar_size='3%',
+                 axes_pad=1,
+                 axes_class=(wcs.Axes,
+                             dict(header=header)),
+                 aspect=True,
+                 label_mode='L',
+                 share_all=True)
+
+    # create axes
+    ax = imagegrid[0]
+    cmap = cm.jet # colormap
+    # show the image
+    im = ax.imshow(av_image,
+            interpolation='nearest',origin='lower',
+            cmap=cmap,
+            #norm=matplotlib.colors.LogNorm()
+            vmin=0,
+            vmax=1.4
+            )
+
+    # Asthetics
+    ax.set_display_coord_system("fk5")
+    ax.set_ticklabel_type("hms", "dms")
+
+    ax.set_xlabel('Right Ascension (J2000)',)
+    ax.set_ylabel('Declination (J2000)',)
+
+    # colorbar
+    cb = ax.cax.colorbar(im)
+    cmap.set_bad(color='w')
+    # plot limits
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[2])
+        ax.set_ylim(limits[1],limits[3])
+
+    # Write label to colorbar
+    cb.set_label_text(r'A$_V$ (Mag)',)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=font_scale)
+    if filename is not None:
+        plt.savefig(savedir + filename, bbox_inches='tight')
+    if show:
+        fig.show()
 
 ''' Calculations
 '''
@@ -510,7 +603,6 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
                 velocity_ranges[count, 1] = center + width/2.
                 count += 1
 
-
         # Set up iterable whereby each row contains the parameter values
         mesh = setup_likelihood_mesh(velocity_centers, velocity_widths, dgrs)
 
@@ -518,59 +610,6 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
         p = multiprocessing.Pool()
         likelihoods = p.map(search_likelihoods, mesh)
         p.close()
-
-        '''
-
-        # calculate the likelihoodelation coefficient for each velocity range
-        likelihoods = np.zeros((len(velocity_centers),
-                                 len(velocity_widths),
-                                 len(dgrs)))
-
-        # Progress bar parameters
-        total = float(likelihoods.size)
-        count = 0
-
-        for i, velocity_center in enumerate(velocity_centers):
-            for j, velocity_width in enumerate(velocity_widths):
-                for k, dgr in enumerate(dgrs):
-
-                    velocity_range = (velocity_center - velocity_width / 2.,
-                                      velocity_center + velocity_width / 2.)
-
-                    nhi_image_temp, nhi_image_error = \
-                            calculate_nhi(cube=hi_cube,
-                                velocity_axis=hi_velocity_axis,
-                                velocity_range=velocity_range,
-                                noise_cube=hi_noise_cube)
-
-                    # Avoid NaNs
-                    indices = np.where((nhi_image_temp == nhi_image_temp) & \
-                                       (av_image == av_image))
-
-                    nhi_image_likelihood = nhi_image_temp[indices]
-                    nhi_image_error_likelihood = nhi_image_error[indices]
-                    av_image_likelihood = av_image[indices]
-                    if type(av_image_error) != float:
-                        av_image_error_likelihood = av_image_error[indices]
-                    else:
-                        av_image_error_likelihood = av_image_error
-
-                    # Create model of Av with N(HI) and DGR
-                    av_image_model = nhi_image_likelihood * dgr
-                    av_image_model_error = nhi_image_error_likelihood * dgr
-
-                    logL = calc_logL(av_image_model,
-                                     av_image_likelihood,
-                                     data_error=av_image_error_likelihood)
-
-                    likelihoods[i, j, k] = -logL
-
-                    # Shows progress each 10%
-                    count += 1
-                    abs_step = int((total * 1)/100) or 100
-                    if count and not count % abs_step:
-                        print "\t{0:.0%} processed".format(count/total)
-        '''
 
         # reshape likelihoods
         likelihoods = reshape_likelihoods(likelihoods,
@@ -664,34 +703,6 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
             upper_lim_error)
 
     if plot_results:
-        #plot_likelihoods(likelihoods[:,:, len(dgrs)/2],
-        #                  velocity_centers,
-        #                  velocity_widths,
-        #                  show=0,
-        #                  returnimage=False,
-        #                  filename=results_filename)
-        '''
-        plot_likelihoods_hist(likelihoods,
-                              velocity_centers,
-                              velocity_widths,
-                              x_confint=center_confint,
-                              y_confint=width_confint,
-                              plot_axes=('centers', 'widths'),
-                              show=0,
-                              returnimage=False,
-                              filename=results_filename + '_cw.png',
-                              contour_confs=contour_confs)
-        plot_likelihoods_hist(likelihoods,
-                              velocity_centers,
-                              dgrs,
-                              x_confint=center_confint,
-                              y_confint=dgr_confint,
-                              plot_axes=('centers', 'dgrs'),
-                              show=0,
-                              returnimage=False,
-                              filename=results_filename + '_cd.png',
-                              contour_confs=contour_confs)
-        '''
         plot_likelihoods_hist(likelihoods,
                               velocity_widths,
                               dgrs,
@@ -923,7 +934,13 @@ def calc_co_noise(co_mom0, prop_dict):
                                        region[0][0]:region[1][0]])
 
     # Calc noise
-    noise = np.std(~np.isnan(co_noise_region))
+    noise = 0.0
+    for region in co_noise_region:
+    	std = np.std(np.array(region)[~np.isnan(region)])
+    	noise += std
+
+    # Take average of stds
+    noise = noise / len(co_noise_region)
 
     return noise
 
@@ -1076,7 +1093,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'california_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -1132,20 +1149,20 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 1
+    clobber = 0
 
     # Confidence of parameter errors
-    conf = 0.1
+    conf = 0.68
     # Confidence of contour levels
     contour_confs = (0.68, 0.95)
 
     # Course, large grid or fine, small grid?
-    grid_res = 'course'
     grid_res = 'fine'
+    grid_res = 'course'
 
     # Results and fits filenames
-    likelihood_filename = 'taurus_nhi_av_likelihoods_co'
-    results_filename = 'taurus_likelihood_co'
+    likelihood_filename = 'california_nhi_av_likelihoods_co'
+    results_filename = 'california_likelihood_co'
 
     # Define ranges of parameters
     if center_vary and width_vary and dgr_vary:
@@ -1160,16 +1177,16 @@ def main():
             likelihood_filename += '_dgr_width_lowres'
             results_filename += '_dgr_width_lowres'
             velocity_centers = np.arange(5, 6, 1)
-            velocity_widths = np.arange(1, 80, 1)
-            dgrs = np.arange(1e-2, 1, 2e-2)
+            velocity_widths = np.arange(1, 30, 1)
+            dgrs = np.arange(0.001, 0.2, 1e-3)
         elif grid_res == 'fine':
             likelihood_filename += '_dgr_width_highres'
             results_filename += '_dgr_width_highres'
             velocity_centers = np.arange(5, 6, 1)
-            velocity_widths = np.arange(1, 40, 0.16667)
+            velocity_widths = np.arange(1, 100, 0.16667)
             dgrs = np.arange(0.15, 0.4, 1e-3)
-            velocity_widths = np.arange(1, 40, 0.16667)
-            dgrs = np.arange(0.001, 0.7, 1e-3)
+            velocity_widths = np.arange(1, 70, 0.16667)
+            dgrs = np.arange(0.001, 0.2, 1e-3)
             #velocity_widths = np.arange(1, 40, 1)
             #dgrs = np.arange(0.15, 0.4, 1e-1)
     elif center_vary and width_vary and not dgr_vary:
@@ -1188,46 +1205,47 @@ def main():
         dgrs = np.arange(1.1e-1, 1.2e-1, 0.1e-1)
 
     # Name of property files results are written to
-    global_property_file = 'taurus_global_properties.txt'
-    core_property_file = 'taurus_core_properties.txt'
+    global_property_file = 'california_global_properties.txt'
+    core_property_file = 'california_core_properties.txt'
 
     # Threshold of Av below which we expect only atomic gas, in mag
     av_threshold = 20
 
     # Name of noise cube
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/hi_velocity_range/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
-    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/california/figures/hi_velocity_range/'
+    av_dir = '/d/bip3/ezbc/california/data/av/'
+    hi_dir = '/d/bip3/ezbc/california/data/hi/'
+    co_dir = '/d/bip3/ezbc/california/data/co/'
+    core_dir = '/d/bip3/ezbc/california/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/california/data/python_output/'
+    region_dir = '/d/bip3/ezbc/california/data/python_output/ds9_regions/'
+    likelihood_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'california_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'california_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'california_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'taurus_co_cfa_cube_regrid_planckres.fits',
+                'california_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
     velocity_axis = make_velocity_axis(h)
+    co_velocity_axis = make_velocity_axis(co_header)
 
     # Plot NHI vs. Av for a given velocity range
     if not path.isfile(hi_dir + noise_cube_filename):
@@ -1248,11 +1266,18 @@ def main():
     # Change WCS coords to pixel coords of images
     cores = convert_core_coordinates(cores, h)
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
+            filename_base = region_dir + 'california_av_boxes_',
             header = h)
     global_props = convert_limit_coordinates(global_props, header=av_header)
 
     print('\nCalculating likelihoods globally')
+
+    # Set velocity center as CO peak
+    co_data_nonans = np.copy(co_data)
+    co_data_nonans[np.isnan(co_data_nonans)] = 0.0
+    co_spectrum = np.sum(co_data_nonans, axis=(1,2))
+    co_peak_vel = co_velocity_axis[co_spectrum == np.max(co_spectrum)]
+    velocity_centers = np.arange(co_peak_vel, co_peak_vel + 1, 1)
 
     # Create mask where CO is present
     core_mask = np.zeros(av_data_planck.shape)
@@ -1262,21 +1287,35 @@ def main():
                 cores[core]['box_vertices_rotated'])
 
     # Calc moment 0 map of CO
-    co_mom0 = np.sum(co_data, axis=0)
+    co_mom0 = np.sum(co_data_nonans, axis=0)
 
     # calc noise without any emission
     co_noise = calc_co_noise(co_mom0, global_props)
+    co_thres = 2.0 * co_noise
 
     # Get indices which trace only atomic gas, i.e., no CO emission
-    indices = (co_mom0 < 2.0 * co_noise)
+    indices = (co_mom0 < co_thres)
 
     print('\nTotal number of pixels in analysis = ' + \
-            '{0:.0f}'.format(indices[indices].size))
+            '{0:.0f}'.format(indices[indices].size)) + \
+            '\ngiven a CO threshold of {0:.2f} K km/s'.format(co_thres)
 
+    # Mask global data with CO indices
     hi_data_sub = np.copy(hi_data[:, indices])
     noise_cube_sub = np.copy(noise_cube[:, indices])
     av_data_sub = np.copy(av_data_planck[indices])
     av_error_data_sub = np.copy(av_error_data_planck[indices])
+
+    # Plot the masked image
+    av_data_masked = np.copy(av_data_planck)
+    av_data_masked[~indices] = np.nan
+    figure_types = ['png',]
+    for figure_type in figure_types:
+        plot_av_image(av_image=av_data_masked, header=av_header,
+                savedir=figure_dir + '../maps/',
+                limits=global_props['region_limit']['pixel'],
+                filename='california_dgr_co_masked_map.' + figure_type,
+                show=0)
 
     # Set global variables
     hi_cube = hi_data_sub

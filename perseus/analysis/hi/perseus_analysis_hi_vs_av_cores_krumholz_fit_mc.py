@@ -665,7 +665,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                 rh2_nonans.ravel(),
                 xerr=(h_sd_error_nonans.ravel()),
                 yerr=(rh2_error_nonans.ravel()),
-                alpha=0.75,
+                alpha=0.3,
                 color='k',
                 marker='^',ecolor='k',linestyle='None',
                 markersize=4
@@ -747,7 +747,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
 
         # Adjust asthetics
         ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'R$_{H2}$ = $\Sigma_{H2}$ + $\Sigma_{HI}$',)
+        ax.set_ylabel(r'R$_{H2}$ = $\Sigma_{H2}$ / $\Sigma_{HI}$',)
         ax.set_title(core_names[i])
         ax.grid(False)
 
@@ -905,6 +905,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         nrows = n - 1
         ncols = n
         y_scaling = 1.0 - 1.0 / n
+        print y_scaling
     else:
         nrows, ncols = n, n
         y_scaling = 1.0
@@ -934,10 +935,8 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     # Create figure instance
     fig = plt.figure()
 
-    n = int(np.ceil(len(hi_images)**0.5))
-
     imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
+                 nrows_ncols=(nrows, ncols),
                  ngrids=len(hi_images),
                  axes_pad=0.25,
                  aspect=False,
@@ -2156,7 +2155,7 @@ def main(verbose=True):
     global guesses
 
     calc_errors = True # Run monte carlo error analysis?
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
+    N_monte_carlo_runs = 10000 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
@@ -2425,7 +2424,8 @@ def main(verbose=True):
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'perseus_rh2_vs_hsd_panels_planck.%s' % figure_type,
+                filename = 'perseus_rh2_vs_hsd_panels_planck' + \
+                           '_linear.%s' % figure_type,
                 #title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
                 #        + ' of perseus Cores',
                 core_names=core_name_list,
@@ -2439,6 +2439,26 @@ def main(verbose=True):
                 Z_error_list=Z_error_list,
                 show = False)
 
+        plot_rh2_vs_h_grid(rh2_image_list,
+                h_sd_image_list,
+                rh2_error_images = rh2_image_error_list,
+                h_sd_error_images = h_sd_image_error_list,
+                rh2_fits = rh2_fit_list,
+                h_sd_fits = h_sd_fit_list,
+                limits = [2, 200, 10**-3, 10**2],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('log', 'log'),
+                filename=\
+                    'perseus_rh2_vs_hsd_panels_planck_log.%s' % figure_type,
+                core_names=core_name_list,
+                phi_cnm_list=phi_cnm_list,
+                phi_cnm_error_list=phi_cnm_error_list,
+                phi_mol_list=phi_mol_list,
+                phi_mol_error_list=phi_mol_error_list,
+                Z_list=Z_list,
+                Z_error_list=Z_error_list,
+                show = False)
+
         # Calif limits = [0, 80, 0, 8]
         # taur limits = [0, 80, -1.5, 6.5]
         # Pers limits = [0, 80, -4, 8],
@@ -2448,7 +2468,7 @@ def main(verbose=True):
                 h_sd_error_images=h_sd_image_error_list,
                 hi_fits=hi_sd_fit_list,
                 h_sd_fits=h_sd_fit_list,
-                limits=[0, 80, -4, 8],
+                limits=[0, 80, 2, 10],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename='perseus_hi_vs_h_panels_planck_linear.%s' % \
@@ -2487,7 +2507,7 @@ def main(verbose=True):
                 hi_error_images = hi_sd_image_error_list,
                 av_error_images = h_sd_image_error_list,
                 #limits = [10**-1, 10**2, 10**0, 10**2],
-                limits = [0, 50, 1, 8],
+                limits = [0, 80, 2, 10],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
                 filename = 'perseus_hi_vs_av_panels_planck_linear.%s' % \

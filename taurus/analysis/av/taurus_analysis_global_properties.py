@@ -19,8 +19,8 @@ def main():
                   'metallicity' : {'value' : 1.00,
                                    'unit' : 'Z_solar',
                                    },
-                  'region_limit' : {'wcs' : (((4, 50,  0), (21, 0, 0)),
-                                             ((4, 0, 0), (31, 0, 0))),
+                  'region_limit' : {'wcs' : (((5, 0,  0), (19, 0, 0)),
+                                             ((3, 50, 0), (31, 0, 0))),
                                     'pixel' : ()
                                     },
                   'co_noise_limits' : {'wcs' : [(((4, 8, 0), (18, 15, 0)),

@@ -665,7 +665,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                 rh2_nonans.ravel(),
                 xerr=(h_sd_error_nonans.ravel()),
                 yerr=(rh2_error_nonans.ravel()),
-                alpha=0.75,
+                alpha=0.3,
                 color='k',
                 marker='^',ecolor='k',linestyle='None',
                 markersize=4
@@ -673,7 +673,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
 
         if rh2_fit is not None:
             ax.plot(h_sd_fit, rh2_fit,
-                    color = 'r', alpha=0.5)
+                    color = 'r', alpha=1)
 
         # Annotations
         anno_xpos = 0.95
@@ -747,7 +747,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
 
         # Adjust asthetics
         ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'R$_{H2}$ = $\Sigma_{H2}$ + $\Sigma_{HI}$',)
+        ax.set_ylabel(r'R$_{H2}$ = $\Sigma_{H2}$ / $\Sigma_{HI}$',)
         ax.set_title(core_names[i])
         ax.grid(False)
 
@@ -2166,7 +2166,7 @@ def main(verbose=True):
     alpha = 0.32 # 1 - alpha = confidence
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
             'monte_carlo_results/taurus_mc_results_'
-    clobber = 0 # perform MC and write over current results?
+    clobber = 1 # perform MC and write over current results?
     guesses=(10.0, 1.0, 10.0)
 
     # Use core-derived or global-derived likelihoods for DGR - vel width
@@ -2179,6 +2179,7 @@ def main(verbose=True):
     global box_method
     global region_type
     box_method = 'av_gradient'
+    box_method = 'ds9'
     region_type = 'wedge' # Shape of core region, box or wedge
 
     #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
@@ -2246,10 +2247,6 @@ def main(verbose=True):
 
     cores = convert_core_coordinates(cores, h)
 
-    cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
-            header = h)
-
     # Set up lists
     hi_image_list = []
     hi_sd_image_list = []
@@ -2285,16 +2282,8 @@ def main(verbose=True):
         print('\nCalculating for core %s' % core)
 
         if box_method == 'ds9':
-            # Grab the mask from the DS9 regions
-            xy = cores[core]['box_center_pix']
-            box_width = cores[core]['box_width']
-            box_height = cores[core]['box_height']
-            box_angle = cores[core]['box_angle']
-            mask = myg.get_rectangular_mask(av_data_planck_orig,
-                    xy[0], xy[1],
-                    width = box_width,
-                    height = box_height,
-                    angle = box_angle)
+            mask = myg.get_polygon_mask(av_data_planck_orig,
+                    cores[core]['poly_verts']['pixel'])
         elif box_method == 'av_gradient':
             mask = myg.get_polygon_mask(av_data_planck_orig,
                     cores[core]['{0:s}_vertices_rotated'.format(region_type)])
@@ -2425,16 +2414,33 @@ def main(verbose=True):
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'taurus_rh2_vs_hsd_panels_planck.%s' % figure_type,
-                #title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
-                #        + ' of taurus Cores',
+                filename = \
+                    'taurus_rh2_vs_hsd_panels_planck_linear.%s' % figure_type,
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
                 phi_mol_list=phi_mol_list,
                 phi_mol_error_list=phi_mol_error_list,
-                #chisq_list=chisq_list,
-                #p_value_list=p_value_list,
+                Z_list=Z_list,
+                Z_error_list=Z_error_list,
+                show = False)
+
+        plot_rh2_vs_h_grid(rh2_image_list,
+                h_sd_image_list,
+                rh2_error_images = rh2_image_error_list,
+                h_sd_error_images = h_sd_image_error_list,
+                rh2_fits = rh2_fit_list,
+                h_sd_fits = h_sd_fit_list,
+                limits = [1, 200, 10**-3, 10**2],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('log', 'log'),
+                filename = \
+                    'taurus_rh2_vs_hsd_panels_planck_log.%s' % figure_type,
+                core_names=core_name_list,
+                phi_cnm_list=phi_cnm_list,
+                phi_cnm_error_list=phi_cnm_error_list,
+                phi_mol_list=phi_mol_list,
+                phi_mol_error_list=phi_mol_error_list,
                 Z_list=Z_list,
                 Z_error_list=Z_error_list,
                 show = False)
