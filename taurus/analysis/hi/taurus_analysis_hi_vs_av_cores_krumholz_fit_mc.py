@@ -925,7 +925,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': True,
-              'figure.figsize': (8, 8 * y_scaling),
+              'figure.figsize': (12, 12 * y_scaling),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -2166,7 +2166,7 @@ def main(verbose=True):
     alpha = 0.32 # 1 - alpha = confidence
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
             'monte_carlo_results/taurus_mc_results_'
-    clobber = 1 # perform MC and write over current results?
+    clobber = 0 # perform MC and write over current results?
     guesses=(10.0, 1.0, 10.0)
 
     # Use core-derived or global-derived likelihoods for DGR - vel width

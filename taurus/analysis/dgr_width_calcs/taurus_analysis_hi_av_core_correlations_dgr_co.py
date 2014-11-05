@@ -215,7 +215,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         y_sum_axes = (0, 1)
         x_pdf_label = r'DGR PDF'
         y_limits = (0.0, 0.8)
-        y_limits = (0.1, 0.4)
+        y_limits = (0.1, 0.9)
 
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
@@ -1152,7 +1152,7 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 1
+    clobber = 0
 
     # Confidence of parameter errors
     conf = 0.68
@@ -1163,16 +1163,28 @@ def main():
     grid_res = 'course'
     grid_res = 'fine'
 
+    # Use Av+CO mask or only CO?
+    av_and_co_mask = True
+
+    # Derive CO mask? If co_thres = None, co_thres will be 2 * std(co)
+    co_thres = 6.00 # K km/s
+
+    # Threshold of Av below which we expect only atomic gas, in mag
+    av_thres = 1.4
+
     # Results and fits filenames
-    likelihood_filename = 'taurus_nhi_av_likelihoods_co_only'
-    results_filename = 'taurus_likelihood_co_only'
+    if av_and_co_mask:
+        likelihood_filename = 'taurus_nhi_av_likelihoods_co_' + \
+                              'av{0:.1f}mag'.format(av_thres)
+        results_filename = 'taurus_likelihood_co_' + \
+                           'av{0:.1f}mag'.format(av_thres)
+    else:
+        likelihood_filename = 'taurus_nhi_av_likelihoods_co_only'
+        results_filename = 'taurus_likelihood_co_only'
 
     # Name of property files results are written to
     global_property_file = 'taurus_global_properties.txt'
     core_property_file = 'taurus_core_properties.txt'
-
-    # Threshold of Av below which we expect only atomic gas, in mag
-    av_thres = 20
 
     # Name of noise cube
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -1190,16 +1202,16 @@ def main():
             likelihood_filename += '_dgr_width_lowres'
             results_filename += '_dgr_width_lowres'
             velocity_centers = np.arange(5, 6, 1)
-            velocity_widths = np.arange(1, 15, 0.16667)
-            dgrs = np.arange(0.05, 0.7, 0.5e-3)
+            velocity_widths = np.arange(1, 15, 2*0.16667)
+            dgrs = np.arange(0.05, 0.7, 2e-2)
         elif grid_res == 'fine':
             likelihood_filename += '_dgr_width_highres'
             results_filename += '_dgr_width_highres'
             velocity_centers = np.arange(5, 6, 1)
             velocity_widths = np.arange(1, 100, 0.16667)
             dgrs = np.arange(0.15, 0.4, 1e-3)
-            velocity_widths = np.arange(1, 20, 0.16667)
-            dgrs = np.arange(0.1, 0.9, 2e-3)
+            velocity_widths = np.arange(1, 12, 0.16667)
+            dgrs = np.arange(0.1, 0.9, 3e-3)
             #velocity_widths = np.arange(1, 40, 1)
             #dgrs = np.arange(0.15, 0.4, 1e-1)
     elif center_vary and width_vary and not dgr_vary:
@@ -1297,10 +1309,10 @@ def main():
     # Calc moment 0 map of CO
     co_mom0 = np.sum(co_data_nonans, axis=0)
 
-    # calc noise without any emission
-    co_noise = calc_co_noise(co_mom0, global_props)
-    co_thres = 2.0 * co_noise
-    co_thres = 6.0 # K km/s
+    # calc noise without any emission if CO threshold not already set
+    if co_thres is None:
+        co_noise = calc_co_noise(co_mom0, global_props)
+        co_thres = 2.0 * co_noise
 
     pix = global_props['region_limit']['pixel']
     region_vertices = ((pix[0], pix[1]),
@@ -1313,12 +1325,19 @@ def main():
     region_mask = myg.get_polygon_mask(av_data_planck, region_vertices)
 
     # Get indices which trace only atomic gas, i.e., no CO emission
-    indices = ((co_mom0 < co_thres) & \
-               (av_data_planck < av_thres) & \
-               (region_mask == 1))
+    if av_and_co_mask:
+        indices = ((co_mom0 < co_thres) & \
+                   (av_data_planck < av_thres) & \
+                   (region_mask == 1))
+    elif not av_and_co_mask:
+        indices = ((co_mom0 < co_thres) & \
+                   (region_mask == 1))
+        av_thres = None
+
+    npix = indices[indices].size
 
     print('\nTotal number of pixels in analysis = ' + \
-            '{0:.0f}'.format(indices[indices].size)) + \
+            '{0:.0f}'.format(npix)) + \
             '\ngiven a CO threshold of {0:.2f} K km/s'.format(co_thres)
 
     # Mask global data with CO indices
@@ -1373,9 +1392,29 @@ def main():
     print('%.1f to %.1f km/s' % (dgr_confint[0],
                                  dgr_confint[1]))
 
+    # Calulate chi^2 for best fit models
+    # ----------------------------------
+    nhi_image_temp, nhi_image_error = \
+            calculate_nhi(cube=hi_cube,
+                velocity_axis=hi_velocity_axis,
+                velocity_range=vel_range_confint[0:2],
+                noise_cube=hi_noise_cube)
+    av_image_model = nhi_image_temp * dgr_confint[0]
+    # avoid NaNs
+    indices = ((av_image_model == av_image_model) & \
+               (av_image == av_image))
+    chisq = np.sum((av_image[indices] - av_image_model[indices])**2 / \
+            av_image_error[indices]**2) / av_image[indices].size
+
+    # Write results to global properties
     global_props['dust2gas_ratio'] = {}
     global_props['dust2gas_ratio_error'] = {}
-
+    global_props['hi_velocity_width'] = {}
+    global_props['av_threshold'] = {}
+    global_props['co_threshold'] = {}
+    global_props['hi_velocity_width']['value'] = vel_range_confint[1] -\
+                                                 vel_range_confint[0]
+    global_props['hi_velocity_width']['unit'] = 'km/s'
     global_props['hi_velocity_range'] = vel_range_confint[0:2]
     global_props['hi_velocity_range_error'] = vel_range_confint[2:]
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
@@ -1388,6 +1427,12 @@ def main():
     global_props['vel_widths'] = velocity_widths.tolist()
     global_props['dgrs'] = dgrs.tolist()
     global_props['likelihoods'] = likelihoods.tolist()
+    global_props['av_threshold']['value'] = av_thres
+    global_props['av_threshold']['unit'] = 'mag'
+    global_props['co_threshold']['value'] = co_thres
+    global_props['co_threshold']['unit'] = 'K km/s'
+    global_props['chisq'] = chisq
+    global_props['npix'] = npix
 
     with open(property_dir + global_property_file, 'w') as f:
         json.dump(global_props, f)

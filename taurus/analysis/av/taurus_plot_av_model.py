@@ -31,19 +31,19 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 15
+    font_scale = 15
     params = {#'backend': .pdf',
-              'axes.labelsize': fontScale,
-              'axes.titlesize': fontScale,
-              'text.fontsize': fontScale,
-              'legend.fontsize': fontScale*3/4,
-              'xtick.labelsize': fontScale,
-              'ytick.labelsize': fontScale,
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
               'figure.figsize': (15, 7),
-              'figure.titlesize': fontScale
+              'figure.titlesize': font_scale
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -184,15 +184,15 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                             edgecolor=anno_color))
 
     if title is not None:
-        fig.suptitle(title, fontsize=fontScale)
+        fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
         plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
 def plot_av_model(av_image=None, header=None, contour_image=None,
-        av_model=None, cores=None, title=None, limits=None, contours=None,
-        boxes=False, savedir='./', filename=None, show=True):
+        av_model=None, cores=None, results=None, title=None, limits=None,
+        contours=None, boxes=False, savedir='./', filename=None, show=True):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -211,19 +211,19 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 15
+    font_scale = 15
     params = {#'backend': .pdf',
-              'axes.labelsize': fontScale,
-              'axes.titlesize': fontScale,
-              'text.fontsize': fontScale,
-              'legend.fontsize': fontScale*3/4,
-              'xtick.labelsize': fontScale,
-              'ytick.labelsize': fontScale,
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
               'figure.figsize': (15, 7),
-              'figure.titlesize': fontScale
+              'figure.titlesize': font_scale
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -241,7 +241,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
                  cbar_location='right',
                  cbar_pad="2%",
                  cbar_size='3%',
-                 axes_pad=1,
+                 axes_pad=0.2,
                  axes_class=(wcs.Axes,
                              dict(header=header)),
                  aspect=True,
@@ -313,6 +313,47 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
                         facecolor='none',
                         edgecolor=anno_color))
 
+    if results is not None:
+    	av_thres = results['av_threshold']['value']
+    	co_thres = results['co_threshold']['value']
+        if av_thres > 15:
+        	av_thres = None
+    	text = ''
+        text += r'N$_{\rm pix}$ = ' + \
+                 '{0:.0f}'.format(results['npix'])
+        text += '\n'
+        if av_thres is not None:
+            text += r'$A_V$ threshold = ' + \
+                    '{0:.1f} mag'.format(av_thres)
+        else:
+            text += r'$A_V$ threshold = ' + \
+                    '{0:s}'.format(av_thres)
+        text += '\n'
+        text += r'CO threshold = ' + \
+                '{0:.1f} K km/s'.format(co_thres)
+        text += '\n'
+        text += r'DGR = {0:.2f} '.format(results['dust2gas_ratio']['value']) + \
+                r'$\times$ 10$^{-20}$ (cm$^2$ mag$^1$)'
+        text += '\n'
+        vel_range = results['hi_velocity_range'][:2]
+        text += r'Velocity range = ' + \
+                '{0:.1f} to {1:.1f} km/s'.format(vel_range[0], vel_range[1])
+        text += '\n'
+        text += r'$\chi^2$ / $\nu$ = {0:.1f}'.format(results['chisq'])
+        ax.annotate(text,
+                xytext=(0.03, 0.95),
+                xy=(0.03, 0.95),
+                textcoords='axes fraction',
+                xycoords='axes fraction',
+                color='k',
+                fontsize=font_scale*0.75,
+                bbox=dict(boxstyle='round',
+                          facecolor='w',
+                          alpha=0.8),
+                horizontalalignment='left',
+                verticalalignment='top',
+                )
+
     # ------------------
     # Av image
     # ------------------
@@ -354,7 +395,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
         cb.set_label_text(r'$A_V$ (mag)',)
 
     if title is not None:
-        fig.suptitle(title, fontsize=fontScale)
+        fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
         plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
@@ -516,8 +557,6 @@ def main():
 
     # Script parameters
     # -----------------
-    av_threshold = 1.0 # mag
-
     # Name of noise cube
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
 
@@ -546,6 +585,10 @@ def main():
             return_header=True)
 
     hi_noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
+            return_header=True)
+
+    co_data, co_header = load_fits(co_dir + \
+                'taurus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # Load global properties of cloud
@@ -581,14 +624,26 @@ def main():
     # create model av map
     av_model = nhi_image * dgr
 
-    # Mask the images based on av trheshold
-    mask = (av_image > av_threshold)
+    # Mask the images based on av trheshol
+    co_data_nonans = np.copy(co_data)
+    co_data_nonans[np.isnan(co_data_nonans)] = 0.0
+    co_mom0 = np.sum(co_data_nonans, axis=0)
+    mask = ((av_image > props['av_threshold']['value']) & \
+            (co_mom0 > props['co_threshold']['value']))
 
     av_image_masked = np.copy(av_image)
     av_image_masked[mask] = np.nan
 
     av_model_masked = np.copy(av_model)
     av_model_masked[mask] = np.nan
+
+    indices = ((~np.isnan(av_model_masked)) & \
+               (~np.isnan(av_image_masked)) & \
+               (~np.isnan(av_error_image)))
+
+    # Calc chi^2
+    chisq = (av_image_masked[indices] - av_model_masked[indices])**2 / \
+            av_error_image[indices]**2
 
     # Plot
     figure_types = ['png',]
@@ -604,10 +659,13 @@ def main():
         '''
 
         plot_av_model(av_image=av_image_masked,
-                av_model=av_model_masked, header=av_header,
-                limits=props['region_limit']['pixel'], savedir=figure_dir,
-                filename='taurus_av_model_map.%s' % figure_type,
-                show=False)
+                      av_model=av_model_masked,
+                      header=av_header,
+                      results=props,
+                      limits=props['region_limit']['pixel'],
+                      savedir=figure_dir,
+                      filename='taurus_av_model_map.%s' % figure_type,
+                      show=False)
 
 if __name__ == '__main__':
     main()
