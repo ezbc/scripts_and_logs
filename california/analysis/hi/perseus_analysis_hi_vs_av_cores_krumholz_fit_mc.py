@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the california molecular cloud.
+''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
 '''
 
 import pyfits as pf
@@ -717,12 +717,13 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                                                           Z_error[1])
                 if phi_mol_error == (0.0, 0.0):
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
-                                     '%.1f' % (phi_mol)
+                                     '%.1f \\' % (phi_mol)
                 else:
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
                                 r' %.2f' % (phi_mol) + \
-                                r'$^{+%.2f}_{-%.2f}$' % (phi_mol_error[0],
-                                                         phi_mol_error[1])
+                                r'$^{+%.2f}_{-%.2f}$ \\' % (phi_mol_error[0],
+                                                         phi_mol_error[1]) + \
+                                r''
 
                 ax.annotate(phi_cnm_text + T_cnm_text + Z_text + phi_mol_text,
                         xytext=(anno_xpos, 0.05),
@@ -747,14 +748,14 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
 
         # Adjust asthetics
         ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'R$_{H2}$ = $\Sigma_{H2}$ + $\Sigma_{HI}$',)
+        ax.set_ylabel(r'R$_{H2}$',)
         ax.set_title(core_names[i])
         ax.grid(False)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename) #, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -900,15 +901,6 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     from mpl_toolkits.axes_grid1 import ImageGrid
     from myscience.krumholz09 import calc_T_cnm
 
-    n = int(np.ceil(len(hi_images)**0.5))
-    if n**2 - n > len(hi_images):
-        nrows = n - 1
-        ncols = n
-        y_scaling = 1.0 - 1.0 / n
-    else:
-        nrows, ncols = n, n
-        y_scaling = 1.0
-
     # Set up plot aesthetics
     plt.clf()
     plt.rcdefaults()
@@ -919,17 +911,16 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
               'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
+              'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': True,
-              'figure.figsize': (8, 8 * y_scaling),
+              'figure.figsize': (10, 10),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
-
 
     # Create figure instance
     fig = plt.figure()
@@ -1055,7 +1046,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                                                           Z_error[1])
                 if phi_mol_error == (0.0, 0.0):
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
-                                     '%.1f' % (phi_mol)
+                                     '%.1f \\' % (phi_mol)
                 else:
                     phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
                                 r' %.2f' % (phi_mol) + \
@@ -1091,7 +1082,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename) #, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -1642,7 +1633,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             # see eq 6 of krumholz+09
             # phi_cnm is the number density of the CNM over the minimum number
             # density required for pressure balance
-            # the lower phi_cnm values than for california mean that california
+            # the lower phi_cnm values than for taurus mean that taurus
             # has a more diffuse CNM
 
             # By fitting the model to the observed R_H2 vs total H, you
@@ -2085,7 +2076,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'california_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -2118,9 +2109,9 @@ def main(verbose=True):
     This script requires analysis output from three other scripts.
     Script                                          Purpose
     ---------------------------------------------------------------------------
-    hi/california_analysis_core_properties.py           Defines core positions
-    av/california_analysis_av_derive_core_boxes.py      Calculates box sizes
-    hi/california_analysis_hi_av_core_likelihoods.py   Calculates HI velocity
+    hi/taurus_analysis_core_properties.py           Defines core positions
+    av/taurus_analysis_av_derive_core_boxes.py      Calculates box sizes
+    hi/taurus_analysis_hi_av_core_likelihoods.py   Calculates HI velocity
                                                     range
 
     '''
@@ -2156,7 +2147,7 @@ def main(verbose=True):
     global guesses
 
     calc_errors = True # Run monte carlo error analysis?
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
+    N_monte_carlo_runs = 10000 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
@@ -2164,9 +2155,9 @@ def main(verbose=True):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    results_filename = '/d/bip3/ezbc/california/data/python_output/' + \
-            'monte_carlo_results/california_mc_results_'
-    clobber = 0 # perform MC and write over current results?
+    results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
+            'monte_carlo_results/taurus_mc_results_'
+    clobber = 1 # perform MC and write over current results?
     guesses=(10.0, 1.0, 10.0)
 
     # Use core-derived or global-derived likelihoods for DGR - vel width
@@ -2190,30 +2181,30 @@ def main(verbose=True):
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/california/figures/cores/'
-    av_dir = '/d/bip3/ezbc/california/data/av/'
-    hi_dir = '/d/bip3/ezbc/california/data/hi/'
-    co_dir = '/d/bip3/ezbc/california/data/co/'
-    core_dir = '/d/bip3/ezbc/california/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/california/data/python_output/'
-    region_dir = '/d/bip3/ezbc/california/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data_planck, av_header = load_fits(av_dir + \
-                'california_av_planck_5arcmin.fits',
+                'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'california_av_error_planck_5arcmin.fits',
+                'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'california_hi_galfa_cube_regrid_planckres.fits',
+                'taurus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'california_co_cfa_cube_regrid_planckres.fits',
+                'taurus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -2222,15 +2213,15 @@ def main(verbose=True):
 
     # Load global properties of cloud
     # global properties written from script
-    # 'av/california_analysis_global_properties.txt'
-    with open(property_dir + 'california_global_properties.txt', 'r') as f:
+    # 'av/taurus_analysis_global_properties.txt'
+    with open(property_dir + 'taurus_global_properties.txt', 'r') as f:
         properties = json.load(f)
         dgr = properties['dust2gas_ratio']['value']
         dgr_error = properties['dust2gas_ratio_error']['value']
         Z = properties['metallicity']['value']
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -2241,13 +2232,13 @@ def main(verbose=True):
             return_header=True)
 
     # define core properties
-    with open(core_dir + 'california_core_properties.txt', 'r') as f:
+    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'california_av_boxes_',
+            filename_base = region_dir + 'taurus_av_boxes_',
             header = h)
 
     # Set up lists
@@ -2327,7 +2318,7 @@ def main(verbose=True):
                                  core_dict=cores[core],
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
-                                         'california_%s' % core,
+                                         'taurus_%s' % core,
                                  properties=properties,
                                  results_filename=results_filename + core,
                                  )
@@ -2383,28 +2374,27 @@ def main(verbose=True):
         cores[core]['f_H2'] = f_H2.tolist()
         cores[core]['f_HI_fit'] = f_HI.tolist()
 
-        if core != 'L1449' and core != 'L1442':
-            # append to the lists
-            hi_sd_image_list.append(images['hi_sd'])
-            hi_sd_image_error_list.append(images['hi_sd_error'])
-            h_sd_image_list.append(images['h_sd'])
-            h_sd_image_error_list.append(images['h_sd_error'])
-            av_image_list.append(images['av'])
-            av_image_error_list.append(images['av_error'])
-            rh2_image_list.append(images['rh2'])
-            rh2_image_error_list.append(images['rh2_error'])
-            rh2_fit_list.append(rh2_fit)
-            h_sd_fit_list.append(h_sd_fit)
-            hi_sd_fit_list.append(hi_sd_fit)
-            phi_cnm_list.append(phi_cnm)
-            phi_cnm_error_list.append(phi_cnm_error)
-            Z_list.append(Z)
-            Z_error_list.append(Z_error)
-            phi_mol_list.append(phi_mol)
-            phi_mol_error_list.append(phi_mol_error)
-            core_name_list.append(core)
+        # append to the lists
+        hi_sd_image_list.append(images['hi_sd'])
+        hi_sd_image_error_list.append(images['hi_sd_error'])
+        h_sd_image_list.append(images['h_sd'])
+        h_sd_image_error_list.append(images['h_sd_error'])
+        av_image_list.append(images['av'])
+        av_image_error_list.append(images['av_error'])
+        rh2_image_list.append(images['rh2'])
+        rh2_image_error_list.append(images['rh2_error'])
+        rh2_fit_list.append(rh2_fit)
+        h_sd_fit_list.append(h_sd_fit)
+        hi_sd_fit_list.append(hi_sd_fit)
+        phi_cnm_list.append(phi_cnm)
+        phi_cnm_error_list.append(phi_cnm_error)
+        Z_list.append(Z)
+        Z_error_list.append(Z_error)
+        phi_mol_list.append(phi_mol)
+        phi_mol_error_list.append(phi_mol_error)
+        core_name_list.append(core)
 
-    with open(core_dir + 'california_core_properties.txt', 'w') as f:
+    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
         json.dump(cores, f)
 
     # Create the figures!
@@ -2425,9 +2415,9 @@ def main(verbose=True):
                 limits = [0, 80, 10**-3, 10**2],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'log'),
-                filename = 'california_rh2_vs_hsd_panels_planck.%s' % figure_type,
+                filename = 'taurus_rh2_vs_hsd_panels_planck.%s' % figure_type,
                 #title = r'$R_{\rm H2}$ vs. $\Sigma_{\rm HI}$'\
-                #        + ' of california Cores',
+                #        + ' of taurus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
@@ -2439,20 +2429,19 @@ def main(verbose=True):
                 Z_error_list=Z_error_list,
                 show = False)
 
-        # Calif limits = [0, 80, 0, 8]
-        # taur limits = [0, 80, 0, 6.5]
-        # Pers limits = [0, 80, 1, 8],
         plot_hi_vs_h_grid(hi_sd_image_list,
                 h_sd_image_list,
-                hi_sd_error_images=hi_sd_image_error_list,
-                h_sd_error_images=h_sd_image_error_list,
-                hi_fits=hi_sd_fit_list,
-                h_sd_fits=h_sd_fit_list,
-                limits=[0, 80, 4, 14],
-                savedir=figure_dir + 'panel_cores/',
-                scale=('linear', 'linear'),
-                filename='california_hi_vs_h_panels_planck_linear.%s' % \
+                hi_sd_error_images = hi_sd_image_error_list,
+                h_sd_error_images = h_sd_image_error_list,
+                hi_fits = hi_sd_fit_list,
+                h_sd_fits = h_sd_fit_list,
+                limits = [0, 50, 0, 6.5],
+                savedir = figure_dir + 'panel_cores/',
+                scale = ('linear', 'linear'),
+                filename = 'taurus_hi_vs_h_panels_planck_linear.%s' % \
                         figure_type,
+                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
+                #        + ' of taurus Cores',
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
@@ -2471,7 +2460,7 @@ def main(verbose=True):
                 limits=[1, 100, 1, 100],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('log', 'log'),
-                filename='california_hi_vs_h_panels_planck_log.%s' % \
+                filename='taurus_hi_vs_h_panels_planck_log.%s' % \
                         figure_type,
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
@@ -2490,11 +2479,11 @@ def main(verbose=True):
                 limits = [0, 50, 1, 8],
                 savedir = figure_dir + 'panel_cores/',
                 scale = ('linear', 'linear'),
-                filename = 'california_hi_vs_av_panels_planck_linear.%s' % \
+                filename = 'taurus_hi_vs_av_panels_planck_linear.%s' % \
                         figure_type,
                 core_names=core_name_list,
                 #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of california Cores',
+                #        + ' of taurus Cores',
                 show = False)
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
 '''
 
 import pyfits as pf
@@ -9,8 +9,9 @@ import numpy as np
 ''' Plotting Functions
 '''
 
-def plot_av_image(av_image=None, header=None, cores=None, title=None,
-        limits=None, boxes=False, savedir='./', filename=None, show=True):
+def plot_av_image(av_image=None, header=None, title=None, limits=None,
+        savedir='./', filename=None, show=True, av_mask=None, co_mask=None,
+        av_threshold=None, av_thresholds=None):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -23,6 +24,8 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     import pywcs
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
+    import matplotlib.cm as cm
+    import matplotlib.lines as mlines
 
     # Set up plot aesthetics
     plt.clf()
@@ -69,6 +72,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     # create axes
     ax = imagegrid[0]
     cmap = cm.pink # colormap
+    cmap = cm.gray # colormap
     # show the image
     im = ax.imshow(av_image,
             interpolation='nearest',origin='lower',
@@ -94,37 +98,62 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     # Write label to colorbar
     cb.set_label_text(r'A$_V$ (Mag)',)
 
-    # Convert sky to pix coordinates
-    wcs_header = pywcs.WCS(header)
-    for core in cores:
-        pix_coords = cores[core]['center_pixel']
+    # Show contour masks
+    cs_co = ax.contour(co_mask,
+                       levels=(bad_pix,),
+                       origin='lower',
+                       colors='r',
+                       linestyles='-')
+    if av_mask is not None:
+        cs_av = ax.contour(av_mask,
+                           levels=(bad_pix,),
+                           origin='lower',
+                           colors='c',
+                           linestyles='solid')
 
-        anno_color = (0.3, 0.5, 1)
+    # Legend
+    co_line = mlines.Line2D([], [],
+                color='r',
+                linestyle='--',
+                #label=r'CO threshold = 2$\times \sigma_{\rm CO}$',
+                label=r'CO threshold = 6 K km/s',
+                )
+    if av_thresholds is not None:
+    	colors = cm.rainbow(np.linspace(0, 1, len(av_thresholds)))
+        for i, av_threshold in enumerate(av_thresholds):
+            label = r'$A_V$ threshold = {0:1f} mag'.format(av_threshold)
+            av_line = mlines.Line2D([], [],
+                        color=colors[i],
+                        linestyle='solid',
+                        label=label)
+    elif av_threshold is not None and av_mask is not None:
+        label = r'$A_V$ threshold = {0:1f} mag'.format(av_threshold)
+        av_line = mlines.Line2D([], [],
+                    color='c',
+                    linestyle='solid',
+                    label=label)
 
-        ax.scatter(pix_coords[0],pix_coords[1],
-                color=anno_color,
-                s=200,
-                marker='+',
-                linewidths=2)
+    #ax.clabel(cs_co, inline=1, fontsize=10)
+    #ax.clabel(cs_av, inline=1, fontsize=10)
 
-        ax.annotate(core,
-                xy=[pix_coords[0], pix_coords[1]],
-                xytext=(5,5),
-                textcoords='offset points',
-                color=anno_color)
-
-        if boxes:
-            vertices = np.copy(cores[core]['box_vertices_rotated'])
-            #[:, ::-1]
-            rect = ax.add_patch(Polygon(
-                    vertices[:, ::-1],
-                    facecolor='none',
-                    edgecolor=anno_color))
+    #cs_co.collections.set_label(r'CO threshold = 2$\times \sigma_{\rm CO}$')
+    #cs_av.collections.set_label(r'$A_V$ threshold = ' + \
+    #                             '{0:1f} mag'.format(av_threshold))
+    lines = [cs_co.collections[0], cs_av.collections[0]]
+    labels = [#r'CO threshold = 2$\times\ \sigma_{\rm CO}$',
+              r'CO threshold = 6 K km/s',
+              r'$A_V$ threshold = {0:.1f} mag'.format(av_threshold)]
+    ax.legend(lines, labels,)
+              #bbox_to_anchor=(1,1),
+              #loc=3,
+              #ncol=2,
+              #mode="expand",
+              #borderaxespad=0.)
 
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
-        plt.savefig(savedir + filename)
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -294,6 +323,26 @@ def fit_profile(radii, profile, function, sigma=None):
 
     return profile_fit
 
+def calc_co_noise(co_mom0, prop_dict):
+
+    co_noise_region = []
+
+    # Append pixels from each region to CO region map
+    for region in prop_dict['co_noise_limits']['pixel']:
+        co_noise_region.append(co_mom0[region[0][1]:region[1][1],
+                                       region[0][0]:region[1][0]])
+
+    # Calc noise
+    noise = 0.0
+    for region in co_noise_region:
+    	std = np.std(np.array(region)[~np.isnan(region)])
+    	noise += std
+
+    # Take average of stds
+    noise = noise / len(co_noise_region)
+
+    return noise
+
 ''' DS9 Region and Coordinate Functions
 '''
 def convert_core_coordinates(cores, header):
@@ -319,22 +368,39 @@ def convert_core_coordinates(cores, header):
 
     return cores
 
-def convert_limit_coordinates(prop_dict):
+def convert_limit_coordinates(prop_dict,
+        coords=('region_limit', 'co_noise_limits'), header=None):
 
-    prop_dict.update({'limit_pixels': []})
+    # Initialize pixel keys
+    for coord in coords:
+        prop_dict[coord].update({'pixel': []})
 
-    header = prop_dict['av_header']
+        if coord == 'region_limit':
+            limit_wcs = prop_dict[coord]['wcs']
 
-    limit_wcs = prop_dict['limit_wcs']
+            for limits in limit_wcs:
+                # convert centers to pixel coords
+                limit_pixels = get_pix_coords(ra=limits[0],
+                                             dec=limits[1],
+                                             header=header)[:2].tolist()
 
-    for limits in limit_wcs:
-        # convert centers to pixel coords
-        limit_pixels = get_pix_coords(ra=limits[0],
-                                     dec=limits[1],
-                                     header=header)[:2].tolist()
+                prop_dict[coord]['pixel'].append(limit_pixels[0])
+                prop_dict[coord]['pixel'].append(limit_pixels[1])
+        elif coord == 'co_noise_limits':
+            region_limits = prop_dict[coord]['wcs']
 
-        prop_dict['limit_pixels'].append(limit_pixels[0])
-        prop_dict['limit_pixels'].append(limit_pixels[1])
+            # Cycle through each region, convert WCS limits to pixels
+            for region in region_limits:
+                region_pixels = []
+                for limits in region:
+                    # convert centers to pixel coords
+                    limit_pixels = get_pix_coords(ra=limits[0],
+                                                  dec=limits[1],
+                                                  header=header)[:2].tolist()
+                    region_pixels.append(limit_pixels)
+
+                # Append individual regions back to CO noise
+                prop_dict[coord]['pixel'].append(region_pixels)
 
     return prop_dict
 
@@ -461,87 +527,90 @@ def main():
     import json
 
     # parameters used in script
-    #box_width = 3 # in pixels
-    #box_height = 10 # in pixels
-    box_width = 6 # in pixels
-    box_height = 30 # in pixels
-    #box_width = 12 # in pixels
-    #box_height = 60 # in pixels
+    # -------------------------
+    # Pixel value of masks
+    global bad_pix
+    bad_pix = -1e8
+
+    global_property_file = 'taurus_global_properties.txt'
 
     # define directory locations
-    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/perseus/figures/maps/'
-    av_dir = '/d/bip3/ezbc/perseus/data/av/'
-    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
-    co_dir = '/d/bip3/ezbc/perseus/data/co/'
-    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
+    # --------------------------
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
 
-    # load Planck Av and GALFA HI images, on same grid
+    # load Planck Av and CfA CO images, on same grid
     av_data, av_header = load_fits(av_dir + \
-                'perseus_av_planck_5arcmin.fits',
+                'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data, av_error_header = load_fits(av_dir + \
-                'perseus_av_error_planck_5arcmin.fits',
+                'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
-    # av_data[dec, ra], axes are switched
+    co_data, co_header = load_fits(co_dir + \
+                'taurus_co_cfa_cube_regrid_planckres.fits',
+            return_header=True)
 
-    # define core properties
-    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
-        cores = json.load(f)
+    # Load global properties
+    with open(property_dir + global_property_file, 'r') as f:
+        global_props = json.load(f)
+    global_props = convert_limit_coordinates(global_props, header=av_header)
 
-    cores = convert_core_coordinates(cores, av_header)
+    # Create moment 0 map of CO
+    co_mom0 = np.sum(co_data, axis=0)
 
-    cores = load_ds9_region(cores,
-            filename_base = region_dir + 'perseus_av_boxes_',
-            header = av_header)
+    # Extract pixels where only CO noise is present
+    std = calc_co_noise(co_mom0, global_props)
+    std = 6.0
 
-    av_image_list = []
-    av_image_error_list = []
-    core_name_list = []
+    print ''
+    print('CO noise = {0:.2f} K km/s'.format(std))
+    print ''
 
-    box_dict = derive_ideal_box(av_data, cores, box_width, box_height,
-            core_rel_pos=0.1, angle_res=10., av_image_error=av_error_data)
+    # Extract locations of diffuse gas traced by lack of CO emission
+    co_indices = ((co_mom0 < std * 2.0) & \
+                  (av_data == av_data))
+    av_image_co_masked = np.copy(av_data)
+    av_image_co_masked[co_indices] = bad_pix
 
-    for core in cores:
-        cores[core]['box_vertices_rotated'] = \
-            box_dict[core]['box_vertices_rotated'].tolist()
-        try:
-            cores[core]['center_pixel'] = cores[core]['center_pixel'].tolist()
-        except AttributeError:
-            cores[core]['center_pixel'] = cores[core]['center_pixel']
+    # Extract locations of diffuse gas traced by low Av. Raise Av threshold
+    # until the same number of solely atomic gas column pixels are recovered
+    # for both the Av and CO priors
+    num_co_pix = co_indices[co_indices].size
+    num_av_pix = 0
+    av_threshold = 0.0 # mag
+    while num_av_pix <= num_co_pix:
+    	av_threshold += 0.05
+    	av_indices = ((av_data < av_threshold) & \
+    	              (co_mom0 == co_mom0))
+    	num_av_pix = av_indices[av_indices].size
 
-    with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
-        json.dump(cores, f)
+    av_threshold = 1.0
 
-    for core in cores:
-        mask = myg.get_polygon_mask(av_data,
-                cores[core]['box_vertices_rotated'])
+    av_image_av_masked = np.copy(av_data)
+    av_image_av_masked[av_data < av_threshold] = bad_pix
 
-        av_data_mask = np.copy(av_data)
-        av_data_mask[mask == 0] = np.NaN
-
-    # Define limits for plotting the map
-    prop_dict = {}
-    prop_dict['limit_wcs'] = (((3, 58, 0), (27, 6, 0)),
-                              ((3, 20, 0), (35, 0, 0)))
-    prop_dict['limit_wcs'] = (((3, 58, 0), (26, 6, 0)),
-                              ((3, 0, 0), (35, 0, 0)))
-    prop_dict['av_header'] = av_header
-
-    prop_dict = convert_limit_coordinates(prop_dict)
+    print('\nAv threshold = {0:.1f} mag'.format(av_threshold))
 
     # Plot
-    figure_types = ['pdf', 'png']
+    figure_types = ['png', 'pdf']
     for figure_type in figure_types:
-        plot_av_image(av_image=av_data, header=av_header,
-                boxes=True, cores=cores, #limits=[50,37,200,160],
-                #title=r'perseus: A$_V$ map with core boxed-regions.',
+        plot_av_image(av_image=av_data,
+                header=av_header,
+                av_mask=av_image_av_masked,
+                co_mask=av_image_co_masked,
+                av_threshold=av_threshold,
                 savedir=figure_dir,
-                limits=prop_dict['limit_pixels'],
-                filename='perseus_av_cores_map.%s' % \
+                limits=global_props['region_limit']['pixel'],
+                filename='taurus_av_co_masks_map.%s' % \
                         figure_type,
                 show=0)
 

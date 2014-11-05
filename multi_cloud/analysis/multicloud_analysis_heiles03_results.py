@@ -11,24 +11,29 @@ def read_data(filename, data_start=3):
 
     return table
 
-def plot_spin_temps(spin_temps, taurus_bins=10,
-        global_bins=None, global_spin_temps=None,
+def plot_spin_temps(spin_temps_list, cloud_bins_list=10,
+        global_bins=None, global_spin_temps=None, clouds=None,
         scales=('linear', 'linear'), filename=None, show=False):
 
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots()
 
-    if type(taurus_bins) is int:
-        ax.hist(spin_temps, color='k', bins=taurus_bins, alpha=0.2,
-                label=r'Taurus', normed=True)
-    else:
-        ax.plot(taurus_bins, spin_temps, color='k', drawstyle='steps-mid',
-                label=r'Taurus')
+    for i in xrange(len(clouds)):
+    	cloud = clouds[i]
+    	cloud_bins = cloud_bins_list[i]
+    	spin_temps = spin_temps_list[i]
+    	color = ('c', 'b', 'g')[i]
 
+        if type(cloud_bins) is int:
+            ax.hist(spin_temps, color='k', bins=cloud_bins, alpha=0.2,
+                    label=cloud, normed=True)
+        else:
+            ax.plot(cloud_bins, spin_temps, color=color, drawstyle='steps-mid',
+                    label=cloud)
 
     if global_spin_temps is not None:
-        if type(taurus_bins) is int:
+        if type(cloud_bins) is int:
             ax.hist(global_spin_temps, color='r', bins=global_bins, alpha=0.2,
                     label=r'Global', normed=True)
             ax.legend()
@@ -57,9 +62,10 @@ def main():
 
     # Parameters in script
     # --------------------------------------------------------------------------
-    dec_range = (40, 20)
-    ra_range = (70, 35)
-    tspin_threshold = 150.0
+    clouds = ('taurus', 'perseus', 'california')
+    dec_ranges = ((35, 20), (35, 24), (44, 35))
+    ra_ranges = ((80, 60), (60, 40), (70, 40))
+    tspin_threshold = 500.0
 
     # Data locations in script
     # --------------------------------------------------------------------------
@@ -86,47 +92,62 @@ def main():
         source_ras[i] = source[source_cols.index('_RA.icrs')]
         source_names[i] = source[source_cols.index('Name')]
 
-    # Choose only sources within RA and Dec range
-    indices = np.where((source_decs > dec_range[1]) &\
-                       (source_decs < dec_range[0]) &\
-                       (source_ras > ra_range[1]) &\
-                       (source_ras < ra_range[0])
-                       )[0]
+    # Find T_cnm temperatures for each cloud
+    cloud_counts_list = []
+    cloud_bins_list = []
+    cloud_t_cnm_lists = []
 
-    taurus_decs = source_decs[indices]
-    taurus_ras = source_ras[indices]
-    taurus_sources = source_names[indices]
+    for i, cloud in enumerate(clouds):
+    	dec_range = dec_ranges[i]
+    	ra_range = ra_ranges[i]
+        # Choose only sources within RA and Dec range
+        indices = np.where((source_decs > dec_range[1]) &\
+                           (source_decs < dec_range[0]) &\
+                           (source_ras > ra_range[1]) &\
+                           (source_ras < ra_range[0])
+                           )[0]
 
-    # Get the spin temperatures of chosen sources
-    t_cnm_list = []
-    taurus_t_cnm_list = []
-    source_list = []
+        cloud_decs = source_decs[indices]
+        cloud_ras = source_ras[indices]
+        cloud_sources = source_names[indices]
 
-    for i in xrange(len(param_data)):
-        tspin = param_data[i][param_cols.index('Tspin')]
-        tau_error = param_data[i][param_cols.index('e_tau')]
-        if param_data[i][param_cols.index('Name')] in taurus_sources:
-            if tspin < tspin_threshold and tau_error != 0.0:
-                taurus_t_cnm_list.append(tspin)
-        if tspin < tspin_threshold:
-            t_cnm_list.append(tspin)
+        # Get the spin temperatures of chosen sources
+        t_cnm_list = []
+        cloud_t_cnm_list = []
+        source_list = []
 
-    taurus_counts, taurus_bins = np.histogram(taurus_t_cnm_list, bins=8)
+        for i in xrange(len(param_data)):
+            tspin = param_data[i][param_cols.index('Tspin')]
+            tau_error = param_data[i][param_cols.index('e_tau')]
+            if param_data[i][param_cols.index('Name')] in cloud_sources:
+                if tspin < tspin_threshold and tau_error != 0.0:
+                    cloud_t_cnm_list.append(tspin)
+            if tspin < tspin_threshold:
+                t_cnm_list.append(tspin)
+
+        if cloud=='perseus':
+        	bins=3
+        else:
+        	bins=8
+
+        cloud_counts, cloud_bins = np.histogram(cloud_t_cnm_list, bins=bins)
+        cloud_counts = cloud_counts / np.sum(cloud_counts, dtype=numpy.float)
+        cloud_counts = np.append(cloud_counts, 0)
+
+        cloud_counts_list.append(cloud_counts)
+        cloud_bins_list.append(cloud_bins)
+        cloud_t_cnm_lists.append(cloud_t_cnm_list)
+
+        print cloud, len(cloud_t_cnm_list), ' ncomps'
+
     global_counts, global_bins = np.histogram(t_cnm_list, bins=20)
-
-    taurus_counts = taurus_counts / np.sum(taurus_counts, dtype=numpy.float)
     global_counts = global_counts / np.sum(global_counts, dtype=numpy.float)
-
-    taurus_counts = np.append(taurus_counts, 0)
     global_counts = np.append(global_counts, 0)
 
     # Plot the spin temperatures
-    plot_spin_temps(taurus_t_cnm_list, taurus_bins=8,
-            global_spin_temps=t_cnm_list, global_bins=20,
-            filename=\
-                '/d/bip3/ezbc/multicloud/figures/heiles03_spin_temp_hist.png')
-    plot_spin_temps(taurus_counts, taurus_bins=taurus_bins,
+    plot_spin_temps(cloud_counts_list, cloud_bins_list=cloud_bins_list,
             global_spin_temps=global_counts, global_bins=global_bins,
+            clouds=clouds,
             filename=\
                 '/d/bip3/ezbc/multicloud/figures/heiles03_spin_temp_hist.png')
 
