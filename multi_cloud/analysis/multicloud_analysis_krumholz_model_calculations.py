@@ -1,16 +1,20 @@
 #!/usr/bin/python
 
 def plot_phi_vs_T(T_cnm, phi_cnm, scales=('linear', 'linear'), filename=None,
+        G0s=None,
         show=False):
 
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots()
 
-    ax.plot(T_cnm, phi_cnm, linestyle='-', marker='', color='k')
+    for G0 in G0s:
+        ax.plot(T_cnm, phi_cnm, linestyle='-', marker='', color='k',
+                label='G0 = {0:.1f}'.format(G0))
 
     ax.set_xlabel(r'T$_{CNM}$')
     ax.set_ylabel(r'$\phi_{CNM}$')
+    ax.legend()
 
     ax.set_xscale(scales[0])
     ax.set_yscale(scales[1])
@@ -46,7 +50,7 @@ def plot_spin_temps(spin_temps, bins=10, scales=('linear', 'linear'),
 
 def main():
 
-    from myscience.krumholz09 import calc_phi_cnm, calc_T_cnm
+    from myscience.krumholz09 import calc_phi_cnm, calc_T_cnm, calc_n_cnm
     import numpy as np
 
     T_cnm = np.arange(40, 100, 0.1)
@@ -54,10 +58,15 @@ def main():
     phi_cnm = calc_phi_cnm(T_cnm, Z=1.0)
 
     plot_phi_vs_T(T_cnm, phi_cnm,
-            filename='/d/bip3/ezbc/multicloud/figures/phi_cnm_vs_T_cnm.png')
+            G0s=np.arange(0.05, 2, 0.2),
+            #filename='/d/bip3/ezbc/multicloud/figures/phi_cnm_vs_T_cnm.png',
+            filename='/home/ezbc/Desktop/phi_cnm_vs_T_cnm.png',
+            )
 
     T_cnm = calc_T_cnm(27.29, Z=1.0)
-    print 'T_cnm =', T_cnm, 'phi_cnm =', 10.0
+    n_cnm = calc_n_cnm(G_0=.5, T_cnm=T_cnm)
+    print 'T_cnm =', T_cnm, 'phi_cnm =', 10.0, 'n_cnm =', n_cnm, ' cm^-3'
+    print 'P/k =', T_cnm * n_cnm, ' K/cm^-3'
     T_cnm = calc_T_cnm(27.29 + 5.19, Z=1.0)
     print 'T_cnm =', T_cnm, 'phi_cnm =', 10.0
     T_cnm = calc_T_cnm(27.29 - 5.18, Z=1.0)
