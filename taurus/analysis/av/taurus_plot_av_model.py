@@ -87,7 +87,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
             )
 
     # Asthetics
-    ax.set_display_coord_system("fk4")
+    ax.set_display_coord_system("fk5")
     ax.set_ticklabel_type("hms", "dms")
 
     ax.set_xlabel('Right Ascension (J2000)',)
@@ -148,7 +148,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                 )
 
         # Asthetics
-        ax.set_display_coord_system("fk4")
+        ax.set_display_coord_system("fk5")
         ax.set_ticklabel_type("hms", "dms")
 
         ax.set_xlabel('Right Ascension (J2000)',)
@@ -208,6 +208,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
 
     # Set up plot aesthetics
     plt.clf()
+    plt.close()
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
@@ -314,11 +315,11 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
                         edgecolor=anno_color))
 
     if results is not None:
-    	av_thres = results['av_threshold']['value']
-    	co_thres = results['co_threshold']['value']
+        av_thres = results['av_threshold']['value']
+        co_thres = results['co_threshold']['value']
         if av_thres > 15:
-        	av_thres = None
-    	text = ''
+            av_thres = None
+        text = ''
         text += r'N$_{\rm pix}$ = ' + \
                  '{0:.0f}'.format(results['npix'])
         text += '\n'
@@ -399,7 +400,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     if filename is not None:
         plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
-        fig.show()
+        plt.show()
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -542,7 +543,7 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 The main script
 '''
 
-def main():
+def main(dgr=0.1, vel_range=(0,15)):
     ''' Executes script.
     '''
 
@@ -563,7 +564,7 @@ def main():
     # define directory locations
     # --------------------------
     output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/maps/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/maps/av_models/'
     av_dir = '/d/bip3/ezbc/taurus/data/av/'
     hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
     co_dir = '/d/bip3/ezbc/taurus/data/co/'
@@ -596,8 +597,20 @@ def main():
     # 'av/taurus_analysis_global_properties.txt'
     with open(property_dir + 'taurus_global_properties.txt', 'r') as f:
         props = json.load(f)
-        dgr = props['dust2gas_ratio']['value']
-        vel_range = props['hi_velocity_range']
+        '''
+        dgr = props['dust2gas_ratio_max']['value']
+        vel_center = props['hi_velocity_center_max']['value']
+        vel_width = props['hi_velocity_center_max']['value']
+        vel_range = np.asarray(props['hi_velocity_range_max']['value'])
+        dgr = dgr/3
+        scale = 1.
+        vel_range = (vel_center - scale*vel_width/2.0,
+                     vel_center + scale*vel_width/2.0)
+        vel_range = (0, 15)
+        '''
+
+    props['hi_velocity_range'] = vel_range
+    props['dust2gas_ratio']['value'] = dgr
 
     # define core properties
     with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
@@ -614,7 +627,6 @@ def main():
             header = hi_header)
 
     # create nhi image
-    hi_cube[hi_cube != hi_cube] = 0.0
     nhi_image, nhi_image_error = calculate_nhi(cube=hi_cube,
             velocity_axis=velocity_axis,
             velocity_range=vel_range,
@@ -631,43 +643,79 @@ def main():
     mask = ((av_image > props['av_threshold']['value']) & \
             (co_mom0 > props['co_threshold']['value']))
 
+    # Derive relevant region
+    pix = props['region_limit']['pixel']
+    region_vertices = ((pix[1], pix[0]),
+                       (pix[1], pix[2]),
+                       (pix[3], pix[2]),
+                       (pix[3], pix[0])
+                       )
+
+    # block offregion
+    region_mask = myg.get_polygon_mask(av_image, region_vertices)
+
+    print('\nRegion size = ' + \
+          '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
+
+    print('\nHI velocity integration range:')
+    print('%.1f to %.1f km/s' % (vel_range[0],
+                                 vel_range[1]))
+    print('\nDGR:')
+    print('%.2f x 10^-20 cm^2 mag' % (dgr))
+
+    # Get mask and mask images
+    mask = np.asarray(props['mask'])
+
     av_image_masked = np.copy(av_image)
-    av_image_masked[mask] = np.nan
+    #av_image_masked[(mask == 1) & (region_mask == 1)] = np.nan
+    av_image_masked[mask == 1] = np.nan
 
     av_model_masked = np.copy(av_model)
-    av_model_masked[mask] = np.nan
+    #av_model_masked[(mask == 1) & (region_mask == 1)] = np.nan
+    av_model_masked[mask == 1] = np.nan
 
-    indices = ((~np.isnan(av_model_masked)) & \
-               (~np.isnan(av_image_masked)) & \
-               (~np.isnan(av_error_image)))
+    indices = ((np.isnan(av_model_masked)) & \
+               (np.isnan(av_image_masked)) & \
+               (np.isnan(av_error_image)))
+
+    print 'npix = ', mask[~mask].size
+    print 'npix = ', props['npix']
+
+    # import matplotlib.pyplot as plt
+    # av_plot_data = np.copy(av_image)
+    # av_plot_data[~indices] = np.nan
+    # plt.imshow(av_plot_data, origin='lower')
+    # plt.show()
 
     # Calc chi^2
-    chisq = (av_image_masked[indices] - av_model_masked[indices])**2 / \
-            av_error_image[indices]**2
+    chisq = np.sum((av_image[~mask] - av_model[~mask])**2 / \
+            av_error_image[~mask]**2) / props['npix']
+    props['chisq'] = chisq
 
     # Plot
     figure_types = ['png',]
     for figure_type in figure_types:
-    	'''
-        plot_nhi_image(nhi_image=nhi_image_trim, header=hi_header,
-                contour_image=av_image, contours=[5,10,15],
-                boxes=True, cores = cores, limits=[128,37,308,206],
-                title='Taurus: N(HI) map with core boxed-regions.',
-                savedir=figure_dir, filename='taurus_nhi_cores_map.%s' % \
-                        figure_type,
-                show=False)
-        '''
-
+        filename = 'taurus_av_model_map_' + \
+                'dgr{0:.3f}_'.format(dgr) + \
+                '{0:.1f}to{1:.1f}kms'.format(vel_range[0], vel_range[1]) + \
+                '.%s' % figure_type
         plot_av_model(av_image=av_image_masked,
                       av_model=av_model_masked,
                       header=av_header,
                       results=props,
                       limits=props['region_limit']['pixel'],
                       savedir=figure_dir,
-                      filename='taurus_av_model_map.%s' % figure_type,
+                      filename=filename,
                       show=False)
 
 if __name__ == '__main__':
-    main()
+    dgrs = np.arange(0.05, 0.4, 0.025)
+    vel_widths = (4, 6, 8, 10, 12, 18, 34)
+    vel_center = 6.15
+    for i in xrange(0, len(dgrs)):
+        for j in xrange(0, len(vel_widths)):
+            vel_range = (vel_center - vel_widths[j]/2.0,
+                         vel_center + vel_widths[j]/2.0)
+            main(dgr=dgrs[i], vel_range=vel_range)
 
 

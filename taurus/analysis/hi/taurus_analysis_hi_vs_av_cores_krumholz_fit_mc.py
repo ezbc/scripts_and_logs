@@ -1550,7 +1550,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                            param_grid2=dgrs,
                            param_name1='widths',
                            param_name2='dgrs',
-                           L_scalar=N_monte_carlo_runs)
+                           #L_scalar=N_monte_carlo_runs,
+                           )
 
     if perform_mc:
         # Run the Monte Carlo
@@ -2156,7 +2157,7 @@ def main(verbose=True):
     global guesses
 
     calc_errors = True # Run monte carlo error analysis?
-    N_monte_carlo_runs = 10000 # Number of monte carlo runs
+    N_monte_carlo_runs = 100 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
@@ -2166,7 +2167,7 @@ def main(verbose=True):
     alpha = 0.32 # 1 - alpha = confidence
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
             'monte_carlo_results/taurus_mc_results_'
-    clobber = 0 # perform MC and write over current results?
+    clobber = 1 # perform MC and write over current results?
     guesses=(10.0, 1.0, 10.0)
 
     # Use core-derived or global-derived likelihoods for DGR - vel width

@@ -117,7 +117,7 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
             vertices = np.copy(cores[core]['poly_verts']['pixel'])
             #[:, ::-1]
             rect = ax.add_patch(Polygon(
-                    vertices,
+                    vertices[:, ::-1],
                     facecolor='none',
                     edgecolor=anno_color))
 
@@ -447,20 +447,20 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     for region in regions:
         # Cores defined in following format: 'tag={L1495A}'
-    	tag = region.comment
+        tag = region.comment
         core = tag[tag.find('{')+1:tag.find('}')]
 
         # Format vertices to be 2 x N array
         poly_verts = []
         for i in xrange(0, len(region.coord_list)/2):
-        	poly_verts.append((region.coord_list[2*i],
-        	                   region.coord_list[2*i+1]))
+            poly_verts.append((region.coord_list[2*i],
+                               region.coord_list[2*i+1]))
 
         poly_verts_pix = []
         for i in xrange(0, len(poly_verts)):
-        	poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
-        	                                   dec=poly_verts[i][1],
-                                               header=header)[:-1].tolist())
+            poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                            dec=poly_verts[i][1],
+                                            header=header)[:-1][::-1].tolist())
 
         cores[core]['poly_verts'] = {}
         cores[core]['poly_verts']['wcs'] = poly_verts
