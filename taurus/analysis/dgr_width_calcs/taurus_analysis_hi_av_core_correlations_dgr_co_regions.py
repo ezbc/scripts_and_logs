@@ -1,12 +1,10 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av likelihoodelation for the perseus molecular cloud.
+''' Calculates the N(HI) / Av likelihoodelation for the taurus molecular cloud.
 '''
 
 import pyfits as pf
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 
 class KeyboardInterruptError(Exception): pass
 
@@ -140,8 +138,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
     if returnimage:
         return likelihoods
 
-def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
-        x_pdf=None, x_confint=None, y_confint=None, filename=None, show=True,
+def plot_likelihoods_hist(global_props, filename=None, show=True,
         returnimage=False, plot_axes=('centers', 'widths'),
         contour_confs=None):
 
@@ -181,9 +178,6 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
 
     fig, ax_image = plt.subplots(figsize=(6,6))
 
-    # Mask NaNs
-    image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
-
     if plot_axes[0] == 'centers':
         x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'Velocity Center (km/s)')
@@ -195,11 +189,12 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         y_sum_axes = (1, 2)
         x_pdf_label = r'Centers PDF'
     if plot_axes[0] == 'widths':
+    	x_grid = global_props['vel_widths']
+    	x_confint = global_props['width_confint']
         x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'Velocity Width (km/s)')
         x_sum_axes = (0, 2)
         y_pdf_label = r'Width PDF'
-        x_limits = (0, 20)
         x_limits = (x_grid[0], x_grid[-1])
     if plot_axes[1] == 'widths':
         y_extent = y_grid[0], y_grid[-1]
@@ -212,21 +207,26 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         x_sum_axes = (0, 1)
         y_pdf_label = r'DGR PDF'
     if plot_axes[1] == 'dgrs':
+    	y_grid = global_props['dgrs']
+    	y_confint = global_props['dgr_confint']
         y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
         y_sum_axes = (0, 1)
         x_pdf_label = r'DGR PDF'
-        y_limits = (0.0, 0.8)
         y_limits = (y_grid[0], y_grid[-1])
 
+    # Create axes
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
+
+    # Mask NaNs
+    likelihoods = global_props['likelihoods']
+    image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
 
     # Create likelihood image
     image = np.sum(likelihoods, axis=sum_axis) / np.sum(likelihoods)
 
     # Derive marginal distributions of both centers and widths
-
     x_sum = np.sum(likelihoods, axis=x_sum_axes)
     x_pdf = x_sum / np.sum(x_sum)
     y_sum = np.sum(likelihoods, axis=y_sum_axes)
@@ -376,6 +376,35 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
     except UnboundLocalError:
         pass
 
+    if 0:
+    #if npix is not None or av_threshold is not None:
+    	text = ''
+        if npix is not None:
+            text += r'N$_{\rm pix}$ = ' + \
+                     '{0:.0f}'.format(npix)
+            if av_threshold is not None:
+            	text += '\n'
+        if av_threshold is not None:
+            text += r'$A_V$ threshold = {0:.1f} mag'.format(av_threshold)
+            text += '\n'
+        text += r'DGR = {0:.2f} '.format(y_confint[0]) + \
+                r'$\times$ 10$^{-20}$ (cm$^2$ mag$^1$)'
+        text += '\n'
+        text += r'Velocity width = {0:.2f} '.format(x_confint[0]) + \
+                r'km/s'
+        ax_image.annotate(text,
+                xytext=(0.95, 0.95),
+                xy=(0.95, 0.95),
+                textcoords='axes fraction',
+                xycoords='axes fraction',
+                color='k',
+                fontsize=font_scale*0.75,
+                bbox=dict(boxstyle='round',
+                          facecolor='w',
+                          alpha=0.3),
+                horizontalalignment='right',
+                verticalalignment='top',
+                )
 
     if filename is not None:
         plt.draw()
@@ -734,7 +763,6 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
                               returnimage=False,
                               filename=results_filename + '_cd.png',
                               contour_confs=contour_confs)
-        '''
         plot_likelihoods_hist(likelihoods,
                               velocity_widths,
                               dgrs,
@@ -745,11 +773,12 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
                               returnimage=False,
                               filename=results_filename + '_wd.png',
                               contour_confs=contour_confs)
+    	'''
 
     if not return_likelihoods:
         return vel_range_confint, dgr_confint
     else:
-        return (vel_range_confint, dgr_confint, likelihoods,
+        return (vel_range_confint, width_confint, dgr_confint, likelihoods,
             center_likelihood, width_likelihood, dgr_likelihood, center_max,
             width_max, dgr_max)
 
@@ -1011,7 +1040,7 @@ def convert_limit_coordinates(prop_dict,
     for coord in coords:
         prop_dict[coord].update({'pixel': []})
 
-        if coord == 'region_limit':
+        if coord == 'region_limit' or coord == 'plot_limit':
             limit_wcs = prop_dict[coord]['wcs']
 
             for limits in limit_wcs:
@@ -1127,7 +1156,7 @@ def read_ds9_region(filename):
 
     return region[0].coord_list
 
-def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
+def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -1153,7 +1182,7 @@ def load_ds9_region(cores, filename_base = 'perseus_av_boxes_', header=None):
 The main script
 '''
 
-def main():
+def main(region=None):
 
     import grid
     import numpy as np
@@ -1191,34 +1220,55 @@ def main():
     contour_confs = (0.68, 0.95)
 
     # Course, large grid or fine, small grid?
-    grid_res = 'course'
     grid_res = 'fine'
+    grid_res = 'course'
 
     # Use Av+CO mask or only CO?
     av_and_co_mask = True
 
     # Derive CO mask? If co_thres = None, co_thres will be 2 * std(co)
-    co_thres = 3.00 # K km/s
+    co_thres = 6.00 # K km/s
 
     # Threshold of Av below which we expect only atomic gas, in mag
-    av_thres = 1.0
+    av_thres = 1.4
+
+    # Regions, regions to edit the global properties with
+    if region == 1:
+        region_limit = {'wcs' : (((5, 10, 0), (19, 0, 0)),
+                                 ((4, 30, 0), (27, 0, 0))),
+                          'pixel' : ()
+                         }
+    elif region == 2:
+        region_limit = {'wcs' : (((4, 30, 0), (19, 0, 0)),
+                                 ((3, 50, 0), (29, 0, 0))),
+                          'pixel' : ()
+                        }
+    elif region == 3:
+        region_limit = {'wcs' : (((4, 30, 0), (29, 0, 0)),
+                                 ((3, 50, 0), (33, 0, 0))),
+                          'pixel' : ()
+                        }
+    else:
+    	region_limit = None
 
     # Results and fits filenames
     if av_and_co_mask:
-        likelihood_filename = 'perseus_nhi_av_likelihoods_co_' + \
-                              'av{0:.1f}mag'.format(av_thres)
-        results_filename = 'perseus_likelihood_co_' + \
-                           'av{0:.1f}mag'.format(av_thres)
+        likelihood_filename = 'taurus_nhi_av_likelihoods_co_' + \
+                              'av{0:.1f}mag'.format(av_thres) + \
+                              '_region{0:.0f}'.format(region)
+        results_filename = 'taurus_likelihood_co_' + \
+                           'av{0:.1f}mag'.format(av_thres) + \
+                           '_region{0:.0f}'.format(region)
     else:
-        likelihood_filename = 'perseus_nhi_av_likelihoods_co_only'
-        results_filename = 'perseus_likelihood_co_only'
+        likelihood_filename = 'taurus_nhi_av_likelihoods_co_only'
+        results_filename = 'taurus_likelihood_co_only'
 
     # Name of property files results are written to
-    global_property_file = 'perseus_global_properties.txt'
-    core_property_file = 'perseus_core_properties.txt'
+    global_property_file = 'taurus_global_properties'
+    core_property_file = 'taurus_core_properties.txt'
 
     # Name of noise cube
-    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
 
     # Define ranges of parameters
     if center_vary and width_vary and dgr_vary:
@@ -1232,17 +1282,21 @@ def main():
         if grid_res == 'course':
             likelihood_filename += '_dgr_width_lowres'
             results_filename += '_dgr_width_lowres'
-            velocity_centers = np.arange(-5, 10, 4*0.16667)
-            velocity_widths = np.arange(1, 50, 4*0.16667)
-            dgrs = np.arange(0.01, 0.3, 5e-3)
+            velocity_centers = np.arange(5, 6, 1)
+            velocity_widths = np.arange(1, 60, 5*0.16667)
+            dgrs = np.arange(0.01, 0.5, 1e-2)
         elif grid_res == 'fine':
             likelihood_filename += '_dgr_width_highres'
             results_filename += '_dgr_width_highres'
             velocity_centers = np.arange(5, 6, 1)
             velocity_widths = np.arange(1, 100, 0.16667)
             dgrs = np.arange(0.15, 0.4, 1e-3)
-            velocity_widths = np.arange(1, 50, 0.16667)
-            dgrs = np.arange(0.01, 0.2, 1e-3)
+            velocity_widths = np.arange(1, 15, 0.16667)
+            dgrs = np.arange(0.1, 0.9, 3e-3)
+            velocity_widths = np.arange(1, 60, 0.16667)
+            dgrs = np.arange(0.01, 0.5, 2e-3)
+            #velocity_widths = np.arange(1, 40, 1)
+            #dgrs = np.arange(0.15, 0.4, 1e-1)
     elif center_vary and width_vary and not dgr_vary:
         likelihood_filename += '_width_center'
         results_filename += '_width_center'
@@ -1260,31 +1314,31 @@ def main():
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/perseus/figures/hi_velocity_range/'
-    av_dir = '/d/bip3/ezbc/perseus/data/av/'
-    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
-    co_dir = '/d/bip3/ezbc/perseus/data/co/'
-    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
-    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
-    likelihood_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/hi_velocity_range/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data, av_header = load_fits(av_dir + \
-                'perseus_av_planck_5arcmin.fits',
+                'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_data_error, av_error_header = load_fits(av_dir + \
-                'perseus_av_error_planck_5arcmin.fits',
+                'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'perseus_hi_galfa_cube_regrid_planckres.fits',
+                'taurus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'perseus_co_cfa_cube_regrid_planckres.fits',
+                'taurus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -1304,21 +1358,40 @@ def main():
     # define core properties
     with open(core_dir + core_property_file, 'r') as f:
         cores = json.load(f)
-    with open(property_dir + global_property_file, 'r') as f:
+    with open(property_dir + global_property_file + '.txt', 'r') as f:
         global_props = json.load(f)
+
+    # Change region limits if region is defined
+    if region is not None:
+    	global_props['region_limit'] = region_limit
 
     # Change WCS coords to pixel coords of images
     cores = convert_core_coordinates(cores, h)
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'perseus_av_boxes_',
+            filename_base = region_dir + 'taurus_av_boxes_',
             header = h)
-    global_props = convert_limit_coordinates(global_props, header=av_header)
+    global_props = convert_limit_coordinates(global_props,
+            header=av_header,
+            coords=('region_limit', 'co_noise_limits', 'plot_limit'))
 
-    print('\nCalculating likelihoods globally')
+    # Derive relevant region
+    pix = global_props['region_limit']['pixel']
+    region_vertices = ((pix[1], pix[0]),
+                       (pix[1], pix[2]),
+                       (pix[3], pix[2]),
+                       (pix[3], pix[0])
+                       )
+
+    # block offregion
+    region_mask = myg.get_polygon_mask(av_data, region_vertices)
+
+    print('\nRegion size = ' + \
+          '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
 
     # Set velocity center as CO peak
     co_data_nonans = np.copy(co_data)
     co_data_nonans[np.isnan(co_data_nonans)] = 0.0
+    co_data_nonans[:,region_mask == 1] = 0
     co_spectrum = np.sum(co_data_nonans, axis=(1,2))
     co_avg_vel = np.average(co_velocity_axis, weights=co_spectrum)
     co_peak_vel = co_velocity_axis[co_spectrum == np.max(co_spectrum)]
@@ -1342,20 +1415,6 @@ def main():
     if co_thres is None:
         co_noise = calc_co_noise(co_mom0, global_props)
         co_thres = 2.0 * co_noise
-
-    # Derive relevant region
-    pix = global_props['region_limit']['pixel']
-    region_vertices = ((pix[1], pix[0]),
-                       (pix[1], pix[2]),
-                       (pix[3], pix[2]),
-                       (pix[3], pix[0])
-                       )
-
-    # block offregion
-    region_mask = myg.get_polygon_mask(av_data, region_vertices)
-
-    print('\nRegion size = ' + \
-          '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
 
     # Get indices which trace only atomic gas, i.e., no CO emission
     if av_and_co_mask:
@@ -1392,8 +1451,10 @@ def main():
     for figure_type in figure_types:
         plot_av_image(av_image=av_data_masked, header=av_header,
                 savedir=figure_dir + '../maps/',
-                limits=global_props['region_limit']['pixel'],
-                filename='perseus_dgr_co_masked_map.' + figure_type,
+                limits=global_props['plot_limit']['pixel'],
+                filename='taurus_co_av_masked_map_' + \
+                         'region{0:.0f}'.format(region) + \
+                         figure_type,
                 show=0)
 
     # Set global variables
@@ -1408,8 +1469,10 @@ def main():
 
     # likelihoodelate each core region Av and N(HI) for velocity ranges
     pool = Pool()
-    vel_range_confint, dgr_confint, likelihoods, center_likelihood,\
-        width_likelihood, dgr_likelihood, center_max, width_max, dgr_max = \
+
+    vel_range_confint, width_confint, dgr_confint, likelihoods, \
+    center_likelihood, width_likelihood, dgr_likelihood, center_max, \
+    width_max, dgr_max = \
             calc_likelihood_hi_av(
                             dgrs=dgrs,
                             velocity_centers=velocity_centers,
@@ -1459,18 +1522,22 @@ def main():
 
     print('\nReduced chi^2 = {0:.1f}'.format(chisq))
 
+
     # Write results to global properties
     global_props['dust2gas_ratio'] = {}
     global_props['dust2gas_ratio_error'] = {}
     global_props['hi_velocity_width'] = {}
+    global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
     global_props['hi_velocity_center_max'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
     global_props['av_threshold'] = {}
     global_props['co_threshold'] = {}
-    global_props['hi_velocity_width']['value'] = vel_range_confint[1] -\
-                                                 vel_range_confint[0]
+    global_props['width_confint'] = width_confint
+    global_props['dgr_confint'] = dgr_confint
+    global_props['hi_velocity_width']['value'] = width_confint[0]
+    global_props['hi_velocity_width_error']['value'] = width_confint[1:]
     global_props['hi_velocity_width']['unit'] = 'km/s'
     global_props['hi_velocity_range'] = vel_range_confint[0:2]
     global_props['hi_velocity_range_error'] = vel_range_confint[2:]
@@ -1496,13 +1563,25 @@ def main():
     global_props['npix'] = npix
     global_props['mask'] = mask.tolist()
 
-    with open(property_dir + global_property_file, 'w') as f:
+    with open(property_dir + global_property_file + \
+              '_region' + str(region) + '.txt', 'w') as f:
         json.dump(global_props, f)
 
+    # Plot likelihood space
+    plot_likelihoods_hist(global_props,
+                          plot_axes=('widths', 'dgrs'),
+                          show=0,
+                          returnimage=False,
+                          filename=results_filename + '_wd.png',
+                          contour_confs=contour_confs)
+
+
 if __name__ == '__main__':
-    main()
 
+    regions = (1,2,3)
 
+    for region in regions:
+        main(region=region)
 
 
 

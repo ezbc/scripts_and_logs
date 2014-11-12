@@ -191,8 +191,9 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         fig.show()
 
 def plot_av_model(av_image=None, header=None, contour_image=None,
-        av_model=None, cores=None, results=None, title=None, limits=None,
-        contours=None, boxes=False, savedir='./', filename=None, show=True):
+        av_model=None, hi_velocity_axis=None, vel_range=None, hi_spectrum=None,
+        cores=None, results=None, title=None, limits=None, contours=None,
+        boxes=False, savedir='./', filename=None, show=True):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -212,7 +213,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     plt.rcdefaults()
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 15
+    font_scale = 12
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
@@ -223,7 +224,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              'figure.figsize': (15, 7),
+              'figure.figsize': (13, 10),
               'figure.titlesize': font_scale
               #'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -232,10 +233,14 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     # Create figure instance
     fig = plt.figure()
 
+    # ==========================================================================
+    # Av maps
+    # ==========================================================================
+
     nrows_ncols=(1,2)
     ngrids=2
 
-    imagegrid = ImageGrid(fig, (1,1,1),
+    imagegrid = ImageGrid(fig, (2,1,1),
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
                  cbar_mode='single',
@@ -337,9 +342,10 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
                 r'$\times$ 10$^{-20}$ (cm$^2$ mag$^1$)'
         text += '\n'
         vel_range = results['hi_velocity_range'][:2]
-        text += r'Velocity range = ' + \
-                '{0:.1f} to {1:.1f} km/s'.format(vel_range[0], vel_range[1])
-        text += '\n'
+        if vel_range.ndim == 1:
+            text += r'Velocity range = ' + \
+                    '{0:.1f} to {1:.1f} km/s'.format(vel_range[0], vel_range[1])
+            text += '\n'
         text += r'$\chi^2$ / $\nu$ = {0:.1f}'.format(results['chisq'])
         ax.annotate(text,
                 xytext=(0.03, 0.95),
@@ -394,6 +400,29 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
 
         # Write label to colorbar
         cb.set_label_text(r'$A_V$ (mag)',)
+
+    # ==========================================================================
+    # HI Spectrum
+    # ==========================================================================
+
+    # create axes
+    ax = fig.add_subplot(2,1,2)
+
+    ax.plot(hi_velocity_axis,
+            hi_spectrum,
+            color='k',
+            drawstyle = 'steps-mid'
+            )
+
+    # Plot velocity range
+    if vel_range.ndim == 1:
+    	ax.axvspan(vel_range[0], vel_range[1], color='k', alpha=0.3)
+    elif vel_range.ndim == 2:
+        for i in xrange(0, vel_range.shape[0]):
+            ax.axvspan(vel_range[i, 0], vel_range[i, 1], color='k', alpha=0.3)
+
+    ax.set_xlabel('Velocity (km/s)')
+    ax.set_ylabel(r'T$_b$ (K)')
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
@@ -543,7 +572,7 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 The main script
 '''
 
-def main(dgr=0.1, vel_range=(0,15)):
+def main(dgr=0.1, vel_range=(0,15), vel_range_type='single', region=None):
     ''' Executes script.
     '''
 
@@ -560,6 +589,26 @@ def main(dgr=0.1, vel_range=(0,15)):
     # -----------------
     # Name of noise cube
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+
+    # Regions, regions to edit the global properties with
+    if region == 1:
+        region_limit = {'wcs' : (((5, 10, 0), (19, 0, 0)),
+                                 ((4, 30, 0), (27, 0, 0))),
+                          'pixel' : ()
+                         }
+    elif region == 2:
+        region_limit = {'wcs' : (((4, 30, 0), (19, 0, 0)),
+                                 ((3, 50, 0), (29, 0, 0))),
+                          'pixel' : ()
+                        }
+    elif region == 3:
+        region_limit = {'wcs' : (((4, 30, 0), (29, 0, 0)),
+                                 ((3, 50, 0), (33, 0, 0))),
+                          'pixel' : ()
+                        }
+    else:
+    	region_limit = None
+
 
     # define directory locations
     # --------------------------
@@ -595,7 +644,8 @@ def main(dgr=0.1, vel_range=(0,15)):
     # Load global properties of cloud
     # global properties written from script
     # 'av/taurus_analysis_global_properties.txt'
-    with open(property_dir + 'taurus_global_properties.txt', 'r') as f:
+    with open(property_dir + 'taurus_global_properties_region' + str(region) + \
+              '.txt', 'r') as f:
         props = json.load(f)
         '''
         dgr = props['dust2gas_ratio_max']['value']
@@ -657,9 +707,16 @@ def main(dgr=0.1, vel_range=(0,15)):
     print('\nRegion size = ' + \
           '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
 
-    print('\nHI velocity integration range:')
-    print('%.1f to %.1f km/s' % (vel_range[0],
-                                 vel_range[1]))
+    if vel_range_type == 'single':
+        print('\nHI velocity integration range:')
+        print('%.1f to %.1f km/s' % (vel_range[0],
+                                     vel_range[1]))
+    elif vel_range_type == 'multiple':
+        print('\nHI velocity integration ranges:')
+        for i in xrange(0, vel_range.shape[0]):
+            print('%.1f to %.1f km/s' % (vel_range[i, 0],
+                                         vel_range[i, 1]))
+
     print('\nDGR:')
     print('%.2f x 10^-20 cm^2 mag' % (dgr))
 
@@ -692,17 +749,34 @@ def main(dgr=0.1, vel_range=(0,15)):
             av_error_image[~mask]**2) / props['npix']
     props['chisq'] = chisq
 
+    # Create HI spectrum
+    #hi_cube_copy = np.copy(hi_cube)
+    hi_cube[:, mask==1] = 0
+    #hi_spectrum = np.mean(hi_cube_copy, axis=(1,2))
+    hi_spectrum = np.mean(hi_cube, axis=(1,2))
+
     # Plot
     figure_types = ['png',]
     for figure_type in figure_types:
-        filename = 'taurus_av_model_map_' + \
-                'dgr{0:.3f}_'.format(dgr) + \
-                '{0:.1f}to{1:.1f}kms'.format(vel_range[0], vel_range[1]) + \
-                '.%s' % figure_type
+        if vel_range_type == 'single':
+            filename = 'single_vel_range/taurus_av_model_map_' + \
+                    'dgr{0:.3f}_'.format(dgr) + \
+                    '{0:.1f}to{1:.1f}kms'.format(vel_range[0], vel_range[1]) + \
+                    '.%s' % figure_type
+        elif vel_range_type == 'multiple':
+            filename = 'multiple_vel_range/taurus_av_model_map_' + \
+                       'dgr{0:.3f}'.format(dgr)
+            for i in xrange(0, vel_range.shape[0]):
+                filename += '_{0:.1f}to{1:.1f}kms'.format(vel_range[i, 0],
+                                                          vel_range[i, 1])
+            filename += '.%s' % figure_type
         plot_av_model(av_image=av_image_masked,
                       av_model=av_model_masked,
                       header=av_header,
                       results=props,
+                      hi_velocity_axis=velocity_axis,
+                      vel_range=vel_range,
+                      hi_spectrum=hi_spectrum,
                       limits=props['region_limit']['pixel'],
                       savedir=figure_dir,
                       filename=filename,
@@ -710,12 +784,36 @@ def main(dgr=0.1, vel_range=(0,15)):
 
 if __name__ == '__main__':
     dgrs = np.arange(0.05, 0.4, 0.025)
-    vel_widths = (4, 6, 8, 10, 12, 18, 34)
+    vel_widths = (4, 6, 8, 10, 12, 18, 34, 50)
+    vel_widths = (50,)
     vel_center = 6.15
+
+    regions = (1,2,3)
+
+    for region in regions:
+        main(region=region)
+
+    '''
+    # Single velocity ranges
     for i in xrange(0, len(dgrs)):
         for j in xrange(0, len(vel_widths)):
             vel_range = (vel_center - vel_widths[j]/2.0,
                          vel_center + vel_widths[j]/2.0)
-            main(dgr=dgrs[i], vel_range=vel_range)
+            vel_range = np.asarray(vel_range)
+            main(dgr=dgrs[i], vel_range=vel_range,
+                    vel_range_type='single')
+
+    # Multiple velocity ranges
+    for i in xrange(0, len(dgrs)):
+        for j in xrange(0, len(vel_widths)):
+            vel_range = ((-10, vel_center - vel_widths[j]/2.0),
+                         (vel_center + vel_widths[j]/2.0, 20),)
+            vel_range = np.asarray(vel_range)
+            main(dgr=dgrs[i], vel_range=vel_range,
+                    vel_range_type='multiple')
+
+
+    '''
+
 
 
