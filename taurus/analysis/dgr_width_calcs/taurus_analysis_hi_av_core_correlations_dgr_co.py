@@ -199,6 +199,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         y_pdf_label = r'Width PDF'
         x_limits = (0, 20)
         x_limits = (0, 20)
+        x_limits = (x_grid[0], x_grid[-1])
     if plot_axes[1] == 'widths':
         y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'Velocity Width (km/s)')
@@ -216,6 +217,7 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         x_pdf_label = r'DGR PDF'
         y_limits = (0.0, 0.8)
         y_limits = (0.1, 0.9)
+        y_limits = (y_grid[0], y_grid[-1])
 
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
@@ -1179,7 +1181,7 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 1
+    clobber = 0
 
     # Confidence of parameter errors
     conf = 0.68
@@ -1229,8 +1231,8 @@ def main():
             likelihood_filename += '_dgr_width_lowres'
             results_filename += '_dgr_width_lowres'
             velocity_centers = np.arange(-5, 10, 4*0.16667)
-            velocity_widths = np.arange(1, 30, 6*0.16667)
-            dgrs = np.arange(0.05, 0.3, 5e-3)
+            velocity_widths = np.arange(29, 30, 1)
+            dgrs = np.arange(0.05, 0.2, 1e-3)
         elif grid_res == 'fine':
             likelihood_filename += '_dgr_width_highres'
             results_filename += '_dgr_width_highres'

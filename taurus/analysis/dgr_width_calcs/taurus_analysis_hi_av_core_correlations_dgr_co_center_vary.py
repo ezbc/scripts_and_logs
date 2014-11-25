@@ -5,6 +5,8 @@
 
 import pyfits as pf
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 
 class KeyboardInterruptError(Exception): pass
 
@@ -138,8 +140,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
     if returnimage:
         return likelihoods
 
-def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
-        x_pdf=None, x_confint=None, y_confint=None, filename=None, show=True,
+def plot_likelihoods_hist(global_props, filename=None, show=True,
         returnimage=False, plot_axes=('centers', 'widths'),
         contour_confs=None):
 
@@ -179,9 +180,6 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
 
     fig, ax_image = plt.subplots(figsize=(6,6))
 
-    # Mask NaNs
-    image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
-
     if plot_axes[0] == 'centers':
         x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'Velocity Center (km/s)')
@@ -193,12 +191,13 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         y_sum_axes = (1, 2)
         x_pdf_label = r'Centers PDF'
     if plot_axes[0] == 'widths':
+    	x_grid = global_props['vel_widths']
+    	x_confint = global_props['width_confint']
         x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'Velocity Width (km/s)')
-        x_sum_axes = (0, 2)
+        x_sum_axes = (1)
         y_pdf_label = r'Width PDF'
-        x_limits = (0, 20)
-        x_limits = (0, 20)
+        x_limits = (x_grid[0], x_grid[-1])
     if plot_axes[1] == 'widths':
         y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'Velocity Width (km/s)')
@@ -210,21 +209,28 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
         x_sum_axes = (0, 1)
         y_pdf_label = r'DGR PDF'
     if plot_axes[1] == 'dgrs':
+    	y_grid = global_props['dgrs']
+    	y_confint = global_props['dgr_confint']
         y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
-        y_sum_axes = (0, 1)
+        y_sum_axes = (0)
         x_pdf_label = r'DGR PDF'
-        y_limits = (0.0, 0.8)
-        y_limits = (0.1, 0.9)
+        y_limits = (y_grid[0], y_grid[-1])
 
+    # Create axes
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
 
+    # Mask NaNs
+    likelihoods = global_props['likelihoods']
+    image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
+
     # Create likelihood image
-    image = np.sum(likelihoods, axis=sum_axis) / np.sum(likelihoods)
+    image = likelihoods / np.sum(likelihoods)
+
+    print image.max()
 
     # Derive marginal distributions of both centers and widths
-
     x_sum = np.sum(likelihoods, axis=x_sum_axes)
     x_pdf = x_sum / np.sum(x_sum)
     y_sum = np.sum(likelihoods, axis=y_sum_axes)
@@ -374,6 +380,35 @@ def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
     except UnboundLocalError:
         pass
 
+    if 0:
+    #if npix is not None or av_threshold is not None:
+    	text = ''
+        if npix is not None:
+            text += r'N$_{\rm pix}$ = ' + \
+                     '{0:.0f}'.format(npix)
+            if av_threshold is not None:
+            	text += '\n'
+        if av_threshold is not None:
+            text += r'$A_V$ threshold = {0:.1f} mag'.format(av_threshold)
+            text += '\n'
+        text += r'DGR = {0:.2f} '.format(y_confint[0]) + \
+                r'$\times$ 10$^{-20}$ (cm$^2$ mag$^1$)'
+        text += '\n'
+        text += r'Velocity width = {0:.2f} '.format(x_confint[0]) + \
+                r'km/s'
+        ax_image.annotate(text,
+                xytext=(0.95, 0.95),
+                xy=(0.95, 0.95),
+                textcoords='axes fraction',
+                xycoords='axes fraction',
+                color='k',
+                fontsize=font_scale*0.75,
+                bbox=dict(boxstyle='round',
+                          facecolor='w',
+                          alpha=0.3),
+                horizontalalignment='right',
+                verticalalignment='top',
+                )
 
     if filename is not None:
         plt.draw()
@@ -478,10 +513,113 @@ def plot_av_image(av_image=None, header=None, title=None,
     if show:
         fig.show()
 
+def plot_hi_center_map(vel_center_image=None, header=None, title=None,
+        limits=None, savedir='./', filename=None, show=True,
+        color_limits=(None,None), mask=None):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    from mpl_toolkits.axes_grid1 import ImageGrid
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import pywcsgrid2 as wcs
+    import pywcs
+    from pylab import cm # colormaps
+    from matplotlib.patches import Polygon
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    font_scale = 15
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': 500,
+              'axes.labelweight': 500,
+              'text.usetex': False,
+              'figure.figsize': (8, 7),
+              'figure.titlesize': font_scale
+              #'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    nrows_ncols=(1,1)
+    ngrids=1
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
+                 cbar_location='right',
+                 cbar_pad="2%",
+                 cbar_size='3%',
+                 axes_pad=1,
+                 axes_class=(wcs.Axes,
+                             dict(header=header)),
+                 aspect=True,
+                 label_mode='L',
+                 share_all=True)
+
+    # create axes
+    ax = imagegrid[0]
+    cmap = cm.Greys # colormap
+    cmap = cm.jet # colormap
+    cmap.set_bad(color='w',)
+
+    # Mask image if mask is present
+    if mask is not None:
+    	print('\nMasking HI center image')
+    	vel_center_image = np.ma.array(vel_center_image, mask=mask)
+
+    # show the image
+    im = ax.imshow(vel_center_image,
+            interpolation='nearest',origin='lower',
+            cmap=cmap,
+            #norm=matplotlib.colors.LogNorm()
+            vmin=color_limits[0],
+            vmax=color_limits[1]
+            )
+
+    # Asthetics
+    ax.set_display_coord_system("fk5")
+    ax.set_ticklabel_type("hms", "dms")
+
+    ax.set_xlabel('Right Ascension (J2000)',)
+    ax.set_ylabel('Declination (J2000)',)
+
+    # colorbar
+    cb = ax.cax.colorbar(im)
+    cmap.set_bad(color='w')
+    # plot limits
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[2])
+        ax.set_ylim(limits[1],limits[3])
+
+    # Write label to colorbar
+    cb.set_label_text(r'HI Center (km/s)',)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=font_scale)
+    if filename is not None:
+        plt.savefig(savedir + filename, bbox_inches='tight')
+    if show:
+        fig.show()
+
 ''' Calculations
 '''
 
-def search_likelihoods(mesh):
+def search_likelihoods(vel_centers, vel_width):
 
     from myimage_analysis import calculate_nhi
 
@@ -546,8 +684,12 @@ def reshape_likelihoods(likelihoods, velocity_centers=None,
 
     return likelihoods
 
-def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
+
+def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
+        #hi_noise_cube=None, av_image=None, av_image_error=None,
+        velocity_centers=None, velocity_widths=None, return_likelihoods=True,
         dgrs=None, plot_results=True, results_filename='',
+        vel_centers=None, vel_center_method='CO',
         likelihood_filename=None, clobber=False, conf=0.68,
         contour_confs=None):
 
@@ -567,8 +709,6 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
     '''
 
     import numpy as np
-    from scipy.stats import pearsonr
-    from scipy.stats import kendalltau
     from myimage_analysis import calculate_nhi
     from scipy import signal
     from os import path
@@ -593,6 +733,7 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
         perform_mle = True
 
     if perform_mle:
+    	'''
         # calculate the velocity ranges given a set of centers and widths
         velocity_ranges = np.zeros(shape=[len(velocity_centers) * \
                 len(velocity_widths),2])
@@ -605,31 +746,62 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
 
         # Set up iterable whereby each row contains the parameter values
         mesh = setup_likelihood_mesh(velocity_centers, velocity_widths, dgrs)
+        '''
+        likelihoods = np.ones((len(velocity_widths), len(dgrs))) * -np.inf
+        for i, velocity_width in enumerate(velocity_widths):
+            for j, dgr in enumerate(dgrs):
+                velocity_range_image = (vel_centers - velocity_width / 2.,
+                                        vel_centers + velocity_width / 2.)
 
-        # Use multiple processors to iterate through parameter combinations
-        p = multiprocessing.Pool()
-        likelihoods = p.map(search_likelihoods, mesh)
-        p.close()
+                nhi_image_temp = \
+                        calculate_nhi(cube=hi_cube,
+                            velocity_axis=hi_velocity_axis,
+                            velocity_range=velocity_range_image,
+                            return_nhi_error=False)
 
-        # reshape likelihoods
-        likelihoods = reshape_likelihoods(likelihoods,
-                                          velocity_centers=velocity_centers,
-                                          velocity_widths=velocity_widths,
-                                          dgrs=dgrs)
+                #import matplotlib.pyplot as plt
+                #plt.close(); plt.clf()
+                #plt.plot(nhi_image_temp)
+                #plt.show()
+
+                # Avoid NaNs
+                indices = np.where((nhi_image_temp == nhi_image_temp) & \
+                                   (av_image == av_image) & \
+                                   (nhi_image_temp > 0))
+
+                nhi_image_likelihood = nhi_image_temp[indices]
+                #nhi_image_error_likelihood = nhi_image_error[indices]
+                av_image_likelihood = av_image[indices]
+                if type(av_image_error) != float:
+                    av_image_error_likelihood = \
+                            np.median(av_image_error[indices])
+                else:
+                    av_image_error_likelihood = np.median(av_image_error)
+
+                # Create model of Av with N(HI) and DGR
+                av_image_model = nhi_image_likelihood * dgr
+
+                logL = calc_logL(av_image_model,
+                                 av_image_likelihood,
+                                 data_error=av_image_error_likelihood)
+
+                likelihoods[i, j] = logL
 
         # Normalize the log likelihoods
-        likelihoods -= likelihoods.max()
+        likelihoods -= np.max(likelihoods[~np.isnan(likelihoods)])
 
         # Convert to likelihoods
         likelihoods = np.exp(likelihoods)
 
         # Normalize the likelihoods
+        likelihoods[np.isnan(likelihoods)] = 0.0
         likelihoods = likelihoods / \
             np.sum(likelihoods[~np.isnan(likelihoods)])
 
         # Write out fits file of likelihoods
         if write_mle:
             write_mle_tofits(filename=likelihood_filename,
+                             velocity_centers=velocity_centers,
                              velocity_widths=velocity_widths,
                              dgrs=dgrs,
                              likelihoods=likelihoods,
@@ -647,7 +819,7 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
         hdu = fits.open(likelihood_filename)
         likelihoods = hdu[0].data
 
-        if len(dgrs) != dgrs.shape[0] or \
+        if len(velocity_centers) != likelihoods.shape[0] or \
             len(velocity_widths) != likelihoods.shape[1]:
             raise ValueError('Specified parameter grid not the same as in' + \
                     'loaded data likelihoods.')
@@ -659,12 +831,11 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
     #delta_center = velocity_centers[1] - velocity_centers[0]
     #delta_width = velocity_widths[1] - velocity_widths[0]
 
+
     # Derive marginal distributions of both centers and widths
-    center_likelihood = np.sum(likelihoods, axis=(1,2)) / \
+    width_likelihood = np.sum(likelihoods, axis=(1)) / \
             np.sum(likelihoods)
-    width_likelihood = np.sum(likelihoods, axis=(0,2)) / \
-            np.sum(likelihoods)
-    dgr_likelihood = np.sum(likelihoods, axis=(0,1)) / \
+    dgr_likelihood = np.sum(likelihoods, axis=(0)) / \
             np.sum(likelihoods)
 
     # Derive confidence intervals of parameters
@@ -675,16 +846,22 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
                                  dgr_likelihood,
                                  area_fraction=conf)
 
-    print('Velocity widths = ' + \
+    # Get values of best-fit model parameters
+    max_loc = np.where(likelihoods == np.max(likelihoods))
+    width_max = velocity_widths[max_loc[0]][0]
+    dgr_max = dgrs[max_loc[1]][0]
+
+    print('\nVelocity widths = ' + \
             '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(width_confint[0],
                                                     width_confint[2],
                                                     np.abs(width_confint[1])))
-    print('DGRs = ' + \
-            '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(dgr_confint[0],
+    print('\nDGRs = ' + \
+            '{0:.2f} +{1:.2f}/-{2:.2f} 10^20 cm^2 mag'.format(dgr_confint[0],
                                                     dgr_confint[2],
                                                     np.abs(dgr_confint[1])))
 
     # Write PDF
+    '''
     center = center_confint[0]
     upper_lim = (center_confint[0] + width_confint[0]/2.)
     lower_lim = (center_confint[0] - width_confint[0]/2.)
@@ -693,8 +870,30 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
 
     vel_range_confint = (lower_lim, upper_lim, lower_lim_error,
             upper_lim_error)
+    '''
 
     if plot_results:
+    	'''
+        plot_likelihoods_hist(likelihoods,
+                              velocity_widths,
+                              velocity_centers,
+                              x_confint=width_confint,
+                              y_confint=center_confint,
+                              plot_axes=('widths', 'centers'),
+                              show=0,
+                              returnimage=False,
+                              filename=results_filename + '_wc.png',
+                              contour_confs=contour_confs)
+        plot_likelihoods_hist(likelihoods,
+                              velocity_centers,
+                              dgrs,
+                              x_confint=center_confint,
+                              y_confint=dgr_confint,
+                              plot_axes=('centers', 'dgrs'),
+                              show=0,
+                              returnimage=False,
+                              filename=results_filename + '_cd.png',
+                              contour_confs=contour_confs)
         plot_likelihoods_hist(likelihoods,
                               velocity_widths,
                               dgrs,
@@ -705,12 +904,14 @@ def calc_likelihood_hi_av(velocity_widths=None, return_likelihoods=True,
                               returnimage=False,
                               filename=results_filename + '_wd.png',
                               contour_confs=contour_confs)
+    	'''
 
     if not return_likelihoods:
         return vel_range_confint, dgr_confint
     else:
-        return (vel_range_confint, dgr_confint, likelihoods,
-            center_likelihood, width_likelihood, dgr_likelihood)
+        return (None, width_confint, dgr_confint, likelihoods,
+            None, width_likelihood, dgr_likelihood, None,
+            width_max, dgr_max)
 
 def calc_logL(model, data, data_error=None):
 
@@ -723,9 +924,8 @@ def calc_logL(model, data, data_error=None):
 
     if data_error is None:
         data_error = np.std(data)
-    N = data.size
 
-    logL = -np.sum((data - model)**2 / (2 * data_error**2)) / N
+    logL = -np.sum((data - model)**2 / (2 * data_error**2))
 
     return logL
 
@@ -880,13 +1080,13 @@ def threshold_area(x, y, area_fraction=0.68):
 
     return (x_peak, low_error, up_error)
 
-def write_mle_tofits(filename='', velocity_widths=None, dgrs=None,
-        likelihoods=None, clobber=False):
+def write_mle_tofits(filename='', velocity_centers=None,
+        velocity_widths=None, dgrs=None, likelihoods=None, clobber=False):
 
     from astropy.io import fits
 
-    print('Writing likelihood grid to file:')
-    print(filename)
+    print('\nWriting likelihood grid to file:')
+    print(filename, '\n')
 
     header = fits.Header()
     header['NAXIS'] = 2
@@ -963,7 +1163,7 @@ def convert_limit_coordinates(prop_dict,
     for coord in coords:
         prop_dict[coord].update({'pixel': []})
 
-        if coord == 'region_limit':
+        if coord == 'region_limit' or coord == 'plot_limit':
             limit_wcs = prop_dict[coord]['wcs']
 
             for limits in limit_wcs:
@@ -1105,7 +1305,7 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 The main script
 '''
 
-def main():
+def main(region=None):
 
     import grid
     import numpy as np
@@ -1121,9 +1321,9 @@ def main():
     global hi_cube
     global hi_velocity_axis
     global hi_noise_cube
-    global co_vel_centers
     global av_image
     global av_image_error
+    global vel_centers
 
     # parameters used in script
     # -------------------------
@@ -1136,7 +1336,7 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 0
+    clobber = 1
 
     # Confidence of parameter errors
     conf = 0.68
@@ -1156,62 +1356,69 @@ def main():
     # Threshold of Av below which we expect only atomic gas, in mag
     av_thres = 1.4
 
+    # Center method, HI center or CO center?
+    vel_center_method = 'HI'
+
+    # Regions, regions to edit the global properties with
+    if region == 1:
+        region_limit = {'wcs' : (((5, 10, 0), (19, 0, 0)),
+                                 ((4, 30, 0), (27, 0, 0))),
+                          'pixel' : ()
+                         }
+    elif region == 2:
+        region_limit = {'wcs' : (((4, 30, 0), (19, 0, 0)),
+                                 ((3, 50, 0), (29, 0, 0))),
+                          'pixel' : ()
+                        }
+    elif region == 3:
+        region_limit = {'wcs' : (((4, 30, 0), (29, 0, 0)),
+                                 ((3, 50, 0), (33, 0, 0))),
+                          'pixel' : ()
+                        }
+    else:
+    	region_limit = None
+
     # Results and fits filenames
     if av_and_co_mask:
         likelihood_filename = 'taurus_nhi_av_likelihoods_co_' + \
-                              'av{0:.1f}mag'.format(av_thres)
+                              'av{0:.1f}mag'.format(av_thres) + \
+                              '_hicenter'
         results_filename = 'taurus_likelihood_co_' + \
-                           'av{0:.1f}mag'.format(av_thres)
+                           'av{0:.1f}mag'.format(av_thres) + \
+                           '_hicenter'
     else:
         likelihood_filename = 'taurus_nhi_av_likelihoods_co_only'
         results_filename = 'taurus_likelihood_co_only'
+    if region is not None:
+        likelihood_filename += '_region{0:.0f}'.format(region)
+        results_filename += '_region{0:.0f}'.format(region)
 
     # Name of property files results are written to
-    global_property_file = 'taurus_global_properties.txt'
+    global_property_file = 'taurus_global_properties'
     core_property_file = 'taurus_core_properties.txt'
 
     # Name of noise cube
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
 
     # Define ranges of parameters
-    if center_vary and width_vary and dgr_vary:
-        likelihood_filename += '_width_dgr_center'
-        results_filename += '_width_dgr_center'
-
-        velocity_centers = np.arange(-15, 30, 1)
-        velocity_widths = np.arange(1, 80, 1)
-        dgrs = np.arange(1e-2, 1, 2e-2)
-    elif not center_vary and width_vary and dgr_vary:
-        if grid_res == 'course':
-            likelihood_filename += '_dgr_width_lowres'
-            results_filename += '_dgr_width_lowres'
-            velocity_centers = np.arange(5, 6, 1)
-            velocity_widths = np.arange(1, 15, 2*0.16667)
-            dgrs = np.arange(0.05, 0.7, 2e-2)
-        elif grid_res == 'fine':
-            likelihood_filename += '_dgr_width_highres'
-            results_filename += '_dgr_width_highres'
-            velocity_centers = np.arange(5, 6, 1)
-            velocity_widths = np.arange(1, 100, 0.16667)
-            dgrs = np.arange(0.15, 0.4, 1e-3)
-            velocity_widths = np.arange(1, 12, 0.16667)
-            dgrs = np.arange(0.1, 0.9, 3e-3)
-            #velocity_widths = np.arange(1, 40, 1)
-            #dgrs = np.arange(0.15, 0.4, 1e-1)
-    elif center_vary and width_vary and not dgr_vary:
-        likelihood_filename += '_width_center'
-        results_filename += '_width_center'
-
-        velocity_centers = np.arange(-15, 30, 1)
-        velocity_widths = np.arange(1, 80, 1)
-        dgrs = np.arange(1.1e-1, 1.2e-1, 0.1e-1)
-    elif not center_vary and width_vary and not dgr_vary:
-        likelihood_filename += '_width'
-        results_filename += '_width'
-
+    if grid_res == 'course':
+        likelihood_filename += '_dgr_width_lowres'
+        results_filename += '_dgr_width_lowres'
         velocity_centers = np.arange(5, 6, 1)
-        velocity_widths = np.arange(1, 80, 1)
-        dgrs = np.arange(1.1e-1, 1.2e-1, 0.1e-1)
+        velocity_widths = np.arange(1, 30, 5*0.16667)
+        dgrs = np.arange(0.03, 0.3, 3e-2)
+    elif grid_res == 'fine':
+        likelihood_filename += '_dgr_width_highres'
+        results_filename += '_dgr_width_highres'
+        velocity_centers = np.arange(5, 6, 1)
+        velocity_widths = np.arange(1, 100, 0.16667)
+        dgrs = np.arange(0.15, 0.4, 1e-3)
+        velocity_widths = np.arange(1, 15, 0.16667)
+        dgrs = np.arange(0.1, 0.9, 3e-3)
+        velocity_widths = np.arange(1, 10, 0.16667)
+        dgrs = np.arange(0.22, 0.28, 0.5e-4)
+        #velocity_widths = np.arange(1, 40, 1)
+        #dgrs = np.arange(0.15, 0.4, 1e-1)
 
     # define directory locations
     # --------------------------
@@ -1226,11 +1433,11 @@ def main():
     likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
 
     # load Planck Av and GALFA HI images, on same grid
-    av_data_planck, av_header = load_fits(av_dir + \
+    av_data, av_header = load_fits(av_dir + \
                 'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
-    av_error_data_planck, av_error_header = load_fits(av_dir + \
+    av_data_error, av_error_header = load_fits(av_dir + \
                 'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
@@ -1259,37 +1466,74 @@ def main():
     # define core properties
     with open(core_dir + core_property_file, 'r') as f:
         cores = json.load(f)
-    with open(property_dir + global_property_file, 'r') as f:
+    with open(property_dir + global_property_file + '.txt', 'r') as f:
         global_props = json.load(f)
+
+    # Change region limits if region is defined
+    if region_limit is not None:
+    	print('\n \n not true')
+        global_props['region_limit'] = region_limit
 
     # Change WCS coords to pixel coords of images
     cores = convert_core_coordinates(cores, h)
     cores = load_ds9_region(cores,
             filename_base = region_dir + 'taurus_av_boxes_',
             header = h)
-    global_props = convert_limit_coordinates(global_props, header=av_header)
+    global_props = convert_limit_coordinates(global_props,
+            header=av_header,
+            coords=('region_limit', 'co_noise_limits', 'plot_limit'))
 
-    print('\nCalculating likelihoods globally')
+    # Derive relevant region
+    pix = global_props['region_limit']['pixel']
+    region_vertices = ((pix[1], pix[0]),
+                       (pix[1], pix[2]),
+                       (pix[3], pix[2]),
+                       (pix[3], pix[0])
+                       )
+
+    # block offregion
+    region_mask = myg.get_polygon_mask(av_data, region_vertices)
+
+    print('\nRegion size = ' + \
+          '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
 
     # Set velocity center as CO peak
     co_data_nonans = np.copy(co_data)
     co_data_nonans[np.isnan(co_data_nonans)] = 0.0
-    # write average index
-    co_avg_index = np.average(co_data_nonans, weights=co_spectrum)
-
+    co_data_nonans[:,region_mask == 1] = 0
+    co_spectrum = np.sum(co_data_nonans, axis=(1,2))
+    co_avg_vel = np.average(co_velocity_axis, weights=co_spectrum)
     co_peak_vel = co_velocity_axis[co_spectrum == np.max(co_spectrum)]
-    #velocity_centers = np.arange(co_peak_vel, co_peak_vel + 1, 1)
-    velocity_centers = np.arange(co_avg_vel, co_avg_vel + 1, 1)
-
+    if vel_center_method.lower() == 'co':
+        #velocity_centers = np.arange(co_peak_vel, co_peak_vel + 1, 1)
+        velocity_centers = np.arange(co_avg_vel, co_avg_vel + 1, 1)
+        vel_center_image = None
+    # Derive a center velocity for each pixel
+    elif vel_center_method.lower() == 'hi':
+        vel_center_image = np.zeros(hi_data.shape[1:])
+        for i in xrange(0, hi_data.shape[1]):
+            for j in xrange(0, hi_data.shape[2]):
+                hi_spectrum = hi_data[:, i, j]
+                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
+                if np.max(hi_spectrum) != 0:
+                    vel_center_image[i,j] = \
+                            velocity_axis[hi_spectrum == np.max(hi_spectrum)]
+                else:
+                	vel_center_image[i,j] = co_avg_vel
+    hi_data_nonans = np.copy(hi_data)
+    hi_data_nonans[np.isnan(hi_data_nonans)] = 0.0
+    hi_data_nonans[:,region_mask == 1] = 0
+    hi_spectrum = np.sum(hi_data_nonans, axis=(1,2))
+    hi_avg_vel = np.average(velocity_axis, weights=hi_spectrum)
 
     print('\nVelocity center from CO = ' +\
             '{0:.2f} km/s'.format(velocity_centers[0]))
 
     # Create mask where CO is present
-    core_mask = np.zeros(av_data_planck.shape)
+    core_mask = np.zeros(av_data.shape)
     #for core in cores:
     #    # Grab the mask
-    #    core_mask += myg.get_polygon_mask(av_data_planck,
+    #    core_mask += myg.get_polygon_mask(av_data,
     #            cores[core]['box_vertices_rotated'])
 
     # Calc moment 0 map of CO
@@ -1300,48 +1544,47 @@ def main():
         co_noise = calc_co_noise(co_mom0, global_props)
         co_thres = 2.0 * co_noise
 
-    pix = global_props['region_limit']['pixel']
-    region_vertices = ((pix[0], pix[1]),
-                       (pix[1], pix[2]),
-                       (pix[2], pix[3]),
-                       (pix[3], pix[0])
-                       )
-
-    # block offregion
-    region_mask = myg.get_polygon_mask(av_data_planck, region_vertices)
-
     # Get indices which trace only atomic gas, i.e., no CO emission
     if av_and_co_mask:
-        indices = ((co_mom0 < co_thres) & \
-                   (av_data_planck < av_thres) & \
-                   (region_mask == 1))
+        indices = (((co_mom0 < co_thres) & \
+                    (av_data < av_thres)) & \
+                    (region_mask == 1))
     elif not av_and_co_mask:
         indices = ((co_mom0 < co_thres) & \
                    (region_mask == 1))
         av_thres = None
 
-    npix = indices[indices].size
-
-    print('\nTotal number of pixels in analysis = ' + \
-            '{0:.0f}'.format(npix)) + \
-            '\ngiven a CO threshold of {0:.2f} K km/s'.format(co_thres)
+    # Write mask of pixels not used
+    mask = ~indices
 
     # Mask global data with CO indices
     hi_data_sub = np.copy(hi_data[:, indices])
     noise_cube_sub = np.copy(noise_cube[:, indices])
-    co_vel_centers = np.copy(co_vel_centers[indices])
-    av_data_sub = np.copy(av_data_planck[indices])
-    av_error_data_sub = np.copy(av_error_data_planck[indices])
+    av_data_sub = np.copy(av_data[indices])
+    av_error_data_sub = np.copy(av_data_error[indices])
+    vel_centers = vel_center_image[indices]
+
+    # import matplotlib.pyplot as plt
+    # av_plot_data = np.copy(av_data)
+    # av_plot_data[~indices] = np.nan
+    # plt.imshow(av_plot_data, origin='lower')
+    # plt.contour(co_mom0, levels=(6, 12, 24), origin='lower')
+    # plt.show()
+    # plt.clf()
+    # plt.close()
 
     # Plot the masked image
-    av_data_masked = np.copy(av_data_planck)
+    av_data_masked = np.copy(av_data)
     av_data_masked[~indices] = np.nan
     figure_types = ['png',]
+    fig_filename = 'taurus_co_av_masked_map'
+    if region is not None:
+    	fig_filename += '_region{0:.0f}'.format(region)
     for figure_type in figure_types:
         plot_av_image(av_image=av_data_masked, header=av_header,
                 savedir=figure_dir + '../maps/',
-                limits=global_props['region_limit']['pixel'],
-                filename='taurus_dgr_co_masked_map.' + figure_type,
+                limits=global_props['plot_limit']['pixel'],
+                filename=fig_filename + figure_type,
                 show=0)
 
     # Set global variables
@@ -1349,20 +1592,22 @@ def main():
     hi_velocity_axis = velocity_axis
     hi_noise_cube = noise_cube_sub
     av_image = av_data_sub
-    av_image_error = av_error_data_sub
+    av_image_error = 0.22 * np.ones(av_error_data_sub.shape)
 
     # Define filename for plotting results
     results_filename = figure_dir + results_filename
 
     # likelihoodelate each core region Av and N(HI) for velocity ranges
-    pool = Pool()
-    vel_range_confint, dgr_confint, likelihoods, center_likelihood,\
-        width_likelihood, dgr_likelihood = \
+    vel_range_confint, width_confint, dgr_confint, likelihoods, \
+    center_likelihood, width_likelihood, dgr_likelihood, center_max, \
+    width_max, dgr_max = \
             calc_likelihood_hi_av(
                             dgrs=dgrs,
                             velocity_centers=velocity_centers,
                             velocity_widths=velocity_widths,
                             return_likelihoods=True,
+                            vel_centers=vel_centers,
+                            vel_center_method=vel_center_method,
                             plot_results=True,
                             results_filename=results_filename,
                             likelihood_filename=likelihood_dir + \
@@ -1372,42 +1617,73 @@ def main():
                             conf=conf,
                             contour_confs=contour_confs)
 
-    print('HI velocity integration range:')
+    vel_range_max = (hi_avg_vel - width_max/2.0, hi_avg_vel + width_max/2.0)
+
+    vel_range_confint = vel_range_max
+
+    print('\nHI velocity integration range:')
     print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                  vel_range_confint[1]))
-    print('DGR:')
-    print('%.1f to %.1f km/s' % (dgr_confint[0],
-                                 dgr_confint[1]))
+    print('\nDGR:')
+    print('%.1f x 10^-20 cm^2 mag' % (dgr_confint[0]))
 
     # Calulate chi^2 for best fit models
     # ----------------------------------
     nhi_image_temp, nhi_image_error = \
-            calculate_nhi(cube=hi_cube,
+            calculate_nhi(cube=hi_data,
                 velocity_axis=hi_velocity_axis,
-                velocity_range=vel_range_confint[0:2],
-                noise_cube=hi_noise_cube)
-    av_image_model = nhi_image_temp * dgr_confint[0]
+                velocity_range=vel_range_max,
+                noise_cube=noise_cube)
+    av_image_model = nhi_image_temp * dgr_max
     # avoid NaNs
     indices = ((av_image_model == av_image_model) & \
-               (av_image == av_image))
-    chisq = np.sum((av_image[indices] - av_image_model[indices])**2 / \
-            av_image_error[indices]**2) / av_image[indices].size
+               (av_data == av_data))
+    # add nan locations to the mask
+    mask[~indices] = 1
+
+    # count number of pixels used in analysis
+    npix = mask[~mask].size
+
+    # finally calculate chi^2
+    chisq = np.sum((av_data[~mask] - av_image_model[~mask])**2 / \
+            av_data_error[~mask]**2) / av_data[~mask].size
+
+    print('\nTotal number of pixels in analysis, after masking = ' + \
+            '{0:.0f}'.format(npix)) + \
+            '\nGiven a CO threshold of {0:.2f} K km/s'.format(co_thres) + \
+            '\nand a Av threshold of {0:.2f} mag'.format(av_thres)
+
+    print('\nReduced chi^2 = {0:.1f}'.format(chisq))
 
     # Write results to global properties
     global_props['dust2gas_ratio'] = {}
     global_props['dust2gas_ratio_error'] = {}
     global_props['hi_velocity_width'] = {}
+    global_props['hi_velocity_width_error'] = {}
+    global_props['co_center'] = {}
+    global_props['dust2gas_ratio_max'] = {}
+    global_props['hi_velocity_center_max'] = {}
+    global_props['hi_velocity_width_max'] = {}
+    global_props['hi_velocity_range_max'] =  {}
     global_props['av_threshold'] = {}
     global_props['co_threshold'] = {}
-    global_props['hi_velocity_width']['value'] = vel_range_confint[1] -\
-                                                 vel_range_confint[0]
+    global_props['width_confint'] = width_confint
+    global_props['dgr_confint'] = dgr_confint
+    global_props['hi_velocity_width']['value'] = width_confint[0]
+    global_props['co_center']['value'] = co_avg_vel
+    global_props['co_center']['units'] = 'km/s'
+    global_props['hi_velocity_width_error']['value'] = width_confint[1:]
     global_props['hi_velocity_width']['unit'] = 'km/s'
     global_props['hi_velocity_range'] = vel_range_confint[0:2]
     global_props['hi_velocity_range_error'] = vel_range_confint[2:]
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
+    global_props['dust2gas_ratio_max']['value'] = dgr_max
+    global_props['hi_velocity_center_max']['value'] = center_max
+    global_props['hi_velocity_width_max']['value'] = width_max
+    global_props['hi_velocity_range_max']['value'] = vel_range_max
     global_props['hi_velocity_range_conf'] = conf
-    global_props['center_likelihood'] = center_likelihood.tolist()
+    global_props['center_likelihood'] = center_likelihood
     global_props['width_likelihood'] = width_likelihood.tolist()
     global_props['dgr_likelihood'] = dgr_likelihood.tolist()
     global_props['vel_centers'] = velocity_centers.tolist()
@@ -1420,14 +1696,44 @@ def main():
     global_props['co_threshold']['unit'] = 'K km/s'
     global_props['chisq'] = chisq
     global_props['npix'] = npix
+    global_props['mask'] = mask.tolist()
 
-    with open(property_dir + global_property_file, 'w') as f:
+    with open(property_dir + global_property_file + \
+              '_region' + str(region) + '.txt', 'w') as f:
         json.dump(global_props, f)
 
+    # Plot likelihood space
+    plot_likelihoods_hist(global_props,
+                          plot_axes=('widths', 'dgrs'),
+                          show=0,
+                          returnimage=False,
+                          filename=results_filename + '_wd.png',
+                          contour_confs=contour_confs)
+
+    plot_hi_center_map(vel_center_image=vel_center_image,
+                  header=av_header,
+                  mask=global_props['mask'],
+                  limits=global_props['plot_limit']['pixel'],
+                  savedir=figure_dir + '../maps/',
+                  color_limits=(-10,10),
+                  filename='taurus_hi_center_map_masked.png',
+                  show=False)
+
+    plot_hi_center_map(vel_center_image=vel_center_image,
+                  header=av_header,
+                  limits=global_props['plot_limit']['pixel'],
+                  savedir=figure_dir + '../maps/',
+                  color_limits=(-10,10),
+                  filename='taurus_hi_center_map.png',
+                  show=False)
+
 if __name__ == '__main__':
+
+    regions = (1,2,3)
+
+    #for region in regions:
+    #    main(region=region)
     main()
-
-
 
 
 
