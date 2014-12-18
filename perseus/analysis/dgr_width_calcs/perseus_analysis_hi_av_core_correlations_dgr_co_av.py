@@ -846,7 +846,7 @@ def calc_logL(model, data, data_error=None):
     if data_error is None:
         data_error = np.std(data)
 
-    logL = -np.sum(-(data - model)**2 / (2 * data_error**2)) / data.size
+    logL = -np.sum(-(data - model)**2 / (2 * data_error**2))
 
     return logL
 
@@ -1225,7 +1225,7 @@ def main(av_threshold=1, grid_res='fine'):
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 0
+    clobber =1
 
     # Include only pixels within core regions for analysis?
     core_mask = 0

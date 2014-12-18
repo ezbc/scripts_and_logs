@@ -1181,7 +1181,7 @@ def main():
     dgr_vary = True
 
     # Check if likelihood file already written, rewrite?
-    clobber = 0
+    clobber = 1
 
     # Confidence of parameter errors
     conf = 0.68
@@ -1230,9 +1230,9 @@ def main():
         if grid_res == 'course':
             likelihood_filename += '_dgr_width_lowres'
             results_filename += '_dgr_width_lowres'
-            velocity_centers = np.arange(-5, 10, 4*0.16667)
-            velocity_widths = np.arange(29, 30, 1)
-            dgrs = np.arange(0.05, 0.2, 1e-3)
+            velocity_centers = np.arange(-5, 10, 10*0.16667)
+            velocity_widths = np.arange(1, 30, 10*0.16667)
+            dgrs = np.arange(0.05, 0.7, 2e-2)
         elif grid_res == 'fine':
             likelihood_filename += '_dgr_width_highres'
             results_filename += '_dgr_width_highres'
@@ -1316,17 +1316,19 @@ def main():
 
     print('\nCalculating likelihoods globally')
 
-    # Set velocity center as CO peak
     co_data_nonans = np.copy(co_data)
     co_data_nonans[np.isnan(co_data_nonans)] = 0.0
-    co_spectrum = np.sum(co_data_nonans, axis=(1,2))
-    co_avg_vel = np.average(co_velocity_axis, weights=co_spectrum)
-    co_peak_vel = co_velocity_axis[co_spectrum == np.max(co_spectrum)]
-    #velocity_centers = np.arange(co_peak_vel, co_peak_vel + 1, 1)
-    velocity_centers = np.arange(co_avg_vel, co_avg_vel + 1, 1)
 
-    print('\nVelocity center from CO = ' +\
-            '{0:.2f} km/s'.format(velocity_centers[0]))
+    # Set velocity center as CO peak
+    if not center_vary:
+        co_spectrum = np.sum(co_data_nonans, axis=(1,2))
+        co_avg_vel = np.average(co_velocity_axis, weights=co_spectrum)
+        co_peak_vel = co_velocity_axis[co_spectrum == np.max(co_spectrum)]
+        #velocity_centers = np.arange(co_peak_vel, co_peak_vel + 1, 1)
+        velocity_centers = np.arange(co_avg_vel, co_avg_vel + 1, 1)
+
+        print('\nVelocity center from CO = ' +\
+                '{0:.2f} km/s'.format(velocity_centers[0]))
 
     # Create mask where CO is present
     core_mask = np.zeros(av_data.shape)

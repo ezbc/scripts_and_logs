@@ -7,13 +7,23 @@
 from astropy.io import fits
 import numpy as np
 
-def calc_global_spectrum(hi_cube=None):
+def calc_global_spectrum(hi_cube=None, statistic='average'):
 
     hi_cube_nonans = np.ma.array(hi_cube, mask=(hi_cube != hi_cube))
 
     n_pix = hi_cube.shape[1] * hi_cube.shape[2]
 
-    spectrum = np.sum(hi_cube_nonans, axis=(1,2)) / n_pix
+    if statistic == 'average':
+        spectrum = np.sum(hi_cube_nonans, axis=(1,2)) / n_pix
+    elif statistic == 'median':
+        spectrum = np.zeros(hi_cube.shape[0])
+        for i in xrange(len(spectrum)):
+            cube = hi_cube_nonans[i, :, :].ravel()
+            spectrum[i] = np.median(cube[~np.isnan(cube)])
+    elif statistic == 'std':
+        spectrum = np.zeros(hi_cube.shape[0])
+        for i in xrange(len(spectrum)):
+            spectrum[i] = np.std(hi_cube_nonans[i, :, :].ravel())
 
     return spectrum
 
@@ -23,9 +33,9 @@ def convert_core_coordinates(cores, header):
         cores[core].update({'box_pixel': 0})
         cores[core].update({'center_pixel': 0})
 
-    	box_wcs = cores[core]['box_wcs']
-    	box_pixel = len(box_wcs) * [0,]
-    	center_wcs = cores[core]['center_wcs']
+        box_wcs = cores[core]['box_wcs']
+        box_pixel = len(box_wcs) * [0,]
+        center_wcs = cores[core]['center_wcs']
 
         # convert centers to pixel coords
         cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
@@ -33,9 +43,9 @@ def convert_core_coordinates(cores, header):
                                                      header=header)
         # convert box corners to pixel coords
         for i in range(len(box_wcs)/2):
-        	pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
-        	        header=header)
-        	box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
+            pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+                    header=header)
+            box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
         cores[core]['box_pixel'] = box_pixel
 
     return cores
@@ -52,7 +62,7 @@ def get_pix_coords(ra=None, dec=None, header=None):
     if type(ra) is tuple and type(dec) is tuple:
         ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
     else:
-    	ra_deg, dec_deg = ra, dec
+        ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
     pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
@@ -69,9 +79,9 @@ def hrs2degs(ra=None, dec=None):
     return (ra_deg, dec_deg)
 
 def plot_spectra_grid(hi_velocity_axis_list=None, hi_spectrum_list=None,
-        co_spectrum_list=None, co_velocity_axis_list=None,
+        co_spectrum_list=None, co_velocity_axis_list=None, hi_std_list=None,
         title=None, limits=None, savedir='./', filename=None, show=True,
-        spectra_names=''):
+        spectra_names='',):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -129,15 +139,25 @@ def plot_spectra_grid(hi_velocity_axis_list=None, hi_spectrum_list=None,
         ax.plot(hi_velocity_axis_list[i],
                 hi_spectrum_list[i],
                 color='k',
-                label='HI',
+                linestyle='--',
+                label='median HI',
                 drawstyle = 'steps-mid'
                 )
+
+        if hi_std_list is not None:
+            ax.plot(hi_velocity_axis_list[i],
+                    hi_std_list[i],
+                    color='k',
+                    linestyle='-',
+                    label=r'$\sigma_{\rm HI}$',
+                    drawstyle='steps-mid'
+                    )
 
         if co_velocity_axis_list is not None:
             ax.plot(co_velocity_axis_list[i],
                     co_spectrum_list[i] * 10.,
                     color='r',
-                    label=r'$^{12}$CO X 10',
+                    label=r'median $^{12}$CO X 10',
                     drawstyle = 'steps-mid'
                     )
 
@@ -210,7 +230,7 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
     # [ra center, dec center, width, height, rotation angle]
     for core in cores:
-    	region = read_ds9_region(filename_base + core + '.reg')
+        region = read_ds9_region(filename_base + core + '.reg')
         box_center_pixel = get_pix_coords(ra = region[0],
                                           dec = region[1],
                                           header = header)
@@ -265,9 +285,17 @@ def main():
 
         # sum along spatial axes
         cloud_dict['hi_spectrum'] = calc_global_spectrum(
-                                        hi_cube=cloud_dict['hi_data'])
+                                        hi_cube=cloud_dict['hi_data'],
+                                        statistic='median'
+                                        )
+        cloud_dict['hi_std'] = calc_global_spectrum(
+                                        hi_cube=cloud_dict['hi_data'],
+                                        statistic='std'
+                                        )
         cloud_dict['co_spectrum'] = calc_global_spectrum(
-                                        hi_cube=cloud_dict['co_data'])
+                                        hi_cube=cloud_dict['co_data'],
+                                        statistic='median'
+                                        )
 
         # Calculate velocity
         cloud_dict['hi_velocity_axis'] = make_velocity_axis(
@@ -280,25 +308,28 @@ def main():
     hi_velocity_axis_list = []
     co_velocity_axis_list = []
     hi_spectrum_list = []
+    hi_std_list = []
     co_spectrum_list = []
     spectra_names = []
 
     for cloud in data_dict:
         hi_velocity_axis_list.append(data_dict[cloud]['hi_velocity_axis'])
         hi_spectrum_list.append(data_dict[cloud]['hi_spectrum'])
+        hi_std_list.append(data_dict[cloud]['hi_std'])
         co_velocity_axis_list.append(data_dict[cloud]['co_velocity_axis'])
         co_spectrum_list.append(data_dict[cloud]['co_spectrum'])
         spectra_names.append(cloud)
 
     figure_types = ('png',)
     for figure_type in figure_types:
-        limits = [-75, 40, -1, 44]
+        limits = [-75, 40, -1, 55]
 
         # scatter plot
         plot_spectra_grid(hi_velocity_axis_list=hi_velocity_axis_list,
                         hi_spectrum_list=hi_spectrum_list,
                         co_velocity_axis_list=co_velocity_axis_list,
                         co_spectrum_list=co_spectrum_list,
+                        hi_std_list=hi_std_list,
                         savedir=figure_dir,
                         limits=limits,
                         filename='multicloud_hi_spectrum_global.%s' % \

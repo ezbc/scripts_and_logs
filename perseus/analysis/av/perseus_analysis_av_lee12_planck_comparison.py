@@ -70,7 +70,7 @@ def plot_av_residuals(av_image1=None, av_image2=None, title=None, limits=None,
     im = ax.imshow(av_image1 - av_image2,
             interpolation='nearest',
             origin='lower',
-            #norm=matplotlib.colors.LogNorm(vmin=0.01, vmax=10,),
+            #norm=matplotlib.colors.LogNorm(),#vmin=0.01, vmax=10,),
             cmap=cmap,)
 
     # Asthetics
@@ -278,18 +278,18 @@ def main():
     # define directory locations
     output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
     figure_dir = '/d/bip3/ezbc/perseus/figures/av_comparison/'
-    av_dir = '/d/bip3/ezbc/perseus/data/2mass/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
     hi_dir = '/d/bip3/ezbc/perseus/data/galfa/'
     core_dir = output_dir + 'core_arrays/'
     region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
     # load 2mass Av and GALFA HI images, on same grid
     av_data_2mass, av_header = pf.getdata(av_dir + \
-                '2mass_av_lee12_planck_regrid.fits',
+                'perseus_av_lee12_masked_regrid_planckres.fits',
             header = True)
 
     av_data_planck, av_header = pf.getdata(av_dir + \
-                '../av/perseus_planck_av_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             header=True)
 
     figure_types = ['pdf', 'png']
@@ -327,7 +327,7 @@ def main():
     for figure_type in figure_types:
         plot_av_residuals(av_image1 = av_data_2mass,
                     av_image2 = av_data_planck,
-                    limits=[70, 50, 250, 200],
+                    #limits=[70, 50, 250, 200],
                     header = av_header,
                     title = 'Perseus: 2MASS - Planck Residuals',
                     savedir = figure_dir,

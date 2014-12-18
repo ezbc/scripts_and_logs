@@ -73,6 +73,8 @@ def plot_av_residuals(av_image1=None, av_image2=None, title=None, limits=None,
     im = ax.imshow(av_image1 - av_image2,
             interpolation='nearest',
             origin='lower',
+            vmin=-9,
+            vmax=2,
             #norm=matplotlib.colors.LogNorm(vmin=0.001, vmax=50,),
             cmap=cmap,)
 
@@ -358,7 +360,7 @@ def main():
     for figure_type in figure_types:
         plot_av_residuals(av_image1 = av_data_2mass,
                     av_image2 = av_data_planck,
-                    limits=[120,37,290,200],
+                    #limits=[120,37,290,200],
                     header = twomass_header,
                     #title = 'Taurus: K+09 - Planck Residuals',
                     savedir = figure_dir,
