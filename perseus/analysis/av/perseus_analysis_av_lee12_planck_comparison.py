@@ -22,7 +22,7 @@ def plot_av_residuals(av_image1=None, av_image2=None, title=None, limits=None,
     # Set up plot aesthetics
     plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
+    colormap = plt.copper
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     fontScale = 12
     params = {#'backend': .pdf',
@@ -64,13 +64,14 @@ def plot_av_residuals(av_image1=None, av_image2=None, title=None, limits=None,
 
     # create axes
     ax = imagegrid[0]
-    cmap = cm.gist_stern # colormap
+    cmap = cm.copper # colormap
 
     # show the image
     im = ax.imshow(av_image1 - av_image2,
             interpolation='nearest',
             origin='lower',
-            #norm=matplotlib.colors.LogNorm(),#vmin=0.01, vmax=10,),
+            #norm=matplotlib.colors.LogNorm(),
+            vmin=-10, vmax=1,
             cmap=cmap,)
 
     # Asthetics
@@ -102,6 +103,7 @@ def plot_av_residuals(av_image1=None, av_image2=None, title=None, limits=None,
 def plot_av(av_x, av_y,
         av_x_error=None, av_y_error=None, limits=None,
         savedir='./', filename=None, show=True, scale='linear',
+        axis_labels=(None, None),
         returnimage=False, hess_binsize=None, title='', plot_type='scatter',
         color_scale = 'linear', errorbar = None, errorbar_pos = None):
 
@@ -218,8 +220,10 @@ def plot_av(av_x, av_y,
     	ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel(r'Planck A$_{\rm V}$ (mag)')
-    ax.set_ylabel(r'Lee+12 A$_{\rm V}$ (mag)')
+    #ax.set_xlabel(r'Planck A$_{\rm V}$ (mag)')
+    #ax.set_ylabel(r'Lee+12 A$_{\rm V}$ (mag)')
+    ax.set_xlabel(axis_labels[0])
+    ax.set_xlabel(axis_labels[1])
     ax.set_title(title)
     ax.grid(True)
 
@@ -265,7 +269,7 @@ def main():
     Av is copied from /d/leffe2/lee/perseus_cloud/Min/R_H2/H2_102311/
         FIR_based/T_dust/Av_add.fits
     to
-        /d/bip3/ezbc/perseus/data/2mass/perseus_av_lee12_masked.fits
+        /d/bip3/ezbc/perseus/data/lee12/perseus_av_lee12_masked.fits
 
     '''
 
@@ -283,30 +287,73 @@ def main():
     core_dir = output_dir + 'core_arrays/'
     region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
 
-    # load 2mass Av and GALFA HI images, on same grid
-    av_data_2mass, av_header = pf.getdata(av_dir + \
-                'perseus_av_lee12_masked_regrid_planckres.fits',
+    # load lee12 Av and GALFA HI images, on same grid
+    av_data_lee12_2mass, av_header = pf.getdata(av_dir + \
+                'perseus_av_lee12_2mass_regrid_planckres.fits',
+            header = True)
+
+    av_data_lee12_iris, av_header = pf.getdata(av_dir + \
+                'perseus_av_lee12_iris_regrid_planckres.fits',
             header = True)
 
     av_data_planck, av_header = pf.getdata(av_dir + \
                 'perseus_av_planck_5arcmin.fits',
             header=True)
 
-    figure_types = ['pdf', 'png']
+    av_data_planck_rad, av_header = pf.getdata(av_dir + \
+                'perseus_av_planck_radiance_5arcmin.fits',
+            header=True)
+
+    figure_types = ['png',]
     if 1:
         for figure_type in figure_types:
-            plot_av(av_data_planck, av_data_2mass,
+            plot_av(av_data_planck, av_data_lee12_2mass,
                     plot_type = 'hexbin',
                     color_scale = 'log',
                     scale = 'log',
                     limits = (0.2, 30, 0.2, 30),
+                    axis_labels=(r'Planck $\tau_{353}$', 'Lee+12 2MASS'),
                     errorbar = (0.1, 0.3),
                     errorbar_pos = ((2., 2.),
                                     (0.5, 0.5),
                                     (9., 9.)),
-                    title = 'Perseus: 2MASS / Planck Comparison',
+                    title = 'Perseus: 2MASS/ Planck Comparison',
                     savedir = figure_dir,
-                    filename = 'perseus_av_lee12_planck_compare.%s' % \
+                    filename = 'perseus_av_2mass_planck_compare.%s' % \
+                            figure_type,
+                    show = False,
+                    )
+
+            plot_av(av_data_planck, av_data_lee12_iris,
+                    plot_type = 'hexbin',
+                    color_scale = 'log',
+                    scale = 'log',
+                    limits = (0.2, 30, 0.2, 30),
+                    axis_labels=(r'Planck $\tau_{353}$', 'Lee+12 IRIS'),
+                    errorbar = (0.1, 0.3),
+                    errorbar_pos = ((2., 2.),
+                                    (0.5, 0.5),
+                                    (9., 9.)),
+                    title=r'Perseus: IRIS / Planck $\tau_{353}$ Comparison',
+                    savedir = figure_dir,
+                    filename = 'perseus_av_iris_planck_compare.%s' % \
+                            figure_type,
+                    show = False,
+                    )
+
+            plot_av(av_data_planck_rad, av_data_lee12_iris,
+                    plot_type = 'hexbin',
+                    color_scale = 'log',
+                    scale = 'log',
+                    limits = (0.2, 30, 0.2, 30),
+                    axis_labels=(r'Planck Radiance', 'Lee+12 IRIS'),
+                    errorbar = (0.1, 0.3),
+                    errorbar_pos = ((2., 2.),
+                                    (0.5, 0.5),
+                                    (9., 9.)),
+                    title = 'Perseus: IRIS / Planck Radiance Comparison',
+                    savedir = figure_dir,
+                    filename = 'perseus_av_iris_planckrad_compare.%s' % \
                             figure_type,
                     show = False,
                     )
@@ -315,8 +362,8 @@ def main():
     # Print the stats of the images
     # --------------------------------------------------------------------------
 
-    print_stats(av_image = av_data_2mass, filename = output_dir +
-            'perseus_av_stats_2mass.txt')
+    print_stats(av_image = av_data_lee12_iris, filename = output_dir +
+            'perseus_av_stats_lee12.txt')
 
     print_stats(av_image = av_data_planck, filename = output_dir +
             'perseus_av_stats_planck.txt')
@@ -325,7 +372,7 @@ def main():
     # Create map of the residuals
     # --------------------------------------------------------------------------
     for figure_type in figure_types:
-        plot_av_residuals(av_image1 = av_data_2mass,
+        plot_av_residuals(av_image1 = av_data_lee12_2mass,
                     av_image2 = av_data_planck,
                     #limits=[70, 50, 250, 200],
                     header = av_header,
@@ -335,6 +382,25 @@ def main():
                             figure_type,
                     show = False,)
 
+        plot_av_residuals(av_image1 = av_data_lee12_iris,
+                    av_image2 = av_data_planck,
+                    #limits=[70, 50, 250, 200],
+                    header = av_header,
+                    title=r'Perseus: IRIS - Planck $\tau_{353}$ Residuals',
+                    savedir = figure_dir,
+                    filename = 'perseus_av_iris_planck_residual_map.%s' % \
+                            figure_type,
+                    show = False,)
+
+        plot_av_residuals(av_image1 = av_data_lee12_iris,
+                    av_image2 = av_data_planck_rad,
+                    #limits=[70, 50, 250, 200],
+                    header = av_header,
+                    title = 'Perseus: IRIS - Planck Radiance Residuals',
+                    savedir = figure_dir,
+                    filename = 'perseus_av_iris_planckrad_residual_map.%s' % \
+                            figure_type,
+                    show = False,)
 
 
 if __name__ == '__main__':

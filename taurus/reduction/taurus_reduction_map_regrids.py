@@ -73,13 +73,15 @@ def main():
     os.chdir('/d/bip3/ezbc/taurus/data')
 
     # If true, deletes files to be written
-    clobber = True
+    clobber = False
 
     in_images = ('av/taurus_av_kainulainen2009_nan',
               'av/taurus_av_pineda2010',
               'hi/taurus_hi_galfa_cube',
               'av/taurus_av_planck',
               'av/taurus_av_error_planck',
+              'av/taurus_av_planck_radiance',
+              'av/taurus_av_error_planck_radiance',
               'co/taurus_co_cfa_cube',
               'co/taurus_co_planck',
               'co/taurus_co_error_planck',
@@ -93,6 +95,8 @@ def main():
 
     im_pl = 'av/taurus_av_planck'
     im_pl_err = 'av/taurus_av_error_planck'
+    im_pl2 = 'av/taurus_av_planck_radiance'
+    im_pl2_err = 'av/taurus_av_error_planck_radiance'
     im_hi = 'hi/taurus_hi_galfa_cube'
     im_co = 'co/taurus_co_cfa_cube'
     im_p10 = 'av/taurus_av_p10'
@@ -113,6 +117,8 @@ def main():
                   im_hi,
                   im_pl,
                   im_pl_err,
+                  im_pl2,
+                  im_pl2_err,
                   im_co,
                   im_pl_co,
                   im_pl_co_err,
@@ -135,8 +141,11 @@ def main():
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
-    images = (im_pl,
+    images = (
+              im_pl,
               im_pl_err,
+              im_pl2,
+              im_pl2_err,
               im_hi,
               #im_pl_co,
               #im_pl_co_err,
@@ -224,7 +233,7 @@ def main():
     images.append(im_co)
 
     for image in images:
-        check_file(image + '_regrid_planckres.mir', clobber=clobber)
+        exists = check_file(image + '_regrid_planckres.mir', clobber=clobber)
         print('\t{:s}_smooth_planckres.mir\n'.format(image))
 
         if not exists:
@@ -242,8 +251,11 @@ def main():
     # Write the images out to fits images
     print('\nWriting images to fits format')
 
-    images = [im_pl + '_5arcmin',
+    images = [
+              im_pl + '_5arcmin',
               im_pl_err + '_5arcmin',
+              im_pl2 + '_5arcmin',
+              im_pl2_err + '_5arcmin',
               im_pl_co + '_5arcmin',
               im_pl_co_err + '_5arcmin',
               im_pl_co_10 + '_5arcmin',

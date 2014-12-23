@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) map for Taurus
+''' Calculates the N(HI) map for taurus
 
 '''
 
@@ -271,7 +271,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     # create axes
     ax = imagegrid[0]
     cmap = cm.Greys # colormap
-    cmap = cm.gist_stern # colormap
+    cmap = cm.gnuplot # colormap
     cmap.set_bad(color='w')
     # show the image
     vmax = np.max((np.max(av_image[av_image == av_image]),
@@ -372,7 +372,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
         #cb.set_label_text(r'$A_V$ (mag)',)
 
     # ------------------
-    # Av image
+    # Av residuals
     # ------------------
     if plot_residuals:
         ax = imagegrid[2]
@@ -384,8 +384,8 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
         im = ax.imshow(av_image - av_model,
                 interpolation='nearest',origin='lower',
                 cmap=cmap,
-                #vmin=0,
-                #vmax=vmax,
+                vmin=-0.25,
+                vmax=0.5,
                 #norm=matplotlib.colors.LogNorm()
                 )
 
@@ -679,7 +679,7 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
         plt.imshow(image)
         plt.show()
 
-    image[np.isnan(image)] = 1e8
+    image[np.isnan(image)] = 1e10
 
     # Determine power spectrum
     # -------------------------------------------------------------------------
@@ -700,6 +700,10 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
         plt.show()
 
     power_spectrum = radial_average(psd2D, interpnan=True)
+
+    # Write frequency in arcmin
+    freq = fftpack.fftfreq(len(power_spectrum))
+    freq *= 5.0
 
     # Simulate power spectrum for white noise
     noise_image = np.random.normal(scale=0.1, size=image.shape)
@@ -757,14 +761,14 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
 
     ax = imagegrid[0]
 
-    ax.plot(power_spectrum / np.nanmax(power_spectrum),
+    ax.plot(freq, power_spectrum / np.nanmax(power_spectrum),
             color='k',
             linestyle='-',
             linewidth=1.5,
             drawstyle='steps-mid',
             label='Data Residuals')
 
-    ax.plot(power_spectrum_noise / np.nanmax(power_spectrum_noise),
+    ax.plot(freq, power_spectrum_noise / np.nanmax(power_spectrum_noise),
             color='r',
             linestyle='-',
             linewidth=0.4,
@@ -772,10 +776,12 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
             label='White Noise Residuals')
 
     #ax.set_xscale('log')
-    ax.legend(loc='center right')
+    ax.legend(loc='best')
+    #ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlabel('Spatial Frequency')
+    ax.set_xlabel('Spatial Frequency [1/arcmin]')
     ax.set_ylabel('Normalized Power Spectrum')
+    ax.set_xlim(0, 0.4)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
@@ -1000,8 +1006,8 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
 
     # Use Planck dust Av map or Kainulainen 2009 optical extinction Av map?
-    # options are 'planck' or 'k09'
-    #av_data_type = 'k09'
+    # options are 'planck' or 'lee12'
+    #av_data_type = 'lee12'
     #av_data_type = 'planck'
 
     # Regions, regions to edit the global properties with
@@ -1035,12 +1041,20 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
 
     # load Planck Av and GALFA HI images, on same grid
-    if av_data_type == 'k09':
+    if av_data_type == 'lee12_2mass':
+    	print('\nLoading Lee+12 data...')
         av_image, av_header = load_fits(av_dir + \
-                    'taurus_av_k09_regrid_planckres.fits',
+                    'taurus_av_lee12_2mass_regrid_planckres.fits',
+                return_header=True)
+        av_image_error = 0.1 * np.ones(av_image.shape)
+    elif av_data_type == 'lee12_iris':
+    	print('\nLoading Lee+12 data...')
+        av_image, av_header = load_fits(av_dir + \
+                    'taurus_av_lee12_iris_regrid_planckres.fits',
                 return_header=True)
         av_image_error = 0.1 * np.ones(av_image.shape)
     else:
+    	print('\nLoading Planck data...')
         av_image, av_header = load_fits(av_dir + \
                     'taurus_av_planck_5arcmin.fits',
                 return_header=True)
@@ -1048,7 +1062,6 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
         av_image_error, av_error_header = load_fits(av_dir + \
                     'taurus_av_error_planck_5arcmin.fits',
                 return_header=True)
-
 
     hi_cube, hi_header = load_fits(hi_dir + \
                 'taurus_hi_galfa_cube_regrid_planckres.fits',
@@ -1108,7 +1121,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             header = hi_header)
 
     # create nhi image
-    nhi_image, nhi_image_error = calculate_nhi(cube=hi_cube,
+    nhi_image = calculate_nhi(cube=hi_cube,
             velocity_axis=velocity_axis,
             velocity_range=vel_range,
             header=hi_header,
@@ -1179,9 +1192,9 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     # plt.show()
 
     # Calc chi^2
-    chisq = np.sum((av_image[~mask] - av_model[~mask])**2 / \
-            av_image_error[~mask]**2) / props['npix']
-    props['chisq'] = chisq
+    #chisq = np.sum((av_image[~mask] - av_model[~mask])**2 / \
+    #        av_image_error[~mask]**2) / props['npix']
+    #props['chisq'] = chisq
 
     # Create HI spectrum
     hi_cube[hi_cube != hi_cube] = 0
@@ -1194,14 +1207,15 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     co_spectrum = np.mean(co_data, axis=(1,2))
 
     # Plot
-    figure_types = ['png', 'pdf']
+    figure_types = ['png',]# 'pdf']
     for figure_type in figure_types:
         if region is None:
             if vel_range_type == 'single':
                 filename = 'single_vel_range/taurus_av_model_map_' + \
-                    'dgr{0:.3f}_'.format(dgr) + \
-                    '{0:.1f}to{1:.1f}kms'.format(vel_range[0], vel_range[1]) + \
-                    '_' + av_data_type + '.%s' % figure_type
+                    av_data_type + '.%s' % figure_type
+                    #'dgr{0:.3f}_'.format(dgr) + \
+                    #'{0:.1f}to{1:.1f}kms'.format(vel_range[0], vel_range[1]) + \
+                    #'_' + \
             elif vel_range_type == 'multiple':
                 filename = 'multiple_vel_range/taurus_av_model_map_' + \
                            'dgr{0:.3f}'.format(dgr)
@@ -1266,6 +1280,8 @@ if __name__ == '__main__':
 
     main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             av_data_type='planck')
+    main(dgr=None, vel_range=None, vel_range_type='single', region=None,
+            av_data_type='planck_rad')
     main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             av_data_type='k09')
 

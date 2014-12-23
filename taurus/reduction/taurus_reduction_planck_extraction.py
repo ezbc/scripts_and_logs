@@ -23,6 +23,17 @@ def extract_data(datatype = 'ebv'):
                 resolution = 0.01,
                 cut_last_pixel = False,
                 verbose = True)
+    if datatype == 'ebv_err':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = 'Dust Opacity',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 3,
+                dr_version = 2,
+                resolution = 0.01,
+                cut_last_pixel = False,
+                verbose = True)
     elif datatype == 'tau353':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
@@ -133,6 +144,39 @@ def extract_data(datatype = 'ebv'):
                 resolution = 0.01,
                 cut_last_pixel = False,
                 verbose = True)
+    elif datatype == '857':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = '857',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 1,
+                dr_version = 1,
+                resolution = 0.01,
+                cut_last_pixel = False,
+                verbose = True)
+    elif datatype == '545':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = '545',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 1,
+                dr_version = 1,
+                resolution = 0.01,
+                cut_last_pixel = False,
+                verbose = True)
+    elif datatype == '353':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = '353',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 1,
+                dr_version = 1,
+                resolution = 0.01,
+                cut_last_pixel = False,
+                verbose = True)
 
     return (data, header)
 
@@ -192,6 +236,8 @@ def main():
     planck_dir = '/d/bip3/ezbc/taurus/data/planck/'
 
     if 0:
+        # Color excess maps
+        # -----------------
         (data, header) = extract_data(datatype = 'tau353')
         write_data(data, header, planck_dir + 'taurus_planck_tau353.fits')
         (data, header) = tau353_to_ebv(data, header)
@@ -206,6 +252,33 @@ def main():
         (data, header) = ebv2av(data, header)
         write_data(data, header, av_dir + 'taurus_av_error_planck.fits')
 
+        (data, header) = extract_data(datatype = 'ebv')
+        write_data(data, header, planck_dir + 'taurus_planck_radiance_ebv.fits')
+        (data, header) = ebv2av(data, header)
+        write_data(data, header, av_dir + 'taurus_av_planck_radiance.fits')
+
+        (data, header) = extract_data(datatype = 'ebv_err')
+        write_data(data, header,
+                planck_dir + 'taurus_planck_radiance_ebv_error.fits')
+        (data, header) = ebv2av(data, header)
+        write_data(data, header,
+                av_dir + 'taurus_av_error_planck_radiance.fits')
+
+        # Band maps
+        # ---------
+    if 1:
+        (data, header) = extract_data(datatype = '857')
+        write_data(data, header, planck_dir + 'taurus_planck_857ghz.fits')
+
+        (data, header) = extract_data(datatype = '545')
+        write_data(data, header, planck_dir + 'taurus_planck_545ghz.fits')
+
+        (data, header) = extract_data(datatype = '353')
+        write_data(data, header, planck_dir + 'taurus_planck_353ghz.fits')
+
+    if 0:
+        # CO maps
+        # -----------------
         (data, header) = extract_data(datatype = 'co_1to0')
         write_data(data, header, co_dir + 'taurus_co_1-0_planck.fits')
 

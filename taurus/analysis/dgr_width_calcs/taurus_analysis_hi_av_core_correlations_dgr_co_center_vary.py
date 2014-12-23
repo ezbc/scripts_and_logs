@@ -684,7 +684,6 @@ def reshape_likelihoods(likelihoods, velocity_centers=None,
 
     return likelihoods
 
-
 def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
         #hi_noise_cube=None, av_image=None, av_image_error=None,
         velocity_centers=None, velocity_widths=None, return_likelihoods=True,
@@ -758,11 +757,6 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
                             velocity_axis=hi_velocity_axis,
                             velocity_range=velocity_range_image,
                             return_nhi_error=False)
-
-                #import matplotlib.pyplot as plt
-                #plt.close(); plt.clf()
-                #plt.plot(nhi_image_temp)
-                #plt.show()
 
                 # Avoid NaNs
                 indices = np.where((nhi_image_temp == nhi_image_temp) & \

@@ -553,7 +553,7 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
         velocity_centers=None, velocity_widths=None, return_likelihoods=True,
         dgrs=None, plot_results=True, results_filename='',
         likelihood_filename=None, clobber=False, conf=0.68,
-        contour_confs=None):
+        contour_confs=None, multithread=False):
 
     '''
     Parameters
@@ -597,52 +597,110 @@ def calc_likelihood_hi_av(#hi_cube=None, hi_velocity_axis=None,
         perform_mle = True
 
     if perform_mle:
-        # calculate the velocity ranges given a set of centers and widths
-        velocity_ranges = np.zeros(shape=[len(velocity_centers) * \
-                len(velocity_widths),2])
-        count = 0
-        for i, center in enumerate(velocity_centers):
-            for j, width in enumerate(velocity_widths):
-                velocity_ranges[count, 0] = center - width/2.
-                velocity_ranges[count, 1] = center + width/2.
-                count += 1
+        if multithread:
+            print('\nUsing multithreading in likelihood claculation...')
+            # calculate the velocity ranges given a set of centers and widths
+            velocity_ranges = np.zeros(shape=[len(velocity_centers) * \
+                    len(velocity_widths),2])
+            count = 0
+            for i, center in enumerate(velocity_centers):
+                for j, width in enumerate(velocity_widths):
+                    velocity_ranges[count, 0] = center - width/2.
+                    velocity_ranges[count, 1] = center + width/2.
+                    count += 1
 
-        # Set up iterable whereby each row contains the parameter values
-        mesh = setup_likelihood_mesh(velocity_centers, velocity_widths, dgrs)
+            # Set up iterable whereby each row contains the parameter values
+            mesh = setup_likelihood_mesh(velocity_centers,
+                                         velocity_widths,
+                                         dgrs)
 
-        # Use multiple processors to iterate through parameter combinations
-        p = multiprocessing.Pool()
-        likelihoods = p.map(search_likelihoods, mesh)
-        p.close()
+            # Use multiple processors to iterate through parameter
+            # combinations
 
-        # reshape likelihoods
-        likelihoods = reshape_likelihoods(likelihoods,
-                                          velocity_centers=velocity_centers,
-                                          velocity_widths=velocity_widths,
-                                          dgrs=dgrs)
+            p = multiprocessing.Pool()
+            likelihoods = p.map(search_likelihoods, mesh)
+            p.close()
 
-        # Normalize the log likelihoods
-        likelihoods -= likelihoods.max()
+            # reshape likelihoods
+            likelihoods = reshape_likelihoods(likelihoods,
+                                velocity_centers=velocity_centers,
+                                velocity_widths=velocity_widths,
+                                dgrs=dgrs)
 
-        # Convert to likelihoods
-        likelihoods = np.exp(likelihoods)
+            # Normalize the log likelihoods
+            likelihoods -= likelihoods.max()
 
-        # Normalize the likelihoods
-        likelihoods = likelihoods / \
-            np.sum(likelihoods[~np.isnan(likelihoods)])
+            # Convert to likelihoods
+            likelihoods = np.exp(likelihoods)
 
-        # Write out fits file of likelihoods
-        if write_mle:
-            write_mle_tofits(filename=likelihood_filename,
-                             velocity_centers=velocity_centers,
-                             velocity_widths=velocity_widths,
-                             dgrs=dgrs,
-                             likelihoods=likelihoods,
-                             clobber=clobber)
+            # Normalize the likelihoods
+            likelihoods = likelihoods / \
+                np.sum(likelihoods[~np.isnan(likelihoods)])
 
-        # Avoid nans
-        likelihoods = np.ma.array(likelihoods,
-                mask=(likelihoods != likelihoods))
+            # Write out fits file of likelihoods
+            if write_mle:
+                write_mle_tofits(filename=likelihood_filename,
+                                 velocity_centers=velocity_centers,
+                                 velocity_widths=velocity_widths,
+                                 dgrs=dgrs,
+                                 likelihoods=likelihoods,
+                                 clobber=clobber)
+
+            # Avoid nans
+            likelihoods = np.ma.array(likelihoods,
+                    mask=(likelihoods != likelihoods))
+        else:
+            # calculate the likelihoodelation coefficient for each velocity
+            # range
+            likelihoods = np.zeros((len(velocity_centers),
+                                     len(velocity_widths),
+                                     len(dgrs)))
+
+            # Progress bar parameters
+            total = float(likelihoods.size)
+            count = 0
+
+            for i, velocity_center in enumerate(velocity_centers):
+                for j, velocity_width in enumerate(velocity_widths):
+                    # Construct N(HI) image outside of DGR loop, then apply
+                    # DGRs in loop
+                    velocity_range = (velocity_center-velocity_width / 2.,
+                                      velocity_center+velocity_width / 2.)
+
+                    nhi_image_temp, nhi_image_error = \
+                            calculate_nhi(cube=hi_cube,
+                                velocity_axis=hi_velocity_axis,
+                                velocity_range=velocity_range,
+                                noise_cube=hi_noise_cube)
+
+                    # Avoid NaNs
+                    indices = np.where((nhi_image_temp == nhi_image_temp)&\
+                                       (av_image == av_image))
+
+                    nhi_image_likelihood = nhi_image_temp[indices]
+                    nhi_image_error_likelihood = nhi_image_error[indices]
+                    av_image_likelihood = av_image[indices]
+                    if type(av_image_error) != float:
+                        av_image_error_likelihood = av_image_error[indices]
+                    else:
+                        av_image_error_likelihood = av_image_error
+
+                    for k, dgr in enumerate(dgrs):
+                        # Create model of Av with N(HI) and DGR
+                        av_image_model = nhi_image_likelihood * dgr
+                        av_image_model_error = nhi_image_error_likelihood * dgr
+
+                        logL = calc_logL(av_image_model,
+                                         av_image_likelihood,
+                                         data_error=av_image_error_likelihood)
+
+                        likelihoods[i, j, k] = -logL
+
+                        # Shows progress each 10%
+                        count += 1
+                        abs_step = int((total * 1)/100) or 100
+                        if count and not count % abs_step:
+                            print "\t{0:.0%} processed".format(count/total)
 
     # Load file of likelihoods
     elif not perform_mle:
@@ -968,8 +1026,8 @@ def calc_co_noise(co_mom0, prop_dict):
     # Calc noise
     noise = 0.0
     for region in co_noise_region:
-    	std = np.std(np.array(region)[~np.isnan(region)])
-    	noise += std
+        std = np.std(np.array(region)[~np.isnan(region)])
+        noise += std
 
     # Take average of stds
     noise = noise / len(co_noise_region)
@@ -1191,6 +1249,9 @@ def main():
     # Course, large grid or fine, small grid?
     grid_res = 'fine'
     grid_res = 'course'
+
+    # Use multithreading?
+    multithread = False
 
     # Use Av+CO mask or only CO?
     av_and_co_mask = True
@@ -1424,7 +1485,8 @@ def main():
                                     '_global.fits',
                             clobber=clobber,
                             conf=conf,
-                            contour_confs=contour_confs)
+                            contour_confs=contour_confs,
+                            multithread=multithread)
     vel_range_max = (center_max - width_max/2.0, center_max + width_max/2.0)
 
     print('\nHI velocity integration range:')
