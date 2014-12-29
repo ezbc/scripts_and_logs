@@ -223,7 +223,7 @@ def plot_av(av_x, av_y,
     #ax.set_xlabel(r'Planck A$_{\rm V}$ (mag)')
     #ax.set_ylabel(r'Lee+12 A$_{\rm V}$ (mag)')
     ax.set_xlabel(axis_labels[0])
-    ax.set_xlabel(axis_labels[1])
+    ax.set_ylabel(axis_labels[1])
     ax.set_title(title)
     ax.grid(True)
 
@@ -317,7 +317,7 @@ def main():
                     errorbar_pos = ((2., 2.),
                                     (0.5, 0.5),
                                     (9., 9.)),
-                    title = 'Perseus: 2MASS/ Planck Comparison',
+                    title = r'Perseus: 2MASS/ Planck $\tau_{353}$ Comparison',
                     savedir = figure_dir,
                     filename = 'perseus_av_2mass_planck_compare.%s' % \
                             figure_type,
@@ -376,7 +376,7 @@ def main():
                     av_image2 = av_data_planck,
                     #limits=[70, 50, 250, 200],
                     header = av_header,
-                    title = 'Perseus: 2MASS - Planck Residuals',
+                    title = r'Perseus: 2MASS - Planck $\tau_{353}$ Residuals',
                     savedir = figure_dir,
                     filename = 'perseus_av_2mass_planck_residual_map.%s' % \
                             figure_type,
