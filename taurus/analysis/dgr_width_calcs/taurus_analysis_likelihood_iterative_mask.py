@@ -1,761 +1,3 @@
-#!/usr/bin/python
-
-''' Calculates the N(HI) / Av likelihoodelation for the taurus molecular cloud.
-'''
-
-import pyfits as pf
-import numpy as np
-
-class KeyboardInterruptError(Exception): pass
-
-''' Plotting Functions
-'''
-def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
-        filename=None,show=True, returnimage=False):
-    ''' Plots a heat map of likelihoodelation values as a function of velocity width
-    and velocity center.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 8
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-
-    fig = plt.figure(figsize=(3,2))
-
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(1,1),
-                 ngrids=1,
-                 cbar_mode="single",
-                 cbar_location='right',
-                 cbar_pad="3%",
-                 cbar_size='6%',
-                 axes_pad=0,
-                 aspect=False,
-                 label_mode='L',
-                 share_all=False)
-
-    # Unravel the likelihoods if raveled
-    if len(likelihoods.shape) == 1:
-        likelihoods = np.empty((velocity_centers.shape[0],
-                                       velocity_widths.shape[0]))
-        likelihoods[:,:] = np.NaN
-        count = 0
-        try:
-            for i, center in enumerate(velocity_centers):
-                for j, width in enumerate(velocity_widths):
-                    likelihoods[i,j] = likelihoods[count]
-                    count += 1
-        except IndexError:
-            print(' plot_likelihoods: O-d array input, cannot proceed')
-    else:
-           likelihoods = likelihoods
-
-    image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
-
-    ax = imagegrid[0]
-
-    ax.set_xlabel('Velocity Width (km/s)')
-    ax.set_ylabel('Velocity Center (km/s)')
-
-    #ax.set_xticks(np.arange(0,velocity_widths.shape[0],1)[::5],
-    #        velocity_centers[::5])
-
-    plt.rc('text', usetex=False)
-    im = ax.imshow(image, interpolation='nearest', origin='lower',
-            extent=[velocity_widths[0],velocity_widths[-1],
-                    velocity_centers[0],velocity_centers[-1]],
-            cmap=plt.cm.gist_stern,
-            #cmap=plt.cm.gray,
-            #norm=matplotlib.colors.LogNorm(),
-            )
-    cb = ax.cax.colorbar(im)
-
-    #cb.set_clim(vmin=0.)
-    # Write label to colorbar
-    cb.set_label_text(r'log L')
-
-    fractions = np.array([0.95, 0.68])
-    levels = (1 + fractions * image.min())
-
-    cs = ax.contour(image, levels=levels, origin='lower',
-            extent=[velocity_widths[0],velocity_widths[-1],
-                    velocity_centers[0],velocity_centers[-1]],
-            colors='k'
-            )
-
-    # Define a class that forces representation of float to look a certain way
-    # This remove trailing zero so '1.0' becomes '1'
-    class nf(float):
-         def __repr__(self):
-             str = '%.1f' % (self.__float__(),)
-             if str[-1]=='0':
-                 return '%.0f' % self.__float__()
-             else:
-                 return '%.1f' % self.__float__()
-
-    # Recast levels to new class
-    cs.levels = [nf(val) for val in fractions*100.0]
-
-    #fmt = {}
-    #for level, fraction in zip(cs.levels, fractions):
-    #    fmt[level] = fraction
-    fmt = '%r %%'
-
-    ax.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
-
-    if filename is not None:
-        plt.savefig(filename,bbox_inches='tight')
-    if show:
-        plt.draw()
-        plt.show()
-    if returnimage:
-        return likelihoods
-
-def plot_likelihoods_hist(likelihoods, x_grid, y_grid, y_pdf=None,
-        x_pdf=None, x_confint=None, y_confint=None, filename=None, show=True,
-        returnimage=False, plot_axes=('centers', 'widths'),
-        contour_confs=None):
-
-    ''' Plots a heat map of likelihoodelation values as a function of velocity width
-    and velocity center.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    fig, ax_image = plt.subplots(figsize=(6,6))
-
-    # Mask NaNs
-    image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
-
-    if plot_axes[0] == 'centers':
-        x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'Velocity Center (km/s)')
-        x_sum_axes = (1, 2)
-        y_pdf_label = r'Centers PDF'
-    if plot_axes[1] == 'centers':
-        y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'Velocity Center (km/s)')
-        y_sum_axes = (1, 2)
-        x_pdf_label = r'Centers PDF'
-    if plot_axes[0] == 'widths':
-        x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'Velocity Width (km/s)')
-        x_sum_axes = (0, 2)
-        y_pdf_label = r'Width PDF'
-        x_limits = (0, 20)
-        x_limits = (0, 20)
-        x_limits = (x_grid[0], x_grid[-1])
-    if plot_axes[1] == 'widths':
-        y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'Velocity Width (km/s)')
-        y_sum_axes = (0, 2)
-        x_pdf_label = r'Width PDF'
-    if plot_axes[0] == 'dgrs':
-        x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
-        x_sum_axes = (0, 1)
-        y_pdf_label = r'DGR PDF'
-    if plot_axes[1] == 'dgrs':
-        y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
-        y_sum_axes = (0, 1)
-        x_pdf_label = r'DGR PDF'
-        y_limits = (0.0, 0.8)
-        y_limits = (0.1, 0.9)
-        y_limits = (y_grid[0], y_grid[-1])
-
-    sum_axes = np.array((x_sum_axes, y_sum_axes))
-    sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
-
-    # Create likelihood image
-    image = np.sum(likelihoods, axis=sum_axis) / np.sum(likelihoods)
-
-    # Derive marginal distributions of both centers and widths
-
-    x_sum = np.sum(likelihoods, axis=x_sum_axes)
-    x_pdf = x_sum / np.sum(x_sum)
-    y_sum = np.sum(likelihoods, axis=y_sum_axes)
-    y_pdf = y_sum / np.sum(y_sum)
-
-    extent = np.ravel(np.array((x_extent, y_extent)))
-
-    #plt.rc('text', usetex=False)
-    im = ax_image.imshow(image.T, interpolation='nearest', origin='lower',
-            extent=extent,
-            #cmap=plt.cm.gist_stern,
-            #cmap=plt.cm.gray,
-            cmap=plt.cm.binary,
-            #norm=matplotlib.colors.LogNorm(),
-            aspect='auto',
-            )
-
-    show_pdfs = 1
-
-    if show_pdfs:
-        divider = make_axes_locatable(ax_image)
-        ax_pdf_x = divider.append_axes("top", 1, pad=0.1, sharex=ax_image)
-        ax_pdf_y  = divider.append_axes("right", 1, pad=0.1,
-                sharey=ax_image)
-
-        # make some labels invisible
-        plt.setp(ax_pdf_x.get_xticklabels() + \
-                 ax_pdf_y.get_yticklabels(),
-                 visible=False)
-
-        ax_pdf_x.plot(x_grid,
-                      x_pdf,
-                      color='k',
-                      drawstyle='steps-post',
-                      linewidth=2,
-                      )
-
-        ax_pdf_y.plot(y_pdf,
-                      y_grid,
-                      color='k',
-                      drawstyle='steps-post',
-                      linewidth=2,
-                      )
-
-        #axHistx.axis["bottom"].major_ticklabels.set_visible(False)
-
-        # Tick marks on the pdf?
-        pdf_ticks = False
-
-        for tl in ax_pdf_x.get_xticklabels():
-            tl.set_visible(False)
-
-        if pdf_ticks:
-            wmax = x_pdf.max()
-            ticks = [0, 0.5*wmax, 1.0*wmax]
-            tick_labels = ['{0:.1f}'.format(ticks[0]),
-                           '{0:.1f}'.format(ticks[1]),
-                           '{0:.1f}'.format(ticks[2]),
-                            ]
-            ax_pdf_x.set_yticks(ticks)
-            ax_pdf_x.set_yticklabels(tick_labels)
-        else:
-            for tl in ax_pdf_x.get_yticklabels():
-                tl.set_visible(False)
-
-        ax_pdf_x.set_ylabel(y_pdf_label)
-
-        for tl in ax_pdf_y.get_yticklabels():
-            tl.set_visible(False)
-        if pdf_ticks:
-            cmax = y_pdf.max()
-            ticks = [0, 0.5*cmax, 1.0*cmax]
-            tick_labels = ['{0:.1f}'.format(ticks[0]),
-                           '{0:.1f}'.format(ticks[1]),
-                           '{0:.1f}'.format(ticks[2]),
-                            ]
-            ax_pdf_y.set_xticks(ticks)
-            ax_pdf_y.set_xticklabels(tick_labels)
-        else:
-            for tl in ax_pdf_y.get_xticklabels():
-                tl.set_visible(False)
-
-        ax_pdf_y.set_xlabel(x_pdf_label)
-
-        # Show confidence limits
-        if y_confint is not None:
-            ax_pdf_y.axhspan(y_confint[0] - y_confint[1],
-                             y_confint[0] + y_confint[2],
-                             color='k',
-                             linewidth=1,
-                             alpha=0.2)
-            ax_pdf_y.axhline(y_confint[0],
-                             color='k',
-                             linestyle='--',
-                             linewidth=3,
-                             alpha=1)
-        if x_confint is not None:
-            ax_pdf_x.axvspan(x_confint[0] - x_confint[1],
-                                 x_confint[0] + x_confint[2],
-                                  color='k',
-                                 linewidth=1,
-                                  alpha=0.2)
-            ax_pdf_x.axvline(x_confint[0],
-                                 color='k',
-                                 linestyle='--',
-                                 linewidth=3,
-                                 alpha=1)
-
-    #cb.set_clim(vmin=0.)
-    # Write label to colorbar
-    #cb.set_label_text(r'log L')
-
-    # Plot contours
-    if contour_confs is not None:
-
-        fractions = (1.0 - np.asarray(contour_confs))
-        levels = (fractions * image.max())
-
-        cs = ax_image.contour(image.T, levels=levels, origin='lower',
-                extent=extent,
-                colors='k'
-                )
-
-        # Define a class that forces representation of float to look a certain
-        # way This remove trailing zero so '1.0' becomes '1'
-        class nf(float):
-             def __repr__(self):
-                 str = '%.1f' % (self.__float__(),)
-                 if str[-1]=='0':
-                     return '%.0f' % self.__float__()
-                 else:
-                     return '%.1f' % self.__float__()
-
-        # Recast levels to new class
-        cs.levels = [nf(val) for val in np.asarray(contour_confs)*100.0]
-
-        #fmt = {}
-        #for level, fraction in zip(cs.levels, fractions):
-        #    fmt[level] = fraction
-        fmt = '%r %%'
-
-        ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
-
-    try:
-        ax_image.set_xlim(x_limits)
-        ax_image.set_ylim(y_limits)
-    except UnboundLocalError:
-        pass
-
-
-    if filename is not None:
-        plt.draw()
-        plt.savefig(filename, bbox_inches='tight')
-    if show:
-        plt.draw()
-        plt.show()
-    if returnimage:
-        return likelihoods
-
-def plot_av_image(av_image=None, header=None, title=None,
-        limits=None, savedir='./', filename=None, show=True):
-
-    # Import external modules
-    import matplotlib.pyplot as plt
-    import matplotlib
-    import numpy as np
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import pywcsgrid2 as wcs
-    import pywcs
-    from pylab import cm # colormaps
-    from matplotlib.patches import Polygon
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 15
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (8, 7),
-              'figure.titlesize': font_scale
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    # Create figure instance
-    fig = plt.figure()
-
-    nrows_ncols=(1,1)
-    ngrids=1
-
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=nrows_ncols,
-                 ngrids=ngrids,
-                 cbar_mode="each",
-                 cbar_location='right',
-                 cbar_pad="2%",
-                 cbar_size='3%',
-                 axes_pad=1,
-                 axes_class=(wcs.Axes,
-                             dict(header=header)),
-                 aspect=True,
-                 label_mode='L',
-                 share_all=True)
-
-    # create axes
-    ax = imagegrid[0]
-    cmap = cm.jet # colormap
-    # show the image
-    im = ax.imshow(av_image,
-            interpolation='nearest',origin='lower',
-            cmap=cmap,
-            #norm=matplotlib.colors.LogNorm()
-            vmin=0,
-            vmax=1.4
-            )
-
-    # Asthetics
-    ax.set_display_coord_system("fk5")
-    ax.set_ticklabel_type("hms", "dms")
-
-    ax.set_xlabel('Right Ascension (J2000)',)
-    ax.set_ylabel('Declination (J2000)',)
-
-    # colorbar
-    cb = ax.cax.colorbar(im)
-    cmap.set_bad(color='w')
-    # plot limits
-    if limits is not None:
-        ax.set_xlim(limits[0],limits[2])
-        ax.set_ylim(limits[1],limits[3])
-
-    # Write label to colorbar
-    cb.set_label_text(r'A$_V$ (Mag)',)
-
-    if title is not None:
-        fig.suptitle(title, fontsize=font_scale)
-    if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
-    if show:
-        fig.show()
-
-def plot_likelihoods_hist(global_props, filename=None, show=True,
-        returnimage=False, plot_axes=('centers', 'widths'),
-        contour_confs=None):
-
-    ''' Plots a heat map of likelihoodelation values as a function of velocity width
-    and velocity center.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    fig, ax_image = plt.subplots(figsize=(6,6))
-
-    if plot_axes[0] == 'centers':
-        x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'Velocity Center (km/s)')
-        x_sum_axes = (1, 2)
-        y_pdf_label = r'Centers PDF'
-    if plot_axes[1] == 'centers':
-        y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'Velocity Center (km/s)')
-        y_sum_axes = (1, 2)
-        x_pdf_label = r'Centers PDF'
-    if plot_axes[0] == 'widths':
-        x_grid = global_props['vel_widths']
-        x_confint = global_props['width_confint']
-        x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'Velocity Width (km/s)')
-        x_sum_axes = (0, 2)
-        y_pdf_label = r'Width PDF'
-        x_limits = (x_grid[0], x_grid[-1])
-    if plot_axes[1] == 'widths':
-        y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'Velocity Width (km/s)')
-        y_sum_axes = (0, 2)
-        x_pdf_label = r'Width PDF'
-    if plot_axes[0] == 'dgrs':
-        x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
-        x_sum_axes = (0, 1)
-        y_pdf_label = r'DGR PDF'
-    if plot_axes[1] == 'dgrs':
-        y_grid = global_props['dgrs']
-        y_confint = global_props['dgr_confint']
-        y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
-        y_sum_axes = (0, 1)
-        x_pdf_label = r'DGR PDF'
-        y_limits = (y_grid[0], y_grid[-1])
-
-    # Create axes
-    sum_axes = np.array((x_sum_axes, y_sum_axes))
-    sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
-
-    # Mask NaNs
-    likelihoods = global_props['likelihoods']
-    image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
-
-    # Create likelihood image
-    image = np.sum(likelihoods, axis=sum_axis) / np.sum(likelihoods)
-
-    # Derive marginal distributions of both centers and widths
-    x_sum = np.sum(likelihoods, axis=x_sum_axes)
-    x_pdf = x_sum / np.sum(x_sum)
-    y_sum = np.sum(likelihoods, axis=y_sum_axes)
-    y_pdf = y_sum / np.sum(y_sum)
-
-    extent = np.ravel(np.array((x_extent, y_extent)))
-
-    #plt.rc('text', usetex=False)
-    im = ax_image.imshow(image.T, interpolation='nearest', origin='lower',
-            extent=extent,
-            #cmap=plt.cm.gist_stern,
-            #cmap=plt.cm.gray,
-            cmap=plt.cm.binary,
-            #norm=matplotlib.colors.LogNorm(),
-            aspect='auto',
-            )
-
-    show_pdfs = 1
-
-    if show_pdfs:
-        divider = make_axes_locatable(ax_image)
-        ax_pdf_x = divider.append_axes("top", 1, pad=0.1, sharex=ax_image)
-        ax_pdf_y  = divider.append_axes("right", 1, pad=0.1,
-                sharey=ax_image)
-
-        # make some labels invisible
-        plt.setp(ax_pdf_x.get_xticklabels() + \
-                 ax_pdf_y.get_yticklabels(),
-                 visible=False)
-
-        ax_pdf_x.plot(x_grid,
-                      x_pdf,
-                      color='k',
-                      drawstyle='steps-post',
-                      linewidth=2,
-                      )
-
-        ax_pdf_y.plot(y_pdf,
-                      y_grid,
-                      color='k',
-                      drawstyle='steps-post',
-                      linewidth=2,
-                      )
-
-        #axHistx.axis["bottom"].major_ticklabels.set_visible(False)
-
-        # Tick marks on the pdf?
-        pdf_ticks = False
-
-        for tl in ax_pdf_x.get_xticklabels():
-            tl.set_visible(False)
-
-        if pdf_ticks:
-            wmax = x_pdf.max()
-            ticks = [0, 0.5*wmax, 1.0*wmax]
-            tick_labels = ['{0:.1f}'.format(ticks[0]),
-                           '{0:.1f}'.format(ticks[1]),
-                           '{0:.1f}'.format(ticks[2]),
-                            ]
-            ax_pdf_x.set_yticks(ticks)
-            ax_pdf_x.set_yticklabels(tick_labels)
-        else:
-            for tl in ax_pdf_x.get_yticklabels():
-                tl.set_visible(False)
-
-        ax_pdf_x.set_ylabel(y_pdf_label)
-
-        for tl in ax_pdf_y.get_yticklabels():
-            tl.set_visible(False)
-        if pdf_ticks:
-            cmax = y_pdf.max()
-            ticks = [0, 0.5*cmax, 1.0*cmax]
-            tick_labels = ['{0:.1f}'.format(ticks[0]),
-                           '{0:.1f}'.format(ticks[1]),
-                           '{0:.1f}'.format(ticks[2]),
-                            ]
-            ax_pdf_y.set_xticks(ticks)
-            ax_pdf_y.set_xticklabels(tick_labels)
-        else:
-            for tl in ax_pdf_y.get_xticklabels():
-                tl.set_visible(False)
-
-        ax_pdf_y.set_xlabel(x_pdf_label)
-
-        # Show confidence limits
-        if y_confint is not None:
-            ax_pdf_y.axhspan(y_confint[0] - y_confint[1],
-                             y_confint[0] + y_confint[2],
-                             color='k',
-                             linewidth=1,
-                             alpha=0.2)
-            ax_pdf_y.axhline(y_confint[0],
-                             color='k',
-                             linestyle='--',
-                             linewidth=3,
-                             alpha=1)
-        if x_confint is not None:
-            ax_pdf_x.axvspan(x_confint[0] - x_confint[1],
-                                 x_confint[0] + x_confint[2],
-                                  color='k',
-                                 linewidth=1,
-                                  alpha=0.2)
-            ax_pdf_x.axvline(x_confint[0],
-                                 color='k',
-                                 linestyle='--',
-                                 linewidth=3,
-                                 alpha=1)
-
-    #cb.set_clim(vmin=0.)
-    # Write label to colorbar
-    #cb.set_label_text(r'log L')
-
-    # Plot contours
-    if contour_confs is not None:
-
-        fractions = (1.0 - np.asarray(contour_confs))
-        levels = (fractions * image.max())
-
-        cs = ax_image.contour(image.T, levels=levels, origin='lower',
-                extent=extent,
-                colors='k'
-                )
-
-        # Define a class that forces representation of float to look a certain
-        # way This remove trailing zero so '1.0' becomes '1'
-        class nf(float):
-             def __repr__(self):
-                 str = '%.1f' % (self.__float__(),)
-                 if str[-1]=='0':
-                     return '%.0f' % self.__float__()
-                 else:
-                     return '%.1f' % self.__float__()
-
-        # Recast levels to new class
-        cs.levels = [nf(val) for val in np.asarray(contour_confs)*100.0]
-
-        #fmt = {}
-        #for level, fraction in zip(cs.levels, fractions):
-        #    fmt[level] = fraction
-        fmt = '%r %%'
-
-        ax_image.clabel(cs, cs.levels, fmt=fmt, fontsize=9, inline=1)
-
-    try:
-        ax_image.set_xlim(x_limits)
-        ax_image.set_ylim(y_limits)
-    except UnboundLocalError:
-        pass
-
-    if 0:
-    #if npix is not None or av_threshold is not None:
-        text = ''
-        if npix is not None:
-            text += r'N$_{\rm pix}$ = ' + \
-                     '{0:.0f}'.format(npix)
-            if av_threshold is not None:
-                text += '\n'
-        if av_threshold is not None:
-            text += r'$A_V$ threshold = {0:.1f} mag'.format(av_threshold)
-            text += '\n'
-        text += r'DGR = {0:.2f} '.format(y_confint[0]) + \
-                r'$\times$ 10$^{-20}$ (cm$^2$ mag$^1$)'
-        text += '\n'
-        text += r'Velocity width = {0:.2f} '.format(x_confint[0]) + \
-                r'km/s'
-        ax_image.annotate(text,
-                xytext=(0.95, 0.95),
-                xy=(0.95, 0.95),
-                textcoords='axes fraction',
-                xycoords='axes fraction',
-                color='k',
-                fontsize=font_scale*0.75,
-                bbox=dict(boxstyle='round',
-                          facecolor='w',
-                          alpha=0.3),
-                horizontalalignment='right',
-                verticalalignment='top',
-                )
-
-    if filename is not None:
-        plt.draw()
-        plt.savefig(filename, bbox_inches='tight')
-    if show:
-        plt.draw()
-        plt.show()
-    if returnimage:
-        return likelihoods
 
 ''' Calculations
 '''
@@ -1301,252 +543,86 @@ def write_mle_tofits(filename='', velocity_centers=None,
                  header,
                  clobber=clobber)
 
-def calc_co_noise(co_mom0, prop_dict):
+def gauss(x, width, amp, x0):
+    import numpy as np
 
-    co_noise_region = []
+    return amp * np.exp(-(x - x0)**2 / (2 * width**2))
 
-    # Append pixels from each region to CO region map
-    for region in prop_dict['co_noise_limits']['pixel']:
-        co_noise_region.append(co_mom0[region[0][1]:region[1][1],
-                                       region[0][0]:region[1][0]])
+def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False):
 
-    # Calc noise
-    noise = 0.0
-    for region in co_noise_region:
-        std = np.std(np.array(region)[~np.isnan(region)])
-        noise += std
+    '''
 
-    # Take average of stds
-    noise = noise / len(co_noise_region)
+    '''
 
-    return noise
+    import numpy as np
+    from scipy.optimize import curve_fit
 
-def smooth_image(image, width=10):
+    # Fit the rising portion of the residuals
+    residuals_crop = residuals[(residuals < 0) & ~np.isnan(residuals)]
 
-    from scipy import ndimage
+    counts, bin_edges = np.histogram(np.ravel(residuals_crop),
+                                     bins=100,
+                                     )
+    fit_params = curve_fit(gauss,
+                           bin_edges[:-1],
+                           counts,
+                           p0=(2, np.nanmax(counts), 0),
+                           maxfev=10000,
+                           )[0]
 
-    if image.ndim > 2:
-        for i in xrange(image.shape[0]):
-            image[i] = ndimage.filters.gaussian_filter(image[i, :, :],
-                                                       width,
-                                                       mode='nearest')
-    else:
-        image = ndimage.filters.gaussian_filter(image,
-                                                      width,
-                                                      mode='nearest')
+    # Include only residuals within 3 sigma
+    mask = residuals > resid_width_scale * np.abs(fit_params[0])
 
-    if 0:
+    if plot_progress:
         import matplotlib.pyplot as plt
-        if image.ndim > 2:
-            plt.imshow(image[image.shape[0]/2, :, :], origin='lower')
-        else:
-            plt.imshow(image, origin='lower')
+        x_fit = np.linspace(-10,
+                            10,
+                            1000)
+
+        y_fit = gauss(x_fit, *fit_params)
+
+        counts, bin_edges = \
+            np.histogram(np.ravel(residuals[~np.isnan(residuals)]),
+                                     bins=1000,
+                                     )
+
+        bin_edges_ext = np.zeros(len(counts) + 1)
+        counts_ext = np.zeros(len(counts) + 1)
+
+        bin_edges_ext[0] = bin_edges[0] - (bin_edges[1] - bin_edges[0])
+        bin_edges_ext[1:] = bin_edges[:-1]
+        counts_ext[0] = 0
+        counts_ext[1:] = counts
+
+        counts_ext /= np.nanmax(counts_ext)
+        y_fit /= np.max(y_fit)
+
+        plt.close;plt.clf()
+        plt.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid')
+        plt.plot(x_fit, y_fit, color='r')
+        plt.xlim([np.nanmin(bin_edges_ext),4])
+        plt.ylim([-0.1, 1.1])
+        plt.axvline(resid_width_scale * np.abs(fit_params[0]),
+                    color='k',
+                    linestyle='--',
+                    linewidth=3)
+        plt.xlabel(r'Residual $A_V$ [mag]')
+        plt.ylabel('Normalized PDF')
         plt.show()
 
-    return image
+    return mask
 
-''' DS9 Region and Coordinate Functions
-'''
+def main(av_data_type='planck'):
 
-def convert_core_coordinates(cores, header):
-
-    for core in cores:
-        cores[core].update({'box_pixel': 0})
-        cores[core].update({'center_pixel': 0})
-
-        #box_wcs = cores[core]['box_wcs']
-        #box_pixel = len(box_wcs) * [0,]
-        center_wcs = cores[core]['center_wcs']
-
-        # convert centers to pixel coords
-        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
-                                                     dec=center_wcs[1],
-                                                     header=header)[:2].tolist()
-        # convert box corners to pixel coords
-        #for i in range(len(box_wcs)/2):
-        #    pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
-        #            header=header)
-        #    box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
-        #cores[core]['box_pixel'] = box_pixel
-
-    return cores
-
-def convert_limit_coordinates(prop_dict,
-        coords=('region_limit', 'co_noise_limits'), header=None):
-
-    # Initialize pixel keys
-    for coord in coords:
-        prop_dict[coord].update({'pixel': []})
-
-        if coord == 'region_limit' or coord == 'plot_limit':
-            limit_wcs = prop_dict[coord]['wcs']
-
-            for limits in limit_wcs:
-                # convert centers to pixel coords
-                limit_pixels = get_pix_coords(ra=limits[0],
-                                             dec=limits[1],
-                                             header=header)[:2].tolist()
-
-                prop_dict[coord]['pixel'].append(limit_pixels[0])
-                prop_dict[coord]['pixel'].append(limit_pixels[1])
-        elif coord == 'co_noise_limits':
-            region_limits = prop_dict[coord]['wcs']
-
-            # Cycle through each region, convert WCS limits to pixels
-            for region in region_limits:
-                region_pixels = []
-                for limits in region:
-                    # convert centers to pixel coords
-                    limit_pixels = get_pix_coords(ra=limits[0],
-                                                  dec=limits[1],
-                                                  header=header)[:2].tolist()
-                    region_pixels.append(limit_pixels)
-
-                # Append individual regions back to CO noise
-                prop_dict[coord]['pixel'].append(region_pixels)
-
-    return prop_dict
-
-def load_fits(filename,return_header=False):
-    ''' Loads a fits file.
-    '''
-
-    import pyfits as pf
-
-    f = pf.open(filename)
-    if return_header:
-        return f[0].data,f[0].header
-    else:
-        return f[0].data
-
-def get_sub_image(image, indices):
-
-    return image[indices[1]:indices[3],
-            indices[0]:indices[2]]
-
-def get_pix_coords(ra=None, dec=None, header=None):
-
-    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec), or Ra in degrees
-    and dec in degrees.
-    '''
-
-    import pywcsgrid2 as wcs
-    import pywcs
-
-    # convert to degrees if ra and dec are array-like
-    try:
-        if len(ra) == 3 and len(dec) == 3:
-            ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
-        else:
-            raise ValueError('RA and Dec must be in (hrs,min,sec) and' + \
-                    ' (deg,arcmin,arcsec) or in degrees.')
-    except TypeError:
-        ra_deg, dec_deg = ra, dec
-
-    wcs_header = pywcs.WCS(header)
-    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
-
-    return pix_coords
-
-def hrs2degs(ra=None, dec=None):
-    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
-    '''
-
-    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
-    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
-
-    return (ra_deg, dec_deg)
-
-def read_ds9_region(filename):
-
-    ''' Converts DS9 region file into format for plotting region.
-
-    Need the following format:
-        angle : degrees
-        xy : pixels
-        width : pixels
-        height : pixels
-
-    Region file provides following format:
-        # Region file format: DS9 version 4.1
-        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
-        fk5
-        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
-
-    pyregion module reads DS9 regions:
-    http://leejjoon.github.io/pyregion/users/overview.html
-
-
-    '''
-
-    # Import external modules
-    import pyregion as pyr
-
-    # Read region file
-    try:
-        region = pyr.open(filename)
-    except IOError:
-        return None
-
-    # region[0] in following format:
-    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
-    # [ra center, dec center, width, height, rotation angle]
-
-    return region[0].coord_list
-
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
-
-    # region[0] in following format:
-    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
-    # [ra center, dec center, width, height, rotation angle]
-    for core in cores:
-        region = read_ds9_region(filename_base + core + '.reg')
-        if region is not None:
-            box_center_pixel = get_pix_coords(ra = region[0],
-                                              dec = region[1],
-                                              header = header)
-            box_center_pixel = (int(box_center_pixel[1]),
-                    int(box_center_pixel[0]))
-            box_height = region[2] / header['CDELT1']
-            box_width = region[3] / header['CDELT2']
-            cores[core].update({'box_center_pix': box_center_pixel})
-            cores[core].update({'box_width': box_width})
-            cores[core].update({'box_height': box_height})
-            cores[core].update({'box_angle': region[4]})
-
-    return cores
-
-'''
-The main script
-'''
-
-def main(av_thres=1.4, av_data_type='planck'):
-
-    import grid
     import numpy as np
-    import numpy
     from os import system,path
     import mygeometry as myg
     from mycoords import make_velocity_axis
     import json
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
         calculate_sd, calculate_nh2, calculate_nh2_error
-    from multiprocessing import Pool
-
-    global hi_cube
-    global hi_velocity_axis
-    global hi_noise_cube
-    global av_image
-    global av_image_error
-
-    # parameters used in script
-    # -------------------------
-    # HI velocity integration range
-    # Determine HI integration velocity by CO or likelihoodelation with Av?
-    hi_av_likelihoodelation = True
-
-    width_vary = True
-    dgr_vary = True
+    from astropy.io import fits
+    import matplotlib.pyplot as plt
 
     # Check if likelihood file already written, rewrite?
     clobber = 1
@@ -1556,376 +632,112 @@ def main(av_thres=1.4, av_data_type='planck'):
     # Confidence of contour levels
     contour_confs = (0.68, 0.95)
 
-    # Course, large grid or fine, small grid?
-    grid_res = 'fine'
-    grid_res = 'course'
+    likelihood_filename = 'taurus_likelihood_{0:s}'.format(av_data_type)
+    results_filename = 'taurus_likelihood_{0:s}'.format(av_data_type)
 
-    # Use multithreading?
-    multithread = False
-
-    # Use Av+CO mask or only CO?
-    av_and_co_mask = True
-
-
-    # Derive CO mask? If co_thres = None, co_thres will be 2 * std(co)
-    co_thres = 6.00 # K km/s
-    co_thres = 1e10 # K km/s
-
-    # Threshold of Av below which we expect only atomic gas, in mag
-    #av_thres = 1.4
-
-    # Width of Gaussian to convolve image? None means no binning
-    smooth_npix = 5
-    smooth_npix = None
-
-    # Results and fits filenames
-    if av_and_co_mask:
-        likelihood_filename = 'taurus_nhi_av_likelihoods_co_' + \
-                              'av{0:.1f}mag_'.format(av_thres) + \
-                               av_data_type
-        results_filename = 'taurus_likelihood_co_' + \
-                           'av{0:.1f}mag_'.format(av_thres) + \
-                              av_data_type
-    else:
-        likelihood_filename = 'taurus_nhi_av_likelihoods_co_only'
-        results_filename = 'taurus_likelihood_co_only'
-
-    # Name of property files results are written to
-    global_property_file = 'taurus_global_properties'
-    core_property_file = 'taurus_core_properties.txt'
-
-    # Name of noise cube
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
-
-    # Define ranges of parameters
-    if grid_res == 'course':
-        likelihood_filename += '_dgr_width_lowres'
-        results_filename += '_dgr_width_lowres'
-        velocity_widths = np.arange(1, 100, 10*0.16667)
-        velocity_widths = np.arange(15, 17, 1)
-        dgrs = np.arange(0.01, 1, 5e-2)
-    elif grid_res == 'fine':
-        likelihood_filename += '_dgr_width_highres'
-        results_filename += '_dgr_width_highres'
-        velocity_widths = np.arange(1, 100, 0.16667)
-        dgrs = np.arange(0.15, 0.4, 1e-3)
-        velocity_widths = np.arange(1, 15, 2*0.16667)
-        dgrs = np.arange(0.1, 0.9, 3e-3)
-        #velocity_widths = np.arange(1, 40, 1)
-        #dgrs = np.arange(0.15, 0.4, 1e-1)
+    # Threshold for converging DGR
+    threshold_delta_dgr = 0.00005
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    output_dir = '/home/ezbc/research/data/taurus/python_output/nhi_av/'
     figure_dir = \
         '/d/bip3/ezbc/taurus/figures/hi_velocity_range/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
-    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-
-    # load Planck Av and GALFA HI images, on same grid
-    if av_data_type == 'k09':
-        av_data, av_header = load_fits(av_dir + \
-                    'taurus_av_k09_regrid_planckres.fits',
-                return_header=True)
-        av_data_error = 0.1 * np.ones(av_data.shape)
-    elif av_data_type == 'planck_rad':
-        av_data, av_header = load_fits(av_dir + \
-                    'taurus_av_planck_radiance_5arcmin.fits',
-                return_header=True)
-
-        av_data_error, av_error_header = load_fits(av_dir + \
-                    'taurus_av_error_planck_radiance_5arcmin.fits',
-                return_header=True)
-    else:
-        av_data, av_header = load_fits(av_dir + \
-                    'taurus_av_planck_5arcmin.fits',
-                return_header=True)
-
-        av_data_error, av_error_header = load_fits(av_dir + \
-                    'taurus_av_error_planck_5arcmin.fits',
-                return_header=True)
+    av_dir = '/home/ezbc/research/data/taurus/av/'
+    hi_dir = '/home/ezbc/research/data/taurus/hi/'
+    co_dir = '/home/ezbc/research/data/taurus/co/'
+    core_dir = '/home/ezbc/research/data/taurus/python_output/core_properties/'
+    property_dir = '/home/ezbc/research/data/taurus/python_output/'
+    region_dir = '/home/ezbc/research/data/taurus/python_output/ds9_regions/'
+    likelihood_dir = '/home/ezbc/research/data/taurus/python_output/nhi_av/'
 
 
-    hi_data, h = load_fits(hi_dir + \
+    # Load data
+    # ---------
+    av_data, av_header = fits.getdata(av_dir + \
+                                       'taurus_av_planck_5arcmin.fits',
+                                       header=True)
+
+    av_data_error, av_error_header = fits.getdata(av_dir + \
+                'taurus_av_error_planck_5arcmin.fits',
+            header=True)
+
+    hi_data, hi_header = fits.getdata(hi_dir + \
                 'taurus_hi_galfa_cube_regrid_planckres.fits',
-            return_header=True)
-
-    co_data, co_header = load_fits(co_dir + \
-                'taurus_co_cfa_cube_regrid_planckres.fits',
-            return_header=True)
+            header=True)
 
     # make the velocity axes
-    velocity_axis = make_velocity_axis(h)
-    co_velocity_axis = make_velocity_axis(co_header)
+    hi_vel_axis = make_velocity_axis(hi_header)
 
-    # Load core and global properties
-    with open(core_dir + core_property_file, 'r') as f:
-        cores = json.load(f)
-    with open(property_dir + global_property_file + '.txt', 'r') as f:
-        global_props = json.load(f)
+    # Velocity range over which to integrate HI
+    vel_range = (-5, 15)
 
-    # Load or calculate noise cube for HI
-    if not path.isfile(hi_dir + noise_cube_filename):
-        noise_cube = calculate_noise_cube(cube=hi_data,
-                velocity_axis=velocity_axis,
-                velocity_noise_range=[90,110], header=h, Tsys=30.,
-                filename=hi_dir + noise_cube_filename)
-    else:
-        noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
-            return_header=True)
+    # Make Av model
+    # -------------
+    nhi_image = calculate_nhi(cube=hi_data,
+                              velocity_axis=hi_vel_axis,
+                              velocity_range=vel_range,
+                              return_nhi_error=False,
+                              )
 
-    # Smooth images
-    if smooth_npix is not None:
-        av_data = smooth_image(av_data, width=smooth_npix)
-        av_data_error = smooth_image(av_data_error, width=smooth_npix)
-        hi_data = smooth_image(hi_data, width=smooth_npix)
-        co_data = smooth_image(co_data, width=smooth_npix)
+    #plt.clf(); plt.close()
+    #plt.imshow(nhi_image, origin='lower')
+    #plt.show()
 
-    # Region masking
-    # ----------------
-    # Change WCS coords to pixel coords of images
-    cores = convert_core_coordinates(cores, h)
-    cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
-            header = h)
-    global_props = convert_limit_coordinates(global_props,
-            header=av_header,
-            coords=('region_limit', 'co_noise_limits', 'plot_limit'))
+    # Mask out nans and high-valued pixels
+    mask = ((av_data > 30.0) | \
+            np.isnan(av_data) | \
+            np.isnan(av_data_error) | \
+            (av_data_error == 0) | \
+            np.isnan(nhi_image))
 
-    # Derive relevant region
-    pix = global_props['region_limit']['pixel']
-    region_vertices = ((pix[1], pix[0]),
-                       (pix[1], pix[2]),
-                       (pix[3], pix[2]),
-                       (pix[3], pix[0])
-                       )
+    # solve for DGR using linear least squares
+    print('\nSolving for DGR...')
 
-    # block offregion
-    region_mask = myg.get_polygon_mask(av_data, region_vertices)
+    delta_dgr = 1e10
+    dgr = 1e10
+    while delta_dgr > threshold_delta_dgr:
+        A = np.array((np.ravel(nhi_image[~mask] / av_data_error[~mask]),))
+        b = np.array((np.ravel(av_data[~mask] / av_data_error[~mask]),))
+        A = np.matrix(A).T
+        b = np.matrix(b).T
+        #dgr = np.dot(np.linalg.pinv(A), b)
+        dgr_new = (np.linalg.pinv(A) * b)[0, 0]
 
-    print('\nRegion size = ' + \
-          '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
+        # Create model with the DGR
+        print('\nDGR = {0:.2} 10^20 cm^2 mag'.format(dgr))
+        av_image_model = nhi_image * dgr_new
 
-    # Threshold masking
-    # -----------------
-    # Calc moment 0 map of CO needed for masking
-    co_data_nonans = np.copy(co_data)
-    co_data_nonans[np.isnan(co_data_nonans)] = 0.0
-    co_data_nonans[:,region_mask == 1] = 0
-    co_mom0 = np.sum(co_data_nonans, axis=0)
+        residuals = av_data - av_image_model
 
-    # calc noise without any emission if CO threshold not already set
-    if co_thres is None:
-        co_noise = calc_co_noise(co_mom0, global_props)
-        co_thres = 2.0 * co_noise
+        # Include only residuals which are white noise
+        mask_new = get_residual_mask(residuals,
+                resid_width_scale=2.0, plot_progress=0)
 
-    # Get indices which trace only atomic gas, i.e., no CO emission
-    if av_and_co_mask:
-        indices = (((co_mom0 < co_thres) & \
-                    (av_data < av_thres)) & \
-                    (region_mask == 1))
-    elif not av_and_co_mask:
-        indices = ((co_mom0 < co_thres) & \
-                   (region_mask == 1))
-        av_thres = None
+        # Mask non-white noise, i.e. correlated residuals.
+        mask += mask_new
 
-    # Write mask of pixels not used
-    mask = ~indices
+        npix = mask.size - np.sum(mask)
+        print('Number of non-masked pixels = {0:.0f}'.format(npix))
 
-    print('\nNumber of unmasked pixels = ' + \
-          '{0:.0f} pix'.format(mask[~mask].size))
+        # Reset while loop conditions
+        delta_dgr = np.abs(dgr - dgr_new)
+        dgr = dgr_new
 
-    # Mask global data with CO indices
-    hi_data_sub = np.copy(hi_data[:, indices])
-    noise_cube_sub = np.copy(noise_cube[:, indices])
-    av_data_sub = np.copy(av_data[indices])
-    av_error_data_sub = np.copy(av_data_error[indices])
+    plt.clf(); plt.close()
+    nhi_image_copy = np.copy(nhi_image)
+    nhi_image_copy[mask] = np.nan
+    av_image_copy = np.copy(av_data)
+    resid_image = av_image_copy - nhi_image_copy * dgr
+    plt.imshow(resid_image, origin='lower')
+    plt.title(r'$A_V$ Data - Model')
+    plt.colorbar()
+    plt.show()
 
-    # Change WCS coords to pixel coords of images
-    cores = convert_core_coordinates(cores, h)
-    cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_boxes_',
-            header = h)
-    global_props = convert_limit_coordinates(global_props, header=av_header)
-
-    # Set velocity center as HI peak
-    co_avg_vel = None
-    hi_data[np.isnan(hi_data)] = 0.0
-    hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
-    velocity_centers = np.array((np.average(velocity_axis,
-                        weights=hi_spectrum**2),))
-
-    if 0:
-        vel_center_image = np.zeros(hi_data.shape[1:])
-        for i in xrange(0, hi_data.shape[1]):
-            for j in xrange(0, hi_data.shape[2]):
-                hi_spectrum = hi_data[:, i, j]
-                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                if np.max(hi_spectrum) != 0:
-                    max_vel = velocity_axis[hi_spectrum == np.max(hi_spectrum)]
-                    vel_center_image[i,j] = max_vel[0]
-    else:
-        vel_center_image = None
-
-    print('\nVelocity center from HI = ' + \
-            '{0:.2f} km/s'.format(velocity_centers[0]))
-
-    # Plot the masked image
-    av_data_masked = np.copy(av_data)
-    av_data_masked[~indices] = np.nan
-    figure_types = ['png',]
-    for figure_type in figure_types:
-        plot_av_image(av_image=av_data_masked, header=av_header,
-                savedir=figure_dir + '../maps/',
-                limits=global_props['region_limit']['pixel'],
-                filename='taurus_dgr_co_masked_map.' + figure_type,
-                show=0)
-
-    # Set global variables
-    hi_cube = hi_data_sub
-    hi_velocity_axis = velocity_axis
-    hi_noise_cube = noise_cube_sub
-    av_image = av_data_sub
-    av_image_error = av_error_data_sub
-
-    # Define filename for plotting results
-    results_filename = figure_dir + 'iterative_masking/' + results_filename
-
-    # likelihoodelate each core region Av and N(HI) for velocity ranges
-    vel_range_confint, width_confint, dgr_confint, likelihoods,\
-        center_likelihood, width_likelihood, dgr_likelihood, center_max, \
-        width_max, dgr_max = \
-            calc_likelihood_hi_av(
-                            dgrs=dgrs,
-                            velocity_centers=velocity_centers,
-                            velocity_widths=velocity_widths,
-                            return_likelihoods=True,
-                            plot_results=True,
-                            results_filename=results_filename,
-                            likelihood_filename=likelihood_dir + \
-                                    likelihood_filename + \
-                                    '_global.fits',
-                            clobber=clobber,
-                            conf=conf,
-                            vel_center_image=vel_center_image,
-                            contour_confs=contour_confs,
-                            multithread=multithread)
-    vel_range_max = (center_max - width_max/2.0, center_max + width_max/2.0)
-
-    print('\nHI velocity integration range:')
-    print('%.1f to %.1f km/s' % (vel_range_confint[0],
-                                 vel_range_confint[1]))
-    print('\nDGR:')
-    print('%.1f x 10^-20 cm^2 mag' % (dgr_confint[0]))
-
-    # Calulate chi^2 for best fit models
-    # ----------------------------------
-    nhi_image_temp, nhi_image_error = \
-            calculate_nhi(cube=hi_data,
-                velocity_axis=hi_velocity_axis,
-                velocity_range=vel_range_max,
-                return_nhi_error=True,
-                noise_cube=noise_cube)
-    av_image_model = nhi_image_temp * dgr_max
-
-    # avoid NaNs
-    indices = ((av_image_model == av_image_model) & \
-               (av_data == av_data))
-
-    # add nan locations to the mask
-    mask[~indices] = 1
-
-    # count number of pixels used in analysis
-    npix = mask[~mask].size
-
-    # finally calculate chi^2
-    chisq = np.sum((av_data[~mask] - av_image_model[~mask])**2 / \
-            av_data_error[~mask]**2) / av_data[~mask].size
-
-    print('\nTotal number of pixels in analysis, after masking = ' + \
-            '{0:.0f}'.format(npix)) + \
-            '\nGiven a CO threshold of {0:.2f} K km/s'.format(co_thres) + \
-            '\nand a Av threshold of {0:.2f} mag'.format(av_thres)
-
-    print('\nReduced chi^2 = {0:.1f}'.format(chisq))
-
-    # Write results to global properties
-    global_props['dust2gas_ratio'] = {}
-    global_props['dust2gas_ratio_error'] = {}
-    global_props['hi_velocity_width'] = {}
-    global_props['hi_velocity_width_error'] = {}
-    global_props['co_center'] = {}
-    global_props['dust2gas_ratio_max'] = {}
-    global_props['hi_velocity_center_max'] = {}
-    global_props['hi_velocity_width_max'] = {}
-    global_props['hi_velocity_range_max'] =  {}
-    global_props['av_threshold'] = {}
-    global_props['co_threshold'] = {}
-    global_props['width_confint'] = width_confint
-    global_props['dgr_confint'] = dgr_confint
-    global_props['hi_velocity_width']['value'] = width_confint[0]
-    global_props['co_center']['value'] = co_avg_vel
-    global_props['co_center']['units'] = 'km/s'
-    global_props['hi_velocity_width_error']['value'] = width_confint[1:]
-    global_props['hi_velocity_width']['unit'] = 'km/s'
-    global_props['hi_velocity_range'] = vel_range_confint[0:2]
-    global_props['hi_velocity_range_error'] = vel_range_confint[2:]
-    global_props['dust2gas_ratio']['value'] = dgr_confint[0]
-    global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
-    global_props['dust2gas_ratio_max']['value'] = dgr_max
-    global_props['hi_velocity_center_max']['value'] = center_max
-    global_props['hi_velocity_width_max']['value'] = width_max
-    global_props['hi_velocity_range_max']['value'] = vel_range_max
-    global_props['hi_velocity_range_conf'] = conf
-    global_props['center_likelihood'] = center_likelihood.tolist()
-    global_props['width_likelihood'] = width_likelihood.tolist()
-    global_props['dgr_likelihood'] = dgr_likelihood.tolist()
-    global_props['vel_centers'] = velocity_centers.tolist()
-    global_props['vel_widths'] = velocity_widths.tolist()
-    global_props['dgrs'] = dgrs.tolist()
-    global_props['likelihoods'] = likelihoods.tolist()
-    global_props['av_threshold']['value'] = av_thres
-    global_props['av_threshold']['unit'] = 'mag'
-    global_props['co_threshold']['value'] = co_thres
-    global_props['co_threshold']['unit'] = 'k km/s'
-    global_props['chisq'] = chisq
-    global_props['npix'] = npix
-    global_props['mask'] = mask.tolist()
-
-    global_property_file += '_' + av_data_type
-    with open(property_dir + global_property_file, 'w') as f:
-        json.dump(global_props, f)
-
-    with open(property_dir + global_property_file + '.txt', 'w') as f:
-        json.dump(global_props, f)
-
-    # Plot likelihood space
-    print('\nWriting likelihood figure to ' + results_filename + '_wd.png')
-    plot_likelihoods_hist(global_props,
-                          plot_axes=('widths', 'dgrs'),
-                          show=0,
-                          returnimage=False,
-                          filename=results_filename + '_wd.png',
-                          contour_confs=contour_confs)
 
 if __name__ == '__main__':
+    main()
 
-    if 0:
-        av_thres_list = np.arange(0.4, 4, 0.1)
-        for av_thres in av_thres_list:
-            main(av_thres=av_thres)
-    else:
-        # Use Planck dust Av map or Kainulainen 2009 optical extinction Av map?
-        # options are 'planck' or 'k09'
-        av_data_types = ['k09', 'planck_rad', 'planck']
-
-        for av_data_type in av_data_types:
-            main(av_thres=1.0, av_data_type=av_data_type)
 
 
 
