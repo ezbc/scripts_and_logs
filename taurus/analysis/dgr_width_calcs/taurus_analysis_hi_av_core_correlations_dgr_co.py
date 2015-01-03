@@ -1211,16 +1211,13 @@ The main script
 
 def main():
 
-    import grid
     import numpy as np
     import numpy
     from os import system,path
     import mygeometry as myg
     from mycoords import make_velocity_axis
     import json
-    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
-        calculate_sd, calculate_nh2, calculate_nh2_error
-    from multiprocessing import Pool
+    from myimage_analysis import calculate_nhi, calculate_noise_cube
 
     global hi_cube
     global hi_velocity_axis
@@ -1470,7 +1467,6 @@ def main():
     results_filename = figure_dir + results_filename
 
     # likelihoodelate each core region Av and N(HI) for velocity ranges
-    pool = Pool()
     vel_range_confint, dgr_confint, likelihoods, center_likelihood,\
         width_likelihood, dgr_likelihood, center_max, width_max, dgr_max = \
             calc_likelihood_hi_av(

@@ -684,6 +684,7 @@ def iterate_residual_masking(
                              av_data_error=None,
                              vel_range=None,
                              threshold_delta_dgr=None,
+                             resid_width_scale=3.0,
                              plot_progress=False,
                              verbose=False,
                              ):
@@ -731,7 +732,8 @@ def iterate_residual_masking(
 
         # Include only residuals which are white noise
         mask_new = get_residual_mask(residuals,
-                resid_width_scale=2.0, plot_progress=plot_progress)
+                                     resid_width_scale=resid_width_scale,
+                                     plot_progress=plot_progress)
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -911,6 +913,25 @@ def calc_likelihoods(
                 width_likelihood, dgr_likelihood, width_max, dgr_max,
                 vel_range_max)
 
+def rebin_image(image, bin_size):
+
+    ''' From stack overflow
+
+    http://stackoverflow.com/questions/8090229/resize-with-averaging-or-rebin-a-numpy-2d-array
+
+    '''
+
+    import numpy as np
+
+    shape = (image.shape[0] / bin_size, image.shape[1] / bin_size)
+
+    # Crop image for binning
+    image = image[:-image.shape[0] % shape[0], :-image.shape[1] % shape[1]]
+
+    # Rebin image
+    sh = shape[0],image.shape[0]//shape[0],shape[1],image.shape[1]//shape[1]
+    return image.reshape(sh).mean(-1).mean(1)
+
 ''' DS9 Region and Coordinate Functions
 '''
 
@@ -1080,20 +1101,27 @@ def main(av_data_type='planck'):
     results_filename = 'taurus_likelihood_{0:s}'.format(av_data_type)
 
     # Name of HI noise cube
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise'
 
     # Threshold for converging DGR
-    threshold_delta_dgr = 0.00005
+    threshold_delta_dgr = 0.005
+
+    # Number of white noise standard deviations with which to fit the
+    # residuals in iterative masking
+    resid_width_scale = 3.0
 
     # Name of property files results are written to
     global_property_file = 'taurus_global_properties.txt'
 
     # Likelihood axis resolutions
-    vel_widths = np.arange(1, 50, 10*0.16667)
-    dgrs = np.arange(0.01, 0.7, 2e-2)
+    vel_widths = np.arange(1, 30, 2*0.16667)
+    dgrs = np.arange(0.01, 0.2, 1e-3)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (-10, 10)
+    vel_range = (-20, 20)
+
+    # Use binned image?
+    use_binned_image = False
 
     # define directory locations
     # --------------------------
@@ -1110,16 +1138,24 @@ def main(av_data_type='planck'):
 
     # Load data
     # ---------
+    if use_binned_image:
+        bin_string = '_bin'
+    else:
+        bin_string = ''
+    noise_cube_filename += bin_string
+
     av_data, av_header = fits.getdata(av_dir + \
-                                       'taurus_av_planck_5arcmin.fits',
-                                       header=True)
+                            'taurus_av_planck_5arcmin' + bin_string + '.fits',
+                                      header=True)
 
     av_data_error, av_error_header = fits.getdata(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'taurus_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
+    #av_data_error = (100 * 0.025**2) * np.ones(av_data_error.shape)
+    av_data_error *= 10.0
 
     hi_data, hi_header = fits.getdata(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'taurus_hi_galfa_cube_regrid_planckres' + bin_string + '.fits',
             header=True)
 
     # Load global properties
@@ -1159,8 +1195,7 @@ def main(av_data_type='planck'):
           '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
 
     # Derive mask by excluding correlated residuals
-    # -------------
-
+    # ---------------------------------------------
     nhi_image = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
                               velocity_range=vel_range,
@@ -1173,12 +1208,14 @@ def main(av_data_type='planck'):
                              av_data_error=av_data_error,
                              vel_range=vel_range,
                              threshold_delta_dgr=threshold_delta_dgr,
+                             resid_width_scale=resid_width_scale,
                              )
 
     # Combine region mask with new mask
     mask += np.logical_not(region_mask)
 
     # Derive center velocity from hi
+    # ------------------------------
     hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
     vel_center = np.array((np.average(hi_vel_axis,
                            weights=hi_spectrum**2),))[0]
@@ -1205,6 +1242,7 @@ def main(av_data_type='planck'):
                      conf=conf,
                      )
 
+    # Unpack output of likelihood calculation
     (vel_range_confint, width_confint, dgr_confint, likelihoods,
             width_likelihood, dgr_likelihood, width_max, dgr_max,
             vel_range_max) = results
