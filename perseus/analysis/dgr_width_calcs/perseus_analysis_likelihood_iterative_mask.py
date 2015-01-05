@@ -684,6 +684,7 @@ def iterate_residual_masking(
                              av_data_error=None,
                              vel_range=None,
                              threshold_delta_dgr=None,
+                             resid_width_scale=3.0,
                              plot_progress=False,
                              verbose=False,
                              ):
@@ -731,7 +732,8 @@ def iterate_residual_masking(
 
         # Include only residuals which are white noise
         mask_new = get_residual_mask(residuals,
-                resid_width_scale=2.0, plot_progress=plot_progress)
+                                     resid_width_scale=resid_width_scale,
+                                     plot_progress=plot_progress)
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -1104,18 +1106,24 @@ def main(av_data_type='planck'):
     # Threshold for converging DGR
     threshold_delta_dgr = 0.00005
 
+    # Number of white noise standard deviations with which to fit the
+    # residuals in iterative masking
+    resid_width_scale = 3.0
+
     # Name of property files results are written to
     global_property_file = 'perseus_global_properties.txt'
 
     # Likelihood axis resolutions
     vel_widths = np.arange(1, 50, 2*0.16667)
     dgrs = np.arange(0.01, 0.2, 1e-3)
+    vel_widths = np.arange(1, 50, 8*0.16667)
+    dgrs = np.arange(0.01, 0.2, 1e-2)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (-10, 10)
+    vel_range = (-40, 20)
 
     # Use binned image?
-    use_binned_image = 1
+    use_binned_image = False
 
     # define directory locations
     # --------------------------
@@ -1202,6 +1210,7 @@ def main(av_data_type='planck'):
                              av_data_error=av_data_error,
                              vel_range=vel_range,
                              threshold_delta_dgr=threshold_delta_dgr,
+                             resid_width_scale=resid_width_scale,
                              )
 
     # Combine region mask with new mask
