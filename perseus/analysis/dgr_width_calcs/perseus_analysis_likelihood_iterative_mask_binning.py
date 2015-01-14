@@ -1,4 +1,8 @@
+import matplotlib
+matplotlib.use('Agg')
 
+import warnings
+warnings.filterwarnings('ignore')
 
 ''' Plotting Functions
 '''
@@ -489,8 +493,6 @@ def plot_av_image(av_image=None, header=None, title=None,
         fig.show()
 
 
-
-
 ''' Calculations
 '''
 
@@ -714,7 +716,7 @@ def iterate_residual_masking(
         mask += init_mask
 
     # solve for DGR using linear least squares
-    print('\nSolving for DGR...')
+    print('\nBeginning iterative DGR calculations + masking...')
 
     # Iterate masking pixels which are correlated and rederiving a linear least
     # squares solution for the DGR
@@ -730,7 +732,7 @@ def iterate_residual_masking(
 
         # Create model with the DGR
         if verbose:
-            print('\nDGR = {0:.2} 10^20 cm^2 mag'.format(dgr))
+            print('\tDGR = {0:.2} 10^20 cm^2 mag'.format(dgr))
         av_image_model = nhi_image * dgr_new
 
         residuals = av_data - av_image_model
@@ -745,7 +747,7 @@ def iterate_residual_masking(
 
         if verbose:
             npix = mask.size - np.sum(mask)
-            print('Number of non-masked pixels = {0:.0f}'.format(npix))
+            print('\tNumber of non-masked pixels = {0:.0f}'.format(npix))
 
         # Reset while loop conditions
         delta_dgr = np.abs(dgr - dgr_new)
@@ -887,6 +889,14 @@ def calc_likelihoods(
     dgr_confint = threshold_area(dgrs,
                                  dgr_likelihood,
                                  area_fraction=conf)
+    from mystats import calc_symmetric_error
+
+    width_confint = calc_symmetric_error(vel_widths,
+                                   width_likelihood,
+                                   alpha=1.0 - conf)
+    dgr_confint = calc_symmetric_error(dgrs,
+                                 dgr_likelihood,
+                                 alpha=1.0 - conf)
 
     # Get values of best-fit model parameters
     max_loc = np.where(likelihoods == np.max(likelihoods))
@@ -1178,7 +1188,7 @@ def main(av_data_type='planck'):
     import mygeometry as myg
     from mycoords import make_velocity_axis
     import json
-    from myimage_analysis import calculate_nhi, calculate_noise_cube
+    from myimage_analysis import calculate_nhi, calculate_noise_cube, bin_image
     #from astropy.io import fits
     import pyfits as fits
     import matplotlib.pyplot as plt
@@ -1191,7 +1201,7 @@ def main(av_data_type='planck'):
     # Confidence of parameter errors
     conf = 0.68
     # Confidence of contour levels
-    contour_confs = (0.68, 0.95)
+    contour_confs = (0.95,)
 
     # Name of HI noise cube
     noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise'
@@ -1207,13 +1217,19 @@ def main(av_data_type='planck'):
     global_property_file = 'perseus_global_properties.txt'
 
     # Likelihood axis resolutions
-    vel_widths = np.arange(1, 30, 2*0.16667)
-    dgrs = np.arange(0.01, 0.2, 1e-3)
+    vel_widths = np.arange(1, 20, 2*0.16667)
+    dgrs = np.arange(0.01, 0.2, 3e-4)
     #vel_widths = np.arange(1, 50, 8*0.16667)
     #dgrs = np.arange(0.01, 0.2, 1e-2)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (-20, 20)
+    vel_range = (-2.3, 9)
+
+    # Bin width in degrees
+    bin_width_deg = 1.0
+
+    # Clobber the binned images and remake them?
+    clobber_bin_images = 0
 
     # define directory locations
     # --------------------------
@@ -1281,6 +1297,8 @@ def main(av_data_type='planck'):
                               return_nhi_error=False,
                               )
 
+    print('\nDeriving mask for correlated residuals...')
+
     av_model, mask, dgr = iterate_residual_masking(
                              nhi_image=nhi_image,
                              av_data=av_data,
@@ -1305,6 +1323,7 @@ def main(av_data_type='planck'):
     # Bin the masked images
     # ---------------------
     print('\nBinning masked images...')
+
     av_data[mask] = np.nan
     av_data_error[mask] = np.nan
     hi_data[:, mask] = np.nan
@@ -1313,50 +1332,72 @@ def main(av_data_type='planck'):
     #hi_data[:, mask] = 0
 
     if not check_file(av_dir + 'perseus_av_planck_5arcmin_masked.fits',
-                      clobber=clobber):
+                      clobber=clobber_bin_images):
         fits.writeto(av_dir + 'perseus_av_planck_5arcmin_masked.fits',
                      av_data,
                      av_header)
 
     if not check_file(av_dir + 'perseus_av_error_planck_5arcmin_masked.fits',
-                      clobber=clobber):
+                      clobber=clobber_bin_images):
         fits.writeto(av_dir + 'perseus_av_error_planck_5arcmin_masked.fits',
                      av_data_error,
                      av_header)
 
-    if not check_file(hi_dir + 'perseus_hi_galfa_cube_regrid_planckres_masked.fits',
-                      clobber=clobber):
-        fits.writeto(hi_dir + 'perseus_hi_galfa_cube_regrid_planckres_masked.fits',
+    if not check_file(hi_dir + \
+                      'perseus_hi_galfa_cube_regrid_planckres_masked.fits',
+                      clobber=clobber_bin_images):
+        fits.writeto(hi_dir + \
+                     'perseus_hi_galfa_cube_regrid_planckres_masked.fits',
                      hi_data,
                      hi_header)
 
-    bin_image('perseus_av_planck_5arcmin',
-              image_dir=av_dir,
-              in_ext='_masked',
-              out_ext='_bin',
-              width=1,
-              clobber=clobber,
-              verbose=0,
-              )
+    if clobber_bin_images:
+        # Define number of pixels in each bin
+        binsize = bin_width_deg * 60.0 / 5.0
 
-    bin_image('perseus_av_error_planck_5arcmin',
-                         image_dir=av_dir,
-                         in_ext='_masked',
-                         out_ext='_bin',
-                         width=1,
-                         clobber=clobber,
-                         verbose=0,
-                         )
+        # Bin the images
+        # Av image
+        av_data_bin, av_header_bin = bin_image(av_data,
+                                       binsize=(binsize, binsize),
+                                       header=av_header,
+                                       func=np.nanmean)
 
-    bin_size = bin_image('perseus_hi_galfa_cube_regrid_planckres',
-                         image_dir=hi_dir,
-                         in_ext='_masked',
-                         out_ext='_bin',
-                         bin_dim=(1,2),
-                         width=1,
-                         clobber=clobber,
-                         verbose=0,
-                         )
+        if not check_file(av_dir + 'perseus_av_planck_5arcmin_bin.fits',
+                          clobber=clobber_bin_images):
+            fits.writeto(av_dir + 'perseus_av_planck_5arcmin_bin.fits',
+                         av_data_bin,
+                         av_header_bin)
+
+        # Av image error
+        # Errors add in square
+        # mean = sum(a_i) / n
+        # error on mean = sqrt(sum(a_i**2 / n**2))
+        noise_func = lambda x: np.nansum(x**2)**0.5 / x[~np.isnan(x)].size
+
+        av_data_error_bin, av_header_bin = bin_image(av_data_error,
+                                             binsize=(binsize, binsize),
+                                             header=av_header,
+                                             func=noise_func,)
+
+        if not check_file(av_dir + 'perseus_av_error_planck_5arcmin_bin.fits',
+                          clobber=clobber_bin_images):
+            fits.writeto(av_dir + 'perseus_av_error_planck_5arcmin_bin.fits',
+                         av_data_error_bin,
+                         av_header_bin)
+
+        # Hi image
+        hi_data_bin, hi_header_bin = bin_image(hi_data,
+                                       binsize=(binsize, binsize),
+                                       header=hi_header,
+                                       func=np.nanmean)
+
+        if not check_file(hi_dir + \
+                          'perseus_hi_galfa_cube_regrid_planckres_bin.fits',
+                          clobber=clobber_bin_images):
+            fits.writeto(hi_dir + \
+                         'perseus_hi_galfa_cube_regrid_planckres_bin.fits',
+                         hi_data_bin,
+                         hi_header_bin)
 
     # Load data
     # ---------
@@ -1374,8 +1415,6 @@ def main(av_data_type='planck'):
     av_data_error, av_error_header = fits.getdata(av_dir + \
                 'perseus_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
-
-    av_data_error *= bin_size
 
     hi_data, hi_header = fits.getdata(hi_dir + \
                             'perseus_hi_galfa_cube_regrid_planckres' + \
@@ -1414,7 +1453,8 @@ def main(av_data_type='planck'):
                        )
 
     # block off region
-    region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                      region_vertices))
 
     print('\nRegion size = ' + \
           '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
@@ -1439,6 +1479,8 @@ def main(av_data_type='planck'):
     # Define filename for plotting results
     results_filename = figure_dir + 'likelihood/'+ results_filename
 
+    print('\nPerforming likelihood calculations with initial error ' + \
+          'estimate...')
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
                      hi_vel_axis=hi_vel_axis,
@@ -1462,8 +1504,6 @@ def main(av_data_type='planck'):
     print('\nHI velocity integration range:')
     print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                  vel_range_confint[1]))
-    print('\nDGR:')
-    print('%.1f x 10^-20 cm^2 mag' % (dgr_confint[0]))
 
     # Calulate chi^2 for best fit models
     # ----------------------------------
@@ -1531,29 +1571,147 @@ def main(av_data_type='planck'):
     global_props['mask'] = mask.tolist()
     global_props['use_binned_image'] = True
 
-    with open(property_dir + global_property_file, 'w') as f:
+    # Write the file
+    print('\nWriting results to\n' + global_property_file + '_init.txt')
+
+    with open(property_dir + global_property_file + '_init.txt', 'w') as f:
         json.dump(global_props, f)
 
     # Plot likelihood space
-    print('\nWriting likelihood image to\n' + results_filename + '_wd.png')
+    print('\nWriting likelihood image to\n' + results_filename + \
+            '_init_wd.png')
     plot_likelihoods_hist(global_props,
                           plot_axes=('widths', 'dgrs'),
                           show=0,
                           returnimage=False,
-                          filename=results_filename + '_wd.png',
+                          filename=results_filename + '_init_wd.png',
                           contour_confs=contour_confs)
 
-    if 0:
-        plt.clf(); plt.close()
-        nhi_image_copy = np.copy(nhi_image)
-        nhi_image_copy[mask] = np.nan
-        av_image_copy = np.copy(av_data)
-        resid_image = av_image_copy - nhi_image_copy * dgr
-        plt.imshow(resid_image, origin='lower')
-        plt.title(r'$A_V$ Data - Model')
-        plt.colorbar()
-        plt.show()
+    # Rerun analysis with new error calculated
+    # Error should be calculated across entire image, not just atomic regions,
+    # in order to understand variation in DGR
+    # -------------------------------------------------------------------------
+    # Calculate new standard deviation, set global variable
+    # npix - 2 is the number of degrees of freedom
+    # see equation 15.1.6 in Numerical Recipes
+    std = np.sqrt(np.sum((av_data[~mask] - av_image_model[~mask])**2 \
+                         / (av_data[~mask].size - 2)))
 
+    av_data_error = std * np.ones(av_data_error.shape)
+    #av_image_error += np.std(av_data[~mask] - av_image_model[~mask])
+
+    print('\nSystematic error between model and data Av images:')
+    print('\tstd(model - data) = {0:.3f} mag'.format(av_data_error[0, 0]))
+
+    # Perform likelihood calculation of masked images
+    # -----------------------------------------------
+    print('\nPerforming likelihood calculations with scaled error ' + \
+          'estimate...')
+    results = calc_likelihoods(
+                     hi_cube=hi_data[:, ~mask],
+                     hi_vel_axis=hi_vel_axis,
+                     av_image=av_data[~mask],
+                     av_image_error=av_data_error[~mask],
+                     vel_center=vel_center,
+                     vel_widths=vel_widths,
+                     dgrs=dgrs,
+                     results_filename='',
+                     return_likelihoods=True,
+                     likelihood_filename=None,
+                     clobber=False,
+                     conf=conf,
+                     )
+
+    # Unpack output of likelihood calculation
+    (vel_range_confint, width_confint, dgr_confint, likelihoods,
+            width_likelihood, dgr_likelihood, width_max, dgr_max,
+            vel_range_max) = results
+
+    print('\nHI velocity integration range:')
+    print('%.1f to %.1f km/s' % (vel_range_confint[0],
+                                 vel_range_confint[1]))
+
+    # Calulate chi^2 for best fit models
+    # ----------------------------------
+    nhi_image_temp, nhi_image_error = \
+            calculate_nhi(cube=hi_data,
+                velocity_axis=hi_vel_axis,
+                velocity_range=vel_range_max,
+                noise_cube=noise_cube,
+                return_nhi_error=True)
+    av_image_model = nhi_image_temp * dgr_max
+    # avoid NaNs
+    indices = ((av_image_model == av_image_model) & \
+               (av_data == av_data))
+    # add nan locations to the mask
+    mask[~indices] = 1
+
+    # count number of pixels used in analysis
+    npix = mask[~mask].size
+
+    # finally calculate chi^2
+    chisq = np.sum((av_data[~mask] - av_image_model[~mask])**2 / \
+            av_data_error[~mask]**2) / av_data[~mask].size
+
+    print('\nTotal number of pixels in analysis, after masking = ' + \
+            '{0:.0f}'.format(npix))
+
+    print('\nReduced chi^2 = {0:.1f}'.format(chisq))
+
+    # Write results to global properties
+    global_props['dust2gas_ratio'] = {}
+    global_props['dust2gas_ratio_error'] = {}
+    global_props['hi_velocity_width'] = {}
+    global_props['hi_velocity_width_error'] = {}
+    global_props['dust2gas_ratio_max'] = {}
+    global_props['hi_velocity_center_max'] = {}
+    global_props['hi_velocity_width_max'] = {}
+    global_props['hi_velocity_range_max'] =  {}
+    global_props['av_threshold'] = {}
+    global_props['co_threshold'] = {}
+    global_props['hi_velocity_width']['value'] = width_confint[0]
+    global_props['hi_velocity_width']['unit'] = 'km/s'
+    global_props['hi_velocity_width_error']['value'] = width_confint[1:]
+    global_props['hi_velocity_width_error']['unit'] = 'km/s'
+    global_props['hi_velocity_range'] = vel_range_confint[0:2]
+    global_props['hi_velocity_range_error'] = vel_range_confint[2:]
+    global_props['dust2gas_ratio']['value'] = dgr_confint[0]
+    global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
+    global_props['dust2gas_ratio_max']['value'] = dgr_max
+    global_props['hi_velocity_center_max']['value'] = vel_center
+    global_props['hi_velocity_width_max']['value'] = width_max
+    global_props['hi_velocity_range_max']['value'] = vel_range_max
+    global_props['hi_velocity_range_conf'] = conf
+    global_props['width_likelihood'] = width_likelihood.tolist()
+    global_props['dgr_likelihood'] = dgr_likelihood.tolist()
+    global_props['vel_centers'] = [vel_center,]
+    global_props['vel_widths'] = vel_widths.tolist()
+    global_props['dgrs'] = dgrs.tolist()
+    global_props['likelihoods'] = likelihoods.tolist()
+    global_props['av_threshold']['value'] = None
+    global_props['av_threshold']['unit'] = 'mag'
+    global_props['co_threshold']['value'] = None
+    global_props['co_threshold']['unit'] = 'K km/s'
+    global_props['chisq'] = chisq
+    global_props['npix'] = npix
+    global_props['mask'] = mask.tolist()
+    global_props['use_binned_image'] = True
+
+    # Write the file
+    print('\nWriting results to\n' + global_property_file + '_scaled.txt')
+
+    with open(property_dir + global_property_file + '_scaled.txt', 'w') as f:
+        json.dump(global_props, f)
+
+    # Plot likelihood space
+    print('\nWriting likelihood image to\n' + results_filename + \
+            '_scaled_wd.png')
+    plot_likelihoods_hist(global_props,
+                          plot_axes=('widths', 'dgrs'),
+                          show=0,
+                          returnimage=False,
+                          filename=results_filename + '_scaled_wd.png',
+                          contour_confs=contour_confs)
 
 if __name__ == '__main__':
     main()

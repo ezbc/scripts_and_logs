@@ -649,7 +649,7 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False):
 
         counts, bin_edges = \
             np.histogram(np.ravel(residuals[~np.isnan(residuals)]),
-                                     bins=1000,
+                                     bins=100,
                                      )
 
         bin_edges_ext = np.zeros(len(counts) + 1)
@@ -666,7 +666,8 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False):
         plt.close;plt.clf()
         plt.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid')
         plt.plot(x_fit, y_fit, color='r')
-        plt.xlim([np.nanmin(bin_edges_ext),4])
+        plt.xlim([np.nanmin(bin_edges_ext) - \
+                  np.abs(0.8 * np.nanmin(bin_edges_ext)),4])
         plt.ylim([-0.1, 1.1])
         plt.axvline(resid_width_scale * np.abs(fit_params[0]),
                     color='k',
@@ -682,6 +683,7 @@ def iterate_residual_masking(
                              nhi_image=None,
                              av_data=None,
                              av_data_error=None,
+                             init_mask=None,
                              vel_range=None,
                              threshold_delta_dgr=None,
                              resid_width_scale=3.0,
@@ -707,6 +709,9 @@ def iterate_residual_masking(
             np.isnan(av_data_error) | \
             (av_data_error == 0) | \
             np.isnan(nhi_image))
+
+    if init_mask is not None:
+        mask += init_mask
 
     # solve for DGR using linear least squares
     print('\nSolving for DGR...')
@@ -936,13 +941,13 @@ def rebin_image(image, bin_size):
 '''
 
 def convert_limit_coordinates(prop_dict,
-        coords=('region_limit', 'co_noise_limits'), header=None):
+        coords=('region_limit', 'co_noise_limits', 'plot_limit'), header=None):
 
     # Initialize pixel keys
     for coord in coords:
         prop_dict[coord].update({'pixel': []})
 
-        if coord == 'region_limit':
+        if coord == 'region_limit' or coord == 'plot_limit':
             limit_wcs = prop_dict[coord]['wcs']
 
             for limits in limit_wcs:
@@ -1097,9 +1102,6 @@ def main(av_data_type='planck'):
     # Confidence of contour levels
     contour_confs = (0.68, 0.95)
 
-    likelihood_filename = 'perseus_likelihood_{0:s}'.format(av_data_type)
-    results_filename = 'perseus_likelihood_{0:s}'.format(av_data_type)
-
     # Name of HI noise cube
     noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise'
 
@@ -1114,29 +1116,29 @@ def main(av_data_type='planck'):
     global_property_file = 'perseus_global_properties.txt'
 
     # Likelihood axis resolutions
-    vel_widths = np.arange(1, 50, 2*0.16667)
+    vel_widths = np.arange(1, 30, 2*0.16667)
     dgrs = np.arange(0.01, 0.2, 1e-3)
-    vel_widths = np.arange(1, 50, 8*0.16667)
-    dgrs = np.arange(0.01, 0.2, 1e-2)
+    #vel_widths = np.arange(1, 50, 8*0.16667)
+    #dgrs = np.arange(0.01, 0.2, 1e-2)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (-40, 20)
+    vel_range = (-20, 20)
 
     # Use binned image?
     use_binned_image = False
 
     # define directory locations
     # --------------------------
-    output_dir = '/home/ezbc/research/data/perseus/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
     figure_dir = \
-        '/home/ezbc/research/figures/'
-    av_dir = '/home/ezbc/research/data/perseus/av/'
-    hi_dir = '/home/ezbc/research/data/perseus/hi/'
-    co_dir = '/home/ezbc/research/data/perseus/co/'
-    core_dir = '/home/ezbc/research/data/perseus/python_output/core_properties/'
-    property_dir = '/home/ezbc/research/data/perseus/python_output/'
-    region_dir = '/home/ezbc/research/data/perseus/python_output/ds9_regions/'
-    likelihood_dir = '/home/ezbc/research/data/perseus/python_output/nhi_av/'
+        '/d/bip3/ezbc/perseus/figures/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
+    likelihood_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
 
     # Load data
     # ---------
@@ -1144,7 +1146,13 @@ def main(av_data_type='planck'):
         bin_string = '_bin'
     else:
         bin_string = ''
+
+    # Adjust filenames
     noise_cube_filename += bin_string
+    likelihood_filename = 'perseus_likelihood_{0:s}'.format(av_data_type) + \
+                          bin_string
+    results_filename = 'perseus_likelihood_{0:s}'.format(av_data_type) + \
+                       bin_string
 
     av_data, av_header = fits.getdata(av_dir + \
                             'perseus_av_planck_5arcmin' + bin_string + '.fits',
@@ -1153,8 +1161,10 @@ def main(av_data_type='planck'):
     av_data_error, av_error_header = fits.getdata(av_dir + \
                 'perseus_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
-    #av_data_error = (100 * 0.025**2) * np.ones(av_data_error.shape)
-    #av_data_error *= 10.0
+
+    if use_binned_image:
+        #av_data_error = (100 * 0.025**2) * np.ones(av_data_error.shape)
+        av_data_error *= 5
 
     hi_data, hi_header = fits.getdata(hi_dir + \
                 'perseus_hi_galfa_cube_regrid_planckres' + bin_string + '.fits',
@@ -1173,13 +1183,14 @@ def main(av_data_type='planck'):
     hi_vel_axis = make_velocity_axis(hi_header)
 
     # Load the HI noise cube if it exists, else make it
-    if not path.isfile(hi_dir + noise_cube_filename):
+    if not path.isfile(hi_dir + noise_cube_filename + '.fits'):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=hi_vel_axis,
                 velocity_noise_range=[90,110], header=hi_header, Tsys=30.,
-                filename=hi_dir + noise_cube_filename)
+                filename=hi_dir + noise_cube_filename + '.fits')
     else:
-        noise_cube, noise_header = fits.getdata(hi_dir + noise_cube_filename,
+        noise_cube, noise_header = fits.getdata(hi_dir +
+                noise_cube_filename + '.fits',
             header=True)
 
     # Derive relevant region
@@ -1191,7 +1202,7 @@ def main(av_data_type='planck'):
                        )
 
     # block off region
-    region_mask = myg.get_polygon_mask(av_data, region_vertices)
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
 
     print('\nRegion size = ' + \
           '{0:.0f} pix'.format(region_mask[region_mask == 1].size))
@@ -1211,10 +1222,19 @@ def main(av_data_type='planck'):
                              vel_range=vel_range,
                              threshold_delta_dgr=threshold_delta_dgr,
                              resid_width_scale=resid_width_scale,
+                             init_mask=region_mask,
+                             verbose=1,
+                             plot_progress=0,
                              )
 
     # Combine region mask with new mask
-    mask += np.logical_not(region_mask)
+    #mask += np.logical_not(region_mask)
+    mask += region_mask
+
+    if 1:
+        import matplotlib.pyplot as plt
+        plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
+        plt.show()
 
     # Derive center velocity from hi
     # ------------------------------
@@ -1227,7 +1247,7 @@ def main(av_data_type='planck'):
     # Perform likelihood calculation of masked images
     # -----------------------------------------------
     # Define filename for plotting results
-    results_filename = figure_dir + results_filename
+    results_filename = figure_dir + 'likelihood/'+ results_filename
 
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
@@ -1261,7 +1281,8 @@ def main(av_data_type='planck'):
             calculate_nhi(cube=hi_data,
                 velocity_axis=hi_vel_axis,
                 velocity_range=vel_range_max,
-                noise_cube=noise_cube)
+                noise_cube=noise_cube,
+                return_nhi_error=True)
     av_image_model = nhi_image_temp * dgr_max
     # avoid NaNs
     indices = ((av_image_model == av_image_model) & \
@@ -1318,11 +1339,13 @@ def main(av_data_type='planck'):
     global_props['chisq'] = chisq
     global_props['npix'] = npix
     global_props['mask'] = mask.tolist()
+    global_props['use_binned_image'] = use_binned_image
 
     with open(property_dir + global_property_file, 'w') as f:
         json.dump(global_props, f)
 
     # Plot likelihood space
+    print('\nWriting likelihood image to\n' + results_filename + '_wd.png')
     plot_likelihoods_hist(global_props,
                           plot_axes=('widths', 'dgrs'),
                           show=0,
@@ -1330,15 +1353,16 @@ def main(av_data_type='planck'):
                           filename=results_filename + '_wd.png',
                           contour_confs=contour_confs)
 
-    plt.clf(); plt.close()
-    nhi_image_copy = np.copy(nhi_image)
-    nhi_image_copy[mask] = np.nan
-    av_image_copy = np.copy(av_data)
-    resid_image = av_image_copy - nhi_image_copy * dgr
-    plt.imshow(resid_image, origin='lower')
-    plt.title(r'$A_V$ Data - Model')
-    plt.colorbar()
-    plt.show()
+    if 0:
+        plt.clf(); plt.close()
+        nhi_image_copy = np.copy(nhi_image)
+        nhi_image_copy[mask] = np.nan
+        av_image_copy = np.copy(av_data)
+        resid_image = av_image_copy - nhi_image_copy * dgr
+        plt.imshow(resid_image, origin='lower')
+        plt.title(r'$A_V$ Data - Model')
+        plt.colorbar()
+        plt.show()
 
 
 if __name__ == '__main__':
