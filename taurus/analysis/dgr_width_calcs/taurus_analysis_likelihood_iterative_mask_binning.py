@@ -152,27 +152,40 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
               'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
+              'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
+              'text.usetex': True,
+              #'font.family': 'sans-serif',
+              'figure.figsize': (7.3/2.0, 7.3/4.0),
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
 
-    fig, ax_image = plt.subplots(figsize=(6,6))
+
+    fig, ax_image = plt.subplots(figsize=(7.3/2.0, 7.3/2.0))
 
     if plot_axes[0] == 'widths':
     	x_grid = global_props['vel_widths']
@@ -181,7 +194,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     	             global_props['hi_velocity_width_error']['value'][1],
     	             )
         x_extent = x_grid[0], x_grid[-1]
-        ax_image.set_xlabel(r'Velocity Width (km/s)')
+        ax_image.set_xlabel(r'Velocity Width [km/s]')
         x_sum_axes = 1
         y_pdf_label = r'Width PDF'
         x_limits = (x_grid[0], x_grid[-1])
@@ -192,7 +205,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     	             global_props['dust2gas_ratio_error']['value'][1],
     	             )
         y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'DGR (10$^{-20}$ cm$^2$ mag$^1$)')
+        ax_image.set_ylabel(r'DGR [10$^{-20}$ cm$^2$ mag]')
         y_sum_axes = 0
         x_pdf_label = r'DGR PDF'
         y_limits = (y_grid[0], y_grid[-1])
@@ -202,7 +215,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
 
     # Mask NaNs
-    likelihoods = global_props['likelihoods']
+    likelihoods = np.sum(global_props['likelihoods'], axis=(2))
     image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
 
     # Create likelihood image
@@ -231,8 +244,8 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
 
     if show_pdfs:
         divider = make_axes_locatable(ax_image)
-        ax_pdf_x = divider.append_axes("top", 1, pad=0.1, sharex=ax_image)
-        ax_pdf_y  = divider.append_axes("right", 1, pad=0.1,
+        ax_pdf_x = divider.append_axes("top", 0.6, pad=0.1, sharex=ax_image)
+        ax_pdf_y  = divider.append_axes("right", 0.6, pad=0.1,
                 sharey=ax_image)
 
         # make some labels invisible
@@ -492,6 +505,88 @@ def plot_av_image(av_image=None, header=None, title=None,
     if show:
         fig.show()
 
+def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
+        residual_thres=None, filename=None, show=True, title=None):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+    plt.rcdefaults()
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
+              'ytick.labelsize': font_scale,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
+              'text.usetex': True,
+              #'font.family': 'sans-serif',
+              'figure.figsize': (7.3/2.0, 7.3/4.0),
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    ax = fig.add_subplot(111)
+
+    counts, bin_edges = \
+        np.histogram(np.ravel(residuals[~np.isnan(residuals)]),
+                                 bins=1000,
+                                 )
+
+    bin_edges_ext = np.zeros(len(counts) + 1)
+    counts_ext = np.zeros(len(counts) + 1)
+
+    bin_edges_ext[0] = bin_edges[0] - (bin_edges[1] - bin_edges[0])
+    bin_edges_ext[1:] = bin_edges[:-1]
+    counts_ext[0] = 0
+    counts_ext[1:] = counts
+
+    counts_ext /= np.nanmax(counts_ext)
+    y_fit /= np.max(y_fit)
+
+    ax.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid',
+            linewidth=1.5)
+    ax.plot(x_fit, y_fit,
+            linewidth=2)
+    ax.set_xlim([np.nanmin(bin_edges_ext) - \
+                 np.abs(0.8 * np.nanmin(bin_edges_ext)),4])
+    ax.set_ylim([-0.1, 1.1])
+    ax.axvline(residual_thres,
+               color='k',
+               linestyle='--',
+               linewidth=1.5)
+    ax.set_xlabel(r'Residual $A_V$ [mag]')
+    ax.set_ylabel('Normalized PDF')
+
+    if title is not None:
+        fig.suptitle(title, fontsize=font_scale)
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight', dpi=600)
+    if show:
+        plt.show()
 
 ''' Calculations
 '''
@@ -616,7 +711,8 @@ def gauss(x, width, amp, x0):
 
     return amp * np.exp(-(x - x0)**2 / (2 * width**2))
 
-def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False):
+def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
+        results_filename=None):
 
     '''
 
@@ -639,50 +735,29 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False):
                            )[0]
 
     # Include only residuals within 3 sigma
-    mask = residuals > resid_width_scale * np.abs(fit_params[0])
+    residual_thres = resid_width_scale * np.abs(fit_params[0])
+    mask = residuals > residual_thres
 
-    if plot_progress:
-        import matplotlib.pyplot as plt
+    if results_filename is not None:
         x_fit = np.linspace(-10,
-                            10,
-                            1000)
+                        10,
+                        1000)
 
         y_fit = gauss(x_fit, *fit_params)
 
-        counts, bin_edges = \
-            np.histogram(np.ravel(residuals[~np.isnan(residuals)]),
-                                     bins=100,
-                                     )
-
-        bin_edges_ext = np.zeros(len(counts) + 1)
-        counts_ext = np.zeros(len(counts) + 1)
-
-        bin_edges_ext[0] = bin_edges[0] - (bin_edges[1] - bin_edges[0])
-        bin_edges_ext[1:] = bin_edges[:-1]
-        counts_ext[0] = 0
-        counts_ext[1:] = counts
-
-        counts_ext /= np.nanmax(counts_ext)
-        y_fit /= np.max(y_fit)
-
-        plt.close;plt.clf()
-        plt.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid')
-        plt.plot(x_fit, y_fit, color='r')
-        plt.xlim([np.nanmin(bin_edges_ext) - \
-                  np.abs(0.8 * np.nanmin(bin_edges_ext)),4])
-        plt.ylim([-0.1, 1.1])
-        plt.axvline(resid_width_scale * np.abs(fit_params[0]),
-                    color='k',
-                    linestyle='--',
-                    linewidth=3)
-        plt.xlabel(r'Residual $A_V$ [mag]')
-        plt.ylabel('Normalized PDF')
-        plt.show()
+        print('\nSaving residual mask PDF figure to\n' + results_filename)
+        plot_mask_residuals(residuals=residuals,
+                            x_fit=x_fit,
+                            y_fit=y_fit,
+                            residual_thres=residual_thres,
+                            filename=results_filename,
+                            show=plot_progress)
 
     return mask
 
 def iterate_residual_masking(
                              nhi_image=None,
+                             nhi_image_error=None,
                              av_data=None,
                              av_data_error=None,
                              init_mask=None,
@@ -690,6 +765,7 @@ def iterate_residual_masking(
                              threshold_delta_dgr=None,
                              resid_width_scale=3.0,
                              plot_progress=False,
+                             results_filename=None,
                              verbose=False,
                              ):
 
@@ -703,15 +779,17 @@ def iterate_residual_masking(
 
     '''
 
-
     import numpy as np
 
     # Mask out nans
     mask = (np.isnan(av_data) | \
             np.isnan(av_data_error) | \
             (av_data_error == 0) | \
-            np.isnan(nhi_image))
+            np.isnan(nhi_image) | \
+            np.isnan(nhi_image_error) | \
+            (nhi_image_error == 0))
 
+    # Apply initial mask to exclude throughout process
     if init_mask is not None:
         mask += init_mask
 
@@ -724,23 +802,46 @@ def iterate_residual_masking(
     delta_dgr = 1e10
     dgr = 1e10
     while delta_dgr > threshold_delta_dgr:
-        A = np.array((np.ravel(nhi_image[~mask] / av_data_error[~mask]),))
+        N = len(np.ravel(nhi_image[~mask]))
+        #A = np.array((np.ones(N),
+        #              np.ravel(nhi_image[~mask] / nhi_image_error[~mask]),))
+        A = np.array((np.ravel(nhi_image[~mask] / nhi_image_error[~mask]),))
         b = np.array((np.ravel(av_data[~mask] / av_data_error[~mask]),))
         A = np.matrix(A).T
         b = np.matrix(b).T
-        dgr_new = (np.linalg.pinv(A) * b)[0, 0]
+
+        a = (np.linalg.pinv(A) * b)
+        #intercept = a[0, 0]
+        #dgr_new = a[1, 0]
+        dgr_new = a[0, 0]
+        intercept = 0
 
         # Create model with the DGR
         if verbose:
             print('\tDGR = {0:.2} 10^20 cm^2 mag'.format(dgr))
-        av_image_model = nhi_image * dgr_new
+            print('\tIntercept = {0:.2f} mag'.format(intercept))
 
+        av_image_model = nhi_image * dgr_new + intercept
+
+        #if dgr == 1e10:
+        #    residuals = av_data - av_image_model
+        #else:
+        #    residuals = av_data - av_image_model + intercept
         residuals = av_data - av_image_model
 
+        if 0:
+            import matplotlib.pyplot as plt
+            plt.hist(residuals)
+            plt.show()
+
         # Include only residuals which are white noise
+        if dgr < 1e10:
+            results_filename = None
+
         mask_new = get_residual_mask(residuals,
                                      resid_width_scale=resid_width_scale,
-                                     plot_progress=plot_progress)
+                                     plot_progress=plot_progress,
+                                     results_filename=results_filename)
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -767,6 +868,7 @@ def calc_likelihoods(
         vel_center=None,
         vel_widths=None,
         dgrs=None,
+        intercepts=None,
         plot_results=False,
         results_filename='',
         return_likelihoods=True,
@@ -817,7 +919,8 @@ def calc_likelihoods(
         # calculate the likelihoodelation coefficient for each velocity
         # range
         likelihoods = np.zeros((len(vel_widths),
-                                len(dgrs)))
+                                len(dgrs),
+                                len(intercepts)))
 
         # Progress bar parameters
         total = float(likelihoods.size)
@@ -836,21 +939,21 @@ def calc_likelihoods(
 
             # Cycle through DGR to estimate error
             for k, dgr in enumerate(dgrs):
-                # Create model of Av with N(HI) and DGR
-                av_image_model = nhi_image * dgr
-                av_image_model_error = nhi_image * dgr
+                for m, intercept in enumerate(intercepts):
+                    # Create model of Av with N(HI) and DGR
+                    av_image_model = nhi_image * dgr + intercept
 
-                logL = calc_logL(av_image_model,
-                                 av_image,
-                                 data_error=av_image_error)
+                    logL = calc_logL(av_image_model,
+                                     av_image,
+                                     data_error=av_image_error)
 
-                likelihoods[j, k] = logL
+                    likelihoods[j, k, m] = logL
 
-                # Shows progress each 10%
-                count += 1
-                abs_step = int((total * 1)/10) or 10
-                if count and not count % abs_step:
-                    print "\t{0:.0%} processed".format(count/total)
+                    # Shows progress each 10%
+                    count += 1
+                    abs_step = int((total * 1)/10) or 10
+                    if count and not count % abs_step:
+                        print "\t{0:.0%} processed".format(count/total)
 
     # Load file of likelihoods
     elif not perform_mle:
@@ -878,9 +981,11 @@ def calc_likelihoods(
     likelihoods = likelihoods / np.nansum(likelihoods)
 
     # Derive marginal distributions of both centers and widths
-    width_likelihood = np.sum(likelihoods, axis=1) / \
+    intercept_likelihood = np.sum(likelihoods, axis=(0, 1)) / \
+                                  np.sum(likelihoods)
+    width_likelihood = np.sum(likelihoods, axis=(1, 2)) / \
             np.sum(likelihoods)
-    dgr_likelihood = np.sum(likelihoods, axis=0) / \
+    dgr_likelihood = np.sum(likelihoods, axis=(0, 2)) / \
             np.sum(likelihoods)
 
     # Derive confidence intervals of parameters
@@ -890,11 +995,15 @@ def calc_likelihoods(
     dgr_confint = calc_symmetric_error(dgrs,
                                  dgr_likelihood,
                                  alpha=1.0 - conf)
+    intercept_confint = calc_symmetric_error(intercepts,
+                                 intercept_likelihood,
+                                 alpha=1.0 - conf)
 
     # Get values of best-fit model parameters
     max_loc = np.where(likelihoods == np.max(likelihoods))
-    width_max = vel_widths[max_loc[0]][0]
-    dgr_max = dgrs[max_loc[1]][0]
+    width_max = vel_widths[max_loc[0][0]]
+    dgr_max = dgrs[max_loc[1][0]]
+    intercept_max = intercepts[max_loc[2][0]]
 
     print('\nVelocity widths = ' + \
             '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(width_confint[0],
@@ -904,6 +1013,10 @@ def calc_likelihoods(
             '{0:.2f} +{1:.2f}/-{2:.2f} 10^20 cm^2 mag'.format(dgr_confint[0],
                                                     dgr_confint[2],
                                                     np.abs(dgr_confint[1])))
+    print('\nIntercepts = ' + \
+        '{0:.2f} +{1:.2f}/-{2:.2f} 10^20 cm^2 mag'.format(intercept_confint[0],
+                                                intercept_confint[2],
+                                                np.abs(intercept_confint[1])))
 
     # Write PDF
     upper_lim = (vel_center + width_confint[0]/2.)
@@ -917,8 +1030,10 @@ def calc_likelihoods(
     if not return_likelihoods:
         return vel_range_confint, dgr_confint
     else:
-        return (vel_range_confint, width_confint, dgr_confint, likelihoods,
-                width_likelihood, dgr_likelihood, width_max, dgr_max,
+        return (vel_range_confint, width_confint, dgr_confint,
+                intercept_confint, likelihoods,
+                width_likelihood, dgr_likelihood,
+                intercept_likelihood, width_max, dgr_max, intercept_max,
                 vel_range_max)
 
 def rebin_image(image, bin_size):
@@ -1123,10 +1238,11 @@ def load_ds9_region(props, filename=None, header=None):
 
     props['regions'] = {}
 
+
     for region in regions:
         # Cores defined in following format: 'tag={L1495A}'
         tag = region.comment
-        region_name = tag[tag.find('{')+1:tag.find('}')].lower()
+        region_name = tag[tag.find('text={')+6:tag.find('}')].lower()
 
         # Format vertices to be 2 x N array
         poly_verts = []
@@ -1151,7 +1267,7 @@ def load_ds9_region(props, filename=None, header=None):
 Main Script
 '''
 
-def main(av_data_type='planck'):
+def main(av_data_type='planck', region=None):
 
     # Import external modules
     # -----------------------
@@ -1168,7 +1284,7 @@ def main(av_data_type='planck'):
     # Set parameters
     # --------------
     # Check if likelihood file already written, rewrite?
-    clobber = 1
+    clobber = 0
 
     # Confidence of parameter errors
     conf = 0.68
@@ -1192,10 +1308,12 @@ def main(av_data_type='planck'):
     vel_widths = np.arange(1, 20, 2*0.16667)
     dgrs = np.arange(0.05, 0.4, 5e-3)
     intercepts = np.arange(-1, 1, 0.01)
-    #vel_widths = np.arange(1, 50, 8*0.16667)
+    #vel_widths = np.arange(1, 20, 8*0.16667)
     #dgrs = np.arange(0.01, 0.2, 1e-2)
+    #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
+    vel_range = (-10, 20)
     vel_range = (1.8,8.1)
 
     # Bin width in degrees
@@ -1203,6 +1321,9 @@ def main(av_data_type='planck'):
 
     # Clobber the binned images and remake them?
     clobber_bin_images = 0
+
+    # Filetype extensions for figures
+    figure_types = ('png', 'pdf')
 
     # define directory locations
     # --------------------------
@@ -1223,14 +1344,22 @@ def main(av_data_type='planck'):
     #noise_cube_filename += bin_string
     likelihood_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
     results_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
+    # load Planck Av and GALFA HI images, on same grid
+    if av_data_type == 'k09':
+        print('\nLoading K+09 2MASS data...')
+        av_data, av_header = fits.getdata(av_dir + \
+                                  'taurus_av_k09_regrid_planckres.fits',
+                                  header=True)
+        av_data_error = 0.1 * np.ones(av_data.shape)
+    else:
+    	print('\nLoading Planck data...')
+        av_data, av_header = fits.getdata(av_dir + \
+                                          'taurus_av_planck_5arcmin.fits',
+                                          header=True)
 
-    av_data, av_header = fits.getdata(av_dir + \
-                            'taurus_av_planck_5arcmin.fits',
-                                      header=True)
-
-    av_data_error, av_error_header = fits.getdata(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
-            header=True)
+        av_data_error, av_error_header = fits.getdata(av_dir + \
+                                    'taurus_av_error_planck_5arcmin.fits',
+                                    header=True)
 
     hi_data, hi_header = fits.getdata(hi_dir + \
                 'taurus_hi_galfa_cube_regrid_planckres.fits',
@@ -1242,11 +1371,31 @@ def main(av_data_type='planck'):
 
     # Prepare data products
     # ---------------------
+    # Name correct region of cloud
+    if region == 1:
+        region_name = 'taurus1'
+    elif region == 2:
+        region_name = 'taurus2'
+    else:
+        region_name = 'taurus'
+    global_property_file = global_property_file.replace('taurus', region_name)
+
     # Change WCS coords to pixel coords of images
     global_props = convert_limit_coordinates(global_props, header=av_header)
 
     # make the velocity axes
     hi_vel_axis = make_velocity_axis(hi_header)
+
+    # Load the HI noise cube if it exists, else make it
+    if not path.isfile(hi_dir + noise_cube_filename + '.fits'):
+        noise_cube = calculate_noise_cube(cube=hi_data,
+                velocity_axis=hi_vel_axis,
+                velocity_noise_range=[90,110], header=hi_header, Tsys=30.,
+                filename=hi_dir + noise_cube_filename + '.fits')
+    else:
+        noise_cube, noise_header = fits.getdata(hi_dir +
+                noise_cube_filename + '.fits',
+            header=True)
 
     # Load cloud division regions from ds9
     global_props = load_ds9_region(global_props,
@@ -1261,7 +1410,8 @@ def main(av_data_type='planck'):
                        (pix[3], pix[0])
                        )
 
-    region_vertices = global_props['regions']['taurus']['poly_verts']['pixel']
+    region_vertices = \
+        global_props['regions'][region_name]['poly_verts']['pixel']
 
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
@@ -1276,16 +1426,20 @@ def main(av_data_type='planck'):
 
     # Derive mask by excluding correlated residuals
     # ---------------------------------------------
-    nhi_image = calculate_nhi(cube=hi_data,
+    nhi_image, nhi_image_error = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
                               velocity_range=vel_range,
-                              return_nhi_error=False,
+                              noise_cube=noise_cube,
+                              velocity_noise_range=[90, 110],
+                              Tsys=30.0,
+                              return_nhi_error=True,
                               )
 
     print('\nDeriving mask for correlated residuals...')
 
     av_model, mask, dgr = iterate_residual_masking(
                              nhi_image=nhi_image,
+                             nhi_image_error=nhi_image_error,
                              av_data=av_data,
                              av_data_error=av_data_error,
                              vel_range=vel_range,
@@ -1294,6 +1448,8 @@ def main(av_data_type='planck'):
                              init_mask=region_mask,
                              verbose=1,
                              plot_progress=0,
+                             results_filename=figure_dir + 'likelihood/'\
+                                              'taurus_residual_pdf.pdf'
                              )
 
     # Combine region mask with new mask
@@ -1391,8 +1547,10 @@ def main(av_data_type='planck'):
 
     # Adjust filenames
     noise_cube_filename += bin_string
-    likelihood_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
-    results_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
+    likelihood_filename = '{0:s}_likelihood_{1:s}_bin'.format(region_name,
+                                                              av_data_type)
+    results_filename = '{0:s}_likelihood_{1:s}_bin'.format(region_name,
+                                                           av_data_type)
 
     av_data, av_header = fits.getdata(av_dir + \
                             'taurus_av_planck_5arcmin' + bin_string + '.fits',
@@ -1407,19 +1565,6 @@ def main(av_data_type='planck'):
                             bin_string + '.fits',
                             header=True)
 
-    # Prepare data products
-    # ---------------------
-    # Change WCS coords to pixel coords of images
-    global_props['region_limit_bin'] = global_props['region_limit'].copy()
-    global_props['plot_limit_bin'] = global_props['plot_limit'].copy()
-    global_props = convert_limit_coordinates(global_props,
-                                             header=av_header,
-                                             coords=('region_limit_bin',
-                                                     'plot_limit_bin'))
-
-    # make the velocity axes
-    hi_vel_axis = make_velocity_axis(hi_header)
-
     # Load the HI noise cube if it exists, else make it
     if not path.isfile(hi_dir + noise_cube_filename + '.fits'):
         noise_cube = calculate_noise_cube(cube=hi_data,
@@ -1430,6 +1575,17 @@ def main(av_data_type='planck'):
         noise_cube, noise_header = fits.getdata(hi_dir +
                 noise_cube_filename + '.fits',
             header=True)
+
+
+    # Prepare data products
+    # ---------------------
+    # Change WCS coords to pixel coords of images
+    global_props['region_limit_bin'] = global_props['region_limit'].copy()
+    global_props['plot_limit_bin'] = global_props['plot_limit'].copy()
+    global_props = convert_limit_coordinates(global_props,
+                                             header=av_header,
+                                             coords=('region_limit_bin',
+                                                     'plot_limit_bin'))
 
     # Derive relevant region
     pix = global_props['region_limit_bin']['pixel']
@@ -1476,6 +1632,7 @@ def main(av_data_type='planck'):
                      vel_center=vel_center,
                      vel_widths=vel_widths,
                      dgrs=dgrs,
+                     intercepts=intercepts,
                      results_filename='',
                      return_likelihoods=True,
                      likelihood_filename=None,
@@ -1484,8 +1641,9 @@ def main(av_data_type='planck'):
                      )
 
     # Unpack output of likelihood calculation
-    (vel_range_confint, width_confint, dgr_confint, likelihoods,
-            width_likelihood, dgr_likelihood, width_max, dgr_max,
+    (vel_range_confint, width_confint, dgr_confint, intercepts_confint,
+            likelihoods, width_likelihood, dgr_likelihood,
+            intercept_likelihood, width_max, dgr_max, intercept_max,
             vel_range_max) = results
 
     print('\nHI velocity integration range:')
@@ -1500,7 +1658,7 @@ def main(av_data_type='planck'):
                 velocity_range=vel_range_max,
                 noise_cube=noise_cube,
                 return_nhi_error=True)
-    av_image_model = nhi_image_temp * dgr_max
+    av_image_model = nhi_image_temp * dgr_max + intercept_max
     # avoid NaNs
     indices = ((av_image_model == av_image_model) & \
                (av_data == av_data))
@@ -1567,14 +1725,17 @@ def main(av_data_type='planck'):
         json.dump(global_props, f)
 
     # Plot likelihood space
-    print('\nWriting likelihood image to\n' + results_filename + \
-            '_init_wd.png')
-    plot_likelihoods_hist(global_props,
-                          plot_axes=('widths', 'dgrs'),
-                          show=0,
-                          returnimage=False,
-                          filename=results_filename + '_init_wd.png',
-                          contour_confs=contour_confs)
+    for figure_type in figure_types:
+        print('\nWriting likelihood image to\n' + results_filename + \
+              '_init_wd.{0:s}'.format(figure_type))
+        plot_likelihoods_hist(global_props,
+                              plot_axes=('widths', 'dgrs'),
+                              show=0,
+                              returnimage=False,
+                              filename=results_filename + \
+                                       '_init_wd.{0:s}'.format(figure_type),
+                              contour_confs=contour_confs)
+
 
     # Rerun analysis with new error calculated
     # Error should be calculated across entire image, not just atomic regions,
@@ -1604,6 +1765,7 @@ def main(av_data_type='planck'):
                      vel_center=vel_center,
                      vel_widths=vel_widths,
                      dgrs=dgrs,
+                     intercepts=intercepts,
                      results_filename='',
                      return_likelihoods=True,
                      likelihood_filename=None,
@@ -1612,9 +1774,11 @@ def main(av_data_type='planck'):
                      )
 
     # Unpack output of likelihood calculation
-    (vel_range_confint, width_confint, dgr_confint, likelihoods,
-            width_likelihood, dgr_likelihood, width_max, dgr_max,
+    (vel_range_confint, width_confint, dgr_confint, intercept_confint,
+            likelihoods, width_likelihood, dgr_likelihood,
+            intercept_likelihood, width_max, dgr_max, intercept_max,
             vel_range_max) = results
+
 
     print('\nHI velocity integration range:')
     print('%.1f to %.1f km/s' % (vel_range_confint[0],
@@ -1650,10 +1814,13 @@ def main(av_data_type='planck'):
     # Write results to global properties
     global_props['dust2gas_ratio'] = {}
     global_props['dust2gas_ratio_error'] = {}
+    global_props['intercept'] = {}
+    global_props['intercept_error'] = {}
     global_props['hi_velocity_width'] = {}
     global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
-    global_props['hi_velocity_center_max'] = {}
+    global_props['intercept_max'] = {}
+    global_props['hi_velocity_center'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
     global_props['av_threshold'] = {}
@@ -1667,15 +1834,20 @@ def main(av_data_type='planck'):
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
     global_props['dust2gas_ratio_max']['value'] = dgr_max
-    global_props['hi_velocity_center_max']['value'] = vel_center
+    global_props['intercept']['value'] = intercept_confint[0]
+    global_props['intercept_error']['value'] = intercept_confint[1:]
+    global_props['intercept_max']['value'] = intercept_max
+    global_props['hi_velocity_center']['value'] = vel_center
     global_props['hi_velocity_width_max']['value'] = width_max
     global_props['hi_velocity_range_max']['value'] = vel_range_max
     global_props['hi_velocity_range_conf'] = conf
     global_props['width_likelihood'] = width_likelihood.tolist()
     global_props['dgr_likelihood'] = dgr_likelihood.tolist()
+    global_props['intercept_likelihood'] = intercept_likelihood.tolist()
     global_props['vel_centers'] = [vel_center,]
     global_props['vel_widths'] = vel_widths.tolist()
     global_props['dgrs'] = dgrs.tolist()
+    global_props['intercepts'] = intercepts.tolist()
     global_props['likelihoods'] = likelihoods.tolist()
     global_props['av_threshold']['value'] = None
     global_props['av_threshold']['unit'] = 'mag'
@@ -1695,17 +1867,24 @@ def main(av_data_type='planck'):
         json.dump(global_props, f)
 
     # Plot likelihood space
-    print('\nWriting likelihood image to\n' + results_filename + \
-            '_scaled_wd.png')
-    plot_likelihoods_hist(global_props,
-                          plot_axes=('widths', 'dgrs'),
-                          show=0,
-                          returnimage=False,
-                          filename=results_filename + '_scaled_wd.png',
-                          contour_confs=contour_confs)
+    for figure_type in figure_types:
+        print('\nWriting likelihood image to\n' + results_filename + \
+              '_scaled_wd.{0:s}'.format(figure_type))
+        plot_likelihoods_hist(global_props,
+                              plot_axes=('widths', 'dgrs'),
+                              show=0,
+                              returnimage=False,
+                              filename=results_filename + \
+                                       '_scaled_wd.{0:s}'.format(figure_type),
+                              contour_confs=contour_confs)
 
 if __name__ == '__main__':
-    main()
+
+    # Use region 1 or 2. See
+    main(av_data_type='planck')
+    #main(av_data_type='k09')
+    #main(region = 1)
+    #main(region = 2)
 
 
 

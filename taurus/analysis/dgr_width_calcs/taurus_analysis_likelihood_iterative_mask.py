@@ -629,11 +629,38 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False):
     counts, bin_edges = np.histogram(np.ravel(residuals_crop),
                                      bins=100,
                                      )
+
+    if plot_progress:
+        import matplotlib.pyplot as plt
+
+        counts, bin_edges = \
+            np.histogram(np.ravel(residuals[~np.isnan(residuals)]),
+                                     bins=1000,
+                                     )
+
+        bin_edges_ext = np.zeros(len(counts) + 1)
+        counts_ext = np.zeros(len(counts) + 1)
+
+        bin_edges_ext[0] = bin_edges[0] - (bin_edges[1] - bin_edges[0])
+        bin_edges_ext[1:] = bin_edges[:-1]
+        counts_ext[0] = 0
+        counts_ext[1:] = counts
+
+        counts_ext /= np.nanmax(counts_ext)
+
+        plt.close;plt.clf()
+        plt.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid')
+        plt.xlim([np.nanmin(bin_edges_ext),4])
+        plt.ylim([-0.1, 1.1])
+        plt.xlabel(r'residual $a_v$ [mag]')
+        plt.ylabel('normalized pdf')
+        plt.show()
+
     fit_params = curve_fit(gauss,
                            bin_edges[:-1],
                            counts,
-                           p0=(2, np.nanmax(counts), 0),
-                           maxfev=10000,
+                           p0=(0.5, np.nanmax(counts), 0),
+                           maxfev=1000000,
                            )[0]
 
     # Include only residuals within 3 sigma
@@ -672,8 +699,8 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False):
                     color='k',
                     linestyle='--',
                     linewidth=3)
-        plt.xlabel(r'Residual $A_V$ [mag]')
-        plt.ylabel('Normalized PDF')
+        plt.xlabel(r'residual $a_v$ [mag]')
+        plt.ylabel('normalized pdf')
         plt.show()
 
     return mask
@@ -1104,11 +1131,11 @@ def main(av_data_type='planck'):
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise'
 
     # Threshold for converging DGR
-    threshold_delta_dgr = 0.005
+    threshold_delta_dgr = 0.0005
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    resid_width_scale = 3.0
+    resid_width_scale = 2.0
 
     # Name of property files results are written to
     global_property_file = 'taurus_global_properties.txt'
@@ -1118,23 +1145,23 @@ def main(av_data_type='planck'):
     dgrs = np.arange(0.01, 0.2, 1e-3)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (-20, 20)
+    vel_range = (-10, 10)
 
     # Use binned image?
     use_binned_image = False
 
     # define directory locations
     # --------------------------
-    output_dir = '/home/ezbc/research/data/taurus/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
     figure_dir = \
-        '/home/ezbc/research/figures/'
-    av_dir = '/home/ezbc/research/data/taurus/av/'
-    hi_dir = '/home/ezbc/research/data/taurus/hi/'
-    co_dir = '/home/ezbc/research/data/taurus/co/'
-    core_dir = '/home/ezbc/research/data/taurus/python_output/core_properties/'
-    property_dir = '/home/ezbc/research/data/taurus/python_output/'
-    region_dir = '/home/ezbc/research/data/taurus/python_output/ds9_regions/'
-    likelihood_dir = '/home/ezbc/research/data/taurus/python_output/nhi_av/'
+        '/d/bip3/ezbc/taurus/figures/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
 
     # Load data
     # ---------
@@ -1152,7 +1179,7 @@ def main(av_data_type='planck'):
                 'taurus_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
     #av_data_error = (100 * 0.025**2) * np.ones(av_data_error.shape)
-    av_data_error *= 10.0
+    #av_data_error *= 10.0
 
     hi_data, hi_header = fits.getdata(hi_dir + \
                 'taurus_hi_galfa_cube_regrid_planckres' + bin_string + '.fits',
@@ -1171,11 +1198,11 @@ def main(av_data_type='planck'):
     hi_vel_axis = make_velocity_axis(hi_header)
 
     # Load the HI noise cube if it exists, else make it
-    if not path.isfile(hi_dir + noise_cube_filename):
+    if not path.isfile(hi_dir + noise_cube_filename + '.fits'):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=hi_vel_axis,
                 velocity_noise_range=[90,110], header=hi_header, Tsys=30.,
-                filename=hi_dir + noise_cube_filename)
+                filename=hi_dir + noise_cube_filename + '.fits')
     else:
         noise_cube, noise_header = fits.getdata(hi_dir + noise_cube_filename,
             header=True)
@@ -1209,6 +1236,7 @@ def main(av_data_type='planck'):
                              vel_range=vel_range,
                              threshold_delta_dgr=threshold_delta_dgr,
                              resid_width_scale=resid_width_scale,
+                             plot_progress=False
                              )
 
     # Combine region mask with new mask
@@ -1259,7 +1287,8 @@ def main(av_data_type='planck'):
             calculate_nhi(cube=hi_data,
                 velocity_axis=hi_vel_axis,
                 velocity_range=vel_range_max,
-                noise_cube=noise_cube)
+                noise_cube=noise_cube,
+                return_nhi_error=True)
     av_image_model = nhi_image_temp * dgr_max
     # avoid NaNs
     indices = ((av_image_model == av_image_model) & \
@@ -1337,7 +1366,6 @@ def main(av_data_type='planck'):
     plt.title(r'$A_V$ Data - Model')
     plt.colorbar()
     plt.show()
-
 
 if __name__ == '__main__':
     main()

@@ -11,535 +11,6 @@ warnings.filterwarnings('ignore')
 ''' Plotting Functions
 '''
 
-def plot_nhi_vs_av(nhi_image, av_image,
-        nhi_image_error=None, av_image_error=None, limits=None,
-        savedir='./', filename=None, show=True, scale='linear',
-        returnimage=False, hess_binsize=None, title='', plot_type='hexbin'):
-    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
-    and an Av image.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-
-    # Drop the NaNs from the images
-    indices = np.where((nhi_image == nhi_image) &\
-                       (av_image == av_image)&\
-                       (av_image > 0) &\
-                       (nhi_image > -5))
-
-    nhi_image_nonans = nhi_image[indices]
-    av_image_nonans = av_image[indices]
-
-    if type(nhi_image_error) is np.ndarray:
-        nhi_image_error_nonans = nhi_image_error[indices]
-    else:
-        nhi_image_error_nonans = np.array(nhi_image_error[indices])
-
-    if type(av_image_error) is np.ndarray:
-        av_image_error_nonans = av_image_error[indices]
-    else:
-        av_image_error_nonans = av_image_error * \
-                np.ones(av_image[indices].shape)
-
-    # Create figure
-    plt.clf()
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(111)
-    if nhi_image_error is None:
-        if plot_type is 'hexbin':
-            image = ax.hexbin(av_image_nonans.ravel(),
-                    nhi_image_nonans.ravel(),
-                    norm=matplotlib.colors.LogNorm(),
-                    mincnt=1,
-                    yscale='log',
-                    xscale='log')
-            # Adjust color bar of density plot
-            cb = plt.colorbar(image)
-            cb.set_label('Counts')
-        elif plot_type is 'scatter':
-            image = ax.scatter(av_image_nonans.ravel(),
-                    nhi_image_nonans.ravel(),
-                    alpha=0.3,
-                    color='k'
-                    )
-            ax.set_xscale('log')
-            ax.set_yscale('log')
-    else:
-        image = ax.errorbar(av_image_nonans.ravel(),
-                nhi_image_nonans.ravel(),
-                xerr=(av_image_error_nonans.ravel()),
-                yerr=(nhi_image_error_nonans.ravel()),
-                alpha=0.3,
-                color='k',
-                marker='^',ecolor='k',linestyle='None',
-                markersize=2
-                )
-
-        ax.set_xscale(scale)
-        ax.set_yscale(scale)
-
-    if limits is not None:
-        ax.set_xlim(limits[0],limits[1])
-        ax.set_ylim(limits[2],limits[3])
-
-    # Adjust asthetics
-    ax.set_xlabel('A$_v$ (mag)',
-              size = 'small',
-              family='serif')
-    ax.set_ylabel(r'N(HI) (1 $\times 10^{20}$ cm$^{-2}$)',
-              size = 'small',
-              family='serif')
-    ax.set_title(title)
-    ax.grid(True)
-
-    if filename is not None:
-        plt.savefig(savedir + filename,bbox_inches='tight')
-    if show:
-        fig.show()
-    if returnimage:
-        return likelihoods_image
-
-def plot_hisd_vs_hsd(hi_sd_image, h_sd_image,
-        hi_sd_image_error=None, h_sd_image_error=None, limits=None,
-        savedir='./', filename=None, show=True, scale='linear',
-        returnimage=False, hess_binsize=None, title='', plot_type='hexbin'):
-
-    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
-    and an Av image.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-
-    # Drop the NaNs from the images
-    indices = np.where((hi_sd_image == hi_sd_image) &\
-                       (h_sd_image == h_sd_image)&\
-                       (h_sd_image > 0) &\
-                       (hi_sd_image > -5))
-
-    hi_sd_image_nonans = hi_sd_image[indices]
-    h_sd_image_nonans = h_sd_image[indices]
-
-    if type(hi_sd_image_error) is np.ndarray:
-        hi_sd_image_error_nonans = hi_sd_image_error[indices]
-    else:
-        hi_sd_image_error_nonans = np.array(hi_sd_image_error[indices])
-
-    if type(h_sd_image_error) is np.ndarray:
-        h_sd_image_error_nonans = h_sd_image_error[indices]
-    elif type(h_sd_image_error) is np.ma.core.MaskedArray:
-        #h_sd_image_error_nonans = np.copy(h_sd_image_error[indices])
-        h_sd_image_error_nonans = h_sd_image_error[indices]
-    else:
-        h_sd_image_error_nonans = h_sd_image_error * \
-                np.ones(h_sd_image[indices].shape)
-
-    # Create figure
-    plt.clf()
-    fig = plt.figure(figsize=(8,8))
-    ax = fig.add_subplot(111)
-    if hi_sd_image_error is None:
-        if plot_type is 'hexbin':
-            image = ax.hexbin(h_sd_image_nonans.ravel(),
-                    hi_sd_image_nonans.ravel(),
-                    norm=matplotlib.colors.LogNorm(),
-                    mincnt=1,
-                    yscale='log',
-                    xscale='log')
-            # Adjust color bar of density plot
-            cb = plt.colorbar(image)
-            cb.set_label('Counts')
-        elif plot_type is 'scatter':
-            image = ax.scatter(h_sd_image_nonans.ravel(),
-                    hi_sd_image_nonans.ravel(),
-                    alpha=0.3,
-                    color='k'
-                    )
-            ax.set_xscale('log')
-            ax.set_yscale('log')
-    else:
-        image = ax.errorbar(h_sd_image_nonans.ravel(),
-                hi_sd_image_nonans.ravel(),
-                xerr=(h_sd_image_error_nonans.ravel()),
-                yerr=(hi_sd_image_error_nonans.ravel()),
-                alpha=0.3,
-                color='k',
-                marker='^',ecolor='k',linestyle='None',
-                markersize=2
-                )
-
-        ax.set_xscale(scale)
-        ax.set_yscale(scale)
-
-    if limits is not None:
-        ax.set_xlim(limits[0],limits[1])
-        ax.set_ylim(limits[2],limits[3])
-
-    # Adjust asthetics
-    ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',
-              size = 'small',
-              family='serif')
-    ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',
-              size = 'small',
-              family='serif')
-    ax.set_title(title)
-    ax.grid(True)
-
-    if filename is not None:
-        plt.savefig(savedir + filename,bbox_inches='tight')
-    if show:
-        fig.show()
-    if returnimage:
-        return likelihoods_image
-
-def plot_sd_vs_av(sd_image, av_image,
-        sd_image_error=None, av_image_error=None, limits=None,
-        savedir='./', filename=None, show=True, scale='linear',
-        returnimage=False, hess_binsize=None, title='', plot_type='hexbin'):
-    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
-    and an Av image.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-
-    # Drop the NaNs from the images
-    indices = np.where((sd_image == sd_image) &\
-                       (av_image == av_image)&\
-                       (av_image > 0) &\
-                       (sd_image > -5))
-
-    sd_image_nonans = sd_image[indices]
-    av_image_nonans = av_image[indices]
-
-    if type(sd_image_error) is np.ndarray:
-        sd_image_error_nonans = sd_image_error[indices]
-    else:
-        sd_image_error_nonans = np.array(sd_image_error[indices])
-
-    if type(av_image_error) is np.ndarray:
-        av_image_error_nonans = av_image_error[indices]
-    else:
-        av_image_error_nonans = av_image_error * \
-                np.ones(av_image[indices].shape)
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (6, 6),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-
-    # Create figure
-    plt.clf()
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    if sd_image_error is None:
-        if plot_type is 'hexbin':
-            image = ax.hexbin(av_image_nonans.ravel(),
-                    sd_image_nonans.ravel(),
-                    norm=matplotlib.colors.LogNorm(),
-                    mincnt=1,
-                    yscale='log',
-                    xscale='log')
-            # Adjust color bar of density plot
-            cb = plt.colorbar(image)
-            cb.set_label('Counts')
-        elif plot_type is 'scatter':
-            image = ax.scatter(av_image_nonans.ravel(),
-                    sd_image_nonans.ravel(),
-                    alpha=0.3,
-                    color='k'
-                    )
-            ax.set_xscale('log')
-            ax.set_yscale('log')
-    else:
-        image = ax.errorbar(av_image_nonans.ravel(),
-                sd_image_nonans.ravel(),
-                xerr=(av_image_error_nonans.ravel()),
-                yerr=(sd_image_error_nonans.ravel()),
-                alpha=0.3,
-                color='k',
-                marker='^',ecolor='k',linestyle='None',
-                markersize=2
-                )
-
-        ax.set_xscale('linear')
-        ax.set_yscale(scale)
-
-    if limits is not None:
-        ax.set_xlim(limits[0],limits[1])
-        ax.set_ylim(limits[2],limits[3])
-
-    # Adjust asthetics
-    ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
-    ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
-    ax.set_title(title)
-    ax.grid(True)
-
-    if filename is not None:
-        plt.savefig(savedir + filename,bbox_inches='tight')
-    if show:
-        fig.show()
-    if returnimage:
-        return likelihoods_image
-
-def plot_sd_vs_av_grid(sd_images, av_images,
-        sd_image_errors=None, av_image_errors=None, limits=None,
-        savedir='./', filename=None, show=True, scale=('linear', 'linear'),
-        returnimage=False, title=None, core_names=''):
-
-    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
-    and an Av image.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from mpl_toolkits.axes_grid1 import ImageGrid
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (10, 10),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    # Create figure instance
-    fig = plt.figure()
-
-    n = int(np.ceil(len(av_images)**0.5))
-
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
-                 ngrids=len(av_images),
-                 axes_pad=0.25,
-                 aspect=False,
-                 label_mode='L',
-                 share_all=True)
-
-    for i in xrange(len(av_images)):
-        sd_image = sd_images[i]
-        av_image = av_images[i]
-        sd_image_error = sd_image_errors[i]
-        av_image_error = av_image_errors[i]
-
-        # Drop the NaNs from the images
-        indices = np.where((sd_image == sd_image) &\
-                           (av_image == av_image) &\
-                           (av_image > 0) &\
-                           (sd_image > -5))
-
-        sd_image_nonans = sd_image[indices]
-        av_image_nonans = av_image[indices]
-
-        if type(sd_image_error) is np.ndarray:
-            sd_image_error_nonans = sd_image_error[indices]
-        else:
-            sd_image_error_nonans = np.array(sd_image_error[indices])
-
-        if type(av_image_error) is np.ndarray:
-            av_image_error_nonans = av_image_error[indices]
-        else:
-            av_image_error_nonans = av_image_error * \
-                    np.ones(av_image[indices].shape)
-
-        # Create plot
-        ax = imagegrid[i]
-
-        image = ax.errorbar(av_image_nonans.ravel(),
-                sd_image_nonans.ravel(),
-                xerr=(av_image_error_nonans.ravel()),
-                yerr=(sd_image_error_nonans.ravel()),
-                alpha=0.3,
-                color='k',
-                marker='^',ecolor='k',linestyle='None',
-                markersize=2
-                )
-
-        ax.set_xscale(scale[0], nonposx = 'clip')
-        ax.set_yscale(scale[1], nonposy = 'clip')
-
-        if limits is not None:
-            ax.set_xlim(limits[0],limits[1])
-            ax.set_ylim(limits[2],limits[3])
-
-        # Adjust asthetics
-        ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
-        ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_title(core_names[i])
-        ax.grid(True)
-
-    if title is not None:
-        fig.suptitle(title, fontsize=font_scale*1.5)
-    if filename is not None:
-        plt.savefig(savedir + filename) #, bbox_inches='tight')
-    if show:
-        fig.show()
-    if returnimage:
-        return likelihoods_image
-
-def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
-        hi_sd_image_errors=None, h_sd_image_errors=None, limits=None,
-        savedir='./', filename=None, show=True, scale=('linear', 'linear'),
-        returnimage=False, title=None, core_names='', phi_cnm_list=None,
-        phi_cnm_error_list=None, Z_list=None,
-        Z_error_list=None, phi_mol_list=None,
-        phi_mol_error_list=None,):
-    ''' Plots N(HI) as a function of Av for individual pixels in an N(HI) image
-    and an Av image.
-    '''
-
-    # Import external modules
-    import numpy as np
-    import math
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from mpl_toolkits.axes_grid1 import ImageGrid
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (10, 10),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    # Create figure instance
-    fig = plt.figure()
-
-    n = int(np.ceil(len(h_sd_images)**0.5))
-
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
-                 ngrids=len(h_sd_images),
-                 axes_pad=0.25,
-                 aspect=False,
-                 label_mode='L',
-                 share_all=True)
-
-    for i in xrange(len(h_sd_images)):
-        hi_sd_image = hi_sd_images[i]
-        h_sd_image = h_sd_images[i]
-        hi_sd_image_error = hi_sd_image_errors[i]
-        h_sd_image_error = h_sd_image_errors[i]
-
-        # Drop the NaNs from the images
-        indices = np.where((hi_sd_image == hi_sd_image) &\
-                           (hi_sd_image_error == hi_sd_image_error)&\
-                           (h_sd_image == h_sd_image)&\
-                           (h_sd_image_error == h_sd_image_error)&\
-                           (h_sd_image > 0) &\
-                           (hi_sd_image > 0))
-
-        hi_sd_image_nonans = hi_sd_image[indices]
-        h_sd_image_nonans = h_sd_image[indices]
-
-        if type(hi_sd_image_error) is np.ndarray:
-            hi_sd_image_error_nonans = hi_sd_image_error[indices]
-        else:
-            hi_sd_image_error_nonans = np.array(hi_sd_image_error[indices])
-
-        if type(h_sd_image_error) is np.ndarray:
-            h_sd_image_error_nonans = h_sd_image_error[indices]
-        else:
-            h_sd_image_error_nonans = h_sd_image_error * \
-                    np.ones(h_sd_image[indices].shape)
-
-        # Create plot
-        ax = imagegrid[i]
-
-        image = ax.errorbar(h_sd_image_nonans.ravel(),
-                hi_sd_image_nonans.ravel(),
-                xerr=(h_sd_image_error_nonans.ravel()),
-                yerr=(hi_sd_image_error_nonans.ravel()),
-                alpha=0.3,
-                color='k',
-                marker='^',ecolor='k',linestyle='None',
-                markersize=2
-                )
-
-        ax.set_xscale(scale[0], nonposx = 'clip')
-        ax.set_yscale(scale[1], nonposy = 'clip')
-
-        if limits is not None:
-            ax.set_xlim(limits[0],limits[1])
-            ax.set_ylim(limits[2],limits[3])
-
-        # Adjust asthetics
-        ax.set_xlabel(r'$\Sigma_{HI}$ + $\Sigma_{H_2}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_title(core_names[i])
-        ax.grid(True)
-
-    if title is not None:
-        fig.suptitle(title, fontsize=font_scale*1.5)
-    if filename is not None:
-        plt.savefig(savedir + filename) #, bbox_inches='tight')
-    if show:
-        fig.show()
-    if returnimage:
-        return likelihoods_image
-
 def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         h_sd_error_images=None, rh2_fits = None, h_sd_fits = None, limits =
         None, fit = True, savedir = './', filename = None, show = True, scale =
@@ -926,7 +397,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': True,
-              'figure.figsize': (12, 12 * y_scaling),
+              'figure.figsize': (2.75, 2.0),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -1006,7 +477,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                 hi_sd_nonans.ravel(),
                 xerr=(h_sd_error_nonans.ravel()),
                 yerr=(hi_sd_error_nonans.ravel()),
-                alpha=0.3,
+                alpha=0.1,
                 color='k',
                 marker='^',ecolor='k',linestyle='None',
                 markersize=3
@@ -1046,7 +517,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                                                          phi_cnm_error[1])
                 T_cnm_text = r'\noindent T$_{\rm CNM}$ =' + \
                              r' %.2f' % (T_cnm) + \
-                             r'$^{+%.2f}_{-%.2f}$ \\' % (T_cnm_error[0],
+                             r'$^{+%.2f}_{-%.2f}$ K\\' % (T_cnm_error[0],
                                                          T_cnm_error[1])
                 if Z_error == (0.0, 0.0):
                 	Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
@@ -1063,12 +534,12 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                                 r'$^{+%.2f}_{-%.2f}$ \\' % (phi_mol_error[0],
                                                          phi_mol_error[1])
 
-                ax.annotate(phi_cnm_text + T_cnm_text + Z_text + phi_mol_text,
+                ax.annotate(T_cnm_text + Z_text,
                         xytext=(anno_xpos, 0.05),
                         xy=(anno_xpos, 0.05),
                         textcoords='axes fraction',
                         xycoords='axes fraction',
-                        size=font_scale*3/4.0,
+                        size=font_scale*0.75,
                         color='k',
                         bbox=dict(boxstyle='round',
                                   facecolor='w',
@@ -1085,9 +556,9 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'$\Sigma_{HI}$',)
-        ax.set_title(core_names[i])
+        ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ [M$_\odot$ / pc$^2$]',)
+        ax.set_ylabel(r'$\Sigma_{HI}$ [M$_\odot$ / pc$^2$]',)
+        #ax.set_title(core_names[i])
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
@@ -1095,201 +566,6 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
-
-def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
-        vel_range_list=None,
-        vel_range_hiav_list=None,
-        limits = None, savedir = './', filename = None, show = True,
-        scale = 'linear', title = '', core_names='',):
-
-    # Import external modules
-    import numpy as np
-    import math
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import matplotlib
-    from mpl_toolkits.axes_grid1 import ImageGrid
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (10, 10),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    # Create figure instance
-    fig = plt.figure()
-
-    n = int(np.ceil(len(co_spectrum_list)**0.5))
-
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
-                 ngrids=len(co_spectrum_list),
-                 axes_pad=0.25,
-                 aspect=False,
-                 label_mode='L',
-                 share_all=True)
-
-    # Cycle through lists
-    for i in xrange(len(co_spectrum_list)):
-        co_spectrum = co_spectrum_list[i]
-        try:
-            hi_velocity_range = vel_range_list[i]
-        except IndexError:
-            hi_velocity_range = None
-        try:
-            hi_velocity_range_likelihood = vel_range_hiav_list[i]
-        except IndexError:
-            hi_velocity_range_likelihood = None
-
-        # Create plot
-        ax = imagegrid[i]
-
-        image = ax.plot(vel_axis, co_spectrum,
-                color='k',
-                marker=None,
-                drawstyle='steps-mid',
-                markersize=3,
-                )
-
-        if hi_velocity_range is not None:
-            ax.axvspan(hi_velocity_range[0], hi_velocity_range[1],
-                    color = 'r', alpha=0.2, label=r'$^{12}$CO Spectrum Width')
-        if hi_velocity_range_likelihood is not None:
-            ax.axvspan(hi_velocity_range_likelihood[0], hi_velocity_range_likelihood[1],
-                    color = 'b', alpha=0.2, label=r'HI/A$_V$ Correlation')
-
-        ax.set_xscale(scale[0], nonposx = 'clip')
-        ax.set_yscale(scale[1], nonposy = 'clip')
-
-        if limits is not None:
-            ax.set_xlim(limits[0],limits[1])
-            ax.set_ylim(limits[2],limits[3])
-
-        # Adjust asthetics
-        ax.set_xlabel('Velocity (km/s)')
-        ax.set_ylabel(r'<I$_{\rm CO}$> (K)',)
-        ax.set_title(core_names[i])
-        ax.grid(True)
-
-    if vel_range_list is not None or vel_range_hiav_list is not None:
-        # Single legend
-        ax.legend(bbox_to_anchor=(3.1, 0.2),
-                loc='lower right',
-                borderaxespad=0.)
-
-    if title is not None:
-        fig.suptitle(title, fontsize=font_scale*1.5)
-    if filename is not None:
-        plt.savefig(savedir + filename) #, bbox_inches='tight')
-    if show:
-        fig.show()
-
-def plot_parameter_hist(results_dict, parameter='Z fits',
-        results_figure_name=None):
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-
-    if parameter == 'Z fits':
-        bins = np.linspace(0, 10, 100)
-    elif parameter == 'phi_cnm fits':
-        bins = 100
-
-    fig = plt.figure(figsize=(5, 5))
-    ax = fig.add_subplot(111)
-    ax.hist(results_dict[parameter],
-            bins=bins)
-    ax.set_ylabel('Counts')
-    if parameter == 'Z fits':
-        ax.set_xlabel(r'$Z$ $(Z_\odot)$')
-        plt.savefig(results_figure_name + '_Z_hist.png')
-    elif parameter == 'phi_cnm fits':
-        ax.set_xlabel(r'$\phi_{\rm CNM}$')
-        plt.savefig(results_figure_name + '_phi_cnm_hist.png')
-
-    plt.close()
-
-def recreate_PDFs(vel_centers=None, vel_widths=None, dgrs=None,
-        center_likelihoods=None, width_likelihoods=None, dgr_likelihoods=None,
-        center_rv=None, width_rv=None, dgr_rv=None, results_figure_name=None):
-
-    import matplotlib.pyplot as plt
-
-    # Recreate the distribution of likelihoods
-    center_likelihoods_recreate = np.zeros(10000)
-    width_likelihoods_recreate = np.zeros(10000)
-    dgr_likelihoods_recreate = np.zeros(10000)
-    for i in range(len(center_likelihoods_recreate)):
-        center_likelihoods_recreate[i] = center_rv.rvs()
-        width_likelihoods_recreate[i] = width_rv.rvs()
-        dgr_likelihoods_recreate[i] = dgr_rv.rvs() * 1000.0
-
-    center_likelihood_normed = center_likelihoods / np.sum(center_likelihoods)
-    width_likelihood_normed = width_likelihoods / np.sum(width_likelihoods)
-    dgr_likelihood_normed = dgr_likelihoods / np.sum(dgr_likelihoods)
-
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    font_scale = 8
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    fig = plt.figure(figsize=(4, 4))
-    ax = fig.add_subplot(111)
-    center_bins = np.arange(vel_centers[0], vel_centers[-1] + 2, 1)
-    width_bins = np.arange(vel_widths[0], vel_widths[-1] + 2, 1)
-    ax.hist(center_likelihoods_recreate, bins=center_bins, alpha=0.5,
-            label='Centers Reproduced', color='b', normed=True)
-    ax.hist(width_likelihoods_recreate, bins=width_bins, alpha=0.5,
-            label='Widths Reproduced', color='r', normed=True)
-    ax.plot(vel_centers, center_likelihood_normed, alpha=0.5,
-            label='Centers', color='k')
-    ax.plot(vel_widths, width_likelihood_normed, alpha=0.5,
-            label='Widths', color='g')
-    ax.legend(fontsize=font_scale * 3/4.0)
-    ax.set_xlabel(r'Velocity (km/s)')
-    ax.set_ylabel('Normalized value')
-    plt.savefig(results_figure_name + '_PDF_hist.png')
-
-    fig = plt.figure(figsize=(4, 4))
-    ax = fig.add_subplot(111)
-    dgr_bins = np.arange(dgrs[0], dgrs[-1] + 2, 0.02)
-    ax.hist(dgr_likelihoods_recreate, bins=dgr_bins, alpha=0.5,
-            label='DGRs Reproduced', color='k', normed=True)
-    ax.plot(dgrs, dgr_likelihood_normed, alpha=0.5,
-            label='Widths', color='k')
-    ax.legend(fontsize=font_scale * 3/4.0)
-    ax.set_xlabel(r'DGR')
-    ax.set_ylabel('Normalized value')
-    plt.savefig(results_figure_name + '_PDF_dgr_hist.png')
 
 ''' Calculations
 '''
@@ -1725,13 +1001,14 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             [~np.isnan(results_dict['Z fits'])]
 
     # Plot the distributions of parameters from the MC
-    if results_figure_name is not None:
-    	plot_parameter_hist(results_dict,
-    	                    parameter='phi_cnm fits',
-    	                    results_figure_name=results_figure_name)
-    	plot_parameter_hist(results_dict,
-    	                    parameter='Z fits',
-    	                    results_figure_name=results_figure_name)
+    if 0:
+        if results_figure_name is not None:
+            plot_parameter_hist(results_dict,
+                                parameter='phi_cnm fits',
+                                results_figure_name=results_figure_name)
+            plot_parameter_hist(results_dict,
+                                parameter='Z fits',
+                                results_figure_name=results_figure_name)
 
     # Derive images
     # -------------
@@ -2113,7 +1390,7 @@ def load_ds9_region(props, filename=None, header=None):
 The main script
 '''
 
-def main(verbose=True, av_data_type='planck'):
+def main(verbose=True):
 
     '''
 
@@ -2168,8 +1445,7 @@ def main(verbose=True, av_data_type='planck'):
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
-            'monte_carlo_results/taurus_mc_results_' + av_data_type + '_'
-
+            'monte_carlo_results/taurus_mc_results_'
     clobber = 0 # perform MC and write over current results?
     guesses=(10.0, 1.0, 10.0)
 
@@ -2230,9 +1506,7 @@ def main(verbose=True, av_data_type='planck'):
     # Load global properties of cloud
     # global properties written from script
     # 'av/taurus_analysis_global_properties.txt'
-    with open(property_dir + \
-              'taurus_global_properties_' + av_data_type + \
-              '_scaled.txt', 'r') as f:
+    with open(property_dir + 'taurus_global_properties_planck_scaled.txt', 'r') as f:
         properties = json.load(f)
         dgr = properties['dust2gas_ratio']['value']
         intercept = properties['intercept']['value']
@@ -2301,7 +1575,12 @@ def main(verbose=True, av_data_type='planck'):
     av_data_planck_orig = np.copy(av_data_planck)
     av_error_data_planck_orig = np.copy(av_error_data_planck)
 
-    for core in np.sort(cores.keys()):
+
+    cores_temp = {}
+    cores_temp['L1495'] = cores['L1495'].copy()
+    cores = cores_temp
+
+    for core in cores:
         print('\nCalculating for core %s' % core)
 
         if box_method == 'ds9':
@@ -2428,9 +1707,6 @@ def main(verbose=True, av_data_type='planck'):
             phi_mol_error_list.append(phi_mol_error)
             core_name_list.append(core)
 
-    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
-        json.dump(cores, f)
-
     # Create the figures!
     # -------------------
     print('\nCreating figures...')
@@ -2440,9 +1716,6 @@ def main(verbose=True, av_data_type='planck'):
         figure_types.append('pdf')
 
     for figure_type in figure_types:
-        fig_name_rh2 = 'taurus_rh2_vs_hsd_panels_{0:s}'.format(av_data_type)
-        print('\nWriting Rh2 figures to\n' + fig_name_rh2)
-
         plot_rh2_vs_h_grid(rh2_image_list,
                 h_sd_image_list,
                 rh2_error_images = rh2_image_error_list,
@@ -2450,9 +1723,10 @@ def main(verbose=True, av_data_type='planck'):
                 rh2_fits = rh2_fit_list,
                 h_sd_fits = h_sd_fit_list,
                 limits = [0, 80, 10**-3, 10**2],
-                savedir = figure_dir + 'panel_cores/',
+                savedir = figure_dir + 'individual_cores/',
                 scale = ('linear', 'log'),
-                filename=fig_name_rh2 + '_linear.{0:s}'.format(figure_type),
+                filename = \
+                    'taurus_rh2_vs_h_L1495_planck_linear.%s' % figure_type,
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
@@ -2461,31 +1735,6 @@ def main(verbose=True, av_data_type='planck'):
                 Z_list=Z_list,
                 Z_error_list=Z_error_list,
                 show = False)
-
-        plot_rh2_vs_h_grid(rh2_image_list,
-                h_sd_image_list,
-                rh2_error_images = rh2_image_error_list,
-                h_sd_error_images = h_sd_image_error_list,
-                rh2_fits = rh2_fit_list,
-                h_sd_fits = h_sd_fit_list,
-                limits = [1, 200, 10**-3, 10**2],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('log', 'log'),
-                filename=fig_name_rh2 + '_log.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                phi_cnm_list=phi_cnm_list,
-                phi_cnm_error_list=phi_cnm_error_list,
-                phi_mol_list=phi_mol_list,
-                phi_mol_error_list=phi_mol_error_list,
-                Z_list=Z_list,
-                Z_error_list=Z_error_list,
-                show = False)
-
-        # Calif limits = [0, 80, 0, 8]
-        # taur limits = [0, 80, -1.5, 6.5]
-        # Pers limits = [0, 80, 1, 8],
-        fig_name_hivsh = 'taurus_hi_vs_h_panels_{0:s}'.format(av_data_type)
-        print('\nWriting HI vs H figures to\n' + fig_name_hivsh)
 
         plot_hi_vs_h_grid(hi_sd_image_list,
                 h_sd_image_list,
@@ -2493,10 +1742,11 @@ def main(verbose=True, av_data_type='planck'):
                 h_sd_error_images=h_sd_image_error_list,
                 hi_fits=hi_sd_fit_list,
                 h_sd_fits=h_sd_fit_list,
-                limits=[0, 80, -1.5, 6.5],
-                savedir=figure_dir + 'panel_cores/',
+                limits=[-8, 80, 1, 3.5],
+                savedir=figure_dir + 'individual_cores/',
                 scale=('linear', 'linear'),
-                filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),
+                filename='taurus_hi_vs_h_L1495_planck_linear.%s' % \
+                        figure_type,
                 core_names=core_name_list,
                 phi_cnm_list=phi_cnm_list,
                 phi_cnm_error_list=phi_cnm_error_list,
@@ -2504,47 +1754,10 @@ def main(verbose=True, av_data_type='planck'):
                 phi_mol_error_list=phi_mol_error_list,
                 Z_list=Z_list,
                 Z_error_list=Z_error_list,
-                show = False)
-
-        plot_hi_vs_h_grid(hi_sd_image_list,
-                h_sd_image_list,
-                hi_sd_error_images=hi_sd_image_error_list,
-                h_sd_error_images=h_sd_image_error_list,
-                hi_fits=hi_sd_fit_list,
-                h_sd_fits=h_sd_fit_list,
-                limits=[1, 100, 1, 100],
-                savedir=figure_dir + 'panel_cores/',
-                scale=('log', 'log'),
-                filename=fig_name_hivsh + '_log.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                phi_cnm_list=phi_cnm_list,
-                phi_cnm_error_list=phi_cnm_error_list,
-                phi_mol_list=phi_mol_list,
-                phi_mol_error_list=phi_mol_error_list,
-                Z_list=Z_list,
-                Z_error_list=Z_error_list,
-                show = False)
-
-        fig_name_hivsav = 'taurus_hi_vs_av_panels_{0:s}'.format(av_data_type)
-        print('\nWriting HI vs H figures to\n' + fig_name_hivsav)
-
-        plot_hi_vs_av_grid(hi_sd_image_list,
-                av_image_list,
-                hi_error_images = hi_sd_image_error_list,
-                av_error_images = h_sd_image_error_list,
-                #limits = [10**-1, 10**2, 10**0, 10**2],
-                limits = [0, 50, 1, 8],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('linear', 'linear'),
-                filename=fig_name_hivsav + '_linear.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of taurus Cores',
                 show = False)
 
 if __name__ == '__main__':
-    main(av_data_type='planck')
-    main(av_data_type='k09')
+    main()
 
 
 

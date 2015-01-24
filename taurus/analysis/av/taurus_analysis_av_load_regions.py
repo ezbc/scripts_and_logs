@@ -522,8 +522,8 @@ def main():
     cores = convert_core_coordinates(cores, av_header)
 
     cores = load_ds9_region(cores,
-            filename_base = region_dir + 'taurus_av_poly_cores',
-            header = av_header)
+                            filename_base = region_dir + 'taurus_av_poly_cores',
+                            header = av_header)
 
     # Open core properties
     with open(core_dir + 'taurus_core_properties.txt', 'w') as f:

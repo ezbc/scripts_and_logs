@@ -1884,6 +1884,7 @@ def main(verbose=True):
     # Regions
     # Options are 'ds9' or 'av_gradient'
     box_method = 'av_gradient'
+    box_method = 'ds9'
 
     #dgr = 5.33e-2 # dust to gas ratio [10^-22 mag / 10^20 cm^-2
     h_sd_fit_range = [0.001, 1000] # range of fitted values for krumholz model
@@ -1926,16 +1927,15 @@ def main(verbose=True):
     # Load global properties of cloud
     # global properties written from script
     # 'av/taurus_analysis_global_properties.txt'
-    with open(property_dir + 'taurus_global_properties.txt', 'r') as f:
+    with open(property_dir + \
+              'taurus_global_properties_planck_scaled.txt', 'r') as f:
         properties = json.load(f)
         dgr = properties['dust2gas_ratio']['value']
         dgr_error = properties['dust2gas_ratio_error']['value']
         Z = properties['metallicity']['value']
-        hi_vel_range_conf = properties['hi_velocity_range_conf']
+        #hi_vel_range_conf = properties['hi_velocity_range_conf']
         hi_vel_range = properties['hi_velocity_range']
         hi_vel_range_error = properties['hi_velocity_range_error']
-
-    print dgr
 
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
