@@ -1317,8 +1317,8 @@ def main(av_data_type='planck', region=None):
     vel_widths = np.arange(1, 20, 2*0.16667)
     dgrs = np.arange(0.05, 0.8, 5e-3)
     #intercepts = np.arange(-2, 2, 0.05)
-    #intercepts = np.arange(0, 1, 1)
-    intercepts = np.arange(-1, 1, 0.02)
+    intercepts = np.arange(0, 1, 1)
+    #intercepts = np.arange(-1, 1, 0.02)
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1331,7 +1331,7 @@ def main(av_data_type='planck', region=None):
     bin_width_deg = 1.0
 
     # Clobber the binned images and remake them?
-    clobber_bin_images = 0
+    clobber_bin_images = 1
 
     # Use single velocity center for entire image?
     single_vel_center = True
@@ -1737,9 +1737,6 @@ def main(av_data_type='planck', region=None):
     print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                  vel_range_confint[1]))
 
-    # count number of pixels used in analysis
-    npix = mask[~mask].size
-
     vel_range_max = (vel_center - width_max / 2.0,
                      vel_center + width_max / 2.0)
 
@@ -1752,11 +1749,6 @@ def main(av_data_type='planck', region=None):
                                    return_nhi_error=False)
 
     av_image_model = nhi_image_temp * dgr_max + intercept_max
-    # avoid NaNs
-    indices = ((av_image_model == av_image_model) & \
-               (av_data == av_data))
-    # add nan locations to the mask
-    mask[~indices] = 1
 
     # count number of pixels used in analysis
     npix = mask[~mask].size
@@ -1977,9 +1969,9 @@ def main(av_data_type='planck', region=None):
 if __name__ == '__main__':
 
     # Use region 1 or 2. See
-    main(av_data_type='planck')
+    #main(av_data_type='planck')
     #main(av_data_type='k09')
-    #main(region=1)
+    main(region=1)
     #main(region=2)
 
 
