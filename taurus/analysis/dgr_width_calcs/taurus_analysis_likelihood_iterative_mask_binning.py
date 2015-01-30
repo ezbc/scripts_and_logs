@@ -1308,6 +1308,7 @@ def main(av_data_type='planck', region=None):
     vel_widths = np.arange(1, 20, 2*0.16667)
     dgrs = np.arange(0.05, 0.4, 5e-3)
     intercepts = np.arange(-1, 1, 0.01)
+    #intercepts = np.arange(0,1,1)
     #vel_widths = np.arange(1, 20, 8*0.16667)
     #dgrs = np.arange(0.01, 0.2, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
