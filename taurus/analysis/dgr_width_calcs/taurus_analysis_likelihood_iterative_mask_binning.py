@@ -178,14 +178,14 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
               'axes.labelweight': font_weight,
               'text.usetex': True,
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/4.0),
+              'figure.figsize': (7.3/2.0, 7.3/2.0),
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
 
 
-    fig, ax_image = plt.subplots(figsize=(7.3/2.0, 7.3/2.0))
+    fig, ax_image = plt.subplots()
 
     if plot_axes[0] == 'widths':
     	x_grid = global_props['vel_widths']
@@ -591,7 +591,7 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
 ''' Calculations
 '''
 
-def calc_logL(model, data, data_error=None):
+def calc_logL(model, data, data_error=None, weights=None):
 
     '''
     Calculates log likelihood
@@ -604,6 +604,9 @@ def calc_logL(model, data, data_error=None):
 
     if data_error is None:
         data_error = np.std(data)
+
+    if weights is None:
+        weights = 1.0
 
     logL = -np.sum((data - model)**2 / (2 * (data_error)**2))
 
@@ -865,6 +868,7 @@ def calc_likelihoods(
         hi_vel_axis=None,
         av_image=None,
         av_image_error=None,
+        image_weights=None,
         vel_center=None,
         vel_widths=None,
         dgrs=None,
@@ -929,8 +933,8 @@ def calc_likelihoods(
         for j, vel_width in enumerate(vel_widths):
             # Construct N(HI) image outside of DGR loop, then apply
             # DGRs in loop
-            vel_range = (vel_center - vel_width / 2.,
-                         vel_center + vel_width / 2.)
+            vel_range = np.array((vel_center - vel_width / 2.,
+                                  vel_center + vel_width / 2.))
 
             nhi_image = calculate_nhi(cube=hi_cube,
                                       velocity_axis=hi_vel_axis,
@@ -945,7 +949,8 @@ def calc_likelihoods(
 
                     logL = calc_logL(av_image_model,
                                      av_image,
-                                     data_error=av_image_error)
+                                     data_error=av_image_error,
+                                     weights=image_weights)
 
                     likelihoods[j, k, m] = logL
 
@@ -1001,6 +1006,9 @@ def calc_likelihoods(
 
     # Get values of best-fit model parameters
     max_loc = np.where(likelihoods == np.max(likelihoods))
+    #if 1: # do not delete this line of code, bug is present in compilation...
+        #print max_loc
+
     width_max = vel_widths[max_loc[0][0]]
     dgr_max = dgrs[max_loc[1][0]]
     intercept_max = intercepts[max_loc[2][0]]
@@ -1019,12 +1027,13 @@ def calc_likelihoods(
                                                 np.abs(intercept_confint[1])))
 
     # Write PDF
-    upper_lim = (vel_center + width_confint[0]/2.)
-    lower_lim = (vel_center - width_confint[0]/2.)
+    upper_lim = (np.nanmean(vel_center) + width_confint[0]/2.)
+    lower_lim = (np.nanmean(vel_center) - width_confint[0]/2.)
     upper_lim_error = width_confint[2]**2
     lower_lim_error = width_confint[1]**2
 
-    vel_range_confint = (lower_lim, upper_lim, lower_lim_error, upper_lim_error)
+    vel_range_confint = (lower_lim, upper_lim, lower_lim_error,
+                         upper_lim_error)
     vel_range_max = (vel_center - width_max/2.0, vel_center + width_max/2.0)
 
     if not return_likelihoods:
@@ -1306,21 +1315,26 @@ def main(av_data_type='planck', region=None):
 
     # Likelihood axis resolutions
     vel_widths = np.arange(1, 20, 2*0.16667)
-    dgrs = np.arange(0.05, 0.4, 5e-3)
-    intercepts = np.arange(-1, 1, 0.01)
-    #vel_widths = np.arange(1, 20, 8*0.16667)
-    #dgrs = np.arange(0.01, 0.2, 1e-2)
+    dgrs = np.arange(0.05, 0.8, 5e-3)
+    #intercepts = np.arange(-2, 2, 0.05)
+    #intercepts = np.arange(0, 1, 1)
+    intercepts = np.arange(-1, 1, 0.02)
+    #vel_widths = np.arange(1, 60, 8*0.16667)
+    #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (-10, 20)
-    vel_range = (1.8,8.1)
+    vel_range = (2.2,7.6)
+    vel_range = (0, 20)
 
     # Bin width in degrees
     bin_width_deg = 1.0
 
     # Clobber the binned images and remake them?
     clobber_bin_images = 0
+
+    # Use single velocity center for entire image?
+    single_vel_center = True
 
     # Filetype extensions for figures
     figure_types = ('png', 'pdf')
@@ -1434,6 +1448,46 @@ def main(av_data_type='planck', region=None):
                               Tsys=30.0,
                               return_nhi_error=True,
                               )
+    if 1:
+        vel_center = np.zeros(hi_data.shape[1:])
+        for i in xrange(0, hi_data.shape[1]):
+            for j in xrange(0, hi_data.shape[2]):
+                hi_spectrum = hi_data[:, i, j]
+                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
+                if np.nansum(hi_spectrum) > 0:
+                    vel_center[i,j] = \
+                            np.array((np.average(hi_vel_axis,
+                                                 weights=hi_spectrum**2),))[0]
+                else:
+                    vel_center[i,j] = np.nan
+        vel_range = (vel_center - 5, vel_center + 5)
+        nhi_image1, nhi_image_error = calculate_nhi(cube=hi_data,
+                                  velocity_axis=hi_vel_axis,
+                                  velocity_range=vel_range,
+                                  noise_cube=noise_cube,
+                                  velocity_noise_range=[90, 110],
+                                  Tsys=30.0,
+                                  return_nhi_error=True,
+                                  )
+    if 1:
+        hi_spectrum = np.sum(hi_data, axis=(1,2))
+        vel_center = np.array((np.average(hi_vel_axis,
+                               weights=hi_spectrum**2),))[0]
+        vel_range = (vel_center - 5, vel_center + 5)
+        nhi_image2, nhi_image_error = calculate_nhi(cube=hi_data,
+                                  velocity_axis=hi_vel_axis,
+                                  velocity_range=vel_range,
+                                  noise_cube=noise_cube,
+                                  velocity_noise_range=[90, 110],
+                                  Tsys=30.0,
+                                  return_nhi_error=True,
+                                  )
+        import matplotlib.pyplot as plt
+        plt.close(); plt.clf()
+        plt.imshow(nhi_image1 - nhi_image2, origin='lower left')
+        plt.colorbar()
+        plt.show()
+
 
     print('\nDeriving mask for correlated residuals...')
 
@@ -1498,17 +1552,26 @@ def main(av_data_type='planck', region=None):
         # Define number of pixels in each bin
         binsize = bin_width_deg * 60.0 / 5.0
 
-        # Bin the images
+        # Bin the images, retain only one bin_weight image since they are all
+        # the same
+        # -------------------------------------------------------------------
         # Av image
-        av_data_bin, av_header_bin = bin_image(av_data,
-                                       binsize=(binsize, binsize),
-                                       header=av_header,
-                                       func=np.nanmean)
+        av_data_bin, av_header_bin, bin_weights = \
+                bin_image(av_data,
+                          binsize=(binsize, binsize),
+                          header=av_header,
+                          func=np.nanmean,
+                          return_weights=True)
 
         if not check_file(av_dir + 'taurus_av_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
             fits.writeto(av_dir + 'taurus_av_planck_5arcmin_bin.fits',
                          av_data_bin,
+                         av_header_bin)
+        if not check_file(av_dir + 'taurus_av_planck_5arcmin_bin_weights.fits',
+                          clobber=clobber_bin_images):
+            fits.writeto(av_dir + 'taurus_av_planck_5arcmin_bin_weights.fits',
+                         bin_weights,
                          av_header_bin)
 
         # Av image error
@@ -1517,10 +1580,11 @@ def main(av_data_type='planck', region=None):
         # error on mean = sqrt(sum(a_i**2 / n**2))
         noise_func = lambda x: np.nansum(x**2)**0.5 / x[~np.isnan(x)].size
 
-        av_data_error_bin, av_header_bin = bin_image(av_data_error,
-                                             binsize=(binsize, binsize),
-                                             header=av_header,
-                                             func=noise_func,)
+        av_data_error_bin, av_header_bin = \
+                bin_image(av_data_error,
+                          binsize=(binsize, binsize),
+                          header=av_header,
+                          func=noise_func,)
 
         if not check_file(av_dir + 'taurus_av_error_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
@@ -1529,10 +1593,12 @@ def main(av_data_type='planck', region=None):
                          av_header_bin)
 
         # Hi image
-        hi_data_bin, hi_header_bin = bin_image(hi_data,
-                                       binsize=(binsize, binsize),
-                                       header=hi_header,
-                                       func=np.nanmean)
+        hi_data_bin, hi_header_bin = \
+                bin_image(hi_data,
+                          binsize=(binsize, binsize),
+                          header=hi_header,
+                          func=np.nanmean)
+
         if not check_file(hi_dir + \
                           'taurus_hi_galfa_cube_regrid_planckres_bin.fits',
                           clobber=clobber_bin_images):
@@ -1560,6 +1626,10 @@ def main(av_data_type='planck', region=None):
                 'taurus_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
 
+    bin_weights = fits.getdata(av_dir + \
+                               'taurus_av_planck_5arcmin' + bin_string + \
+                               '_weights.fits',)
+
     hi_data, hi_header = fits.getdata(hi_dir + \
                             'taurus_hi_galfa_cube_regrid_planckres' + \
                             bin_string + '.fits',
@@ -1575,7 +1645,6 @@ def main(av_data_type='planck', region=None):
         noise_cube, noise_header = fits.getdata(hi_dir +
                 noise_cube_filename + '.fits',
             header=True)
-
 
     # Prepare data products
     # ---------------------
@@ -1611,11 +1680,27 @@ def main(av_data_type='planck', region=None):
 
     # Derive center velocity from hi
     # ------------------------------
-    hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
-    vel_center = np.array((np.average(hi_vel_axis,
-                           weights=hi_spectrum**2),))[0]
-    print('\nVelocity center from HI = ' +\
-            '{0:.2f} km/s'.format(vel_center))
+    if single_vel_center:
+        hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
+        vel_center = np.array((np.average(hi_vel_axis,
+                               weights=hi_spectrum**2),))[0]
+        print('\nVelocity center from HI = ' +\
+                '{0:.2f} km/s'.format(vel_center))
+        vel_center_masked = vel_center
+    else:
+        vel_center = np.zeros(hi_data.shape[1:])
+        for i in xrange(0, hi_data.shape[1]):
+            for j in xrange(0, hi_data.shape[2]):
+                hi_spectrum = hi_data[:, i, j]
+                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
+                if np.nansum(hi_spectrum) > 0:
+                    vel_center[i,j] = \
+                            np.array((np.average(hi_vel_axis,
+                                                 weights=hi_spectrum**2),))[0]
+                else:
+                    vel_center[i,j] = np.nan
+
+        vel_center_masked = vel_center[~mask]
 
     # Perform likelihood calculation of masked images
     # -----------------------------------------------
@@ -1624,12 +1709,14 @@ def main(av_data_type='planck', region=None):
 
     print('\nPerforming likelihood calculations with initial error ' + \
           'estimate...')
+
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
                      hi_vel_axis=hi_vel_axis,
                      av_image=av_data[~mask],
                      av_image_error=av_data_error[~mask],
-                     vel_center=vel_center,
+                     image_weights=bin_weights[~mask],
+                     vel_center=vel_center_masked,
                      vel_widths=vel_widths,
                      dgrs=dgrs,
                      intercepts=intercepts,
@@ -1650,14 +1737,20 @@ def main(av_data_type='planck', region=None):
     print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                  vel_range_confint[1]))
 
+    # count number of pixels used in analysis
+    npix = mask[~mask].size
+
+    vel_range_max = (vel_center - width_max / 2.0,
+                     vel_center + width_max / 2.0)
+
     # Calulate chi^2 for best fit models
     # ----------------------------------
-    nhi_image_temp, nhi_image_error = \
-            calculate_nhi(cube=hi_data,
-                velocity_axis=hi_vel_axis,
-                velocity_range=vel_range_max,
-                noise_cube=noise_cube,
-                return_nhi_error=True)
+    nhi_image_temp = calculate_nhi(cube=hi_data,
+                                   velocity_axis=hi_vel_axis,
+                                   velocity_range=vel_range_max,
+                                   noise_cube=noise_cube,
+                                   return_nhi_error=False)
+
     av_image_model = nhi_image_temp * dgr_max + intercept_max
     # avoid NaNs
     indices = ((av_image_model == av_image_model) & \
@@ -1669,13 +1762,13 @@ def main(av_data_type='planck', region=None):
     npix = mask[~mask].size
 
     # finally calculate chi^2
-    chisq = np.sum((av_data[~mask] - av_image_model[~mask])**2 / \
-            av_data_error[~mask]**2) / av_data[~mask].size
+    #chisq = np.sum((av_data[~mask] - av_image_model[~mask])**2 / \
+    #        av_data_error[~mask]**2) / av_data[~mask].size
 
     print('\nTotal number of pixels in analysis, after masking = ' + \
             '{0:.0f}'.format(npix))
 
-    print('\nReduced chi^2 = {0:.1f}'.format(chisq))
+    #print('\nReduced chi^2 = {0:.1f}'.format(chisq))
 
     # Write results to global properties
     global_props['dust2gas_ratio'] = {}
@@ -1683,7 +1776,7 @@ def main(av_data_type='planck', region=None):
     global_props['hi_velocity_width'] = {}
     global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
-    global_props['hi_velocity_center_max'] = {}
+    global_props['hi_velocity_center'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
     global_props['av_threshold'] = {}
@@ -1697,13 +1790,13 @@ def main(av_data_type='planck', region=None):
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
     global_props['dust2gas_ratio_max']['value'] = dgr_max
-    global_props['hi_velocity_center_max']['value'] = vel_center
-    global_props['hi_velocity_width_max']['value'] = width_max
-    global_props['hi_velocity_range_max']['value'] = vel_range_max
+    global_props['hi_velocity_center']['value'] = vel_center.tolist()
+    #global_props['hi_velocity_width_max']['value'] = width_max
+    #global_props['hi_velocity_range_max']['value'] = vel_range_max
     global_props['hi_velocity_range_conf'] = conf
     global_props['width_likelihood'] = width_likelihood.tolist()
     global_props['dgr_likelihood'] = dgr_likelihood.tolist()
-    global_props['vel_centers'] = [vel_center,]
+    global_props['vel_centers'] = vel_center.tolist()
     global_props['vel_widths'] = vel_widths.tolist()
     global_props['dgrs'] = dgrs.tolist()
     global_props['likelihoods'] = likelihoods.tolist()
@@ -1711,7 +1804,7 @@ def main(av_data_type='planck', region=None):
     global_props['av_threshold']['unit'] = 'mag'
     global_props['co_threshold']['value'] = None
     global_props['co_threshold']['unit'] = 'K km/s'
-    global_props['chisq'] = chisq
+    #global_props['chisq'] = chisq
     global_props['npix'] = npix
     global_props['mask_bin'] = mask.tolist()
     global_props['use_binned_image'] = True
@@ -1722,7 +1815,7 @@ def main(av_data_type='planck', region=None):
 
     with open(property_dir + global_property_file + '_' + av_data_type + \
               '_init.txt', 'w') as f:
-        json.dump(global_props, f)
+        json.dump(global_props, f, allow_nan=True)
 
     # Plot likelihood space
     for figure_type in figure_types:
@@ -1746,6 +1839,8 @@ def main(av_data_type='planck', region=None):
     # see equation 15.1.6 in Numerical Recipes
     std = np.sqrt(np.sum((av_data[~mask] - av_image_model[~mask])**2 \
                          / (av_data[~mask].size - 2)))
+    #std = np.sqrt(np.sum((av_data - av_image_model)**2 \
+    #                     / (av_data.size - 2)))
 
     av_data_error = std * np.ones(av_data_error.shape)
     #av_image_error += np.std(av_data[~mask] - av_image_model[~mask])
@@ -1762,7 +1857,8 @@ def main(av_data_type='planck', region=None):
                      hi_vel_axis=hi_vel_axis,
                      av_image=av_data[~mask],
                      av_image_error=av_data_error[~mask],
-                     vel_center=vel_center,
+                     image_weights=bin_weights[~mask],
+                     vel_center=vel_center_masked,
                      vel_widths=vel_widths,
                      dgrs=dgrs,
                      intercepts=intercepts,
@@ -1786,12 +1882,12 @@ def main(av_data_type='planck', region=None):
 
     # Calulate chi^2 for best fit models
     # ----------------------------------
-    nhi_image_temp, nhi_image_error = \
+    nhi_image_temp = \
             calculate_nhi(cube=hi_data,
                 velocity_axis=hi_vel_axis,
                 velocity_range=vel_range_max,
-                noise_cube=noise_cube,
-                return_nhi_error=True)
+                noise_cube=noise_cube)
+
     av_image_model = nhi_image_temp * dgr_max
     # avoid NaNs
     indices = ((av_image_model == av_image_model) & \
@@ -1803,13 +1899,13 @@ def main(av_data_type='planck', region=None):
     npix = mask[~mask].size
 
     # finally calculate chi^2
-    chisq = np.sum((av_data[~mask] - av_image_model[~mask])**2 / \
-            av_data_error[~mask]**2) / av_data[~mask].size
+    #chisq = np.sum((av_data[~mask] - av_image_model[~mask])**2 / \
+    #        av_data_error[~mask]**2) / av_data[~mask].size
 
     print('\nTotal number of pixels in analysis, after masking = ' + \
             '{0:.0f}'.format(npix))
 
-    print('\nReduced chi^2 = {0:.1f}'.format(chisq))
+    #print('\nReduced chi^2 = {0:.1f}'.format(chisq))
 
     # Write results to global properties
     global_props['dust2gas_ratio'] = {}
@@ -1837,14 +1933,14 @@ def main(av_data_type='planck', region=None):
     global_props['intercept']['value'] = intercept_confint[0]
     global_props['intercept_error']['value'] = intercept_confint[1:]
     global_props['intercept_max']['value'] = intercept_max
-    global_props['hi_velocity_center']['value'] = vel_center
-    global_props['hi_velocity_width_max']['value'] = width_max
-    global_props['hi_velocity_range_max']['value'] = vel_range_max
+    global_props['hi_velocity_center']['value'] = vel_center.tolist()
+    #global_props['hi_velocity_width_max']['value'] = width_max
+    #global_props['hi_velocity_range_max']['value'] = vel_range_max
     global_props['hi_velocity_range_conf'] = conf
     global_props['width_likelihood'] = width_likelihood.tolist()
     global_props['dgr_likelihood'] = dgr_likelihood.tolist()
     global_props['intercept_likelihood'] = intercept_likelihood.tolist()
-    global_props['vel_centers'] = [vel_center,]
+    global_props['vel_centers'] = vel_center.tolist()
     global_props['vel_widths'] = vel_widths.tolist()
     global_props['dgrs'] = dgrs.tolist()
     global_props['intercepts'] = intercepts.tolist()
@@ -1853,7 +1949,7 @@ def main(av_data_type='planck', region=None):
     global_props['av_threshold']['unit'] = 'mag'
     global_props['co_threshold']['value'] = None
     global_props['co_threshold']['unit'] = 'K km/s'
-    global_props['chisq'] = chisq
+    #global_props['chisq'] = chisq
     global_props['npix'] = npix
     global_props['mask_bin'] = mask.tolist()
     global_props['use_binned_image'] = True
@@ -1883,8 +1979,8 @@ if __name__ == '__main__':
     # Use region 1 or 2. See
     main(av_data_type='planck')
     #main(av_data_type='k09')
-    #main(region = 1)
-    #main(region = 2)
+    #main(region=1)
+    #main(region=2)
 
 
 
