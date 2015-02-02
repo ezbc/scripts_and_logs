@@ -1006,9 +1006,6 @@ def calc_likelihoods(
 
     # Get values of best-fit model parameters
     max_loc = np.where(likelihoods == np.max(likelihoods))
-    #if 1: # do not delete this line of code, bug is present in compilation...
-        #print max_loc
-
     width_max = vel_widths[max_loc[0][0]]
     dgr_max = dgrs[max_loc[1][0]]
     intercept_max = intercepts[max_loc[2][0]]
@@ -1317,15 +1314,20 @@ def main(av_data_type='planck', region=None):
     vel_widths = np.arange(1, 20, 2*0.16667)
     dgrs = np.arange(0.05, 0.8, 5e-3)
     #intercepts = np.arange(-2, 2, 0.05)
-    intercepts = np.arange(0, 1, 1)
-    #intercepts = np.arange(-1, 1, 0.02)
+    #intercepts = np.arange(0, 1, 1)
+    intercepts = np.arange(-1, 1, 0.02)
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
+    vel_widths = np.arange(1, 20, 2*0.16667)
+    dgrs = np.arange(0.05, 0.6, 5e-3)
+    intercepts = np.arange(-1, 1, 0.01)
 
     # Velocity range over which to integrate HI for deriving the mask
     vel_range = (2.2,7.6)
     vel_range = (0, 20)
+    vel_range = (1.8,8.1)
+
 
     # Bin width in degrees
     bin_width_deg = 1.0
@@ -1334,7 +1336,7 @@ def main(av_data_type='planck', region=None):
     clobber_bin_images = 1
 
     # Use single velocity center for entire image?
-    single_vel_center = True
+    single_vel_center = False
 
     # Filetype extensions for figures
     figure_types = ('png', 'pdf')
@@ -1448,7 +1450,7 @@ def main(av_data_type='planck', region=None):
                               Tsys=30.0,
                               return_nhi_error=True,
                               )
-    if 1:
+    if 0:
         vel_center = np.zeros(hi_data.shape[1:])
         for i in xrange(0, hi_data.shape[1]):
             for j in xrange(0, hi_data.shape[2]):
@@ -1469,7 +1471,6 @@ def main(av_data_type='planck', region=None):
                                   Tsys=30.0,
                                   return_nhi_error=True,
                                   )
-    if 1:
         hi_spectrum = np.sum(hi_data, axis=(1,2))
         vel_center = np.array((np.average(hi_vel_axis,
                                weights=hi_spectrum**2),))[0]
@@ -1715,7 +1716,7 @@ def main(av_data_type='planck', region=None):
                      hi_vel_axis=hi_vel_axis,
                      av_image=av_data[~mask],
                      av_image_error=av_data_error[~mask],
-                     image_weights=bin_weights[~mask],
+                     #image_weights=bin_weights[~mask],
                      vel_center=vel_center_masked,
                      vel_widths=vel_widths,
                      dgrs=dgrs,
@@ -1969,9 +1970,9 @@ def main(av_data_type='planck', region=None):
 if __name__ == '__main__':
 
     # Use region 1 or 2. See
-    #main(av_data_type='planck')
+    main(av_data_type='planck')
     #main(av_data_type='k09')
-    main(region=1)
+    #main(region=1)
     #main(region=2)
 
 
