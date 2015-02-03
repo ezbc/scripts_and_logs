@@ -1324,10 +1324,12 @@ def main(av_data_type='planck', region=None):
     intercepts = np.arange(-1, 1, 0.01)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (2.2,7.6)
-    vel_range = (0, 20)
-    vel_range = (1.8,8.1)
-
+    # the following were used until convergence
+    vel_range = (-50, 50)
+    vel_range = (3.1, 6.7)
+    vel_range = (2.0, 8.0)
+    vel_range = (2.2, 7.6)
+    vel_range = (2.1, 7.7)
 
     # Bin width in degrees
     bin_width_deg = 1.0
@@ -1336,7 +1338,7 @@ def main(av_data_type='planck', region=None):
     clobber_bin_images = 1
 
     # Use single velocity center for entire image?
-    single_vel_center = False
+    single_vel_center = True
 
     # Filetype extensions for figures
     figure_types = ('png', 'pdf')
@@ -1488,7 +1490,6 @@ def main(av_data_type='planck', region=None):
         plt.imshow(nhi_image1 - nhi_image2, origin='lower left')
         plt.colorbar()
         plt.show()
-
 
     print('\nDeriving mask for correlated residuals...')
 
