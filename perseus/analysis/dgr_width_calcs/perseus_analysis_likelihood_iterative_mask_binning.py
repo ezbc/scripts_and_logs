@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -1273,7 +1273,7 @@ def load_ds9_region(props, filename=None, header=None):
 Main Script
 '''
 
-def main(av_data_type='planck', region=None):
+def main(av_data_type='planck', region=None, vel_range=None):
 
     # Import external modules
     # -----------------------
@@ -1319,14 +1319,15 @@ def main(av_data_type='planck', region=None):
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 20, 2*0.16667)
-    dgrs = np.arange(0.05, 0.6, 5e-3)
+    vel_widths = np.arange(1, 50, 2*0.16667)
+    dgrs = np.arange(0.05, 0.7, 5e-3)
     intercepts = np.arange(-1, 1, 0.01)
 
     # Velocity range over which to integrate HI for deriving the mask
-    vel_range = (2.2,7.6)
-    vel_range = (1.7,7.7)
-    vel_range = (-5, 15)
+    if vel_range is None:
+        vel_range = (2.2,7.6)
+        vel_range = (1.7,7.7)
+        vel_range = (-5, 15)
 
     # Bin width in degrees
     bin_width_deg = 1.0
@@ -1965,13 +1966,31 @@ def main(av_data_type='planck', region=None):
                                        '_scaled_wd.{0:s}'.format(figure_type),
                               contour_confs=contour_confs)
 
+    return global_props['hi_velocity_range']
+
 if __name__ == '__main__':
 
+    import numpy as np
+
     # Use region 1 or 2. See
-    main(av_data_type='planck')
-    #main(av_data_type='k09')
-    #main(region=1)
-    #main(region=2)
+    vel_range = (-50.0, 50.0)
+    vel_range_new = (-1.0, 1.0)
+    vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
+                                   np.array(vel_range_new)))
+
+    print vel_range_diff
+
+    while vel_range_diff > 1:
+        vel_range_new = main(av_data_type='planck', vel_range=vel_range)
+
+        vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
+                                       np.array(vel_range_new)))
+
+        print('\n\n\n Next iteration \n-------------------\n\n\n')
+        print('Velocity range difference = {0:.1f}'.format(vel_range_diff))
+
+        vel_range = vel_range_new
+
 
 
 

@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -1984,8 +1984,9 @@ if __name__ == '__main__':
 
     while vel_range_diff > 1:
         vel_range_new = main(av_data_type='planck', vel_range=vel_range)
+
         vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                np.array(vel_range_new)))
+                                       np.array(vel_range_new)))
 
         print('\n\n\n Next iteration \n-------------------\n\n\n')
         print('Velocity range difference = {0:.1f}'.format(vel_range_diff))
