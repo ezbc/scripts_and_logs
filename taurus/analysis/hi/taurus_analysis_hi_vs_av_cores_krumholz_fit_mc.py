@@ -91,7 +91,7 @@ def plot_nhi_vs_av(nhi_image, av_image,
     ax.set_xlabel('A$_v$ (mag)',
               size = 'small',
               family='serif')
-    ax.set_ylabel(r'N(HI) (1 $\times 10^{20}$ cm$^{-2}$)',
+    ax.set_ylabel('N(HI) (1 $\times 10^{20}$ cm$^{-2}$)',
               size = 'small',
               family='serif')
     ax.set_title(title)
@@ -158,7 +158,7 @@ def plot_hisd_vs_hsd(hi_sd_image, h_sd_image,
             # Adjust color bar of density plot
             cb = plt.colorbar(image)
             cb.set_label('Counts')
-        elif plot_type is 'scatter':
+        elif plot_type is 'scatte':
             image = ax.scatter(h_sd_image_nonans.ravel(),
                     hi_sd_image_nonans.ravel(),
                     alpha=0.3,
@@ -188,7 +188,7 @@ def plot_hisd_vs_hsd(hi_sd_image, h_sd_image,
     ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',
               size = 'small',
               family='serif')
-    ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',
+    ax.set_ylabel('$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',
               size = 'small',
               family='serif')
     ax.set_title(title)
@@ -300,8 +300,8 @@ def plot_sd_vs_av(sd_image, av_image,
         ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
-    ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
+    ax.set_xlabel('A$_{\rm V}$ (mag)',)
+    ax.set_ylabel('$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
     ax.set_title(title)
     ax.grid(True)
 
@@ -410,8 +410,8 @@ def plot_sd_vs_av_grid(sd_images, av_images,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel(r'A$_{\rm V}$ (mag)',)
-        ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_xlabel('A$_{\rm V}$ (mag)',)
+        ax.set_ylabel('$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
         ax.set_title(core_names[i])
         ax.grid(True)
 
@@ -444,25 +444,38 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
     from mpl_toolkits.axes_grid1 import ImageGrid
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
               'text.fontsize': font_scale,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (10, 10),
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
+              'text.usetex': True,
+              #'font.family': 'sans-serif',
+              'figure.figsize': (7.3, 7.3 * y_scaling),
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
              }
-    plt.rcParams.update(params)
+    plt.rcParams.update()
+
 
     # Create figure instance
     fig = plt.figure()
@@ -526,8 +539,8 @@ def plot_hisd_vs_hsd_grid(hi_sd_images, h_sd_images,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel(r'$\Sigma_{HI}$ + $\Sigma_{H_2}$ (M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H_2}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_ylabel('$\Sigma_{HI}$ (M$_\odot$ / pc$^2$)',)
         ax.set_title(core_names[i])
         ax.grid(True)
 
@@ -568,25 +581,37 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         y_scaling = 1.0
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
+              'axes.weight': line_weight,
+              'axes.labelweight': font_weight,
+              'axes.color_cycle': color_cycle, # colors of different plots
+              'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              #'font.family': 'sans-serif',
+              'text.fontsize': font_scale,
               'text.usetex': True,
-              'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (7.3, 7.3 * y_scaling),
+              'figure.titlesize': font_scale,
              }
-    plt.rcParams.update(params)
+    plt.rcParams.update()
 
     # Create figure instance
     fig = plt.figure()
@@ -594,7 +619,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
                  ngrids=len(rh2_images),
-                 axes_pad=0.25,
+                 axes_pad=0.0,
                  aspect=False,
                  label_mode='L',
                  share_all=True)
@@ -636,7 +661,9 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         if type(rh2_error) is np.ndarray or \
                 type(rh2_error) is np.ma.core.MaskedArray or \
                 type(h_sd_error) is np.ndarray or \
-                type(h_sd_error) is np.ma.core.MaskedArray:
+                type(h_sd_error) is np.ma.core.MaskedArray or \
+                type(rh2_error) is list:
+
             indices = np.where((rh2 == rh2) &\
                                (h_sd == h_sd) &\
                                (h_sd_error == h_sd_error) &\
@@ -659,7 +686,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
             h_sd_error_nonans = h_sd_error * \
                     np.ones(h_sd[indices].shape)
 
-                # Create plot
+        # Create plot
         ax = imagegrid[i]
 
         image = ax.errorbar(h_sd_nonans.ravel(),
@@ -668,7 +695,9 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                 yerr=(rh2_error_nonans.ravel()),
                 alpha=0.3,
                 color='k',
-                marker='^',ecolor='k',linestyle='None',
+                marker='^',
+                ecolor='k',
+                linestyle='None',
                 markersize=4
                 )
 
@@ -682,7 +711,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
         if phi_cnm_list is not None and Z_list is not None:
             if phi_cnm_error_list is None and Z_error_list is not None:
                 ax.annotate(r'$\phi_{\rm CNM}$ = {0:.2f}\n'.format(phi_cnm) + \
-                            r'Z = {0:.2f} Z$_\odot$'.format(Z),
+                            r'Z = {0:.2f} Z$_{\odot}$'.format(Z),
                         xytext=(anno_xpos, 0.05),
                         xy=(anno_xpos, 0.05),
                         textcoords='axes fraction',
@@ -691,50 +720,6 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
                         bbox=dict(boxstyle='round',
                                   facecolor='w',
                                   alpha=0.3),
-                        horizontalalignment='right',
-                        verticalalignment='bottom',
-                        )
-            else:
-            	T_cnm = calc_T_cnm(phi_cnm, Z=Z)
-            	T_cnm_error = []
-            	T_cnm_error.append(\
-            	        T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
-            	T_cnm_error.append(\
-            	        T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
-
-                phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
-                               r' %.2f' % (phi_cnm) + \
-                               r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
-                                                         phi_cnm_error[1])
-                T_cnm_text = r'\noindent T$_{\rm CNM}$ =' + \
-                             r' %.2f' % (T_cnm) + \
-                             r'$^{+%.2f}_{-%.2f}$ \\' % (T_cnm_error[0],
-                                                         T_cnm_error[1])
-                if Z_error == (0.0, 0.0):
-                	Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
-                else:
-                	Z_text = r'Z = %.2f' % (Z) + \
-                    r'$^{+%.2f}_{-%.2f}$ Z$_\odot$ \\' % (Z_error[0],
-                                                          Z_error[1])
-                if phi_mol_error == (0.0, 0.0):
-                    phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
-                                     '%.1f' % (phi_mol)
-                else:
-                    phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
-                                r' %.2f' % (phi_mol) + \
-                                r'$^{+%.2f}_{-%.2f}$' % (phi_mol_error[0],
-                                                         phi_mol_error[1])
-
-                ax.annotate(phi_cnm_text + T_cnm_text + Z_text + phi_mol_text,
-                        xytext=(anno_xpos, 0.05),
-                        xy=(anno_xpos, 0.05),
-                        textcoords='axes fraction',
-                        xycoords='axes fraction',
-                        size=font_scale*3/4.0,
-                        color='k',
-                        bbox=dict(boxstyle='round',
-                                  facecolor='w',
-                                  alpha=1),
                         horizontalalignment='right',
                         verticalalignment='bottom',
                         )
@@ -747,7 +732,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_xlabel(r'$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
         ax.set_ylabel(r'R$_{H2}$ = $\Sigma_{H2}$ / $\Sigma_{HI}$',)
         ax.set_title(core_names[i])
         ax.grid(False)
@@ -757,7 +742,7 @@ def plot_rh2_vs_h_grid(rh2_images, h_sd_images, rh2_error_images=None,
     if filename is not None:
         plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
-        fig.show()
+        plt.show()
 
 def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
         av_error_images=None, limits=None, savedir='./',
@@ -781,25 +766,37 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
         y_scaling = 1.0
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
               'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
+              'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
               'text.usetex': True,
-              'figure.figsize': (8, 8 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
+              #'font.family': 'sans-serif',
+              'figure.figsize': (7.3, 7.3 * y_scaling),
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
              }
-    plt.rcParams.update(params)
+    plt.rcParams.update()
 
     # Create figure instance
     fig = plt.figure()
@@ -807,7 +804,7 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
                  ngrids=len(hi_images),
-                 axes_pad=0.25,
+                 axes_pad=0,
                  aspect=False,
                  label_mode='L',
                  share_all=True)
@@ -855,15 +852,24 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
         # Create plot
         ax = imagegrid[i]
 
-        image = ax.errorbar(av_nonans.ravel(),
-                hi_nonans.ravel(),
-                xerr=(av_error_nonans.ravel()),
-                yerr=(hi_error_nonans.ravel()),
-                alpha=0.5,
-                color='k',
-                marker='^',ecolor='k',linestyle='None',
-                markersize=4
-                )
+        if 0:
+            image = ax.errorbar(av_nonans.ravel(),
+                    hi_nonans.ravel(),
+                    xerr=(av_error_nonans.ravel()),
+                    yerr=(hi_error_nonans.ravel()),
+                    alpha=0.5,
+                    color='k',
+                    marker='^',ecolor='k',linestyle='None',
+                    markersize=4
+                    )
+        else:
+            h, x, y = np.histogram2d(av_nonans.ravel(),
+                                hi_nonans.ravel(),
+                                bins=100,)
+            ax.imshow(h,
+                      origin='lower',
+                      interpolation='bicubic',
+                      extent=[x[0], x[-1], y[0], y[-1]])
 
         ax.set_xscale(scale[0], nonposx = 'clip')
         ax.set_yscale(scale[1], nonposy = 'clip')
@@ -873,9 +879,9 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel(r'$A_V$ (Mag)',)
-        ax.set_ylabel(r'$\Sigma_{HI}$ ($M_\odot$ pc$^{-2}$)',)
-        ax.set_title(core_names[i])
+        ax.set_xlabel('$A_V$ (Mag)',)
+        ax.set_ylabel('$\Sigma_{HI}$ ($M_\odot$ pc$^{-2}$)',)
+        #ax.set_title(core_names[i])
         ax.grid(True)
 
     if title is not None:
@@ -911,23 +917,35 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         y_scaling = 1.0
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
               'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
+              'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
               'text.usetex': True,
-              'figure.figsize': (12, 12 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
+              #'font.family': 'sans-serif',
+              'figure.figsize': (7.3, 7.3),
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
 
@@ -940,7 +958,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(n, n),
                  ngrids=len(hi_images),
-                 axes_pad=0.25,
+                 axes_pad=0.,
                  aspect=False,
                  label_mode='L',
                  share_all=True)
@@ -1002,15 +1020,31 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                 # Create plot
         ax = imagegrid[i]
 
-        image = ax.errorbar(h_sd_nonans.ravel(),
-                hi_sd_nonans.ravel(),
-                xerr=(h_sd_error_nonans.ravel()),
-                yerr=(hi_sd_error_nonans.ravel()),
-                alpha=0.3,
-                color='k',
-                marker='^',ecolor='k',linestyle='None',
-                markersize=3
-                )
+        if 1:
+            image = ax.errorbar(h_sd_nonans.ravel(),
+                    hi_sd_nonans.ravel(),
+                    xerr=(h_sd_error_nonans.ravel()),
+                    yerr=(hi_sd_error_nonans.ravel()),
+                    alpha=0.1,
+                    color='k',
+                    marker='^',ecolor='k',linestyle='None',
+                    markersize=3
+                    )
+        elif 0:
+            ax.hexbin(h_sd_nonans.ravel(),
+                      hi_sd_nonans.ravel(),
+                      cmap=cmap,
+                      mincnt=1)
+        else:
+            h, x, y = np.histogram2d(h_sd_nonans.ravel(),
+                                hi_sd_nonans.ravel(),
+                                bins=1000,)
+            ax.imshow(h,
+                      origin='lower',
+                      interpolation='bicubic',
+                      extent=[x[0], x[-1], y[0], y[-1]])
+
+
         if hi_sd_fit is not None:
             ax.plot(h_sd_fit, hi_sd_fit,
                     color = 'r')
@@ -1018,63 +1052,61 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         anno_xpos = 0.95
 
         if phi_cnm_list is not None and Z_list is not None:
-            if phi_cnm_error_list is None and Z_error_list is not None:
-                ax.annotate(r'$\phi_{\rm CNM}$ = {0:.2f}\n'.format(phi_cnm) + \
-                            r'Z = {0:.2f} Z$_\odot$'.format(Z),
-                        xytext=(anno_xpos, 0.05),
-                        xy=(anno_xpos, 0.05),
-                        textcoords='axes fraction',
-                        xycoords='axes fraction',
-                        color='k',
-                        bbox=dict(boxstyle='round',
-                                  facecolor='w',
-                                  alpha=0.3),
-                        horizontalalignment='right',
-                        verticalalignment='bottom',
-                        )
+            T_cnm = calc_T_cnm(phi_cnm, Z=Z)
+            T_cnm_error = []
+            T_cnm_error.append(\
+                    T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
+            T_cnm_error.append(\
+                    T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
+
+            phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
+                           r' %.2f' % (phi_cnm) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
+                                                     phi_cnm_error[1])
+            T_cnm_text = r'\noindent T$_{\rm CNM}$ =' + \
+                         r' %.2f' % (T_cnm) + \
+                         r'$^{+%.2f}_{-%.2f}$ \\' % (T_cnm_error[0],
+                                                     T_cnm_error[1])
+            if Z_error == (0.0, 0.0):
+                Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
             else:
-            	T_cnm = calc_T_cnm(phi_cnm, Z=Z)
-            	T_cnm_error = []
-            	T_cnm_error.append(\
-            	        T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
-            	T_cnm_error.append(\
-            	        T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
+                Z_text = r'Z = %.2f' % (Z) + \
+                r'$^{+%.2f}_{-%.2f}$ Z$_\odot$ \\' % (Z_error[0],
+                                                      Z_error[1])
+            if phi_mol_error == (0.0, 0.0):
+                phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
+                                 '%.1f' % (phi_mol)
+            else:
+                phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
+                            r' %.2f' % (phi_mol) + \
+                            r'$^{+%.2f}_{-%.2f}$ \\' % (phi_mol_error[0],
+                                                     phi_mol_error[1])
 
-                phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
-                               r' %.2f' % (phi_cnm) + \
-                               r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
-                                                         phi_cnm_error[1])
-                T_cnm_text = r'\noindent T$_{\rm CNM}$ =' + \
-                             r' %.2f' % (T_cnm) + \
-                             r'$^{+%.2f}_{-%.2f}$ \\' % (T_cnm_error[0],
-                                                         T_cnm_error[1])
-                if Z_error == (0.0, 0.0):
-                	Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
-                else:
-                	Z_text = r'Z = %.2f' % (Z) + \
-                    r'$^{+%.2f}_{-%.2f}$ Z$_\odot$ \\' % (Z_error[0],
-                                                          Z_error[1])
-                if phi_mol_error == (0.0, 0.0):
-                    phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
-                                     '%.1f' % (phi_mol)
-                else:
-                    phi_mol_text = r'\noindent$\phi_{\rm mol}$ =' + \
-                                r' %.2f' % (phi_mol) + \
-                                r'$^{+%.2f}_{-%.2f}$ \\' % (phi_mol_error[0],
-                                                         phi_mol_error[1])
-
-                ax.annotate(phi_cnm_text + T_cnm_text + Z_text + phi_mol_text,
-                        xytext=(anno_xpos, 0.05),
-                        xy=(anno_xpos, 0.05),
+            ax.annotate(phi_cnm_text + T_cnm_text,
+                    xytext=(anno_xpos, 0.05),
+                    xy=(anno_xpos, 0.05),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=font_scale*3/4.0,
+                    color='k',
+                    bbox=dict(boxstyle='round',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='bottom',
+                    )
+            ax.annotate(core_names[i],
+                        xytext=(0.95, 0.95),
+                        xy=(0.95, 0.95),
                         textcoords='axes fraction',
                         xycoords='axes fraction',
-                        size=font_scale*3/4.0,
+                        size=font_scale,
                         color='k',
-                        bbox=dict(boxstyle='round',
+                        bbox=dict(boxstyle='square',
                                   facecolor='w',
                                   alpha=1),
                         horizontalalignment='right',
-                        verticalalignment='bottom',
+                        verticalalignment='top',
                         )
 
         ax.set_xscale(scale[0])
@@ -1085,9 +1117,9 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel('$\Sigma_{HI}$ + $\Sigma_{H2}$ (M$_\odot$ / pc$^2$)',)
+        ax.set_xlabel(r'$\Sigma_{HI}$ + $\Sigma_{H2}$ ' + \
+                       '(M$_\odot$ / pc$^2$)',)
         ax.set_ylabel(r'$\Sigma_{HI}$',)
-        ax.set_title(core_names[i])
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
@@ -1168,10 +1200,10 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
 
         if hi_velocity_range is not None:
             ax.axvspan(hi_velocity_range[0], hi_velocity_range[1],
-                    color = 'r', alpha=0.2, label=r'$^{12}$CO Spectrum Width')
+                    color = 'r', alpha=0.2, label='$^{12}$CO Spectrum Width')
         if hi_velocity_range_likelihood is not None:
             ax.axvspan(hi_velocity_range_likelihood[0], hi_velocity_range_likelihood[1],
-                    color = 'b', alpha=0.2, label=r'HI/A$_V$ Correlation')
+                    color = 'b', alpha=0.2, label='HI/A$_V$ Correlation')
 
         ax.set_xscale(scale[0], nonposx = 'clip')
         ax.set_yscale(scale[1], nonposy = 'clip')
@@ -1182,7 +1214,7 @@ def plot_co_spectrum_grid(vel_axis, co_spectrum_list,
 
         # Adjust asthetics
         ax.set_xlabel('Velocity (km/s)')
-        ax.set_ylabel(r'<I$_{\rm CO}$> (K)',)
+        ax.set_ylabel('<I$_{\rm CO}$> (K)',)
         ax.set_title(core_names[i])
         ax.grid(True)
 
@@ -1275,7 +1307,7 @@ def recreate_PDFs(vel_centers=None, vel_widths=None, dgrs=None,
     ax.plot(vel_widths, width_likelihood_normed, alpha=0.5,
             label='Widths', color='g')
     ax.legend(fontsize=font_scale * 3/4.0)
-    ax.set_xlabel(r'Velocity (km/s)')
+    ax.set_xlabel('Velocity (km/s)')
     ax.set_ylabel('Normalized value')
     plt.savefig(results_figure_name + '_PDF_hist.png')
 
@@ -1287,7 +1319,7 @@ def recreate_PDFs(vel_centers=None, vel_widths=None, dgrs=None,
     ax.plot(dgrs, dgr_likelihood_normed, alpha=0.5,
             label='Widths', color='k')
     ax.legend(fontsize=font_scale * 3/4.0)
-    ax.set_xlabel(r'DGR')
+    ax.set_xlabel('DGR')
     ax.set_ylabel('Normalized value')
     plt.savefig(results_figure_name + '_PDF_dgr_hist.png')
 
@@ -1725,7 +1757,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             [~np.isnan(results_dict['Z fits'])]
 
     # Plot the distributions of parameters from the MC
-    if results_figure_name is not None:
+    if results_figure_name is not None and perform_mc:
     	plot_parameter_hist(results_dict,
     	                    parameter='phi_cnm fits',
     	                    results_figure_name=results_figure_name)
@@ -2113,7 +2145,7 @@ def load_ds9_region(props, filename=None, header=None):
 The main script
 '''
 
-def main(verbose=True, av_data_type='planck'):
+def main(verbose=True, av_data_type='planck', region=None):
 
     '''
 
@@ -2159,7 +2191,7 @@ def main(verbose=True, av_data_type='planck'):
     global guesses
 
     calc_errors = True # Run monte carlo error analysis?
-    N_monte_carlo_runs = 100 # Number of monte carlo runs
+    N_monte_carlo_runs = 1000 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
@@ -2167,10 +2199,29 @@ def main(verbose=True, av_data_type='planck'):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
+
+    # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
             'monte_carlo_results/taurus_mc_results_' + av_data_type + '_'
 
-    clobber = 0 # perform MC and write over current results?
+    # global property filename
+    global_property_filename = 'taurus_global_properties'
+
+    # Name correct region of cloud
+    if region == 1:
+        region_name = 'taurus1'
+    elif region == 2:
+        region_name = 'taurus2'
+    else:
+        region_name = 'taurus'
+
+    global_property_filename = \
+            global_property_filename.replace('taurus', region_name)
+
+    # perform MC and write over current results?
+    clobber = 1
+
+    # Guesses for (phi_cnm, Z, phi_mol)
     guesses=(10.0, 1.0, 10.0)
 
     # Use core-derived or global-derived likelihoods forr DGR - vel width
@@ -2231,7 +2282,7 @@ def main(verbose=True, av_data_type='planck'):
     # global properties written from script
     # 'av/taurus_analysis_global_properties.txt'
     with open(property_dir + \
-              'taurus_global_properties_' + av_data_type + \
+              global_property_filename + '_' + av_data_type + \
               '_scaled.txt', 'r') as f:
         properties = json.load(f)
         dgr = properties['dust2gas_ratio']['value']
@@ -2296,140 +2347,150 @@ def main(verbose=True, av_data_type='planck'):
     hi_vel_range_likelihood_list = []
     hi_sd_fit_list = []
 
-    hi_data_orig = np.copy(hi_data)
-    noise_cube_orig = np.copy(noise_cube)
-    av_data_planck_orig = np.copy(av_data_planck)
-    av_error_data_planck_orig = np.copy(av_error_data_planck)
+    if clobber:
+    #if 0:
+        hi_data_orig = np.copy(hi_data)
+        noise_cube_orig = np.copy(noise_cube)
+        av_data_planck_orig = np.copy(av_data_planck)
+        av_error_data_planck_orig = np.copy(av_error_data_planck)
 
-    for core in np.sort(cores.keys()):
-        print('\nCalculating for core %s' % core)
+        for core in np.sort(cores.keys()):
+            print('\nCalculating for core %s' % core)
 
-        if box_method == 'ds9':
-            indices = myg.get_polygon_mask(av_data_planck_orig,
-                    cores[core]['poly_verts']['pixel'])
-        elif box_method == 'av_gradient':
-            indices = myg.get_polygon_mask(av_data_planck_orig,
+            if box_method == 'ds9':
+                indices = myg.get_polygon_mask(av_data_planck_orig,
+                        cores[core]['poly_verts']['pixel'])
+            elif box_method == 'av_gradient':
+                indices = myg.get_polygon_mask(av_data_planck_orig,
                     cores[core]['{0:s}_vertices_rotated'.format(region_type)])
-        else:
-            raise ValueError('Method for boxes is either ds9 or av_gradient')
+            else:
+                raise ValueError('Method for boxes is either ds9 or ' + \
+                                 'av_gradient')
 
-        indices = indices.astype('bool')
-        mask = ~indices
+            indices = indices.astype('bool')
+            mask = ~indices
 
-        mask += region_mask
+            mask += region_mask
 
-        if 0:
-            import matplotlib.pyplot as plt
-            plt.imshow(np.ma.array(av_data_planck_orig, mask=mask),
-                       origin='lower left')
-            plt.show()
+            if 0:
+                import matplotlib.pyplot as plt
+                plt.imshow(np.ma.array(av_data_planck_orig, mask=mask),
+                           origin='lower left')
+                plt.show()
 
-        # Get only the relevant pixels to decrease computation time
-        hi_data = np.copy(hi_data_orig[:, ~mask])
-        noise_cube = np.copy(noise_cube_orig[:, ~mask])
-        av_data_planck = np.copy(av_data_planck_orig[~mask])
-        av_error_data_planck = np.copy(av_error_data_planck_orig[~mask])
+            # Get only the relevant pixels to decrease computation time
+            hi_data = np.copy(hi_data_orig[:, ~mask])
+            noise_cube = np.copy(noise_cube_orig[:, ~mask])
+            av_data_planck = np.copy(av_data_planck_orig[~mask])
+            av_error_data_planck = np.copy(av_error_data_planck_orig[~mask])
 
-        # ---------------------------------------------------------------------
-        # Perform analysis on cores, including fitting the Krumholz model.
-        # If calc_errors is True then a monte carlo is run by adding noise to
-        # AV and HI and refitting.
-        # ---------------------------------------------------------------------
-        if calc_errors:
-            images, hi_vel_range, params = \
-                    run_analysis(hi_cube=hi_data,
-                                 hi_noise_cube=noise_cube,
-                                 hi_velocity_axis=velocity_axis,
-                                 hi_header=h,
-                                 dgr=dgr,
-                                 dgr_error=dgr_error,
-                                 intercept=intercept,
-                                 vel_center=vel_center,
-                                 av_image=av_data_planck,
-                                 av_image_error=av_error_data_planck,
-                                 core_dict=cores[core],
-                                 results_figure_name=figure_dir + \
-                                         'monte_carlo_results/' + \
-                                         'taurus_%s' % core,
-                                 properties=properties,
-                                 results_filename=results_filename + core,
-                                 )
-        else:
-            images, params = run_analysis(hi_cube=hi_data,
-                                 hi_noise_cube=noise_cube,
-                                 hi_velocity_axis=velocity_axis,
-                                 hi_header=h,
-                                 dgr=dgr,
-                                 dgr_error=dgr_error,
-                                 intercept=intercept,
-                                 av_image=av_data_planck,
-                                 av_image_error=av_error_data_planck,
-                                 hi_vel_range=hi_vel_range,
-                                 parameter_vary=[vary_phi_cnm, vary_Z])
+            # -----------------------------------------------------------------
+            # Perform analysis on cores, including fitting the Krumholz
+            # model.  If calc_errors is True then a monte carlo is run by
+            # adding noise to AV and HI and
+            # refitting.
+            # -----------------------------------------------------------------
 
-        rh2_fit, h_sd_fit, f_H2, f_HI = calc_krumholz(params=params[:2],
-                                            h_sd_extent=h_sd_fit_range,
-                                            return_fractions=True)
+            if calc_errors:
+                images, hi_vel_range, params = \
+                        run_analysis(hi_cube=hi_data,
+                                     hi_noise_cube=noise_cube,
+                                     hi_velocity_axis=velocity_axis,
+                                     hi_header=h,
+                                     dgr=dgr,
+                                     dgr_error=dgr_error,
+                                     intercept=intercept,
+                                     vel_center=vel_center,
+                                     av_image=av_data_planck,
+                                     av_image_error=av_error_data_planck,
+                                     core_dict=cores[core],
+                                     results_figure_name=figure_dir + \
+                                             'monte_carlo_results/' + \
+                                             'taurus_%s' % core,
+                                     properties=properties,
+                                     results_filename=results_filename + core,
+                                     )
+            else:
+                images, params = run_analysis(hi_cube=hi_data,
+                                     hi_noise_cube=noise_cube,
+                                     hi_velocity_axis=velocity_axis,
+                                     hi_header=h,
+                                     dgr=dgr,
+                                     dgr_error=dgr_error,
+                                     intercept=intercept,
+                                     av_image=av_data_planck,
+                                     av_image_error=av_error_data_planck,
+                                     hi_vel_range=hi_vel_range,
+                                     parameter_vary=[vary_phi_cnm, vary_Z])
 
-        hi_sd_fit = f_HI * h_sd_fit
-        phi_cnm = params[0]
-        phi_cnm_error = params[2]
-        Z = params[1]
-        Z_error = params[3]
-        phi_mol = params[4]
-        phi_mol_error = params[5]
+            rh2_fit, h_sd_fit, f_H2, f_HI = calc_krumholz(params=params[:2],
+                                                h_sd_extent=h_sd_fit_range,
+                                                return_fractions=True)
 
-        # Calculate T_cnm from Krumholz et al. (2009) Eq 19
-        T_cnm = calc_T_cnm(phi_cnm, Z=Z)
-        T_cnm_error = []
-        T_cnm_error.append(\
-                T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
-        T_cnm_error.append(\
-                T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
+            hi_sd_fit = f_HI * h_sd_fit
+            phi_cnm = params[0]
+            phi_cnm_error = params[2]
+            Z = params[1]
+            Z_error = params[3]
+            phi_mol = params[4]
+            phi_mol_error = params[5]
 
-        cores[core]['hi_sd_fit'] = hi_sd_fit.tolist()
-        cores[core]['rh2'] = images['rh2'].tolist()
-        cores[core]['rh2_error'] = images['rh2_error'].tolist()
-        cores[core]['hi_sd'] = images['hi_sd'].tolist()
-        cores[core]['hi_sd_error'] = images['hi_sd_error'].tolist()
-        cores[core]['h_sd'] = images['h_sd'].tolist()
-        cores[core]['h_sd_error'] = images['h_sd_error'].tolist()
-        cores[core]['phi_cnm'] = phi_cnm
-        cores[core]['phi_cnm_error'] = phi_cnm_error
-        cores[core]['T_cnm'] = T_cnm
-        cores[core]['T_cnm_error'] = T_cnm_error
-        cores[core]['Z'] = Z
-        cores[core]['Z_error'] = Z_error
-        cores[core]['phi_mol'] = phi_mol
-        cores[core]['phi_mol_error'] = phi_mol_error
-        cores[core]['rh2_fit'] = rh2_fit.tolist()
-        cores[core]['h_sd_fit'] = h_sd_fit.tolist()
-        cores[core]['f_H2'] = f_H2.tolist()
-        cores[core]['f_HI_fit'] = f_HI.tolist()
+            # Calculate T_cnm from Krumholz et al. (2009) Eq 19
+            T_cnm = calc_T_cnm(phi_cnm, Z=Z)
+            T_cnm_error = []
+            T_cnm_error.append(\
+                    T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
+            T_cnm_error.append(\
+                    T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
 
-        if core != 'L1449' and core != 'L1442':
+            cores[core]['hi_sd_fit'] = hi_sd_fit.tolist()
+            cores[core]['rh2'] = images['rh2'].tolist()
+            cores[core]['rh2_error'] = images['rh2_error'].tolist()
+            cores[core]['hi_sd'] = images['hi_sd'].tolist()
+            cores[core]['hi_sd_error'] = images['hi_sd_error'].tolist()
+            cores[core]['av'] = images['av'].tolist()
+            cores[core]['av_error'] = images['av_error'].tolist()
+            cores[core]['h_sd'] = images['h_sd'].tolist()
+            cores[core]['h_sd_error'] = images['h_sd_error'].tolist()
+            cores[core]['phi_cnm'] = phi_cnm
+            cores[core]['phi_cnm_error'] = phi_cnm_error
+            cores[core]['T_cnm'] = T_cnm
+            cores[core]['T_cnm_error'] = T_cnm_error
+            cores[core]['Z'] = Z
+            cores[core]['Z_error'] = Z_error
+            cores[core]['phi_mol'] = phi_mol
+            cores[core]['phi_mol_error'] = phi_mol_error
+            cores[core]['rh2_fit'] = rh2_fit.tolist()
+            cores[core]['h_sd_fit'] = h_sd_fit.tolist()
+            cores[core]['f_H2'] = f_H2.tolist()
+            cores[core]['f_HI_fit'] = f_HI.tolist()
+
+        with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
+            json.dump(cores, f)
+
+    for core in cores:
+        if core != 'L1449' and core != 'L1442' and \
+           len(cores[core]['hi_sd']) > 0:
+
             # append to the lists
-            hi_sd_image_list.append(images['hi_sd'])
-            hi_sd_image_error_list.append(images['hi_sd_error'])
-            h_sd_image_list.append(images['h_sd'])
-            h_sd_image_error_list.append(images['h_sd_error'])
-            av_image_list.append(images['av'])
-            av_image_error_list.append(images['av_error'])
-            rh2_image_list.append(images['rh2'])
-            rh2_image_error_list.append(images['rh2_error'])
-            rh2_fit_list.append(rh2_fit)
-            h_sd_fit_list.append(h_sd_fit)
-            hi_sd_fit_list.append(hi_sd_fit)
-            phi_cnm_list.append(phi_cnm)
-            phi_cnm_error_list.append(phi_cnm_error)
-            Z_list.append(Z)
-            Z_error_list.append(Z_error)
-            phi_mol_list.append(phi_mol)
-            phi_mol_error_list.append(phi_mol_error)
+            hi_sd_image_list.append(np.array(cores[core]['hi_sd']))
+            hi_sd_image_error_list.append(np.array(cores[core]['hi_sd_error']))
+            h_sd_image_list.append(np.array(cores[core]['h_sd']))
+            h_sd_image_error_list.append(np.array(cores[core]['h_sd_error']))
+            av_image_list.append(np.array(cores[core]['av']))
+            av_image_error_list.append(np.array(cores[core]['av_error']))
+            rh2_image_list.append(np.array(cores[core]['rh2']))
+            rh2_image_error_list.append(np.array(cores[core]['rh2_error']))
+            rh2_fit_list.append(np.array(cores[core]['rh2_fit']))
+            h_sd_fit_list.append(np.array(cores[core]['h_sd_fit']))
+            hi_sd_fit_list.append(np.array(cores[core]['hi_sd_fit']))
+            phi_cnm_list.append(cores[core]['phi_cnm'])
+            phi_cnm_error_list.append(cores[core]['phi_cnm_error'])
+            Z_list.append(cores[core]['Z'])
+            Z_error_list.append(cores[core]['Z_error'])
+            phi_mol_list.append(cores[core]['phi_mol'])
+            phi_mol_error_list.append(cores[core]['phi_mol_error'])
             core_name_list.append(core)
-
-    with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
-        json.dump(cores, f)
 
     # Create the figures!
     # -------------------
@@ -2493,7 +2554,7 @@ def main(verbose=True, av_data_type='planck'):
                 h_sd_error_images=h_sd_image_error_list,
                 hi_fits=hi_sd_fit_list,
                 h_sd_fits=h_sd_fit_list,
-                limits=[0, 80, -1.5, 6.5],
+                limits=[-9, 80, -1.5, 6.5],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),

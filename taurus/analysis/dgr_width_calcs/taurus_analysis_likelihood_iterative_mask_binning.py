@@ -1269,11 +1269,8 @@ def load_ds9_region(props, filename=None, header=None):
 
     return props
 
-'''
-Main Script
-'''
-
-def main(av_data_type='planck', region=None, vel_range=None):
+def run_likelihood_analysis(av_data_type='planck', region=None,
+        vel_range=None, resid_width_scale=3.0):
 
     # Import external modules
     # -----------------------
@@ -1290,7 +1287,7 @@ def main(av_data_type='planck', region=None, vel_range=None):
     # Set parameters
     # --------------
     # Check if likelihood file already written, rewrite?
-    clobber = 0
+    clobber = 1
 
     # Confidence of parameter errors
     conf = 0.68
@@ -1302,10 +1299,6 @@ def main(av_data_type='planck', region=None, vel_range=None):
 
     # Threshold for converging DGR
     threshold_delta_dgr = 0.00005
-
-    # Number of white noise standard deviations with which to fit the
-    # residuals in iterative masking
-    resid_width_scale = 3.0
 
     # Name of property files results are written to
     global_property_file = 'taurus_global_properties'
@@ -1319,28 +1312,24 @@ def main(av_data_type='planck', region=None, vel_range=None):
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 20, 2*0.16667)
-    dgrs = np.arange(0.05, 0.6, 5e-3)
-    intercepts = np.arange(-1, 1, 0.01)
     vel_widths = np.arange(1, 50, 2*0.16667)
     dgrs = np.arange(0.05, 0.7, 5e-3)
     intercepts = np.arange(-1, 1, 0.01)
-
+    #vel_widths = np.arange(1, 50, 10*0.16667)
+    #dgrs = np.arange(0.05, 0.7, 5e-2)
+    #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
-    # the following were used until convergence
     if vel_range is None:
-        vel_range = (-50, 50)
-        vel_range = (3.1, 6.7)
-        vel_range = (2.0, 8.0)
-        vel_range = (2.2, 7.6)
-        vel_range = (2.1, 7.7)
+        vel_range = (2.2,7.6)
+        vel_range = (1.7,7.7)
+        vel_range = (-5, 15)
 
     # Bin width in degrees
     bin_width_deg = 1.0
 
     # Clobber the binned images and remake them?
-    clobber_bin_images = 1
+    clobber_bin_images = True
 
     # Use single velocity center for entire image?
     single_vel_center = True
@@ -1772,6 +1761,8 @@ def main(av_data_type='planck', region=None, vel_range=None):
     # Write results to global properties
     global_props['dust2gas_ratio'] = {}
     global_props['dust2gas_ratio_error'] = {}
+    global_props['intercept'] = {}
+    global_props['intercept_error'] = {}
     global_props['hi_velocity_width'] = {}
     global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
@@ -1789,6 +1780,8 @@ def main(av_data_type='planck', region=None, vel_range=None):
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
     global_props['dust2gas_ratio_max']['value'] = dgr_max
+    global_props['intercept']['value'] = intercepts_confint[0]
+    global_props['intercept_error']['value'] = intercepts_confint[1:]
     global_props['hi_velocity_center']['value'] = vel_center.tolist()
     #global_props['hi_velocity_width_max']['value'] = width_max
     #global_props['hi_velocity_range_max']['value'] = vel_range_max
@@ -1807,6 +1800,8 @@ def main(av_data_type='planck', region=None, vel_range=None):
     global_props['npix'] = npix
     global_props['mask_bin'] = mask.tolist()
     global_props['use_binned_image'] = True
+    global_props['residual_width_scale'] = resid_width_scale
+    global_props['threshold_delta_dgr'] = threshold_delta_dgr
 
     # Write the file
     print('\nWriting results to\n' + global_property_file + '_' + \
@@ -1952,6 +1947,8 @@ def main(av_data_type='planck', region=None, vel_range=None):
     global_props['npix'] = npix
     global_props['mask_bin'] = mask.tolist()
     global_props['use_binned_image'] = True
+    global_props['residual_width_scale'] = resid_width_scale
+    global_props['threshold_delta_dgr'] = threshold_delta_dgr
 
     # Write the file
     print('\nWriting results to\n' + global_property_file + '_' + \
@@ -1973,66 +1970,120 @@ def main(av_data_type='planck', region=None, vel_range=None):
                                        '_scaled_wd.{0:s}'.format(figure_type),
                               contour_confs=contour_confs)
 
-    return global_props['hi_velocity_range']
+    #return global_props['hi_velocity_range']
+    return global_props
 
+'''
+Main Script
+'''
 
-if __name__ == '__main__':
+def main():
 
     import numpy as np
+    from os import path
+    import json
+    from pandas import DataFrame
 
-    # Whole region
-    # ------------
-    vel_range = (-50.0, 50.0)
-    vel_range_new = (-1.0, 1.0)
-    vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                   np.array(vel_range_new)))
+    av_data_type = 'planck'
 
-    while vel_range_diff > 1:
-        vel_range_new = main(av_data_type='planck', vel_range=vel_range)
+    # threshold in velocity range difference
+    vel_range_diff_thres = 3.0 # km/s
 
-        vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                       np.array(vel_range_new)))
+    property_dir = \
+        '/d/bip3/ezbc/taurus/data/python_output/residual_parameter_results/'
 
-        print('\n\n\n Next iteration \n-------------------\n\n\n')
-        print('Velocity range difference = {0:.1f}'.format(vel_range_diff))
+    property_filename = 'taurus_global_properties_planck'
 
-        vel_range = vel_range_new
+    # Number of white noise standard deviations with which to fit the
+    # residuals in iterative masking
+    residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
-    # Region 1
-    # --------
-    vel_range = (-50.0, 50.0)
-    vel_range_new = (-1.0, 1.0)
-    vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                   np.array(vel_range_new)))
+    regions = [2, 1, None]
 
-    while vel_range_diff > 1:
-        vel_range_new = main(region=2, vel_range=vel_range)
+    clobber_results = 1
 
-        vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                       np.array(vel_range_new)))
+    table_cols = ('dust2gas_ratio', 'hi_velocity_width',
+                  'hi_velocity_width', 'intercept', 'residual_width_scale')
+    n = len(residual_width_scales)
+    table_df = DataFrame({col:np.empty(n) for col in table_cols})
 
-        print('\n\n\n Next iteration \n-------------------\n\n\n')
-        print('Velocity range difference = {0:.1f}'.format(vel_range_diff))
+    for region in regions:
+        # Grab correct region
+        if region == 1:
+            region_name = 'taurus1'
+        elif region == 2:
+            region_name = 'taurus2'
+        else:
+            region_name = 'taurus'
 
-        vel_range = vel_range_new
+        property_filename = property_filename.replace('taurus', region_name)
 
-    # Region 2
-    # --------
-    vel_range = (-50.0, 50.0)
-    vel_range_new = (-1.0, 1.0)
-    vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                   np.array(vel_range_new)))
+        print('\nPerforming likelihood derivations for ' + region_name)
 
-    while vel_range_diff > 1:
-        vel_range_new = main(region=2, vel_range=vel_range)
+        for i, residual_width_scale in enumerate(residual_width_scales):
+            iteration = 0
+            vel_range = (-50.0, 50.0)
+            vel_range_new = (-1.0, 1.0)
+            vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
+                                           np.array(vel_range_new)))
 
-        vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                       np.array(vel_range_new)))
+            while vel_range_diff > vel_range_diff_thres:
+                json_filename = property_dir + property_filename + '_' + \
+                            av_data_type + \
+                            '_residscale{0:.1f}'.format(residual_width_scale)\
+                            + '_iter{0:.0f}'.format(iteration) + '.txt'
 
-        print('\n\n\n Next iteration \n-------------------\n\n\n')
-        print('Velocity range difference = {0:.1f}'.format(vel_range_diff))
+                exists = path.isfile(json_filename)
 
-        vel_range = vel_range_new
+                print('Writing iteration data file to ' + json_filename)
+
+                if exists and not clobber_results:
+                    with open(json_filename, 'r') as f:
+                        global_props = json.load(f)
+                else:
+                    global_props = \
+                        run_likelihood_analysis(av_data_type=av_data_type,
+                                        vel_range=vel_range,
+                                        region=region,
+                                        resid_width_scale=residual_width_scale)
+
+                vel_range_new = global_props['hi_velocity_range']
+
+                vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
+                                               np.array(vel_range_new)))
+
+                if clobber_results:
+                    with open(json_filename, 'w') as f:
+                        json.dump(global_props, f)
+
+                print('\n\n\n Next iteration \n-------------------\n\n\n')
+                print('Velocity range difference =' + \
+                      ' {0:.1f}'.format(vel_range_diff))
+
+                vel_range = vel_range_new
+
+                iteration += 1
+
+            # Write important results to table
+            for col in table_df:
+                if col == 'residual_width_scale':
+                    table_df[col][i] = global_props[col]
+                else:
+                    table_df[col][i] = global_props[col]['value']
+
+        # Write dataframe to csv
+        table_filename = property_dir + property_filename + '_' + \
+                         av_data_type
+
+        table_df.to_csv(table_filename + '.csv', index=False)
+        table_df.to_html(table_filename + '.html', index=False)
+
+if __name__ == '__main__':
+    main()
+
+
+
+
 
 
 

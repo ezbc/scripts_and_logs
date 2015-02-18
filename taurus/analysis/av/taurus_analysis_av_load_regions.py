@@ -25,24 +25,35 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
     from matplotlib.patches import Polygon
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 15
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
-              'axes.labelsize': fontScale,
-              'axes.titlesize': fontScale,
-              'text.fontsize': fontScale,
-              'legend.fontsize': fontScale*3/4,
-              'xtick.labelsize': fontScale,
-              'ytick.labelsize': fontScale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (8, 7),
-              'figure.titlesize': fontScale
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
+              'ytick.labelsize': font_scale,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
+              'text.usetex': True,
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.3, 3.3),
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
 
@@ -58,8 +69,8 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
                  cbar_mode="each",
                  cbar_location='right',
                  cbar_pad="2%",
-                 cbar_size='3%',
-                 axes_pad=1,
+                 cbar_size='5%',
+                 axes_pad=0,
                  axes_class=(wcs.Axes,
                              dict(header=header)),
                  aspect=True,
@@ -68,11 +79,13 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
 
     # create axes
     ax = imagegrid[0]
-    cmap = cm.pink # colormap
+
     # show the image
     im = ax.imshow(av_image,
             interpolation='nearest',origin='lower',
             cmap=cmap,
+            vmin=0,
+            vmax=15,
             #norm=matplotlib.colors.LogNorm()
             )
 
@@ -102,16 +115,17 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
         anno_color = (0.3, 0.5, 1)
 
         ax.scatter(pix_coords[0],pix_coords[1],
-                color='r',
-                s=200,
+                color='w',
+                s=100,
                 marker='+',
-                linewidths=2)
+                linewidths=1.5)
 
         ax.annotate(core,
                 xy=[pix_coords[0], pix_coords[1]],
                 xytext=(5,5),
                 textcoords='offset points',
-                color='c')
+                fontsize=font_scale,
+                color='w')
 
         if boxes:
             vertices = np.copy(cores[core]['poly_verts']['pixel'])
@@ -119,11 +133,12 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
             rect = ax.add_patch(Polygon(
                     vertices[:, ::-1],
                     facecolor='none',
-                    edgecolor=anno_color))
+                    edgecolor='w'))
 
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
     if filename is not None:
+        #plt.tight_layout()
         plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
@@ -538,14 +553,14 @@ def main():
     # Plot
     figure_types = ['pdf', 'png']
     for figure_type in figure_types:
-        plot_av_image(av_image=av_data, header=av_header,
-                boxes=True, cores=cores, #limits=[50,37,200,160],
-                #title=r'taurus: A$_V$ map with core boxed-regions.',
-                savedir=figure_dir,
-                limits=global_props['region_limit']['pixel'],
-                filename='taurus_av_cores_map.%s' % \
-                        figure_type,
-                show=0)
+        plot_av_image(av_image=av_data,
+                      header=av_header,
+                      boxes=True,
+                      cores=cores,
+                      savedir=figure_dir,
+                      limits=global_props['region_limit']['pixel'],
+                      filename='taurus_av_cores_map.' + figure_type,
+                      show=0)
 
 if __name__ == '__main__':
     main()
