@@ -1,3 +1,4 @@
+
 import matplotlib
 matplotlib.use('Agg')
 
@@ -1287,7 +1288,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # Set parameters
     # --------------
     # Check if likelihood file already written, rewrite?
-    clobber = 0
+    clobber = 1
 
     # Confidence of parameter errors
     conf = 0.68
@@ -1315,9 +1316,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     vel_widths = np.arange(1, 50, 2*0.16667)
     dgrs = np.arange(0.05, 0.7, 5e-3)
     intercepts = np.arange(-1, 1, 0.01)
-    vel_widths = np.arange(1, 50, 10*0.16667)
-    dgrs = np.arange(0.05, 0.7, 5e-2)
-    intercepts = np.arange(-1, 1, 0.1)
+    #vel_widths = np.arange(1, 50, 10*0.16667)
+    #dgrs = np.arange(0.05, 0.7, 5e-2)
+    #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:
@@ -1329,7 +1330,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     bin_width_deg = 1.0
 
     # Clobber the binned images and remake them?
-    clobber_bin_images = False
+    clobber_bin_images = True
 
     # Use single velocity center for entire image?
     single_vel_center = True
@@ -1390,6 +1391,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
         region_name = 'perseus2'
     else:
         region_name = 'perseus'
+
+    print('\nRegion =', region_name)
+
     global_property_file = global_property_file.replace('perseus', region_name)
 
     # Change WCS coords to pixel coords of images
@@ -1987,7 +1991,7 @@ def main():
     av_data_type = 'planck'
 
     # threshold in velocity range difference
-    vel_range_diff_thres = 10.0 # km/s
+    vel_range_diff_thres = 1.0 # km/s
 
     property_dir = \
         '/d/bip3/ezbc/perseus/data/python_output/residual_parameter_results/'
@@ -1998,7 +2002,7 @@ def main():
     # residuals in iterative masking
     residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
-    clobber_results = False
+    clobber_results = True
 
     table_cols = ('dust2gas_ratio', 'hi_velocity_width',
                   'hi_velocity_width', 'intercept', 'residual_width_scale')

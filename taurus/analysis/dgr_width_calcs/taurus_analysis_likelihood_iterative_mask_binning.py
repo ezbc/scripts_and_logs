@@ -1950,13 +1950,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['residual_width_scale'] = resid_width_scale
     global_props['threshold_delta_dgr'] = threshold_delta_dgr
 
-    # Write the file
-    print('\nWriting results to\n' + global_property_file + '_' + \
-          av_data_type + '_scaled.txt')
-
-    with open(property_dir + global_property_file + '_' + av_data_type + \
-              '_scaled.txt', 'w') as f:
-        json.dump(global_props, f)
 
     # Plot likelihood space
     for figure_type in figure_types:
@@ -1992,6 +1985,8 @@ def main():
     property_dir = \
         '/d/bip3/ezbc/taurus/data/python_output/residual_parameter_results/'
 
+    final_property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+
     property_filename = 'taurus_global_properties_planck'
 
     # Number of white noise standard deviations with which to fit the
@@ -2016,6 +2011,7 @@ def main():
         else:
             region_name = 'taurus'
 
+        property_filename = 'taurus_global_properties_planck'
         property_filename = property_filename.replace('taurus', region_name)
 
         print('\nPerforming likelihood derivations for ' + region_name)
@@ -2070,6 +2066,16 @@ def main():
                     table_df[col][i] = global_props[col]
                 else:
                     table_df[col][i] = global_props[col]['value']
+
+            # Write the file
+            if residual_width_scale == 3.0:
+                print('\nWriting results to\n' + global_property_file + \
+                        '_' + av_data_type + '_scaled.txt')
+
+                with open(final_property_dir + global_property_file +\
+                        '_' + av_data_type + '_scaled.txt', 'w') as f:
+                    json.dump(global_props, f)
+
 
         # Write dataframe to csv
         table_filename = property_dir + property_filename + '_' + \

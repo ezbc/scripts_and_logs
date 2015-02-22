@@ -943,7 +943,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
               'axes.labelweight': font_weight,
               'text.usetex': True,
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3, 7.3),
+              'figure.figsize': (7.3*y_scaling, 7.3*y_scaling),
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -2218,8 +2218,13 @@ def main(verbose=True, av_data_type='planck', region=None):
     global_property_filename = \
             global_property_filename.replace('taurus', region_name)
 
+    # Which cores to include in analysis?
+    cores_to_keep = ('L1495', 'L1495A', 'B213', 'L1498', 'B215',
+                     'L1483', 'L1478', 'L1456', 'NGC1579',
+                     'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482')
+
     # perform MC and write over current results?
-    clobber = 1
+    clobber = 0
 
     # Guesses for (phi_cnm, Z, phi_mol)
     guesses=(10.0, 1.0, 10.0)
@@ -2469,7 +2474,7 @@ def main(verbose=True, av_data_type='planck', region=None):
             json.dump(cores, f)
 
     for core in cores:
-        if core != 'L1449' and core != 'L1442' and \
+        if core in cores_to_keep and \
            len(cores[core]['hi_sd']) > 0:
 
             # append to the lists
@@ -2604,7 +2609,7 @@ def main(verbose=True, av_data_type='planck', region=None):
                 show = False)
 
 if __name__ == '__main__':
-    main(av_data_type='planck')
+    main(av_data_type='planck', region=1)
     main(av_data_type='k09')
 
 

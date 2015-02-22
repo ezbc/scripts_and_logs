@@ -23,7 +23,7 @@ def extract_data(datatype = 'ebv'):
                 resolution = 0.01,
                 cut_last_pixel = False,
                 verbose = True)
-    if datatype == 'ebv_err':
+    if datatype == 'radiance':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
                 x_range = ra_range,
@@ -217,6 +217,35 @@ def tau353_to_ebv(data, header):
 
     return (data, header)
 
+def radiance_to_ebv(data, header):
+
+    '''
+
+    The dust emission maps are derived from:
+    Planck 2013 results. XI. All-sky model of thermal dust emission
+
+    Whereby they fit for the radiance, and then calibrated the conversion of
+    the radiance to color excess using background quasars.
+
+    E(B-V) can be calculated from the dust radiance by
+    (E(B - V)/radiance = 5.40 x 10**5
+
+    '''
+
+    data *= 5.40e5
+    header['BUNIT'] = 'mag'
+
+    return (data, header)
+
+def combine_ebv(ebv_radiance, ebv_tau353, Rv=3.1):
+
+    ebv_combined = np.copy(ebv_radiance)
+    ebv_combined[ebv_combined > 0.3] = ebv_tau353
+
+    av = ebv_combined * Rv
+
+    return av
+
 def main():
 
     '''
@@ -235,38 +264,54 @@ def main():
     co_dir = '/d/bip3/ezbc/taurus/data/co/'
     planck_dir = '/d/bip3/ezbc/taurus/data/planck/'
 
-    if 0:
+    if 1:
         # Color excess maps
         # -----------------
+        # tau_353
         (data, header) = extract_data(datatype = 'tau353')
         write_data(data, header, planck_dir + 'taurus_planck_tau353.fits')
-        (data, header) = tau353_to_ebv(data, header)
-        write_data(data, header, planck_dir + 'taurus_planck_ebv.fits')
-        (data, header) = ebv2av(data, header)
-        write_data(data, header, av_dir + 'taurus_av_planck.fits')
 
+        (data_ebv_tau353, header) = tau353_to_ebv(data, header)
+        write_data(data_ebv_tau353, header,
+                   planck_dir + 'taurus_ebv_planck_tau353.fits')
+
+        (data_av_tau353, header) = ebv2av(data_ebv_tau353, header)
+        write_data(data_av_tau353, header,
+                   av_dir + 'taurus_av_planck_tau353.fits')
+
+        # tau 353 error
         (data, header) = extract_data(datatype = 'tau353err')
         write_data(data, header, planck_dir + 'taurus_planck_tau353_error.fits')
+
         (data, header) = tau353_to_ebv(data, header)
         write_data(data, header, planck_dir + 'taurus_planck_ebv_error.fits')
+
         (data, header) = ebv2av(data, header)
         write_data(data, header, av_dir + 'taurus_av_error_planck.fits')
 
-        (data, header) = extract_data(datatype = 'ebv')
-        write_data(data, header, planck_dir + 'taurus_planck_radiance_ebv.fits')
-        (data, header) = ebv2av(data, header)
-        write_data(data, header, av_dir + 'taurus_av_planck_radiance.fits')
+        # radiance
+        (data, header) = extract_data(datatype = 'radiance')
+        write_data(data, header, planck_dir + 'taurus_planck_radiance.fits')
 
-        (data, header) = extract_data(datatype = 'ebv_err')
-        write_data(data, header,
-                planck_dir + 'taurus_planck_radiance_ebv_error.fits')
-        (data, header) = ebv2av(data, header)
-        write_data(data, header,
-                av_dir + 'taurus_av_error_planck_radiance.fits')
+        (data_ebv_radiance, header) = radiance_to_ebv(data, header)
+        write_data(data_ebv_radiance, header,
+                   planck_dir + 'taurus_ebv_planck_radiance.fits')
+
+        (data_av_radiance, header) = ebv2av(data_ebv_radiance, header)
+        write_data(data_av_radiance, header,
+                   av_dir + 'taurus_av_planck_radiance.fits')
+
+        # combine radiance and tau353 color excess maps
+        data_av = combine_ebv(data_ebv_radiance, data_ebv_tau353)
+        write_data(data_av, header,
+                   av_dir + 'taurus_av_planck.fits')
+
+        write_data(data_av / 10.0, header,
+                   av_dir + 'taurus_av_error_planck.fits')
 
         # Band maps
         # ---------
-    if 1:
+    if 0:
         (data, header) = extract_data(datatype = '857')
         write_data(data, header, planck_dir + 'taurus_planck_857ghz.fits')
 
@@ -297,11 +342,11 @@ def main():
         (data, header) = extract_data(datatype = 'co_3to2_error')
         write_data(data, header, co_dir + 'taurus_co_3-2_error_planck.fits')
 
-    (data, header) = extract_data(datatype = 'co')
-    write_data(data, header, co_dir + 'taurus_co_planck.fits')
+        (data, header) = extract_data(datatype = 'co')
+        write_data(data, header, co_dir + 'taurus_co_planck.fits')
 
-    (data, header) = extract_data(datatype = 'co_error')
-    write_data(data, header, co_dir + 'taurus_co_error_planck.fits')
+        (data, header) = extract_data(datatype = 'co_error')
+        write_data(data, header, co_dir + 'taurus_co_error_planck.fits')
 
 if __name__ == '__main__':
 	main()

@@ -9,8 +9,9 @@ import numpy as np
 ''' Plotting Functions
 '''
 
-def plot_av_image(av_image=None, header=None, cores=None, title=None,
-        limits=None, boxes=False, savedir='./', filename=None, show=True):
+def plot_av_image(av_image=None, header=None, cores=None, region_boundary=None,
+        title=None, limits=None, boxes=False, savedir='./', filename=None,
+        show=True):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -134,6 +135,13 @@ def plot_av_image(av_image=None, header=None, cores=None, title=None,
                     vertices[:, ::-1],
                     facecolor='none',
                     edgecolor='w'))
+
+    if region_boundary is not None:
+        vertices = np.copy(region_boundary)
+        rect = ax.add_patch(Polygon(
+                vertices[:, ::-1],
+                facecolor='none',
+                edgecolor='w'))
 
     if title is not None:
         fig.suptitle(title, fontsize=fontScale)
@@ -453,7 +461,8 @@ def read_ds9_region(filename):
 
     return region
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+def load_ds9_core_region(cores, filename_base = 'taurus_av_boxes_',
+        header=None):
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
@@ -483,6 +492,43 @@ def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
 
     return cores
 
+def load_ds9_cloud_region(props, filename=None, header=None):
+
+    import pyregion as pyr
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    regions = pyr.open(filename)
+
+    props['regions'] = {}
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        region_name = tag[tag.find('{')+1:tag.find('}')].lower()
+
+        # Format vertices to be 2 x N array
+        poly_verts = []
+        for i in xrange(0, len(region.coord_list)/2):
+            poly_verts.append((region.coord_list[2*i],
+                               region.coord_list[2*i+1]))
+
+        poly_verts_pix = []
+        for i in xrange(0, len(poly_verts)):
+            poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                            dec=poly_verts[i][1],
+                                            header=header)[:-1][::-1].tolist())
+
+        props['regions'][region_name] = {}
+        props['regions'][region_name]['poly_verts'] = {}
+        props['regions'][region_name]['poly_verts']['wcs'] = poly_verts
+        props['regions'][region_name]['poly_verts']['pixel'] = poly_verts_pix
+
+    return props
+
+
 '''
 The main script
 '''
@@ -506,6 +552,9 @@ def main():
     wedge_radius = 10.0 / 0.43 # pixels,
     core_rel_pos = 0.15 # fraction of radius core is within wedge
 
+    # Which cores to include in analysis?
+    cores_to_keep = ('L1495', 'L1495A', 'B213', 'L1498', 'B215')
+
     # Name of property files
     global_property_file = 'taurus_global_properties.txt'
 
@@ -518,6 +567,8 @@ def main():
     core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
     region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
     property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    multicloud_region_dir = \
+            '/d/bip3/ezbc/multicloud/data/python_output/'
 
     # load Planck Av and GALFA HI images, on same grid
     av_data, av_header = load_fits(av_dir + \
@@ -536,7 +587,7 @@ def main():
 
     cores = convert_core_coordinates(cores, av_header)
 
-    cores = load_ds9_region(cores,
+    cores = load_ds9_core_region(cores,
                             filename_base = region_dir + 'taurus_av_poly_cores',
                             header = av_header)
 
@@ -550,6 +601,27 @@ def main():
 
     global_props = convert_limit_coordinates(global_props, header=av_header)
 
+    # Open cloud boundaries
+    global_props = load_ds9_cloud_region(global_props,
+                            filename=multicloud_region_dir + \
+                                     'multicloud_divisions.reg',
+                            header=av_header)
+
+    region_vertices = global_props['regions']['taurus1']['poly_verts']['pixel']
+
+    # block off region
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                      region_vertices))
+
+
+    # Remove cores
+    cores_to_remove = []
+    for core in cores:
+        if core not in cores_to_keep:
+            cores_to_remove.append(core)
+    for core_to_remove in cores_to_remove:
+        del cores[core_to_remove]
+
     # Plot
     figure_types = ['pdf', 'png']
     for figure_type in figure_types:
@@ -557,6 +629,7 @@ def main():
                       header=av_header,
                       boxes=True,
                       cores=cores,
+                      #region_boundary=region_vertices,
                       savedir=figure_dir,
                       limits=global_props['region_limit']['pixel'],
                       filename='taurus_av_cores_map.' + figure_type,
