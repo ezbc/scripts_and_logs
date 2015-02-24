@@ -3,6 +3,7 @@
 import planckpy as pl
 reload(pl)
 from astropy.io import fits as pf
+import numpy as np
 
 def extract_data(datatype = 'ebv'):
     data_location = '/d/bip3/ezbc/planck/planck_raw_data/'

@@ -2,6 +2,9 @@
 
 ''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
 '''
+import matplotlib
+matplotlib.use('Agg')
+
 
 import pyfits as pf
 import numpy as np
@@ -910,11 +913,16 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     n = int(np.ceil(len(hi_images)**0.5))
     if n**2 - n > len(hi_images):
         nrows = n - 1
-        ncols = n
+        ncols = 2
         y_scaling = 1.0 - 1.0 / n
     else:
         nrows, ncols = n, n
         y_scaling = 1.0
+
+    n = len(hi_images)
+    ncols = 2
+    nrows = (n + 1) / ncols
+    y_scaling = nrows / float(ncols)
 
     # Set up plot aesthetics
     # ----------------------
@@ -943,7 +951,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
               'axes.labelweight': font_weight,
               'text.usetex': True,
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3*y_scaling, 7.3*y_scaling),
+              'figure.figsize': (3.6, 3.6*y_scaling),
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -953,11 +961,9 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     # Create figure instance
     fig = plt.figure()
 
-    n = int(np.ceil(len(hi_images)**0.5))
-
     imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
-                 ngrids=len(hi_images),
+                 nrows_ncols=(nrows, ncols),
+                 ngrids=n,
                  axes_pad=0.,
                  aspect=False,
                  label_mode='L',
@@ -1067,12 +1073,16 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                          r' %.2f' % (T_cnm) + \
                          r'$^{+%.2f}_{-%.2f}$ \\' % (T_cnm_error[0],
                                                      T_cnm_error[1])
-            if Z_error == (0.0, 0.0):
-                Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
+            if Z != 1:
+                if Z_error == (0.0, 0.0):
+                    Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
+                else:
+                    Z_text = r'Z = %.2f' % (Z) + \
+                    r'$^{+%.2f}_{-%.2f}$ Z$_\odot$ \\' % (Z_error[0],
+                                                          Z_error[1])
             else:
-                Z_text = r'Z = %.2f' % (Z) + \
-                r'$^{+%.2f}_{-%.2f}$ Z$_\odot$ \\' % (Z_error[0],
-                                                      Z_error[1])
+                Z_text = ''
+
             if phi_mol_error == (0.0, 0.0):
                 phi_mol_text = r'\noindent$\phi_{\rm mol}$ = ' + \
                                  '%.1f' % (phi_mol)
@@ -1082,7 +1092,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                             r'$^{+%.2f}_{-%.2f}$ \\' % (phi_mol_error[0],
                                                      phi_mol_error[1])
 
-            ax.annotate(phi_cnm_text + T_cnm_text,
+            ax.annotate(phi_cnm_text + T_cnm_text + Z_text,
                     xytext=(anno_xpos, 0.05),
                     xy=(anno_xpos, 0.05),
                     textcoords='axes fraction',
@@ -2002,18 +2012,18 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('phi_cnm',
                value=guesses[0],
-               min=0.1,
+               min=1,
                max=100,
                vary=vary[0])
     params.add('phi_mol',
                value=guesses[2],
-               min=0.1,
-               max=100,
+               min=1,
+               max=20,
                vary=vary[2])
     params.add('Z',
                value=guesses[1],
-               min=0.01,
-               max=100,
+               min=0.1,
+               max=4,
                vary=vary[1])
 
     # Perform the fit!
@@ -2104,6 +2114,76 @@ def hrs2degs(ra=None, dec=None):
     dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
 
     return (ra_deg, dec_deg)
+def read_ds9_region(filename):
+
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
+    '''
+
+    # Import external modules
+    import pyregion as pyr
+
+    # Read region file
+    try:
+        region = pyr.open(filename)
+    except IOError:
+        return None
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    return region
+
+def load_ds9_core_region(cores, filename_base = 'taurus_av_boxes_',
+        header=None):
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    regions = read_ds9_region(filename_base + '.reg')
+
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        core = tag[tag.find('{')+1:tag.find('}')]
+
+        if core in cores:
+
+            # Format vertices to be 2 x N array
+            poly_verts = []
+            for i in xrange(0, len(region.coord_list)/2):
+                poly_verts.append((region.coord_list[2*i],
+                                   region.coord_list[2*i+1]))
+
+            poly_verts_pix = []
+            for i in xrange(0, len(poly_verts)):
+                poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                          dec=poly_verts[i][1],
+                                          header=header)[:-1][::-1].tolist())
+
+            cores[core]['poly_verts'] = {}
+            cores[core]['poly_verts']['wcs'] = poly_verts
+            cores[core]['poly_verts']['pixel'] = poly_verts_pix
+
+    return cores
 
 def load_ds9_region(props, filename=None, header=None):
 
@@ -2224,7 +2304,7 @@ def main(verbose=True, av_data_type='planck', region=None):
                      'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482')
 
     # perform MC and write over current results?
-    clobber = 0
+    clobber = 1
 
     # Guesses for (phi_cnm, Z, phi_mol)
     guesses=(10.0, 1.0, 10.0)
@@ -2312,7 +2392,19 @@ def main(verbose=True, av_data_type='planck', region=None):
     with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
+    # Remove cores
+    cores_to_remove = []
+    for core in cores:
+        if core not in cores_to_keep:
+            cores_to_remove.append(core)
+    for core_to_remove in cores_to_remove:
+        del cores[core_to_remove]
+
     cores = convert_core_coordinates(cores, h)
+    cores = load_ds9_core_region(cores,
+                            filename_base = region_dir + \
+                                            'taurus_av_poly_cores',
+                            header = av_header)
 
     # Load cloud division regions from ds9
     properties = load_ds9_region(properties,

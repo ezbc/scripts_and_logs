@@ -1996,13 +1996,15 @@ def main():
     property_dir = \
         '/d/bip3/ezbc/perseus/data/python_output/residual_parameter_results/'
 
+    final_property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
+
     property_filename = 'perseus_global_properties_planck'
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
     residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
-    clobber_results = True
+    clobber_results = False
 
     table_cols = ('dust2gas_ratio', 'hi_velocity_width',
                   'hi_velocity_width', 'intercept', 'residual_width_scale')
@@ -2056,12 +2058,22 @@ def main():
             else:
                 table_df[col][i] = global_props[col]['value']
 
+        # Write the file
+        if residual_width_scale == 3.0:
+            print('\nWriting results to\n' + property_filename + \
+                    '_' + av_data_type + '_scaled.txt')
+
+            with open(final_property_dir + property_filename +\
+                    '_' + av_data_type + '_scaled.txt', 'w') as f:
+                json.dump(global_props, f)
+
     # Write dataframe to csv
     table_filename = property_dir + property_filename + '_' + \
                      av_data_type
 
     table_df.to_csv(table_filename + '.csv', index=False)
     table_df.to_html(table_filename + '.html', index=False)
+    table_df.to_latex(table_filename + '.tex', index=False)
 
 if __name__ == '__main__':
     main()

@@ -1995,7 +1995,7 @@ def main():
 
     regions = [2, 1, None]
 
-    clobber_results = 1
+    clobber_results = False
 
     table_cols = ('dust2gas_ratio', 'hi_velocity_width',
                   'hi_velocity_width', 'intercept', 'residual_width_scale')
@@ -2069,13 +2069,12 @@ def main():
 
             # Write the file
             if residual_width_scale == 3.0:
-                print('\nWriting results to\n' + global_property_file + \
+                print('\nWriting results to\n' + property_filename + \
                         '_' + av_data_type + '_scaled.txt')
 
-                with open(final_property_dir + global_property_file +\
+                with open(final_property_dir + property_filename +\
                         '_' + av_data_type + '_scaled.txt', 'w') as f:
                     json.dump(global_props, f)
-
 
         # Write dataframe to csv
         table_filename = property_dir + property_filename + '_' + \
@@ -2083,6 +2082,7 @@ def main():
 
         table_df.to_csv(table_filename + '.csv', index=False)
         table_df.to_html(table_filename + '.html', index=False)
+        table_df.to_latex(table_filename + '.tex', index=False)
 
 if __name__ == '__main__':
     main()
