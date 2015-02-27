@@ -1418,7 +1418,7 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
 
     # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image=nhi_image,
-                              av_image=av_image + intercept,
+                              av_image=av_image,
                               dgr=dgr)
 
     nh2_image_error = calculate_nh2_error(nhi_image_error=nhi_image_error,
@@ -1431,15 +1431,51 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
     hi_sd_image_error = calculate_sd(nhi_image_error,
                                      sd_factor=1/1.25)
 
-
     h2_sd_image = calculate_sd(nh2_image,
                                sd_factor=1/0.625)
     h2_sd_image_error = calculate_sd(nh2_image_error,
                                      sd_factor=1/0.625)
 
-
     h_sd_image = hi_sd_image + h2_sd_image
     h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
+
+    if 0:
+        import matplotlib.pyplot as plt
+        plt.close(); plt.clf()
+        plt.hist(h2_sd_image, bins=20)
+        plt.xlabel(r'H2 surface density (Msun / pc$^2$)')
+        plt.ylabel('Counts')
+        plt.savefig('/usr/users/ezbc/Desktop/california_h2_hist.png')
+
+        plt.close(); plt.clf()
+        plt.hist(nh2_image, bins=20)
+        plt.xlabel(r'H2 column density (10$^{20}$ cm$^{-2}$)')
+        plt.ylabel('Counts')
+        plt.savefig('/usr/users/ezbc/Desktop/california_nh2_hist.png')
+
+        plt.close(); plt.clf()
+        plt.hist(nhi_image, bins=20)
+        plt.xlabel(r'HI column density (10$^{20}$ cm$^{-2}$)')
+        plt.ylabel('Counts')
+        plt.savefig('/usr/users/ezbc/Desktop/california_nhi_hist.png')
+
+        plt.close(); plt.clf()
+        plt.hist(h_sd_image, bins=20)
+        plt.xlabel(r'H surface density (Msun / pc$^2$)')
+        plt.ylabel('Counts')
+        plt.savefig('/usr/users/ezbc/Desktop/california_h_hist.png')
+
+        plt.close(); plt.clf()
+        plt.hist(h_sd_image, bins=20)
+        plt.xlabel(r'HI surface density (Msun / pc$^2$)')
+        plt.ylabel('Counts')
+        plt.savefig('/usr/users/ezbc/Desktop/california_hi_hist.png')
+
+        plt.close(); plt.clf()
+        plt.hist(av_image + intercept, bins=20)
+        plt.xlabel(r'A$_V$ [mag]')
+        plt.ylabel('Counts')
+        plt.savefig('/usr/users/ezbc/Desktop/california_av_hist.png')
 
     # h2 surface density
     #h2_sd_image = h_sd_image - hi_sd_image
@@ -1452,7 +1488,12 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
                       h2_sd_image**2)**0.5
 
 
-    if sub_image_indices is not None:
+    if 0:
+        if sub_image_indices is None:
+            sub_image_indices = h2_sd_image >= 0
+        else:
+            sub_image_indices += h2_sd_image >= 0
+
         av_image = av_image[sub_image_indices]
         av_image_error = av_image_error[sub_image_indices]
         hi_sd_image = hi_sd_image[sub_image_indices]
@@ -1562,6 +1603,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                     'nhi errors' : np.empty((N_monte_carlo_runs))}
     hi_vel_range_list = np.empty((N_monte_carlo_runs, 2))
     dgr_list = np.empty((N_monte_carlo_runs))
+    width_list = np.empty((N_monte_carlo_runs))
     intercept_list = np.empty((N_monte_carlo_runs))
 
     # Get standard errors on images + the HI velocity range
@@ -1639,6 +1681,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 hi_vel_range_list[i, 0] = hi_vel_range_noise[0]
                 hi_vel_range_list[i, 1] = hi_vel_range_noise[1]
                 dgr_list[i] = dgr_random
+                width_list[i] = vel_width_random
                 intercept_list[i] = intercept_random
 
                 # Add random error to images
@@ -1649,6 +1692,9 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                 av_image_noise = np.copy(av_image)
                 dgr_noise = dgr
                 hi_vel_range_noise = np.asarray(hi_vel_range)
+
+            if 0:
+                print('DGR random = {0:.2f}'.format(dgr_random))
 
             # Derive new images
             images = derive_images(hi_cube=hi_cube_noise,
@@ -1661,6 +1707,7 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                                    av_image=av_image_noise,
                                    av_image_error=av_image_error,
                                    )
+
             # grab the N(HI) error
             results_dict['nhi errors'][i] = \
                     np.mean(images['nhi'][images['nhi'] == images['nhi']])
@@ -1753,6 +1800,20 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         dgr_list = np.asarray(results['dgrs'])
         intercept_list = np.asarray(results['intercepts'])
         hi_vel_range_list = np.asarray(results['vel_ranges'])
+
+    if 1:
+        import matplotlib.pyplot as plt
+        plt.close(); plt.clf()
+        plt.hist(dgr_list, bins=20)
+        plt.xlabel(r'DGR [10$^{-20}$ cm$^2$ mag]')
+        plt.ylabel('Counts')
+        plt.savefig('/usr/users/ezbc/Desktop/california_dgr_hist.png')
+
+        plt.close(); plt.clf()
+        plt.hexbin(width_list, dgr_list, mincnt=1)
+        plt.xlabel('Width [km/s]')
+        plt.ylabel(r'DGR [10$^{-20}$ cm$^2$ mag]')
+        plt.savefig('/usr/users/ezbc/Desktop/california_dgr_width_mc.png')
 
     # Remove failed fits
     results_dict['phi_cnm fits'] = \
@@ -2273,10 +2334,10 @@ def main(verbose=True, av_data_type='planck', region=None):
     global guesses
 
     calc_errors = True # Run monte carlo error analysis?
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
+    N_monte_carlo_runs = 100 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
-    vary_phi_mol = False # Vary phi_mol in K+09 fit?
+    vary_phi_mol = True # Vary phi_mol in K+09 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
@@ -2705,7 +2766,6 @@ def main(verbose=True, av_data_type='planck', region=None):
 
 if __name__ == '__main__':
     main(av_data_type='planck', region=None)
-    main(av_data_type='k09')
 
 
 

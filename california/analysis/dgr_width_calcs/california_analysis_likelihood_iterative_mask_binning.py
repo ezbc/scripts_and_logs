@@ -733,18 +733,18 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
     fit_params = curve_fit(gauss,
                            bin_edges[:-1],
                            counts,
-                           p0=(2, np.nanmax(counts), -0.1),
+                           p0=(3, np.nanmax(counts), 0),
                            maxfev=1000000,
                            )[0]
 
     # Include only residuals within 3 sigma
-    residual_thres = resid_width_scale * np.abs(fit_params[0])
+    residual_thres = resid_width_scale * np.abs(fit_params[0]) + fit_params[2]
     mask = residuals > residual_thres
 
     if results_filename is not None:
-        x_fit = np.linspace(-10,
-                        10,
-                        1000)
+        x_fit = np.linspace(np.nanmin(residuals),
+                            np.nanmax(residuals),
+                            1000)
 
         y_fit = gauss(x_fit, *fit_params)
 
@@ -765,6 +765,8 @@ def iterate_residual_masking(
                              av_data_error=None,
                              init_mask=None,
                              vel_range=None,
+                             dgrs=None,
+                             intercepts=None,
                              threshold_delta_dgr=None,
                              resid_width_scale=3.0,
                              plot_progress=False,
@@ -802,26 +804,59 @@ def iterate_residual_masking(
     # Iterate masking pixels which are correlated and rederiving a linear least
     # squares solution for the DGR
     # -------------------------------------------------------------------------
+    use_intercept = True
     delta_dgr = 1e10
     dgr = 1e10
     while delta_dgr > threshold_delta_dgr:
-        N = len(np.ravel(nhi_image[~mask]))
-        #A = np.array((np.ones(N),
-        #              np.ravel(nhi_image[~mask] / nhi_image_error[~mask]),))
-        A = np.array((np.ravel(nhi_image[~mask] / nhi_image_error[~mask]),))
-        b = np.array((np.ravel(av_data[~mask] / av_data_error[~mask]),))
-        A = np.matrix(A).T
-        b = np.matrix(b).T
+        if 0:
+            N = len(np.ravel(nhi_image[~mask]))
+            if use_intercept:
+                A = np.array((np.ones(N),
+                              np.ravel(nhi_image[~mask] / \
+                                       nhi_image_error[~mask]),))
+            else:
+                A = np.array((np.ravel(nhi_image[~mask] / \
+                              nhi_image_error[~mask]),))
+            b = np.array((np.ravel(av_data[~mask] / av_data_error[~mask]),))
+            A = np.matrix(A).T
+            b = np.matrix(b).T
 
-        a = (np.linalg.pinv(A) * b)
-        #intercept = a[0, 0]
-        #dgr_new = a[1, 0]
-        dgr_new = a[0, 0]
-        intercept = 0
+            a = (np.linalg.pinv(A) * b)
+            if use_intercept:
+                intercept = a[0, 0]
+                dgr_new = a[1, 0]
+            else:
+                dgr_new = a[0, 0]
+                intercept = 0
+        else:
+            results = calc_likelihoods(
+                             nhi_image=nhi_image[~mask],
+                             av_image=av_data[~mask],
+                             av_image_error=av_data_error[~mask],
+                             #image_weights=bin_weights[~mask],
+                             #vel_center=vel_center_masked,
+                             #vel_widths=vel_widths,
+                             dgrs=dgrs,
+                             intercepts=intercepts,
+                             results_filename='',
+                             return_likelihoods=True,
+                             likelihood_filename=None,
+                             clobber=False,
+                             conf=conf,
+                             )
+
+        # Unpack output of likelihood calculation
+        (vel_range_confint, width_confint, dgr_confint, intercepts_confint,
+                likelihoods, width_likelihood, dgr_likelihood,
+                intercept_likelihood, width_max, dgr_max, intercept_max,
+                vel_range_max) = results
+
+        dgr_new = dgr_max
+        intercept = intercept_max
 
         # Create model with the DGR
         if verbose:
-            print('\tDGR = {0:.2} 10^20 cm^2 mag'.format(dgr))
+            print('\tDGR = {0:.2} 10^20 cm^2 mag'.format(dgr_new))
             print('\tIntercept = {0:.2f} mag'.format(intercept))
 
         av_image_model = nhi_image * dgr_new + intercept
@@ -838,13 +873,15 @@ def iterate_residual_masking(
             plt.show()
 
         # Include only residuals which are white noise
-        if dgr < 1e10:
-            results_filename = None
+        if dgr == 1e10:
+            plot_filename = None
+        else:
+            plot_filename = results_filename
 
         mask_new = get_residual_mask(residuals,
                                      resid_width_scale=resid_width_scale,
                                      plot_progress=plot_progress,
-                                     results_filename=results_filename)
+                                     results_filename=plot_filename)
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -863,9 +900,13 @@ def iterate_residual_masking(
 
     return (av_model, mask, dgr)
 
+
+
+
 def calc_likelihoods(
         hi_cube=None,
         hi_vel_axis=None,
+        nhi_image=None,
         av_image=None,
         av_image_error=None,
         image_weights=None,
@@ -933,13 +974,15 @@ def calc_likelihoods(
         for j, vel_width in enumerate(vel_widths):
             # Construct N(HI) image outside of DGR loop, then apply
             # DGRs in loop
-            vel_range = np.array((vel_center - vel_width / 2.,
-                                  vel_center + vel_width / 2.))
 
-            nhi_image = calculate_nhi(cube=hi_cube,
-                                      velocity_axis=hi_vel_axis,
-                                      velocity_range=vel_range,
-                                      return_nhi_error=False)
+            # use the hi cube and vel range if no nhi image provided
+            if nhi_image is None:
+                vel_range = np.array((vel_center - vel_width / 2.,
+                                      vel_center + vel_width / 2.))
+                nhi_image = calculate_nhi(cube=hi_cube,
+                                          velocity_axis=hi_vel_axis,
+                                          velocity_range=vel_range,
+                                          return_nhi_error=False)
 
             # Cycle through DGR to estimate error
             for k, dgr in enumerate(dgrs):
@@ -1312,9 +1355,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 50, 2*0.16667)
+    vel_widths = np.arange(1, 100, 2*0.16667)
     dgrs = np.arange(0.05, 0.7, 5e-3)
     intercepts = np.arange(-1, 1, 0.01)
+    intercepts = np.arange(-5, 5, 0.2)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1428,9 +1472,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
 
-    if 0:
+    if 1:
         import matplotlib.pyplot as plt
         plt.imshow(np.ma.array(av_data, mask=region_mask), origin='lower')
+        plt.colorbar()
         plt.show()
 
     print('\nRegion size = ' + \
@@ -1510,7 +1555,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # Write full resolution mask to parameters
     global_props['mask'] = mask.tolist()
 
-    if 0:
+    if 1:
         import matplotlib.pyplot as plt
         plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
         plt.show()
@@ -1999,7 +2044,7 @@ def main():
     # residuals in iterative masking
     residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
-    clobber_results = False
+    clobber_results = True
 
     table_cols = ('dust2gas_ratio', 'hi_velocity_width',
                   'hi_velocity_width', 'intercept', 'residual_width_scale')
@@ -2008,7 +2053,7 @@ def main():
 
     for i, residual_width_scale in enumerate(residual_width_scales):
         iteration = 0
-        vel_range = (-50.0, 50.0)
+        vel_range = (-100.0, 100.0)
         vel_range_new = (-1.0, 1.0)
         vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                        np.array(vel_range_new)))
