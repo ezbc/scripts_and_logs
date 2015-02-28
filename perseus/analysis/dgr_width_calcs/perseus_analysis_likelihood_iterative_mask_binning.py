@@ -1,4 +1,3 @@
-
 import matplotlib
 matplotlib.use('Agg')
 
@@ -513,6 +512,7 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     import matplotlib.pyplot as plt
     import matplotlib
     import numpy as np
+    from scipy.integrate import simps as integrate
 
     # Set up plot aesthetics
     # ----------------------
@@ -565,13 +565,18 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     counts_ext[0] = 0
     counts_ext[1:] = counts
 
-    counts_ext /= np.nanmax(counts_ext)
+    # Normalize so area = 1
+    #counts_ext /= np.nansum(counts_ext) * (bin_edges_ext[2] - bin_edges_ext[1])
+    counts_ext = counts_ext / integrate(counts_ext, x=bin_edges_ext)
     y_fit /= np.max(y_fit)
+    y_fit *= np.max(counts_ext)
+    print('max counts', np.max(counts_ext))
 
     ax.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid',
             linewidth=1.5)
     ax.plot(x_fit, y_fit,
-            linewidth=2)
+            linewidth=2,
+            alpha=0.6)
     ax.set_xlim([np.nanmin(bin_edges_ext) - \
                  np.abs(0.8 * np.nanmin(bin_edges_ext)),4])
     ax.set_ylim([-0.1, 1.1])
@@ -723,31 +728,98 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
     '''
 
     import numpy as np
-    from scipy.optimize import curve_fit
+    from scipy.optimize import curve_fit, minimize
+
 
     # Fit the rising portion of the residuals
-    residuals_crop = residuals[(residuals < 0) & ~np.isnan(residuals)]
+    residuals_crop = residuals[(residuals < 0) & \
+                               #(residuals > -1.5) & \
+                                ~np.isnan(residuals)]
 
     counts, bin_edges = np.histogram(np.ravel(residuals_crop),
                                      bins=100,
                                      )
-    fit_params = curve_fit(gauss,
-                           bin_edges[:-1],
-                           counts,
-                           p0=(2, np.nanmax(counts), -0.1),
-                           maxfev=1000000,
-                           )[0]
+
+    np.save('residuals.npy', residuals)
+
+    p0=(2, np.nanmax(counts), 0)
+
+    if 0:
+        fit_params = curve_fit(gauss,
+                               bin_edges[:-1],
+                               counts,
+                               p0=p0,
+                               maxfev=1000000,
+                               )[0]
+    elif 1:
+        from lmfit import minimize, Parameters
+
+        # Set parameter limits and initial guesses
+        params = Parameters()
+        params.add('width',
+                   value=p0[0],
+                   min=0.1,
+                   max=10,
+                   )
+        params.add('amp',
+                   value=p0[1],
+                   min=0,
+                   max=2 * np.nanmax(counts),
+                   )
+        params.add('x0',
+                   value=p0[2],
+                   min=-4,
+                   max=4,
+                   )
+
+        def norm(params, bin_edges, counts):
+            width = params['width'].value
+            amp = params['amp'].value
+            x0 = params['x0'].value
+
+            model = gauss(bin_edges, width, amp, x0)
+
+            norm = np.sum((counts - model)**2)
+
+            return norm
+
+        # Perform the fit!
+        result = minimize(norm,
+                          params,
+                          args=(bin_edges[:-1], counts),
+                          method='lbfgsb')
+
+        fit_params = (params['width'].value, params['amp'].value,
+                params['x0'].value)
+    else:
+        bounds = ((0, 10), (0, 5 * np.nanmax(counts)), (-10, 10))
+        fit_params = minimize(gauss,
+                              counts,
+                              method='L-BFGS-B',
+                              bounds=bounds,)
 
     # Include only residuals within 3 sigma
-    residual_thres = resid_width_scale * np.abs(fit_params[0])
+    residual_thres = resid_width_scale * np.abs(fit_params[0]) + fit_params[2]
     mask = residuals > residual_thres
 
-    if results_filename is not None:
-        x_fit = np.linspace(-10,
-                        10,
+    import matplotlib.pyplot as plt
+    plt.clf(); plt.close();
+    x_fit = np.linspace(np.nanmin(residuals),
+                        np.nanmax(residuals),
                         1000)
 
+    y_fit = gauss(x_fit, *fit_params)
+    plt.plot(bin_edges[:-1], counts)
+    plt.plot(x_fit, y_fit)
+    plt.savefig('/usr/users/ezbc/Desktop/residuals.png')
+
+    if results_filename is not None:
+        x_fit = np.linspace(np.nanmin(residuals),
+                            np.nanmax(residuals),
+                            1000)
+
         y_fit = gauss(x_fit, *fit_params)
+        y_fit / np.nanmax(residuals)
 
         print('\nSaving residual mask PDF figure to\n' + results_filename)
         plot_mask_residuals(residuals=residuals,
@@ -755,6 +827,12 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
                             y_fit=y_fit,
                             residual_thres=residual_thres,
                             filename=results_filename,
+                            show=plot_progress)
+        plot_mask_residuals(residuals=residuals,
+                            x_fit=x_fit,
+                            y_fit=y_fit,
+                            residual_thres=residual_thres,
+                            filename=results_filename.replace('.pdf', '.png'),
                             show=plot_progress)
 
     return mask
@@ -766,6 +844,8 @@ def iterate_residual_masking(
                              av_data_error=None,
                              init_mask=None,
                              vel_range=None,
+                             dgrs=None,
+                             intercepts=None,
                              threshold_delta_dgr=None,
                              resid_width_scale=3.0,
                              plot_progress=False,
@@ -803,27 +883,63 @@ def iterate_residual_masking(
     # Iterate masking pixels which are correlated and rederiving a linear least
     # squares solution for the DGR
     # -------------------------------------------------------------------------
+    use_intercept = True
     delta_dgr = 1e10
     dgr = 1e10
+    iteration = 0
     while delta_dgr > threshold_delta_dgr:
-        N = len(np.ravel(nhi_image[~mask]))
-        #A = np.array((np.ones(N),
-        #              np.ravel(nhi_image[~mask] / nhi_image_error[~mask]),))
-        A = np.array((np.ravel(nhi_image[~mask] / nhi_image_error[~mask]),))
-        b = np.array((np.ravel(av_data[~mask] / av_data_error[~mask]),))
-        A = np.matrix(A).T
-        b = np.matrix(b).T
+        if 0:
+            N = len(np.ravel(nhi_image[~mask]))
+            if use_intercept:
+                A = np.array((np.ones(N),
+                              np.ravel(nhi_image[~mask] / \
+                                       nhi_image_error[~mask]),))
+            else:
+                A = np.array((np.ravel(nhi_image[~mask] / \
+                              nhi_image_error[~mask]),))
+            b = np.array((np.ravel(av_data[~mask] / av_data_error[~mask]),))
+            A = np.matrix(A).T
+            b = np.matrix(b).T
 
-        a = (np.linalg.pinv(A) * b)
-        #intercept = a[0, 0]
-        #dgr_new = a[1, 0]
-        dgr_new = a[0, 0]
-        intercept = 0
+            a = (np.linalg.pinv(A) * b)
+            if use_intercept:
+                intercept = a[0, 0]
+                dgr_new = a[1, 0]
+            else:
+                dgr_new = a[0, 0]
+                intercept = 0
+        else:
+            results = calc_likelihoods(
+                             nhi_image=nhi_image[~mask],
+                             av_image=av_data[~mask],
+                             av_image_error=av_data_error[~mask],
+                             #image_weights=bin_weights[~mask],
+                             #vel_center=vel_center_masked,
+                             vel_widths=np.arange(0,1,1),
+                             dgrs=dgrs,
+                             intercepts=intercepts,
+                             results_filename='',
+                             return_likelihoods=True,
+                             likelihood_filename=None,
+                             clobber=False,
+                             verbose=False
+                             )
+
+        # Unpack output of likelihood calculation
+        (vel_range_confint, width_confint, dgr_confint, intercepts_confint,
+                likelihoods, width_likelihood, dgr_likelihood,
+                intercept_likelihood, width_max, dgr_max, intercept_max,
+                vel_range_max) = results
+
+        dgr_new = dgr_max
+        intercept = intercept_max
 
         # Create model with the DGR
         if verbose:
-            print('\tDGR = {0:.2} 10^20 cm^2 mag'.format(dgr))
+            print('Iteration {0:.0f} results:'.format(iteration))
+            print('\tDGR = {0:.2} 10^20 cm^2 mag'.format(dgr_new))
             print('\tIntercept = {0:.2f} mag'.format(intercept))
+            print('')
 
         av_image_model = nhi_image * dgr_new + intercept
 
@@ -833,19 +949,23 @@ def iterate_residual_masking(
         #    residuals = av_data - av_image_model + intercept
         residuals = av_data - av_image_model
 
+        residuals[mask] = np.nan
+
         if 0:
             import matplotlib.pyplot as plt
-            plt.hist(residuals)
+            plt.imshow(residuals, origin='lower')
+            plt.colorbar(cmap=plt.cm.gnuplot)
             plt.show()
 
         # Include only residuals which are white noise
-        if dgr < 1e10:
-            results_filename = None
-
+        if iteration == 0:
+            plot_filename = results_filename
+        else:
+            plot_filename = None
         mask_new = get_residual_mask(residuals,
                                      resid_width_scale=resid_width_scale,
                                      plot_progress=plot_progress,
-                                     results_filename=results_filename)
+                                     results_filename=plot_filename)
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -857,6 +977,14 @@ def iterate_residual_masking(
         # Reset while loop conditions
         delta_dgr = np.abs(dgr - dgr_new)
         dgr = dgr_new
+        iteration += 1
+
+    # Plot results
+    if 0:
+        mask_new = get_residual_mask(residuals,
+                                     resid_width_scale=resid_width_scale,
+                                     plot_progress=plot_progress,
+                                     results_filename=results_filename)
 
     # Create model of Av
     av_model = dgr * nhi_image
@@ -867,6 +995,7 @@ def iterate_residual_masking(
 def calc_likelihoods(
         hi_cube=None,
         hi_vel_axis=None,
+        nhi_image=None,
         av_image=None,
         av_image_error=None,
         image_weights=None,
@@ -881,6 +1010,7 @@ def calc_likelihoods(
         clobber=False,
         conf=0.68,
         threshold_delta_dgr=0.0005,
+        verbose=False,
         ):
 
     '''
@@ -934,13 +1064,16 @@ def calc_likelihoods(
         for j, vel_width in enumerate(vel_widths):
             # Construct N(HI) image outside of DGR loop, then apply
             # DGRs in loop
-            vel_range = np.array((vel_center - vel_width / 2.,
-                                  vel_center + vel_width / 2.))
 
-            nhi_image = calculate_nhi(cube=hi_cube,
-                                      velocity_axis=hi_vel_axis,
-                                      velocity_range=vel_range,
-                                      return_nhi_error=False)
+            # use the hi cube and vel range if no nhi image provided
+            if nhi_image is None:
+                print('Vel width = ', vel_width)
+                vel_range = np.array((vel_center - vel_width / 2.,
+                                      vel_center + vel_width / 2.))
+                nhi_image = calculate_nhi(cube=hi_cube,
+                                          velocity_axis=hi_vel_axis,
+                                          velocity_range=vel_range,
+                                          return_nhi_error=False)
 
             # Cycle through DGR to estimate error
             for k, dgr in enumerate(dgrs):
@@ -954,12 +1087,15 @@ def calc_likelihoods(
                                      weights=image_weights)
 
                     likelihoods[j, k, m] = logL
+                    #print 'logL =', logL
 
                     # Shows progress each 10%
                     count += 1
                     abs_step = int((total * 1)/10) or 10
                     if count and not count % abs_step:
                         print "\t{0:.0%} processed".format(count/total)
+
+            nhi_image = None
 
     # Load file of likelihoods
     elif not perform_mle:
@@ -1011,20 +1147,24 @@ def calc_likelihoods(
     dgr_max = dgrs[max_loc[1][0]]
     intercept_max = intercepts[max_loc[2][0]]
 
-    print('\nVelocity widths = ' + \
-            '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(width_confint[0],
+    if verbose:
+        print('\nVelocity widths = ' + \
+                '{0:.2f} +{1:.2f}/-{2:.2f} km/s'.format(width_confint[0],
                                                     width_confint[2],
                                                     np.abs(width_confint[1])))
-    print('\nDGRs = ' + \
+        print('\nDGRs = ' + \
             '{0:.2f} +{1:.2f}/-{2:.2f} 10^20 cm^2 mag'.format(dgr_confint[0],
                                                     dgr_confint[2],
                                                     np.abs(dgr_confint[1])))
-    print('\nIntercepts = ' + \
+        print('\nIntercepts = ' + \
         '{0:.2f} +{1:.2f}/-{2:.2f} 10^20 cm^2 mag'.format(intercept_confint[0],
                                                 intercept_confint[2],
                                                 np.abs(intercept_confint[1])))
 
     # Write PDF
+    if vel_center is None:
+        vel_center = 0.0
+
     upper_lim = (np.nanmean(vel_center) + width_confint[0]/2.)
     lower_lim = (np.nanmean(vel_center) - width_confint[0]/2.)
     upper_lim_error = width_confint[2]**2
@@ -1313,9 +1453,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 50, 2*0.16667)
+    vel_widths = np.arange(1, 100, 2*0.16667)
     dgrs = np.arange(0.05, 0.7, 5e-3)
     intercepts = np.arange(-1, 1, 0.01)
+    intercepts = np.arange(-5, 5, 0.2)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1391,9 +1532,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
         region_name = 'perseus2'
     else:
         region_name = 'perseus'
-
-    print('\nRegion =', region_name)
-
     global_property_file = global_property_file.replace('perseus', region_name)
 
     # Change WCS coords to pixel coords of images
@@ -1435,6 +1573,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     if 0:
         import matplotlib.pyplot as plt
         plt.imshow(np.ma.array(av_data, mask=region_mask), origin='lower')
+        plt.colorbar()
         plt.show()
 
     print('\nRegion size = ' + \
@@ -1497,6 +1636,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                              av_data=av_data,
                              av_data_error=av_data_error,
                              vel_range=vel_range,
+                             dgrs=dgrs,
+                             intercepts=intercepts,
                              threshold_delta_dgr=threshold_delta_dgr,
                              resid_width_scale=resid_width_scale,
                              init_mask=region_mask,
@@ -1514,7 +1655,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # Write full resolution mask to parameters
     global_props['mask'] = mask.tolist()
 
-    if 0:
+    if 1:
         import matplotlib.pyplot as plt
         plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
         plt.show()
@@ -1709,6 +1850,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     print('\nPerforming likelihood calculations with initial error ' + \
           'estimate...')
+
+    print('\nVelwidths = ')
+    print(vel_widths)
 
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
@@ -1991,7 +2135,7 @@ def main():
     av_data_type = 'planck'
 
     # threshold in velocity range difference
-    vel_range_diff_thres = 1.0 # km/s
+    vel_range_diff_thres = 3.0 # km/s
 
     property_dir = \
         '/d/bip3/ezbc/perseus/data/python_output/residual_parameter_results/'
@@ -2004,76 +2148,97 @@ def main():
     # residuals in iterative masking
     residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
-    clobber_results = False
+    regions = [None, ]
+
+    clobber_results = True
 
     table_cols = ('dust2gas_ratio', 'hi_velocity_width',
                   'hi_velocity_width', 'intercept', 'residual_width_scale')
     n = len(residual_width_scales)
     table_df = DataFrame({col:np.empty(n) for col in table_cols})
 
-    for i, residual_width_scale in enumerate(residual_width_scales):
-        iteration = 0
-        vel_range = (-50.0, 50.0)
-        vel_range_new = (-1.0, 1.0)
-        vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                       np.array(vel_range_new)))
+    for region in regions:
+        # Grab correct region
+        if region == 1:
+            region_name = 'perseus1'
+        elif region == 2:
+            region_name = 'perseus2'
+        else:
+            region_name = 'perseus'
 
-        while vel_range_diff > vel_range_diff_thres:
-            json_filename = property_dir + property_filename + '_' + \
+        property_filename = 'perseus_global_properties_planck'
+        property_filename = property_filename.replace('perseus', region_name)
+
+        print('\nPerforming likelihood derivations for ' + region_name)
+
+        for i, residual_width_scale in enumerate(residual_width_scales):
+            iteration = 0
+            vel_range = (-50.0, 50.0)
+            vel_range_new = (-1.0, 1.0)
+            vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
+                                           np.array(vel_range_new)))
+
+            while vel_range_diff > vel_range_diff_thres:
+                json_filename = property_dir + property_filename + '_' + \
                             av_data_type + \
                             '_residscale{0:.1f}'.format(residual_width_scale)\
                             + '_iter{0:.0f}'.format(iteration) + '.txt'
 
-            exists = path.isfile(json_filename)
+                exists = path.isfile(json_filename)
 
-            if exists and not clobber_results:
-                with open(json_filename, 'r') as f:
-                    global_props = json.load(f)
-            else:
-                global_props = \
-                    run_likelihood_analysis(av_data_type=av_data_type,
-                                    vel_range=vel_range,
-                                    resid_width_scale=residual_width_scale)
+                print('Writing iteration data file to ' + json_filename)
 
-            vel_range_new = global_props['hi_velocity_range']
+                if exists and not clobber_results:
+                    with open(json_filename, 'r') as f:
+                        global_props = json.load(f)
+                else:
+                    global_props = \
+                        run_likelihood_analysis(av_data_type=av_data_type,
+                                        vel_range=vel_range,
+                                        region=region,
+                                        resid_width_scale=residual_width_scale)
 
-            vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                           np.array(vel_range_new)))
+                vel_range_new = global_props['hi_velocity_range']
 
-            if clobber_results:
-                with open(json_filename, 'w') as f:
+                vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
+                                               np.array(vel_range_new)))
+
+                if clobber_results:
+                    with open(json_filename, 'w') as f:
+                        json.dump(global_props, f)
+
+                print('\n\n\n Next iteration \n-------------------\n\n\n')
+                print('Velocity range difference =' + \
+                      ' {0:.1f}'.format(vel_range_diff))
+
+                vel_range = vel_range_new
+
+                iteration += 1
+
+            # Write important results to table
+            for col in table_df:
+                if col == 'residual_width_scale':
+                    table_df[col][i] = global_props[col]
+                else:
+                    table_df[col][i] = global_props[col]['value']
+
+            # Write the file
+            if residual_width_scale == 3.0:
+                print('\nWriting results to\n' + property_filename + \
+                        '_' + av_data_type + '_scaled.txt')
+
+                with open(final_property_dir + property_filename +\
+                        '_' + av_data_type + '_scaled.txt', 'w') as f:
                     json.dump(global_props, f)
 
-            print('\n\n\n Next iteration \n-------------------\n\n\n')
-            print('Velocity range difference = {0:.1f}'.format(vel_range_diff))
+        # Write dataframe to csv
+        table_filename = property_dir + property_filename + '_' + \
+                         av_data_type
 
-            vel_range = vel_range_new
+        table_df.to_csv(table_filename + '.csv', index=False)
+        table_df.to_html(table_filename + '.html', index=False)
+        table_df.to_latex(table_filename + '.tex', index=False)
 
-            iteration += 1
-
-        # Write important results to table
-        for col in table_df:
-            if col == 'residual_width_scale':
-                table_df[col][i] = global_props[col]
-            else:
-                table_df[col][i] = global_props[col]['value']
-
-        # Write the file
-        if residual_width_scale == 3.0:
-            print('\nWriting results to\n' + property_filename + \
-                    '_' + av_data_type + '_scaled.txt')
-
-            with open(final_property_dir + property_filename +\
-                    '_' + av_data_type + '_scaled.txt', 'w') as f:
-                json.dump(global_props, f)
-
-    # Write dataframe to csv
-    table_filename = property_dir + property_filename + '_' + \
-                     av_data_type
-
-    table_df.to_csv(table_filename + '.csv', index=False)
-    table_df.to_html(table_filename + '.html', index=False)
-    table_df.to_latex(table_filename + '.tex', index=False)
 
 if __name__ == '__main__':
     main()
