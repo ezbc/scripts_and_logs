@@ -81,6 +81,7 @@ def main():
               'av/perseus_av_planck_radiance',
               'av/perseus_av_error_planck_radiance',
               'co/perseus_co_cfa_cube',
+              'av/perseus_av_k09_nan',
               'av/perseus_av_lee12_2mass_nan',
               'av/perseus_av_lee12_iris_masked')
 
@@ -90,9 +91,9 @@ def main():
     im_pl2 = 'av/perseus_av_planck_radiance'
     im_pl2_err = 'av/perseus_av_error_planck_radiance'
     im_co = 'co/perseus_co_cfa_cube'
+    im_k09 = 'av/perseus_av_k09'
     im_lee_2mass = 'av/perseus_av_lee12_2mass'
     im_lee_iris = 'av/perseus_av_lee12_iris'
-
 
     # Load the images into miriad
     print('\nLoading images into miriad')
@@ -102,6 +103,7 @@ def main():
                   im_pl2,
                   im_pl2_err,
                   im_co,
+                  im_k09,
                   im_lee_2mass,
                   im_lee_iris)
 
@@ -163,10 +165,10 @@ def main():
     print('\nSmoothing images to Planck resolution')
 
     planck_beam = 5.0 # arcmin
-    im_beams = np.array([3.7, 2.5, 4.3]) # arcmin
+    im_beams = np.array([3.7, 2.5, 2.5, 4.3]) # arcmin
     conv_beams = (planck_beam**2 - im_beams**2)**0.5
 
-    images = [im_hi, im_lee_2mass, im_lee_iris]
+    images = [im_hi, im_k09, im_lee_2mass, im_lee_iris]
 
     for i in xrange(len(images)):
         exists = check_file(images[i] + '_smooth_planckres.mir',
@@ -215,6 +217,7 @@ def main():
               im_pl_err + '_5arcmin',
               im_pl2 + '_5arcmin',
               im_pl2_err + '_5arcmin',
+              im_k09 + '_regrid_planckres',
               im_lee_2mass + '_regrid_planckres',
               im_lee_iris + '_regrid_planckres',
               im_co + '_regrid_planckres',

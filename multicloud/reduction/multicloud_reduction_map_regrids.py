@@ -66,11 +66,19 @@ def main():
 
     # If true, deletes files to be written
     clobber = False
+    clobber_hi = False
 
     # First, change zeros in lee image to nans
     data, header = pyfits.getdata('av/multicloud_av_lee12_2mass.fits', header=True)
     data[data == 0] = np.nan
     pyfits.writeto('av/multicloud_av_lee12_2mass_nan.fits',
+                   data,
+                   header,
+                   clobber=True)
+    data, header = pyfits.getdata('av/multicloud_av_k09.fits',
+                                  header=True)
+    data[data == -1] = np.nan
+    pyfits.writeto('av/multicloud_av_k09_nan.fits',
                    data,
                    header,
                    clobber=True)
@@ -81,6 +89,7 @@ def main():
               'av/multicloud_av_planck_radiance',
               'av/multicloud_av_error_planck_radiance',
               'co/multicloud_co_cfa_cube',
+              'av/multicloud_av_k09_nan',
               'av/multicloud_av_lee12_2mass_nan',
               'av/multicloud_av_lee12_iris_masked')
 
@@ -90,6 +99,7 @@ def main():
     im_pl2 = 'av/multicloud_av_planck_radiance'
     im_pl2_err = 'av/multicloud_av_error_planck_radiance'
     im_co = 'co/multicloud_co_cfa_cube'
+    im_k09 = 'av/multicloud_av_k09_nan'
     im_lee_2mass = 'av/multicloud_av_lee12_2mass'
     im_lee_iris = 'av/multicloud_av_lee12_iris'
 
@@ -101,16 +111,21 @@ def main():
                   im_pl2,
                   im_pl2_err,
                   im_co,
+                  im_k09,
                   im_lee_2mass,
                   im_lee_iris)
 
     for i in xrange(len(in_images)):
-        exists = check_file(out_images[i] + '.mir', clobber=clobber)
+        if in_images[i] == im_hi:
+            exists = check_file(out_images[i] + '.mir', clobber=clobber_hi)
+        else:
+            exists = check_file(out_images[i] + '.mir', clobber=clobber)
+
         print('\tLoading {:s}.fits\n'.format(in_images[i]))
         if not exists:
             fits(in_images[i] + '.fits',
-                    out=out_images[i] + '.mir',
-                    op='xyin')
+                 out=out_images[i] + '.mir',
+                 op='xyin')
 
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
@@ -146,11 +161,10 @@ def main():
         # If HI, regrid the velocity axis as well
         if image == im_hi:
             desc = desc_hi
+            exists = check_file(image + '_5arcmin.mir', clobber=clobber_hi)
         else:
             desc = desc_av
-
-        exists = check_file(image + '_5arcmin.mir', clobber=clobber)
-
+            exists = check_file(image + '_5arcmin.mir', clobber=clobber)
 
         if not exists:
             print('\tRegridding {:s}_5arcmin.mir\n'.format(image))
@@ -162,14 +176,21 @@ def main():
     print('\nSmoothing images to Planck resolution')
 
     planck_beam = 5.0 # arcmin
-    im_beams = np.array([3.7, 2.5, 4.3]) # arcmin
+    im_beams = np.array([3.7, 2.5, 2.5, 4.3]) # arcmin
     conv_beams = (planck_beam**2 - im_beams**2)**0.5
 
-    images = [im_hi, im_lee_2mass, im_lee_iris]
+    images = [im_hi, im_k09, im_lee_2mass, im_lee_iris]
 
-    for i in xrange(len(images)):
-        exists = check_file(images[i] + '_smooth_planckres.mir',
-                            clobber=clobber)
+    for i, image in enumerate(images):
+        if image == im_hi:
+            desc = desc_hi
+            exists = check_file(image + '_smooth_planckres.mir',
+                                clobber=clobber_hi)
+        else:
+            desc = desc_av
+            exists = check_file(image + '_smooth_planckres.mir',
+                                clobber=clobber)
+        print image
 
         if not exists:
             if images[i] == im_hi:
@@ -214,6 +235,7 @@ def main():
               im_pl_err + '_5arcmin',
               im_pl2 + '_5arcmin',
               im_pl2_err + '_5arcmin',
+              im_k09 + '_regrid_planckres',
               im_lee_2mass + '_regrid_planckres',
               im_lee_iris + '_regrid_planckres',
               im_co + '_regrid_planckres',
@@ -241,7 +263,10 @@ def main():
     print('\nWriting images to fits format')
 
     for image in images:
-        exists = check_file(image + '.fits', clobber=clobber)
+        if image == im_hi + '_regrid_planckres':
+            exists = check_file(image + '.fits', clobber=clobber_hi)
+        else:
+            exists = check_file(image + '.fits', clobber=clobber)
 
         if not exists:
             print('\tWriting {:s}.fits\n'.format(image))

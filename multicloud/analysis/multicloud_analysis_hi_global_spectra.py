@@ -5,7 +5,164 @@
 '''
 
 from astropy.io import fits
+import pyfits as fits
 import numpy as np
+
+''' Plots
+'''
+
+def plot_spectra_grid(hi_velocity_axis_list=None, hi_spectrum_list=None,
+        hi_vel_range_list=None, co_spectrum_list=None,
+        co_velocity_axis_list=None, hi_std_list=None, title=None, limits=None,
+        savedir='./', filename=None, show=True, spectra_names='',):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    from mpl_toolkits.axes_grid1 import ImageGrid
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import pywcsgrid2 as wcs
+    import pywcs
+    from pylab import cm # colormaps
+    from matplotlib.patches import Polygon
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+    plt.rcdefaults()
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
+              'ytick.labelsize': font_scale,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
+              'text.usetex': True,
+              #'font.family': 'sans-serif',
+              'figure.figsize': (7.3/2.0, 7.3/1.5),
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    # Determine number of plots on each axis
+    n = int(np.ceil(len(hi_velocity_axis_list)**0.5))
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=(4, 1),
+                 ngrids=len(hi_velocity_axis_list),
+                 axes_pad=0,
+                 aspect=False,
+                 label_mode='L',
+                 share_all=True)
+
+    for i in xrange(len(hi_velocity_axis_list)):
+
+        # create axes
+        ax = imagegrid[i]
+
+        ax.plot(hi_velocity_axis_list[i],
+                hi_spectrum_list[i],
+                #color='k',
+                linestyle='--',
+                label='Median HI',
+                drawstyle = 'steps-mid'
+                )
+
+        if hi_std_list is not None:
+            ax.plot(hi_velocity_axis_list[i],
+                    hi_std_list[i],
+                    #color='k',
+                    linestyle='-.',
+                    label=r'$\sigma_{\rm HI}$',
+                    drawstyle='steps-mid'
+                    )
+
+        if co_velocity_axis_list is not None:
+            ax.plot(co_velocity_axis_list[i],
+                    co_spectrum_list[i] * 50.,
+                    #color='k',
+                    label=r'Median $^{12}$CO $\times$ 50',
+                    drawstyle = 'steps-mid'
+                    )
+
+        spectra_names[i] = spectra_names[i].replace('1', ' 1')
+        spectra_names[i] = spectra_names[i].replace('2', ' 2')
+        if 0:
+            ax.annotate(spectra_names[i].capitalize(),
+                    xytext=(0.1, 0.9),
+                    xy=(0.1, 0.9),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    color='k'
+                    )
+        else:
+            ax.annotate(spectra_names[i].capitalize(),
+                        xytext=(0.96, 0.9),
+                        xy=(0.96, 0.9),
+                        textcoords='axes fraction',
+                        xycoords='axes fraction',
+                        size=font_scale,
+                        color='k',
+                        bbox=dict(boxstyle='square',
+                                  facecolor='w',
+                                  alpha=1),
+                        horizontalalignment='right',
+                        verticalalignment='top',
+                        )
+
+        ax.axvspan(hi_vel_range_list[i][0],
+                   hi_vel_range_list[i][1],
+                   alpha=0.3,
+                   color='k',
+                   )
+
+        ax.set_xlabel('Velocity [km/s]')
+        ax.set_ylabel(r'T$_b$ [K]')
+
+        if i == 0:
+            ax.legend(loc='upper left')
+
+        # plot limits
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+    if 0:
+        if co_velocity_axis_list is not None:
+            # Single legend
+            ax.legend(bbox_to_anchor=(1.5, 0.2),
+                    loc='lower right',
+                    borderaxespad=0.)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=fontScale)
+    if filename is not None:
+        plt.savefig(savedir + filename, bbox_inches='tight', dpi=600)
+    if show:
+        fig.show()
+
+''' Calculations
+'''
 
 def calc_global_spectrum(hi_cube=None, statistic='average'):
 
@@ -27,41 +184,71 @@ def calc_global_spectrum(hi_cube=None, statistic='average'):
 
     return spectrum
 
-def convert_core_coordinates(cores, header):
 
-    for core in cores:
-        cores[core].update({'box_pixel': 0})
-        cores[core].update({'center_pixel': 0})
+''' DS9 Region and Coordinate Functions
+'''
 
-        box_wcs = cores[core]['box_wcs']
-        box_pixel = len(box_wcs) * [0,]
-        center_wcs = cores[core]['center_wcs']
+def convert_limit_coordinates(prop_dict,
+        coords=('region_limit', 'co_noise_limits', 'plot_limit'), header=None):
 
-        # convert centers to pixel coords
-        cores[core]['center_pixel'] = get_pix_coords(ra=center_wcs[0],
-                                                     dec=center_wcs[1],
-                                                     header=header)
-        # convert box corners to pixel coords
-        for i in range(len(box_wcs)/2):
-            pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
-                    header=header)
-            box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
-        cores[core]['box_pixel'] = box_pixel
+    # Initialize pixel keys
+    for coord in coords:
+        prop_dict[coord].update({'pixel': []})
 
-    return cores
+        if coord in ('region_limit',
+                     'plot_limit',
+                     'region_limit_bin',
+                     'plot_limit_bin'):
+            limit_wcs = prop_dict[coord]['wcs']
+
+            for limits in limit_wcs:
+                # convert centers to pixel coords
+                limit_pixels = get_pix_coords(ra=limits[0],
+                                             dec=limits[1],
+                                             header=header)[:2].tolist()
+
+                prop_dict[coord]['pixel'].append(limit_pixels[0])
+                prop_dict[coord]['pixel'].append(limit_pixels[1])
+        elif coord == 'co_noise_limits':
+            region_limits = prop_dict[coord]['wcs']
+
+            # Cycle through each region, convert WCS limits to pixels
+            for region in region_limits:
+                region_pixels = []
+                for limits in region:
+                    # convert centers to pixel coords
+                    limit_pixels = get_pix_coords(ra=limits[0],
+                                                  dec=limits[1],
+                                                  header=header)[:2].tolist()
+                    region_pixels.append(limit_pixels)
+
+                # Append individual regions back to CO noise
+                prop_dict[coord]['pixel'].append(region_pixels)
+
+    return prop_dict
+
+def get_sub_image(image, indices):
+
+    return image[indices[1]:indices[3],
+            indices[0]:indices[2]]
 
 def get_pix_coords(ra=None, dec=None, header=None):
 
-    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec).
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec), or Ra in degrees
+    and dec in degrees.
     '''
 
     import pywcsgrid2 as wcs
     import pywcs
 
-    # convert to degrees
-    if type(ra) is tuple and type(dec) is tuple:
-        ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
-    else:
+    # convert to degrees if ra and dec are array-like
+    try:
+        if len(ra) == 3 and len(dec) == 3:
+            ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+        else:
+            raise ValueError('RA and Dec must be in (hrs,min,sec) and' + \
+                    ' (deg,arcmin,arcsec) or in degrees.')
+    except TypeError:
         ra_deg, dec_deg = ra, dec
 
     wcs_header = pywcs.WCS(header)
@@ -78,251 +265,201 @@ def hrs2degs(ra=None, dec=None):
 
     return (ra_deg, dec_deg)
 
-def plot_spectra_grid(hi_velocity_axis_list=None, hi_spectrum_list=None,
-        co_spectrum_list=None, co_velocity_axis_list=None, hi_std_list=None,
-        title=None, limits=None, savedir='./', filename=None, show=True,
-        spectra_names='',):
+def load_ds9_region(props, filename=None, header=None):
 
-    # Import external modules
-    import matplotlib.pyplot as plt
-    import matplotlib
-    import numpy as np
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
-    import matplotlib.pyplot as plt
-    import pywcsgrid2 as wcs
-    import pywcs
-    from pylab import cm # colormaps
-    from matplotlib.patches import Polygon
-
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    #colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    fontScale = 15
-    params = {#'backend': .pdf',
-              'axes.labelsize': fontScale,
-              'axes.titlesize': fontScale,
-              'text.fontsize': fontScale,
-              'legend.fontsize': fontScale*3/4,
-              'xtick.labelsize': fontScale,
-              'ytick.labelsize': fontScale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (15, 7),
-              'figure.titlesize': fontScale
-              #'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
-
-    # Create figure instance
-    fig = plt.figure()
-
-    # Determine number of plots on each axis
-    n = int(np.ceil(len(hi_velocity_axis_list)**0.5))
-
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(n, n),
-                 ngrids=len(hi_velocity_axis_list),
-                 axes_pad=0,
-                 aspect=False,
-                 label_mode='L',
-                 share_all=True)
-
-    for i in xrange(len(hi_velocity_axis_list)):
-
-        # create axes
-        ax = imagegrid[i]
-
-        ax.plot(hi_velocity_axis_list[i],
-                hi_spectrum_list[i],
-                color='k',
-                linestyle='--',
-                label='median HI',
-                drawstyle = 'steps-mid'
-                )
-
-        if hi_std_list is not None:
-            ax.plot(hi_velocity_axis_list[i],
-                    hi_std_list[i],
-                    color='k',
-                    linestyle='-',
-                    label=r'$\sigma_{\rm HI}$',
-                    drawstyle='steps-mid'
-                    )
-
-        if co_velocity_axis_list is not None:
-            ax.plot(co_velocity_axis_list[i],
-                    co_spectrum_list[i] * 10.,
-                    color='r',
-                    label=r'median $^{12}$CO X 10',
-                    drawstyle = 'steps-mid'
-                    )
-
-        ax.annotate(spectra_names[i].capitalize(),
-                xytext=(0.1, 0.9),
-                xy=(0.1, 0.9),
-                textcoords='axes fraction',
-                xycoords='axes fraction',
-                color='k'
-                )
-
-        ax.set_xlabel('Velocity (km/s)')
-        ax.set_ylabel(r'T$_b$ (K)')
-
-        # plot limits
-        if limits is not None:
-            ax.set_xlim(limits[0],limits[1])
-            ax.set_ylim(limits[2],limits[3])
-
-    if co_velocity_axis_list is not None:
-        # Single legend
-        ax.legend(bbox_to_anchor=(1.5, 0.2),
-                loc='lower right',
-                borderaxespad=0.)
-
-    if title is not None:
-        fig.suptitle(title, fontsize=fontScale)
-    if filename is not None:
-        plt.savefig(savedir + filename)
-    if show:
-        fig.show()
-
-def read_ds9_region(filename):
-
-    ''' Converts DS9 region file into format for plotting region.
-
-    Need the following format:
-        angle : degrees
-        xy : pixels
-        width : pixels
-        height : pixels
-
-    Region file provides following format:
-        # Region file format: DS9 version 4.1
-        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
-        fk5
-        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
-
-    pyregion module reads DS9 regions:
-    http://leejjoon.github.io/pyregion/users/overview.html
-
-
-    '''
-
-    # Import external modules
     import pyregion as pyr
 
-    # Read region file
-    region = pyr.open(filename)
-
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
     # [ra center, dec center, width, height, rotation angle]
 
-    return region[0].coord_list
+    regions = pyr.open(filename)
 
-def load_ds9_region(cores, filename_base = 'taurus_av_boxes_', header=None):
+    props['regions'] = {}
 
-    # region[0] in following format:
-    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
-    # [ra center, dec center, width, height, rotation angle]
-    for core in cores:
-        region = read_ds9_region(filename_base + core + '.reg')
-        box_center_pixel = get_pix_coords(ra = region[0],
-                                          dec = region[1],
-                                          header = header)
-        box_center_pixel = (int(box_center_pixel[1]), int(box_center_pixel[0]))
-        box_height = region[2] / header['CDELT1']
-        box_width = region[3] / header['CDELT2']
-        cores[core].update({'box_center_pix': box_center_pixel})
-        cores[core].update({'box_width': box_width})
-        cores[core].update({'box_height': box_height})
-        cores[core].update({'box_angle': region[4]})
 
-    return cores
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        region_name = tag[tag.find('text={')+6:tag.find('}')].lower()
 
-def main():
+        # Format vertices to be 2 x N array
+        poly_verts = []
+        for i in xrange(0, len(region.coord_list)/2):
+            poly_verts.append((region.coord_list[2*i],
+                               region.coord_list[2*i+1]))
+
+        poly_verts_pix = []
+        for i in xrange(0, len(poly_verts)):
+            poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                            dec=poly_verts[i][1],
+                                            header=header)[:-1][::-1].tolist())
+
+        props['regions'][region_name] = {}
+        props['regions'][region_name]['poly_verts'] = {}
+        props['regions'][region_name]['poly_verts']['wcs'] = poly_verts
+        props['regions'][region_name]['poly_verts']['pixel'] = poly_verts_pix
+
+    return props
+
+def calc_data():
     ''' Executes script.
     '''
     import numpy as np
     from os import system,path
-    import myclumpfinder as clump_finder
-    reload(clump_finder)
     import mygeometry as myg
-    reload(myg)
     from mycoords import make_velocity_axis
+    import json
 
 
-    cloud_list = ('taurus', 'perseus', 'california', 'perseus')
+    cloud_list = ('taurus', 'taurus1', 'taurus2', 'california', 'perseus')
     data_dict = {}
 
     for i, cloud in enumerate(cloud_list):
+
+        if cloud == 'taurus1' or cloud == 'taurus2':
+            cloud_name = 'taurus'
+        else:
+            cloud_name = cloud
+
         # define directory locations
-        output_dir = '/d/bip3/ezbc/%s/data/python_output/nhi_av/' % cloud
-        figure_dir = '/d/bip3/ezbc/multicloud/figures/'
-        av_dir = '/d/bip3/ezbc/%s/data/av/' % cloud
-        hi_dir = '/d/bip3/ezbc/%s/data/hi/' % cloud
-        co_dir = '/d/bip3/ezbc/%s/data/co/' % cloud
+        output_dir = '/d/bip3/ezbc/%s/data/python_output/nhi_av/' % cloud_name
+        figure_dir = '/d/bip3/ezbc/multicloud/figures/spectra/'
+        av_dir = '/d/bip3/ezbc/%s/data/av/' % cloud_name
+        hi_dir = '/d/bip3/ezbc/%s/data/hi/' % cloud_name
+        co_dir = '/d/bip3/ezbc/%s/data/co/' % cloud_name
         core_dir = output_dir + 'core_arrays/'
-        region_dir = '/d/bip3/ezbc/%s/data/python_output/ds9_regions/' % cloud
+        region_dir = '/d/bip3/ezbc/%s/data/' % cloud_name + \
+                     'python_output/ds9_regions/'
+
+        # global property filename
+        global_property_filename = '{0}_global_properties'.format(cloud)
+        property_dir = '/d/bip3/ezbc/{0}/data/python_output/'.format(cloud_name)
+
+        av_data_type = 'planck'
 
         cloud_dict = {}
 
         # Load HI maps from Taurus, California, and Perseus
-        cloud_dict['hi_data'], cloud_dict['hi_header'] = fits.getdata(
-                '/d/bip3/ezbc/{0}/data/hi/{0}_hi_galfa_'.format(cloud) + \
+        hi_data, hi_header = fits.getdata(
+                '/d/bip3/ezbc/{0}/data/hi/{0}_hi_galfa_'.format(cloud_name) + \
                         'cube_regrid_planckres.fits',
                 header=True)
 
         # Load CO maps from Taurus, California, and Perseus
-        cloud_dict['co_data'], cloud_dict['co_header'] = fits.getdata(
-                    co_dir + '{0}_co_cfa_'.format(cloud) + \
+        co_data, co_header = fits.getdata(
+                    co_dir + '{0}_co_cfa_'.format(cloud_name) + \
                         'cube_regrid_planckres.fits',
                 header=True)
+        av_data, av_header = \
+                fits.getdata(av_dir + \
+                             '{0}_av_planck_5arcmin.fits'.format(cloud_name),
+                             header=True)
+
+        # Mask out region
+        with open(property_dir + \
+                  global_property_filename + '_' + av_data_type + \
+                  '_scaled.txt', 'r') as f:
+            global_props = json.load(f)
+
+        # Load cloud division regions from ds9
+        global_props = load_ds9_region(global_props,
+                        filename='/d/bip3/ezbc/multicloud/data/' + \
+                        'python_output/multicloud_divisions.reg',
+                                header=av_header)
+
+        # Derive relevant region
+        region_vertices = \
+            np.array(global_props['regions'][cloud]['poly_verts']['pixel'])
+        region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                          region_vertices))
+        if 0:
+            import matplotlib.pyplot as plt
+            plt.imshow(np.ma.array(av_data,
+                                   mask=region_mask), origin='lower')
+            plt.colorbar()
+            plt.show()
+        hi_data[:, region_mask] = np.nan
+        co_data[:, region_mask] = np.nan
+
 
         # sum along spatial axes
         cloud_dict['hi_spectrum'] = calc_global_spectrum(
-                                        hi_cube=cloud_dict['hi_data'],
+                                        hi_cube=hi_data,
                                         statistic='median'
                                         )
         cloud_dict['hi_std'] = calc_global_spectrum(
-                                        hi_cube=cloud_dict['hi_data'],
+                                        hi_cube=hi_data,
                                         statistic='std'
                                         )
         cloud_dict['co_spectrum'] = calc_global_spectrum(
-                                        hi_cube=cloud_dict['co_data'],
+                                        hi_cube=co_data,
                                         statistic='median'
                                         )
+        vel_center = global_props['hi_velocity_width']['value']
+        vel_width = global_props['hi_velocity_center']['value']
+        #cloud_dict['hi_vel_range'] = (vel_center + vel_width / 2.0,
+        #                              vel_center - vel_width / 2.0)
+        #cloud_dict['hi_vel_range'] = global_props['hi_velocity_range_conf']
+        cloud_dict['hi_vel_range'] = global_props['hi_velocity_range']
+        print global_props['hi_velocity_range']
 
         # Calculate velocity
         cloud_dict['hi_velocity_axis'] = make_velocity_axis(
-                                        cloud_dict['hi_header'])
+                                        hi_header)
         cloud_dict['co_velocity_axis'] = make_velocity_axis(
-                                        cloud_dict['co_header'])
+                                        co_header)
 
         data_dict[cloud] = cloud_dict
+
+    return data_dict
+
+def main():
+
+    import numpy as np
+    from os import system,path
+    import mygeometry as myg
+    from mycoords import make_velocity_axis
+    import json
+    import pickle
+
+    # define directory locations
+    # --------------------------
+    output_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    figure_dir = '/d/bip3/ezbc/multicloud/figures/spectra/'
+
+    clobber_results = 1
+
+    if clobber_results:
+        data_dict = calc_data()
+        with open(output_dir + 'multicloud_hi_spectra.pickle', 'w') as f:
+            pickle.dump(data_dict, f)
+    else:
+        with open(output_dir + 'multicloud_hi_spectra.pickle', 'r') as f:
+            data_dict = pickle.load(f)
 
     hi_velocity_axis_list = []
     co_velocity_axis_list = []
     hi_spectrum_list = []
+    hi_vel_range_list = []
     hi_std_list = []
     co_spectrum_list = []
     spectra_names = []
 
-    for cloud in data_dict:
+    cloud_list = ('taurus', 'taurus1', 'taurus2', 'california', 'perseus')
+
+    for cloud in cloud_list:
         hi_velocity_axis_list.append(data_dict[cloud]['hi_velocity_axis'])
         hi_spectrum_list.append(data_dict[cloud]['hi_spectrum'])
         hi_std_list.append(data_dict[cloud]['hi_std'])
+        hi_vel_range_list.append(data_dict[cloud]['hi_vel_range'])
         co_velocity_axis_list.append(data_dict[cloud]['co_velocity_axis'])
         co_spectrum_list.append(data_dict[cloud]['co_spectrum'])
         spectra_names.append(cloud)
 
-    figure_types = ('png',)
+    figure_types = ('png', 'pdf')
     for figure_type in figure_types:
-        limits = [-75, 40, -1, 55]
+        limits = [-40, 40, -9, 61]
 
         # scatter plot
         plot_spectra_grid(hi_velocity_axis_list=hi_velocity_axis_list,
@@ -330,14 +467,16 @@ def main():
                         co_velocity_axis_list=co_velocity_axis_list,
                         co_spectrum_list=co_spectrum_list,
                         hi_std_list=hi_std_list,
+                        hi_vel_range_list=hi_vel_range_list,
                         savedir=figure_dir,
                         limits=limits,
                         filename='multicloud_hi_spectrum_global.%s' % \
                                 figure_type,
                         show=False,
                         spectra_names=spectra_names,
-                        title=r'Global HI Profile' + \
-                                ' of GMCs')
+                        #title=r'Global HI Profile' + \
+                        #        ' of GMCs'
+                        )
 
 
 if __name__ == '__main__':

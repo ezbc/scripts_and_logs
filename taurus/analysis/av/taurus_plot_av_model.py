@@ -92,8 +92,8 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     ax.set_display_coord_system("fk5")
     ax.set_ticklabel_type("hms", "dms")
 
-    ax.set_xlabel('Right Ascension (J2000)',)
-    ax.set_ylabel('Declination (J2000)',)
+    ax.set_xlabel('Right Ascension [J2000]',)
+    ax.set_ylabel('Declination [J2000]',)
 
     # colorbar
     cb = ax.cax.colorbar(im)
@@ -153,8 +153,8 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         ax.set_display_coord_system("fk5")
         ax.set_ticklabel_type("hms", "dms")
 
-        ax.set_xlabel('Right Ascension (J2000)',)
-        ax.set_ylabel('Declination (J2000)',)
+        ax.set_xlabel('Right Ascension [J2000]',)
+        ax.set_ylabel('Declination [J2000]',)
 
         # colorbar
         cb = ax.cax.colorbar(im)
@@ -215,32 +215,42 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     plt.clf()
     plt.close()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
+    cmap = plt.cm.gnuplot
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     font_scale = 9
     if plot_residuals:
         if hi_spectrum is not None:
             figsize = (7, 8.5)
         else:
-            figsize = (7, 4)
+            figsize = (3.3, 7)
     else:
     	figsize = (13,10)
 
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
               'text.fontsize': font_scale,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
+              'text.usetex': True,
+              #'font.family': 'sans-serif',
               'figure.figsize': figsize,
-              'figure.titlesize': font_scale
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
+
+
 
     # Create figure instance
     fig = plt.figure()
@@ -250,7 +260,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     #==========================================================================
 
     if plot_residuals:
-        nrows_ncols=(1,3)
+        nrows_ncols=(3,1)
         ngrids=3
         if hi_spectrum is not None:
             subplots = 210
@@ -266,8 +276,8 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
                  cbar_mode='each',
                  cbar_location='right',
                  cbar_pad="2%",
-                 cbar_size='3%',
-                 axes_pad=0.4,
+                 cbar_size='5%',
+                 axes_pad=0.0,
                  axes_class=(wcs.Axes,
                              dict(header=header)),
                  aspect=True,
@@ -279,7 +289,6 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     # ------------------
     # create axes
     ax = imagegrid[0]
-    cmap = cm.Greys # colormap
     cmap = cm.gnuplot # colormap
     cmap.set_bad(color='w')
     # show the image
@@ -298,10 +307,23 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     ax.set_display_coord_system("fk5")
     ax.set_ticklabel_type("hms", "dms")
 
-    ax.set_xlabel('Right Ascension (J2000)',)
-    ax.set_ylabel('Declination (J2000)',)
+    ax.set_xlabel('Right Ascension [J2000]',)
+    ax.set_ylabel('Declination [J2000]',)
 
-    ax.set_title(r'Model $A_V$')
+    #ax.set_title(r'Model $A_V$')
+    ax.annotate(r'Model $A_V$ [mag]',
+                xytext=(0.05, 0.9),
+                xy=(0.05, 0.9),
+                textcoords='axes fraction',
+                xycoords='axes fraction',
+                size=font_scale,
+                color='k',
+                bbox=dict(boxstyle='square',
+                          facecolor='w',
+                          alpha=1),
+                horizontalalignment='left',
+                verticalalignment='top',
+                )
 
     # colorbar
     cb = ax.cax.colorbar(im)
@@ -359,11 +381,23 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
         ax.set_display_coord_system("fk5")
         ax.set_ticklabel_type("hms", "dms")
 
-        ax.set_xlabel('Right Ascension (J2000)',)
-        ax.set_ylabel('Declination (J2000)',)
+        ax.set_xlabel('Right Ascension [J2000]',)
+        ax.set_ylabel('Declination [J2000]',)
 
-        ax.set_title(r'Observed $A_V$')
-
+        #ax.set_title(r'Observed $A_V$')
+        ax.annotate(r'Observed $A_V$ [mag]',
+                    xytext=(0.05, 0.9),
+                    xy=(0.05, 0.9),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=font_scale,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='left',
+                    verticalalignment='top',
+                    )
         # colorbar
         cb = ax.cax.colorbar(im)
         #cmap.set_bad(color='c')
@@ -393,8 +427,8 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
         im = ax.imshow(av_image - av_model,
                 interpolation='nearest',origin='lower',
                 cmap=cmap,
-                vmin=-0.25,
-                vmax=0.5,
+                vmin=-0.35,
+                vmax=0.35,
                 #norm=matplotlib.colors.LogNorm()
                 )
 
@@ -402,11 +436,23 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
         ax.set_display_coord_system("fk5")
         ax.set_ticklabel_type("hms", "dms")
 
-        ax.set_xlabel('Right Ascension (J2000)',)
-        ax.set_ylabel('Declination (J2000)',)
+        ax.set_xlabel('Right Ascension [J2000]',)
+        ax.set_ylabel('Declination [J2000]',)
 
-        ax.set_title(r'Residual $A_V$')
-
+        #ax.set_title(r'Residual $A_V$')
+        ax.annotate(r'Residual $A_V$ [mag]',
+                    xytext=(0.05, 0.9),
+                    xy=(0.05, 0.9),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=font_scale,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='left',
+                    verticalalignment='top',
+                    )
         # colorbar
         cb = ax.cax.colorbar(im)
         #cmap.set_bad(color='w')
@@ -506,7 +552,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename, bbox_inches='tight', dpi=400)
     if show:
         plt.show()
 
@@ -1201,7 +1247,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
         co_spectrum = np.mean(co_data, axis=(1,2))
 
     # Plot
-    figure_types = ['png',]# 'pdf']
+    figure_types = ['png', 'pdf']
     for figure_type in figure_types:
         if region is None:
             if vel_range_type == 'single':
@@ -1223,23 +1269,6 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
         print('\nSaving Av model image to \n' + figure_dir + filename + \
                 '.' + figure_type)
 
-        if not use_binned_images:
-            plot_av_model(av_image=av_image_masked,
-                          av_model=av_model_masked,
-                          header=av_header,
-                          results=props,
-                          hi_velocity_axis=velocity_axis,
-                          vel_range=vel_range,
-                          hi_spectrum=hi_spectrum,
-                          #hi_limits=[-15, 25, -1, 10],
-                          hi_limits=[-15, 25, None, None],
-                          co_spectrum=co_spectrum,
-                          co_velocity_axis=co_velocity_axis,
-                          limits=props['plot_limit' + bin_string]['pixel'],
-                          savedir=figure_dir + 'maps/av_models/',
-                          filename=filename + '_spectra' + '.' + figure_type,
-                          show=False)
-
         plot_av_model(av_image=av_image_masked,
                       av_model=av_model_masked,
                       header=av_header,
@@ -1249,19 +1278,38 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                       filename=filename + '.' + figure_type,
                       show=False)
 
-        plot_avmod_vs_av((av_model_masked,),
-                (av_image_masked,),
-                av_errors=(av_error_masked,),
-                #limits=[10**-1, 10**1.9, 10**0, 10**1.7],
-                limits=[0,1.5,0,1.5],
-                savedir=figure_dir + 'av/',
-                gridsize=(10,10),
-                #scale=('log', 'log'),
-                #scale=('linear', 'linear'),
-                filename='taurus_avmod_vs_av%s.%s' % (bin_string, figure_type),
-                show = False,
-                std=0.22,
-                )
+        if 0:
+            if not use_binned_images:
+                plot_av_model(av_image=av_image_masked,
+                              av_model=av_model_masked,
+                              header=av_header,
+                              results=props,
+                              hi_velocity_axis=velocity_axis,
+                              vel_range=vel_range,
+                              hi_spectrum=hi_spectrum,
+                              #hi_limits=[-15, 25, -1, 10],
+                              hi_limits=[-15, 25, None, None],
+                              co_spectrum=co_spectrum,
+                              co_velocity_axis=co_velocity_axis,
+                              limits=props['plot_limit' + bin_string]['pixel'],
+                              savedir=figure_dir + 'maps/av_models/',
+                              filename=filename + '_spectra' + '.' + figure_type,
+                              show=False)
+
+
+            plot_avmod_vs_av((av_model_masked,),
+                    (av_image_masked,),
+                    av_errors=(av_error_masked,),
+                    #limits=[10**-1, 10**1.9, 10**0, 10**1.7],
+                    limits=[0,1.5,0,1.5],
+                    savedir=figure_dir + 'av/',
+                    gridsize=(10,10),
+                    #scale=('log', 'log'),
+                    #scale=('linear', 'linear'),
+                    filename='taurus_avmod_vs_av%s.%s' % (bin_string, figure_type),
+                    show = False,
+                    std=0.22,
+                    )
 
         if 0:
             plot_power_spectrum(av_image_masked - av_model_masked,
@@ -1281,8 +1329,8 @@ if __name__ == '__main__':
 
     # Use Planck dust Av map or Kainulainen 2009 optical extinction Av map?
 
-    main(av_data_type='planck', use_binned_images=True)
     main(av_data_type='planck')
+    main(av_data_type='planck', use_binned_images=True)
 
     if 0:
         main(dgr=None, vel_range=None, vel_range_type='single', region=None,

@@ -740,8 +740,6 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
                                      bins=100,
                                      )
 
-    np.save('residuals.npy', residuals)
-
     p0=(2, np.nanmax(counts), 0)
 
     if 0:
@@ -1067,7 +1065,6 @@ def calc_likelihoods(
 
             # use the hi cube and vel range if no nhi image provided
             if nhi_image is None:
-                print('Vel width = ', vel_width)
                 vel_range = np.array((vel_center - vel_width / 2.,
                                       vel_center + vel_width / 2.))
                 nhi_image = calculate_nhi(cube=hi_cube,
@@ -1453,10 +1450,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 100, 2*0.16667)
-    dgrs = np.arange(0.05, 0.7, 5e-3)
-    intercepts = np.arange(-1, 1, 0.01)
-    intercepts = np.arange(-5, 5, 0.2)
+    vel_widths = np.arange(1, 50, 2*0.16667)
+    dgrs = np.arange(0.005, 0.7, 5e-3)
+    intercepts = np.arange(-5, 5, 0.1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1501,9 +1497,25 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # load Planck Av and GALFA HI images, on same grid
     if av_data_type == 'k09':
         print('\nLoading K+09 2MASS data...')
-        av_data, av_header = fits.getdata(av_dir + \
-                                  'perseus_av_k09_regrid_planckres.fits',
-                                  header=True)
+        av_data, av_header = \
+                fits.getdata(av_dir + \
+                             'perseus_av_k09_regrid_planckres.fits',
+                             header=True)
+
+        av_data_error = 0.1 * np.ones(av_data.shape)
+    elif av_data_type == 'lee12_iris':
+        print('\nLoading Lee+12 IRIS data...')
+        av_data, av_header = \
+                fits.getdata(av_dir + \
+                             'perseus_av_lee12_iris_regrid_planckres.fits',
+                             header=True)
+        av_data_error = 0.1 * np.ones(av_data.shape)
+    elif av_data_type == 'lee12_2mass':
+        print('\nLoading Lee+12 2mass data...')
+        av_data, av_header = \
+                fits.getdata(av_dir + \
+                             'perseus_av_lee12_2mass_regrid_planckres.fits',
+                             header=True)
         av_data_error = 0.1 * np.ones(av_data.shape)
     else:
     	print('\nLoading Planck data...')
@@ -1518,6 +1530,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     hi_data, hi_header = fits.getdata(hi_dir + \
                 'perseus_hi_galfa_cube_regrid_planckres.fits',
             header=True)
+
 
     # Load global properties
     with open(property_dir + global_property_file + '.txt', 'r') as f:
@@ -1851,9 +1864,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     print('\nPerforming likelihood calculations with initial error ' + \
           'estimate...')
 
-    print('\nVelwidths = ')
-    print(vel_widths)
-
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
                      hi_vel_axis=hi_vel_axis,
@@ -2132,7 +2142,8 @@ def main():
     import json
     from pandas import DataFrame
 
-    av_data_type = 'planck'
+    av_data_type = 'k09'
+    av_data_type = 'iris'
 
     # threshold in velocity range difference
     vel_range_diff_thres = 3.0 # km/s
@@ -2142,11 +2153,11 @@ def main():
 
     final_property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
 
-    property_filename = 'perseus_global_properties_planck'
+    property_filename = 'perseus_global_properties_' + av_data_type
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+    residual_width_scales = [1.5,]
 
     regions = [None, ]
 
@@ -2166,14 +2177,14 @@ def main():
         else:
             region_name = 'perseus'
 
-        property_filename = 'perseus_global_properties_planck'
+        property_filename = 'perseus_global_properties_' + av_data_type
         property_filename = property_filename.replace('perseus', region_name)
 
         print('\nPerforming likelihood derivations for ' + region_name)
 
         for i, residual_width_scale in enumerate(residual_width_scales):
             iteration = 0
-            vel_range = (-50.0, 50.0)
+            vel_range = (-20.0, 30.0)
             vel_range_new = (-1.0, 1.0)
             vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                            np.array(vel_range_new)))

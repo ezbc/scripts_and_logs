@@ -2705,8 +2705,9 @@ def main(verbose=True, av_data_type='planck', region=None):
                 show = False)
 
 if __name__ == '__main__':
-    main(av_data_type='planck', region=None)
+    main(av_data_type='iris')
     main(av_data_type='k09')
+    main(av_data_type='planck', region=None)
 
 
 

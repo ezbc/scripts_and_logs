@@ -740,8 +740,6 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
                                      bins=100,
                                      )
 
-    np.save('residuals.npy', residuals)
-
     p0=(2, np.nanmax(counts), 0)
 
     if 0:
@@ -1067,7 +1065,6 @@ def calc_likelihoods(
 
             # use the hi cube and vel range if no nhi image provided
             if nhi_image is None:
-                print('Vel width = ', vel_width)
                 vel_range = np.array((vel_center - vel_width / 2.,
                                       vel_center + vel_width / 2.))
                 nhi_image = calculate_nhi(cube=hi_cube,
@@ -1453,10 +1450,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 100, 2*0.16667)
-    dgrs = np.arange(0.05, 0.7, 5e-3)
-    intercepts = np.arange(-1, 1, 0.01)
-    intercepts = np.arange(-5, 5, 0.2)
+    vel_widths = np.arange(1, 50, 2*0.16667)
+    dgrs = np.arange(0.005, 0.7, 5e-3)
+    intercepts = np.arange(-5, 5, 0.1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1557,18 +1553,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                             header=av_header)
 
     # Derive relevant region
-    pix = global_props['region_limit']['pixel']
-    region_vertices = ((pix[1], pix[0]),
-                       (pix[1], pix[2]),
-                       (pix[3], pix[2]),
-                       (pix[3], pix[0])
-                       )
-
     region_vertices = \
         global_props['regions'][region_name]['poly_verts']['pixel']
 
     # block off region
-    region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                      region_vertices))
 
     if 0:
         import matplotlib.pyplot as plt
@@ -1850,9 +1840,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     print('\nPerforming likelihood calculations with initial error ' + \
           'estimate...')
-
-    print('\nVelwidths = ')
-    print(vel_widths)
 
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
@@ -2146,7 +2133,7 @@ def main():
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+    residual_width_scales = [1.5,]
 
     regions = [2, 1, None, ]
 
@@ -2173,7 +2160,7 @@ def main():
 
         for i, residual_width_scale in enumerate(residual_width_scales):
             iteration = 0
-            vel_range = (-50.0, 50.0)
+            vel_range = (-20.0, 30.0)
             vel_range_new = (-1.0, 1.0)
             vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                            np.array(vel_range_new)))
@@ -2223,22 +2210,12 @@ def main():
                     table_df[col][i] = global_props[col]['value']
 
             # Write the file
-            if residual_width_scale == 3.0:
-                print('\nWriting results to\n' + property_filename + \
-                        '_' + av_data_type + '_scaled.txt')
+            print('\nWriting results to\n' + property_filename + \
+                    '_' + av_data_type + '_scaled.txt')
 
-                with open(final_property_dir + property_filename +\
-                        '_' + av_data_type + '_scaled.txt', 'w') as f:
-                    json.dump(global_props, f)
-
-        # Write dataframe to csv
-        table_filename = property_dir + property_filename + '_' + \
-                         av_data_type
-
-        table_df.to_csv(table_filename + '.csv', index=False)
-        table_df.to_html(table_filename + '.html', index=False)
-        table_df.to_latex(table_filename + '.tex', index=False)
-
+            with open(final_property_dir + property_filename +\
+                    '_' + av_data_type + '_scaled.txt', 'w') as f:
+                json.dump(global_props, f)
 
 if __name__ == '__main__':
     main()

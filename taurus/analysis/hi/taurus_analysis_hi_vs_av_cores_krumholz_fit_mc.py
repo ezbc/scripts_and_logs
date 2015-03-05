@@ -1105,6 +1105,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                     horizontalalignment='right',
                     verticalalignment='bottom',
                     )
+
             ax.annotate(core_names[i],
                         xytext=(0.95, 0.95),
                         xy=(0.95, 0.95),

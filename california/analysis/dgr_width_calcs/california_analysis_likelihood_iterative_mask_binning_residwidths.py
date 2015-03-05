@@ -2145,7 +2145,7 @@ def main():
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+    residual_width_scales = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
     regions = [None,]
 
@@ -2222,7 +2222,7 @@ def main():
                     table_df[col][i] = global_props[col]['value']
 
             # Write the file
-            if residual_width_scale == 3.0:
+            if residual_width_scale == 1.5:
                 print('\nWriting results to\n' + property_filename + \
                         '_' + av_data_type + '_scaled.txt')
 
