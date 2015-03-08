@@ -1483,12 +1483,25 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
 
     return images
 
-def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
-        hi_header=None, dgr=None, dgr_error=None, intercept=None,
-        av_image=None, av_image_error=None, vel_center=None,
-        hi_vel_range=None, hi_vel_range_error=None, verbose=False,
-        core_dict=None, results_figure_name=None, properties=None,
-        results_filename=None):
+def run_analysis(hi_cube=None,
+                 hi_noise_cube=None,
+                 hi_velocity_axis=None,
+                 hi_header=None,
+                 dgr=None,
+                 dgr_error=None,
+                 intercept=None,
+                 av_image=None,
+                 av_image_error=None,
+                 vel_center=None,
+                 hi_vel_range=None,
+                 hi_vel_range_error=None,
+                 verbose=False,
+                 core_dict=None,
+                 results_figure_name=None,
+                 properties=None,
+                 results_filename=None,
+                 sternberg_params=None,
+                 krumholz_params=None):
 
     '''
 
@@ -1540,10 +1553,13 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     import json
     from os import path
 
-    if N_monte_carlo_runs < 1:
-        raise ValueError('N_monte_carlo_runs must be >= 1')
 
     verbose = False
+
+    clobber = sternberg_params['clobber']
+    N_monte_carlo_runs = sternberg_params['N_monte_carlo_runs']
+    if N_monte_carlo_runs < 1:
+        raise ValueError('N_monte_carlo_runs must be >= 1')
 
     if results_filename is not None:
         if not path.isfile(results_filename):
@@ -1561,10 +1577,14 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
         perform_mc = True
 
     # Results of monte carlo will be stored here
-    results_dict = {'alphaG fits' : np.empty((N_monte_carlo_runs)),
-                    'Z fits' : np.empty((N_monte_carlo_runs)),
-                    'phi_g fits' : np.empty((N_monte_carlo_runs)),
-                    'nhi errors' : np.empty((N_monte_carlo_runs))}
+    sternberg_results = {'alphaG fits' : np.empty((N_monte_carlo_runs)),
+                         'Z fits' : np.empty((N_monte_carlo_runs)),
+                         'phi_g fits' : np.empty((N_monte_carlo_runs)),}
+    krumholz_results = {'phi_cnm fits' : np.empty((N_monte_carlo_runs)),
+                        'Z fits' : np.empty((N_monte_carlo_runs)),
+                        'phi_mol fits' : np.empty((N_monte_carlo_runs)),}
+    results_dict = {'nhi errors' : np.empty((N_monte_carlo_runs))}
+
     hi_vel_range_list = np.empty((N_monte_carlo_runs, 2))
     dgr_list = np.empty((N_monte_carlo_runs))
     intercept_list = np.empty((N_monte_carlo_runs))
@@ -1573,13 +1593,13 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     hi_error = np.median(hi_noise_cube)
     av_error = np.median(av_image_error)
 
-    properties = properties
-
     # Load the calculate marginalized PDFs for each parameter
     width_likelihoods = np.asarray(properties['width_likelihood'])
     dgr_likelihoods = np.asarray(properties['dgr_likelihood'])
-    intercept_likelihoods = \
-        np.asarray(properties['intercept_likelihood'])
+    intercept_likelihoods = np.asarray(properties['intercept_likelihood'])
+
+    # Load center velocity
+    vel_center = properties['hi_velocity_center']['value']
 
     # Load the full 3D likelihood space
     likelihoods = np.asarray(properties['likelihoods'])
@@ -1681,7 +1701,8 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
             h_sd_ravel = h_sd_ravel[indices]
             h_sd_error_ravel = h_sd_error_ravel[indices]
 
-            # Fit to sternberg model, init guess of alphaG = 10
+
+            # Fit to sternberg model
             alphaG, Z, phi_g = fit_sternberg(h_sd_ravel,
                                       rh2_ravel,
                                       guesses=guesses, # alphaG, Z
@@ -1691,14 +1712,24 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
                                       verbose=verbose)
 
             # keep results
-            results_dict['alphaG fits'][i] = alphaG
-            results_dict['phi_g fits'][i] = phi_g
-            results_dict['Z fits'][i] = Z
+            sternberg_results['alphaG fits'][i] = alphaG
+            sternberg_results['phi_g fits'][i] = phi_g
+            sternberg_results['Z fits'][i] = Z
 
-            if verbose:
-                print('phi = %.2f' % alphaG)
-                print('phi = %.2f' % phi_g)
-                print('Z = %.2f' % Z)
+
+            # Fit to krumholz model
+            phi_cnm, Z, phi_mol = fit_krumholz(h_sd_ravel,
+                                      rh2_ravel,
+                                      guesses=guesses, # phi_cnm, Z
+                                      vary=[vary_phi_cnm,
+                                            vary_Z, vary_phi_mol],
+                                      rh2_error=rh2_error_ravel,
+                                      verbose=verbose)
+
+            # keep results
+            krumholz_results['phi_cnm fits'][i] = phi_cnm
+            krumholz_results['phi_mol fits'][i] = phi_mol
+            krumholz_results['Z fits'][i] = Z
 
             # see eq 6 of sternberg+09
             # alphaG is the number density of the CNM over the minimum number
@@ -1804,6 +1835,29 @@ def run_analysis(hi_cube=None, hi_noise_cube=None, hi_velocity_axis=None,
     phi_g_error = phi_g_confint[1:]
     Z = Z_confint[0]
     Z_error = Z_confint[1:]
+
+    if 0:
+        cores[core]['hi_sd_fit'] = hi_sd_fit.tolist()
+        cores[core]['rh2'] = images['rh2'].tolist()
+        cores[core]['rh2_error'] = images['rh2_error'].tolist()
+        cores[core]['hi_sd'] = images['hi_sd'].tolist()
+        cores[core]['hi_sd_error'] = images['hi_sd_error'].tolist()
+        cores[core]['av'] = images['av'].tolist()
+        cores[core]['av_error'] = images['av_error'].tolist()
+        cores[core]['h_sd'] = images['h_sd'].tolist()
+        cores[core]['h_sd_error'] = images['h_sd_error'].tolist()
+        cores[core]['alphaG'] = alphaG
+        cores[core]['alphaG_error'] = alphaG_error
+        cores[core]['T_cnm'] = T_cnm
+        cores[core]['T_cnm_error'] = T_cnm_error
+        cores[core]['Z'] = Z
+        cores[core]['Z_error'] = Z_error
+        cores[core]['phi_g'] = phi_g
+        cores[core]['phi_g_error'] = phi_g_error
+        cores[core]['rh2_fit'] = rh2_fit.tolist()
+        cores[core]['h_sd_fit'] = h_sd_fit.tolist()
+        cores[core]['f_H2'] = f_H2.tolist()
+        cores[core]['f_HI_fit'] = f_HI.tolist()
 
     # Print results
     print('results are:')
@@ -2408,9 +2462,9 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     sternberg_params = {}
     sternberg_params['N_monte_carlo_runs'] = N_monte_carlo_runs
-    sternberg_params['vary_phi_cnm'] = vary_phi_cnm
+    sternberg_params['vary_alphaG'] = vary_alphaG
     sternberg_params['vary_Z'] = vary_Z
-    sternberg_params['vary_phi_mol'] = vary_phi_mol
+    sternberg_params['vary_phi_g'] = vary_phi_g
     sternberg_params['error_method'] = error_method
     sternberg_params['alpha'] = alpha
     sternberg_params['guesses'] = guesses
@@ -2532,12 +2586,6 @@ def main(verbose=True, av_data_type='planck', region=None):
               global_property_filename + '_' + av_data_type + \
               '_scaled.txt', 'r') as f:
         properties = json.load(f)
-        dgr = properties['dust2gas_ratio']['value']
-        intercept = properties['intercept']['value']
-        intercept_error = properties['intercept_error']['value']
-        dgr_error = properties['dust2gas_ratio_error']['value']
-        vel_center = properties['hi_velocity_center']['value']
-        Z = properties['metallicity']['value']
 
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -2581,30 +2629,33 @@ def main(verbose=True, av_data_type='planck', region=None):
                                                       region_vertices))
 
     # Set up lists
-    hi_image_list = []
-    hi_sd_image_list = []
-    hi_sd_image_error_list = []
-    h_sd_image_list = []
-    h_sd_image_error_list = []
-    av_image_list = []
-    av_image_error_list = []
-    rh2_image_list = []
-    rh2_image_error_list = []
-    rh2_fit_list = []
-    h_sd_fit_list = []
-    alphaG_list = []
-    alphaG_error_list = []
-    phi_g_list = []
-    phi_g_error_list = []
-    Z_list = []
-    Z_error_list = []
-    chisq_list = []
-    p_value_list = []
-    core_name_list = []
-    co_image_list = []
-    hi_vel_range_list = []
-    hi_vel_range_likelihood_list = []
-    hi_sd_fit_list = []
+    sternberg_results = {}
+    krumholz_results = {}
+    if 0:
+        hi_image_list = []
+        hi_sd_image_list = []
+        hi_sd_image_error_list = []
+        h_sd_image_list = []
+        h_sd_image_error_list = []
+        av_image_list = []
+        av_image_error_list = []
+        rh2_image_list = []
+        rh2_image_error_list = []
+        rh2_fit_list = []
+        h_sd_fit_list = []
+        alphaG_list = []
+        alphaG_error_list = []
+        phi_g_list = []
+        phi_g_error_list = []
+        Z_list = []
+        Z_error_list = []
+        chisq_list = []
+        p_value_list = []
+        core_name_list = []
+        co_image_list = []
+        hi_vel_range_list = []
+        hi_vel_range_likelihood_list = []
+        hi_sd_fit_list = []
 
     if clobber:
     #if 0:
@@ -2650,18 +2701,16 @@ def main(verbose=True, av_data_type='planck', region=None):
             # refitting.
             # -----------------------------------------------------------------
 
-            images, hi_vel_range, params = \
+            sternerg_results[core], krumholz_results[core] = \
                     run_analysis(hi_cube=hi_data,
                                  hi_noise_cube=noise_cube,
                                  hi_velocity_axis=velocity_axis,
                                  hi_header=h,
-                                 dgr=dgr,
-                                 dgr_error=dgr_error,
-                                 intercept=intercept,
-                                 vel_center=vel_center,
                                  av_image=av_data_planck,
                                  av_image_error=av_error_data_planck,
                                  core_dict=cores[core],
+                                 sternberg_params=sternberg_params,
+                                 krumholz_params=krumholz_params,
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
                                          'taurus_%s' % core,
