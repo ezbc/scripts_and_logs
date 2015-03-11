@@ -894,12 +894,9 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
     if show:
         fig.show()
 
-def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
-        h_sd_error_images=None, hi_fits = None, h_sd_fits = None, limits =
-        None, fit = True, savedir = './', filename = None, show = True, scale =
-        'linear', title = '', core_names='', alphaG_list=None,
-        alphaG_error_list=None, Z_list=None, Z_error_list=None,
-        phi_g_list=None, phi_g_error_list=None,):
+def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
+        cores_to_plot=None, filename=None, show=True, scale=('linear',
+            'linear'), title='',):
 
     # Import external modules
     import numpy as np
@@ -908,10 +905,9 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     import matplotlib.pyplot as plt
     import matplotlib
     from mpl_toolkits.axes_grid1 import ImageGrid
-    from myscience.sternberg14 import calc_T_cnm
 
-    n = int(np.ceil(len(hi_images)**0.5))
-    if n**2 - n > len(hi_images):
+    n = int(np.ceil(len(cores_to_plot)**0.5))
+    if n**2 - n > len(cores_to_plot):
         nrows = n - 1
         ncols = 2
         y_scaling = 1.0 - 1.0 / n
@@ -919,7 +915,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         nrows, ncols = n, n
         y_scaling = 1.0
 
-    n = len(hi_images)
+    n = len(cores_to_plot)
     ncols = 2
     nrows = (n + 1) / ncols
     y_scaling = nrows / float(ncols)
@@ -933,7 +929,7 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
     cmap = plt.cm.gnuplot
 
     # Color cycle, grabs colors from cmap
-    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
     font_scale = 9
     line_weight = 600
     font_weight = 600
@@ -970,25 +966,24 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                  share_all=True)
 
     # Cycle through lists
-    for i in xrange(len(hi_images)):
-        hi_sd = hi_images[i]
-        h_sd = h_sd_images[i]
-        hi_sd_error = hi_sd_error_images[i]
-        h_sd_error = h_sd_error_images[i]
-        hi_sd_fit = hi_fits[i]
-        h_sd_fit = h_sd_fits[i]
-        if alphaG_list is not None:
-            alphaG = alphaG_list[i]
-        if alphaG_error_list is not None:
-            alphaG_error = alphaG_error_list[i]
-        if Z_list is not None:
-            Z = Z_list[i]
-        if Z_error_list is not None:
-            Z_error = Z_error_list[i]
-        if phi_g_list is not None:
-            phi_g = phi_g_list[i]
-        if phi_g_error_list is not None:
-            phi_g_error = phi_g_error_list[i]
+    for i, core in enumerate(cores_to_plot):
+        for key in cores[core]:
+            if type(cores[core][key]) is list:
+                cores[core][key] = np.array(cores[core][key])
+
+        hi_sd = cores[core]['hi_sd']
+        hi_sd_error = cores[core]['hi_sd_error']
+        h_sd = cores[core]['h_sd']
+        h_sd_error = cores[core]['h_sd_error']
+
+        # Load parameters
+        alphaG = cores[core]['sternberg_results']['alphaG']
+        alphaG_error = cores[core]['sternberg_results']['alphaG_error']
+        phi_cnm = cores[core]['krumholz_results']['phi_cnm']
+        phi_cnm_error = cores[core]['krumholz_results']['phi_cnm_error']
+        hi_sd_fit_sternberg = cores[core]['sternberg_results']['hi_sd_fit']
+        hi_sd_fit_krumholz = cores[core]['krumholz_results']['hi_sd_fit']
+        h_sd_fit = cores[core]['krumholz_results']['h_sd_fit']
 
         # Drop the NaNs from the images
         if type(hi_sd_error) is float:
@@ -1027,12 +1022,12 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
         ax = imagegrid[i]
 
         if 1:
-            image = ax.errorbar(h_sd_nonans.ravel(),
+            l1 = ax.errorbar(h_sd_nonans.ravel(),
                     hi_sd_nonans.ravel(),
                     xerr=(h_sd_error_nonans.ravel()),
                     yerr=(hi_sd_error_nonans.ravel()),
                     alpha=0.1,
-                    color='k',
+                    #color='k',
                     marker='^',ecolor='k',linestyle='None',
                     markersize=3
                     )
@@ -1051,74 +1046,52 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
                       extent=[x[0], x[-1], y[0], y[-1]])
 
 
-        if hi_sd_fit is not None:
-            ax.plot(h_sd_fit, hi_sd_fit,
-                    color = 'r')
+        l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
+                label='S+14')
+
+        l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
+                linestyle='--',
+                label='K+09')
+
         # Annotations
         anno_xpos = 0.95
 
-        if alphaG_list is not None and Z_list is not None:
-            T_cnm = calc_T_cnm(alphaG, Z=Z)
-            T_cnm_error = []
-            T_cnm_error.append(\
-                    T_cnm - calc_T_cnm(alphaG + alphaG_error[0], Z=Z))
-            T_cnm_error.append(\
-                    T_cnm - calc_T_cnm(alphaG + alphaG_error[1], Z=Z))
+        alphaG_text = r'\noindent$\alpha G$ =' + \
+                       r' %.2f' % (alphaG) + \
+                       r'$^{+%.2f}_{-%.2f}$ \\' % (alphaG_error[0],
+                                                   alphaG_error[1])
+        phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
+                       r' %.2f' % (phi_cnm) + \
+                       r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
+                                                   phi_cnm_error[1])
 
-            alphaG_text = r'\noindent$\alpha G$ =' + \
-                           r' %.2f' % (alphaG) + \
-                           r'$^{+%.2f}_{-%.2f}$ \\' % (alphaG_error[0],
-                                                     alphaG_error[1])
-            T_cnm_text = r'\noindent T$_{\rm CNM}$ =' + \
-                         r' %.2f' % (T_cnm) + \
-                         r'$^{+%.2f}_{-%.2f}$ \\' % (T_cnm_error[0],
-                                                     T_cnm_error[1])
-            if Z != 1:
-                if Z_error == (0.0, 0.0):
-                    Z_text = r'Z = %.1f Z$_\odot$ \\' % (Z)
-                else:
-                    Z_text = r'Z = %.2f' % (Z) + \
-                    r'$^{+%.2f}_{-%.2f}$ Z$_\odot$ \\' % (Z_error[0],
-                                                          Z_error[1])
-            else:
-                Z_text = ''
+        ax.annotate(alphaG_text + phi_cnm_text,
+                xytext=(anno_xpos, 0.05),
+                xy=(anno_xpos, 0.05),
+                textcoords='axes fraction',
+                xycoords='axes fraction',
+                size=font_scale*3/4.0,
+                color='k',
+                bbox=dict(boxstyle='round',
+                          facecolor='w',
+                          alpha=1),
+                horizontalalignment='right',
+                verticalalignment='bottom',
+                )
 
-            if phi_g_error == (0.0, 0.0):
-                phi_g_text = r'\noindent$\phi_{\rm mol}$ = ' + \
-                                 '%.1f' % (phi_g)
-            else:
-                phi_g_text = r'\noindent$\phi_{\rm mol}$ =' + \
-                            r' %.2f' % (phi_g) + \
-                            r'$^{+%.2f}_{-%.2f}$ \\' % (phi_g_error[0],
-                                                     phi_g_error[1])
-
-            ax.annotate(alphaG_text + T_cnm_text + Z_text,
-                    xytext=(anno_xpos, 0.05),
-                    xy=(anno_xpos, 0.05),
+        ax.annotate(core,
+                    xytext=(0.95, 0.95),
+                    xy=(0.95, 0.95),
                     textcoords='axes fraction',
                     xycoords='axes fraction',
-                    size=font_scale*3/4.0,
+                    size=font_scale,
                     color='k',
-                    bbox=dict(boxstyle='round',
+                    bbox=dict(boxstyle='square',
                               facecolor='w',
                               alpha=1),
                     horizontalalignment='right',
-                    verticalalignment='bottom',
+                    verticalalignment='top',
                     )
-
-            ax.annotate(core_names[i],
-                        xytext=(0.95, 0.95),
-                        xy=(0.95, 0.95),
-                        textcoords='axes fraction',
-                        xycoords='axes fraction',
-                        size=font_scale,
-                        color='k',
-                        bbox=dict(boxstyle='square',
-                                  facecolor='w',
-                                  alpha=1),
-                        horizontalalignment='right',
-                        verticalalignment='top',
-                        )
 
         ax.set_xscale(scale[0])
         ax.set_yscale(scale[1])
@@ -1128,9 +1101,13 @@ def plot_hi_vs_h_grid(hi_images, h_sd_images, hi_sd_error_images=None,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel(r'$\Sigma_{HI}$ + $\Sigma_{H2}$ ' + \
-                       '(M$_\odot$ / pc$^2$)',)
-        ax.set_ylabel(r'$\Sigma_{HI}$',)
+        ax.set_xlabel(r'$\Sigma_{\rm H{\sc I}}$ + $\Sigma_{\rm H2}$ ' + \
+                       '[M$_\odot$ / pc$^2$]',)
+        ax.set_ylabel(r'$\Sigma_{\rm H{\sc I}}$ [M$_\odot$ / pc$^2$]',)
+
+    #imagegrid.legend((l2, l3), ('S+14', 'K+09'), loc='lower right',) #bbox_to_anchor=(0.5, 1.05),
+          #ncol=3, fancybox=True, shadow=True)
+    ax.legend(bbox_to_anchor=(1.7, 0.5))
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
@@ -1577,15 +1554,18 @@ def run_analysis(hi_cube=None,
         perform_mc = True
 
     # Results of monte carlo will be stored here
-    sternberg_results = {'alphaG fits' : np.empty((N_monte_carlo_runs)),
+    sternberg_results = sternberg_params.copy()
+    krumholz_results = krumholz_params.copy()
+    sternberg_results.update({'alphaG fits' : np.empty((N_monte_carlo_runs)),
                          'Z fits' : np.empty((N_monte_carlo_runs)),
-                         'phi_g fits' : np.empty((N_monte_carlo_runs)),}
-    krumholz_results = {'phi_cnm fits' : np.empty((N_monte_carlo_runs)),
+                         'phi_g fits' : np.empty((N_monte_carlo_runs)),})
+    krumholz_results.update({'phi_cnm fits' : np.empty((N_monte_carlo_runs)),
                         'Z fits' : np.empty((N_monte_carlo_runs)),
-                        'phi_mol fits' : np.empty((N_monte_carlo_runs)),}
+                        'phi_mol fits' : np.empty((N_monte_carlo_runs)),})
     results_dict = {'nhi errors' : np.empty((N_monte_carlo_runs))}
 
     hi_vel_range_list = np.empty((N_monte_carlo_runs, 2))
+    width_list = np.empty((N_monte_carlo_runs))
     dgr_list = np.empty((N_monte_carlo_runs))
     intercept_list = np.empty((N_monte_carlo_runs))
 
@@ -1655,8 +1635,7 @@ def run_analysis(hi_cube=None,
                                       vel_center + \
                                         vel_width_random / 2.)
 
-                hi_vel_range_list[i, 0] = hi_vel_range_noise[0]
-                hi_vel_range_list[i, 1] = hi_vel_range_noise[1]
+                width_list[i] = vel_width_random
                 dgr_list[i] = dgr_random
                 intercept_list[i] = intercept_random
 
@@ -1682,7 +1661,7 @@ def run_analysis(hi_cube=None,
                                    )
             # grab the N(HI) error
             results_dict['nhi errors'][i] = \
-                    np.mean(images['nhi'][images['nhi'] == images['nhi']])
+                np.mean(images['nhi'][images['nhi'] == images['nhi']])
 
             # Fit R_H2
             #---------
@@ -1705,9 +1684,8 @@ def run_analysis(hi_cube=None,
             # Fit to sternberg model
             alphaG, Z, phi_g = fit_sternberg(h_sd_ravel,
                                       rh2_ravel,
-                                      guesses=guesses, # alphaG, Z
-                                      vary=[vary_alphaG,
-                                            vary_Z, vary_phi_g],
+                                      guesses=sternberg_params['guesses'],
+                                      vary=sternberg_params['param_vary'],
                                       rh2_error=rh2_error_ravel,
                                       verbose=verbose)
 
@@ -1716,13 +1694,11 @@ def run_analysis(hi_cube=None,
             sternberg_results['phi_g fits'][i] = phi_g
             sternberg_results['Z fits'][i] = Z
 
-
             # Fit to krumholz model
             phi_cnm, Z, phi_mol = fit_krumholz(h_sd_ravel,
                                       rh2_ravel,
-                                      guesses=guesses, # phi_cnm, Z
-                                      vary=[vary_phi_cnm,
-                                            vary_Z, vary_phi_mol],
+                                      guesses=krumholz_params['guesses'],
+                                      vary=krumholz_params['param_vary'],
                                       rh2_error=rh2_error_ravel,
                                       verbose=verbose)
 
@@ -1750,24 +1726,32 @@ def run_analysis(hi_cube=None,
             if count and not count % abs_step:
                 print "\t{0:.0%} processed".format(count/total)
 
-        # Write the MC results in JSON human readable txt format
-        if write_mc:
-            alphaGs = results_dict['alphaG fits'].tolist()
-            phi_gs = results_dict['phi_g fits'].tolist()
-            Zs = results_dict['Z fits'].tolist()
-            vel_ranges = hi_vel_range_list.tolist()
-            dgr_list = dgr_list.tolist()
-            intercept_list = intercept_list.tolist()
 
-            results = {'alphaGs': alphaGs,
-                       'phi_gs': phi_gs,
-                       'Zs': Zs,
-                       'dgrs': dgr_list,
-                       'intercepts': intercept_list,
-                       'vel_ranges': hi_vel_range_list.tolist()}
+        sternberg_results = \
+                calc_MC_errors(sternberg_results)
 
-            with open(results_filename, 'w') as f:
-                json.dump(results, f)
+        sternberg_results = \
+                analyze_sternberg_model(sternberg_results)
+
+        krumholz_results = \
+                calc_MC_errors(krumholz_results)
+
+        krumholz_results = \
+                analyze_krumholz_model(krumholz_results)
+
+        # Update results dictionary to include fitted results
+        for key in sternberg_results:
+            if type(sternberg_results[key]) is np.ndarray:
+                sternberg_results[key] = sternberg_results[key].tolist()
+        for key in krumholz_results:
+            if type(krumholz_results[key]) is np.ndarray:
+                    krumholz_results[key] = krumholz_results[key].tolist()
+
+        results_dict.update({'sternberg_results': sternberg_results,
+                             'krumholz_results': krumholz_results,
+                             'dgrs': dgr_list,
+                             'intercepts': intercept_list,
+                             'widths': width_list})
 
     # If not performing the MC, read a previously written MC file
     elif not perform_mc:
@@ -1775,35 +1759,7 @@ def run_analysis(hi_cube=None,
         print(results_filename)
 
         with open(results_filename, 'r') as f:
-            results = json.load(f)
-
-        results_dict['alphaG fits'] = np.asarray(results['alphaGs'])
-        results_dict['phi_g fits'] = np.asarray(results['phi_gs'])
-        results_dict['Z fits'] = np.asarray(results['Zs'])
-        dgr_list = np.asarray(results['dgrs'])
-        intercept_list = np.asarray(results['intercepts'])
-        hi_vel_range_list = np.asarray(results['vel_ranges'])
-
-    # Remove failed fits
-    results_dict['alphaG fits'] = \
-        results_dict['alphaG fits']\
-            [~np.isnan(results_dict['alphaG fits'])]
-    results_dict['phi_g fits'] = \
-        results_dict['phi_g fits']\
-            [~np.isnan(results_dict['phi_g fits'])]
-    results_dict['Z fits'] = \
-        results_dict['Z fits'] \
-            [~np.isnan(results_dict['Z fits'])]
-
-    # Plot the distributions of parameters from the MC
-    if results_figure_name is not None and perform_mc:
-    	plot_parameter_hist(results_dict,
-    	                    parameter='alphaG fits',
-    	                    results_figure_name=results_figure_name,
-                            show=False)
-    	plot_parameter_hist(results_dict,
-    	                    parameter='Z fits',
-    	                    results_figure_name=results_figure_name)
+            results_dict = json.load(f)
 
     # Derive images
     # -------------
@@ -1812,10 +1768,19 @@ def run_analysis(hi_cube=None,
 
     nhi_error = np.std(results_dict['nhi errors'])
 
+    dgr = properties['dust2gas_ratio']['value']
+    intercept = properties['intercept']['value']
+    #intercept_error = properties['intercept_error']['value']
+    #dgr_error = properties['dust2gas_ratio_error']['value']
+    vel_center = properties['hi_velocity_center']['value']
+    vel_width = properties['hi_velocity_width']['value']
+    #hi_vel_range = (vel_center - vel_width/2.0, vel_center + vel_width/2.0)
+    hi_vel_range = properties['hi_velocity_range']
+
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
                            hi_noise_cube=hi_noise_cube,
-                           hi_vel_range=hi_vel_range_sample,
+                           hi_vel_range=hi_vel_range,
                            hi_header=hi_header,
                            dgr=dgr,
                            intercept=intercept,
@@ -1823,117 +1788,60 @@ def run_analysis(hi_cube=None,
                            av_image_error=av_image_error,
                            )
 
-    alphaG_confint, Z_confint, phi_g_confint = calc_MC_errors(results_dict,
-                                                error_method=error_method,
-                                                alpha=alpha,
-                                                parameter_vary=[vary_alphaG,
-                                                    vary_Z, vary_phi_g])
+    results_dict.update(core_dict)
+    results_dict.update({'rh2' : images['rh2'],
+                         'rh2_error' : images['rh2_error'],
+                         'hi_sd' : images['hi_sd'],
+                         'hi_sd_error' : images['hi_sd_error'],
+                         'av' : images['av'],
+                         'av_error' : images['av_error'],
+                         'h_sd' : images['h_sd'],
+                         'h_sd_error' : images['h_sd_error'],
+                         'sternberg_results' : sternberg_results,
+                         'krumholz_results' : krumholz_results,
+                         })
 
-    alphaG = alphaG_confint[0]
-    alphaG_error = alphaG_confint[1:]
-    phi_g = phi_g_confint[0]
-    phi_g_error = phi_g_confint[1:]
-    Z = Z_confint[0]
-    Z_error = Z_confint[1:]
+    # Write the MC results in JSON human readable txt format
+    if write_mc:
+        for key in results_dict:
+            if type(results_dict[key]) is np.ndarray:
+                    results_dict[key] = results_dict[key].tolist()
 
-    if 0:
-        cores[core]['hi_sd_fit'] = hi_sd_fit.tolist()
-        cores[core]['rh2'] = images['rh2'].tolist()
-        cores[core]['rh2_error'] = images['rh2_error'].tolist()
-        cores[core]['hi_sd'] = images['hi_sd'].tolist()
-        cores[core]['hi_sd_error'] = images['hi_sd_error'].tolist()
-        cores[core]['av'] = images['av'].tolist()
-        cores[core]['av_error'] = images['av_error'].tolist()
-        cores[core]['h_sd'] = images['h_sd'].tolist()
-        cores[core]['h_sd_error'] = images['h_sd_error'].tolist()
-        cores[core]['alphaG'] = alphaG
-        cores[core]['alphaG_error'] = alphaG_error
-        cores[core]['T_cnm'] = T_cnm
-        cores[core]['T_cnm_error'] = T_cnm_error
-        cores[core]['Z'] = Z
-        cores[core]['Z_error'] = Z_error
-        cores[core]['phi_g'] = phi_g
-        cores[core]['phi_g_error'] = phi_g_error
-        cores[core]['rh2_fit'] = rh2_fit.tolist()
-        cores[core]['h_sd_fit'] = h_sd_fit.tolist()
-        cores[core]['f_H2'] = f_H2.tolist()
-        cores[core]['f_HI_fit'] = f_HI.tolist()
+        with open(results_filename, 'w') as f:
+            json.dump(results_dict, f)
 
     # Print results
-    print('results are:')
-    print('alphaG = {0:.2f} +{1:.2f}/-{2:.2f}'.format(alphaG_confint[0],
-                                                      alphaG_confint[1],
-                                                      alphaG_confint[2]))
-    print('phi_g = {0:.2f} +{1:.2f}/-{2:.2f}'.format(phi_g_confint[0],
-                                                       phi_g_confint[1],
-                                                       phi_g_confint[2]))
-    print('Z = {0:.2f} +{1:.2f}/-{2:.2f}'.format(Z_confint[0],
-                                                  Z_confint[1],
-                                                  Z_confint[2]))
+    print('\n\tMonte Carlo Results:')
+    print('\tSternberg Fit Parameters')
+    for parameter in results_dict['sternberg_results']['parameters']:
+        confint = results_dict['sternberg_results'][parameter + '_confint']
+        print('\t\t{0:s} = {1:.2f} +{2:.2f}/-{3:.2f}'.format(parameter,
+                                                           *confint))
+    print('\tKrumholz Fit Parameters')
+    for parameter in results_dict['krumholz_results']['parameters']:
+        confint = results_dict['krumholz_results'][parameter + '_confint']
+        print('\t\t{0:s} = {1:.2f} +{2:.2f}/-{3:.2f}'.format(parameter,
+                                                           *confint))
 
-    print('Median HI velocity range:' + \
-          '{0:.1f} to {1:.1f} km/s'.format(hi_vel_range_sample[0],
-                                           hi_vel_range_sample[1],))
+    return results_dict
 
-    if N_monte_carlo_runs > 1:
-        return images, hi_vel_range_sample, (alphaG, Z, alphaG_error,
-                Z_error, phi_g, phi_g_error)
-    if N_monte_carlo_runs == 1:
-        return images, hi_vel_range_sample, (alphaG, Z, phi_g)
-
-def calc_MC_errors(results_dict, error_method='edges', alpha=0.05,
-        parameter_vary=[True, False, True]):
+def calc_MC_errors(results_dict, error_method='edges', alpha=0.05,):
 
     from mystats import calc_symmetric_error
     from scikits.bootstrap import ci
     import numpy as np
 
-    if error_method == 'bootstrap':
-        # Bootstrap for errors
-        # --------------------
-        # Returns errors of a bootstrap simulation at the 100.*(1 - alpha)
-        # confidence interval. Errors are computed by deriving a cumulative
-        # distribution function of the medians of the sampled data and
-        # determining the distance between the median and the value including
-        # alpha/2 % of the data, and the value including alpha / 2 % of the
-        # data.
-        # samples = mystats.bootstrap(results_dict['alphaG fits'], 1000)
-        # alphaG_confint = mystats.calc_bootstrap_error(samples, alpha)
-        # samples = mystats.bootstrap(results_dict['Z fits'], 1000)
-        # Z_confint = mystats.calc_bootstrap_error(samples, alpha)
-        if parameter_vary[0]:
-            alphaG_confint = ci(results_dict['alphaG fits'],
-                                 statfunction=np.median,
-                                 alpha=alpha,
-                                 method='bca')
-            alphaG = np.median(results_dict['alphaG fits'])
-            alphaG_confint = (alphaG,
-                               alphaG + alphaG_confint[1],
-                               alphaG - alphaG_confint[0],
-                               )
-        else:
-            alphaG_confint = (results_dict['alphaG fits'][0], 0.0, 0.0)
-
-        if parameter_vary[1]:
-            Z_confint = ci(results_dict['Z fits'],
-                           statfunction=np.mean,
-                           alpha=alpha)
-            Z = np.median(results_dict['Z fits'])
-            Z_confint = (Z,
-                         Z + Z_confint[0],
-                         Z - Z_confint[1],
-                         )
-        else:
-            Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
-    elif error_method == 'edges':
+    for i, parameter in enumerate(results_dict['parameters']):
         # If there is a distribution of the parameter, then find the
         # confidence interval
-        if parameter_vary[0]:
-            alphaG = results_dict['alphaG fits']
+        if results_dict['param_vary'][i]:
+            param_fits = results_dict[parameter + ' fits']
 
             # Histogram will act as distribution of parameter values
-            counts, bins = np.histogram(results_dict['alphaG fits'],
-                bins=np.linspace(alphaG.min(), alphaG.max(), 500))
+            counts, bins = np.histogram(param_fits,
+                                        bins=np.linspace(np.nanmin(param_fits),
+                                                         np.nanmax(param_fits),
+                                                         1000))
 
             # Calculate confidence interval by taking the PDF weighted mean as
             # value, where errors are calculated by moving vertical threshold
@@ -1941,41 +1849,26 @@ def calc_MC_errors(results_dict, error_method='edges', alpha=0.05,
             # PDF is included within the threshold
             #alphaG_confint = calc_symmetric_error(bins[:-1], counts,
             #        alpha=alpha)
-            alphaG_confint = calc_symmetric_error(alphaG,
-                                                   alpha=alpha)
+            results_dict[parameter + '_confint'] = \
+                 calc_symmetric_error(param_fits,
+                                      alpha=results_dict['alpha'])
 
         else:
-            alphaG_confint = (results_dict['alphaG fits'][0], 0.0, 0.0)
+            results_dict[parameter + '_confint'] = \
+                    (results_dict[parameter + ' fits'][0], 0.0, 0.0)
 
-        if parameter_vary[1]:
-            Z_upper_lim = np.log10(np.max(results_dict['Z fits']))
-            Z_lower_lim = np.log10(np.min(results_dict['Z fits']))
-            Z = results_dict['Z fits']
-            counts, bins = np.histogram(results_dict['Z fits'],
-                bins=np.linspace(Z.min(), Z.max(), 1000))
-            Z_confint = calc_symmetric_error(Z,
-                    alpha=alpha)
-        else:
-            Z_confint = (results_dict['Z fits'][0], 0.0, 0.0)
+        # Split up errors and best estimate
+        results_dict[parameter] = results_dict[parameter + '_confint'][0]
+        results_dict[parameter + '_error'] = \
+                results_dict[parameter + '_confint'][1:]
 
-        if parameter_vary[2]:
-            phi_g_upper_lim = np.log10(np.max(results_dict['phi_g fits']))
-            phi_g_lower_lim = np.log10(np.min(results_dict['phi_g fits']))
-            phi_g = results_dict['phi_g fits']
-            phi_g_confint = calc_symmetric_error(phi_g,
-                    alpha=alpha)
-        else:
-            phi_g_confint = (results_dict['phi_g fits'][0], 0.0, 0.0)
+    return results_dict
 
-    else:
-        raise ValueError('Error method must be "bootstrap" or "threshold"')
-
-    return alphaG_confint, Z_confint, phi_g_confint
 
 ''' Fitting Functions
 '''
 
-def calc_krumholz(params=[10.0, 1.0], h_sd_extent=(0.001, 500),
+def calc_krumholz(params=[10.0, 1.0, 10.0], h_sd_extent=(0.001, 500),
         return_fractions=True):
 
     '''
@@ -2012,7 +1905,9 @@ def calc_krumholz(params=[10.0, 1.0], h_sd_extent=(0.001, 500),
         rh2_fit = k09.calc_rh2(h_sd, params)
     elif return_fractions:
         rh2_fit, f_H2, f_HI = k09.calc_rh2(h_sd,
-                                           *params,
+                                           phi_cnm=params[0],
+                                           Z=params[1],
+                                           phi_mol=params[2],
                                            return_fractions=True)
 
     output = [rh2_fit, h_sd]
@@ -2057,7 +1952,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
         rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
 
-        chisq = (rh2 - rh2_model)**2 / rh2_error**2
+        chisq = np.sum((rh2 - rh2_model)**2 / rh2_error**2)
 
         return chisq
 
@@ -2065,7 +1960,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('phi_cnm',
                value=guesses[0],
-               min=1,
+               min=0.5,
                max=100,
                vary=vary[0])
     params.add('phi_mol',
@@ -2090,7 +1985,46 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
     return rh2_fit_params
 
-def calc_sternberg(params=[10.0, 1.0], h_sd_extent=(0.001, 500),
+def analyze_krumholz_model(krumholz_results):
+
+    ''' Calculates various properties of Krumholz model from fitted phi_cnm
+    values.
+
+    '''
+
+    from myscience.krumholz09 import calc_T_cnm
+
+    # Calculate T_cnm from Krumholz et al. (2009) Eq 19
+    phi_cnm, phi_cnm_error, Z = \
+        [krumholz_results[key] for key in ('phi_cnm', 'phi_cnm_error', 'Z')]
+    T_cnm = calc_T_cnm(phi_cnm, Z=Z)
+    T_cnm_error = []
+    T_cnm_error.append(\
+            T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
+    T_cnm_error.append(\
+            T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
+
+    krumholz_results.update({'T_cnm': T_cnm,
+                             'T_cnm_error': T_cnm_error})
+
+    # Get fitted surface density ratios...
+    params = [krumholz_results[param] for param in \
+              krumholz_results['parameters']]
+
+    rh2_fit, h_sd_fit, f_H2, f_HI = \
+           calc_krumholz(params=params,
+                          h_sd_extent=krumholz_results['h_sd_fit_range'],
+                          return_fractions=True)
+
+    krumholz_results.update({'rh2_fit': rh2_fit,
+                             'h_sd_fit' : h_sd_fit,
+                             'hi_sd_fit' : f_HI * h_sd_fit,
+                             'f_H2' : f_H2,
+                             'f_HI' : f_HI,})
+
+    return krumholz_results
+
+def calc_sternberg(params=[1.5, 1.0, 1.0], h_sd_extent=(0.001, 500),
         return_fractions=True):
 
     '''
@@ -2127,7 +2061,9 @@ def calc_sternberg(params=[10.0, 1.0], h_sd_extent=(0.001, 500),
         rh2_fit = s14.calc_rh2(h_sd, params)
     elif return_fractions:
         rh2_fit, f_H2, f_HI = s14.calc_rh2(h_sd,
-                                           *params,
+                                           alphaG=params[0],
+                                           Z=params[1],
+                                           phi_g=params[2],
                                            return_fractions=True)
 
     output = [rh2_fit, h_sd]
@@ -2175,18 +2111,6 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
         chisq = np.sum((rh2 - rh2_model)**2 / rh2_error**2)
 
-        print('chisq = {0:.1e}, alphaG = {1:.1f}'.format(chisq, alphaG))
-        if 0:
-            import matplotlib.pyplot as plt
-            plt.plot(rh2 - rh2_model, linestyle='', marker='o')
-            plt.show()
-        if 0:
-            import matplotlib.pyplot as plt
-            plt.plot(h_sd, rh2, linestyle='', marker='o')
-            plt.plot(h_sd, rh2_model, linestyle='-', marker='')
-            plt.show()
-        print np.asarray(rh2_model).shape
-
         return chisq
 
     # Set parameter limits and initial guesses
@@ -2218,6 +2142,29 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
     return rh2_fit_params
 
+def analyze_sternberg_model(sternberg_results):
+
+    ''' Calculates various properties of Krumholz model from fitted phi_cnm
+    values.
+
+    '''
+
+    # Get fitted surface density ratios...
+    params = [sternberg_results[param] for param in \
+              sternberg_results['parameters']]
+
+    rh2_fit, h_sd_fit, f_H2, f_HI = \
+           calc_sternberg(params=params,
+                          h_sd_extent=sternberg_results['h_sd_fit_range'],
+                          return_fractions=True)
+
+    sternberg_results.update({'rh2_fit': rh2_fit,
+                              'h_sd_fit' : h_sd_fit,
+                              'hi_sd_fit' : (1 - f_H2) * h_sd_fit,
+                              'f_H2' : f_H2,
+                              'f_HI' : f_HI,})
+
+    return sternberg_results
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -2431,7 +2378,6 @@ def main(verbose=True, av_data_type='planck', region=None):
     import json
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
         calculate_sd, calculate_nh2, calculate_nh2_error
-    from myscience.sternberg14 import calc_T_cnm
 
     # parameters used in script
     # -------------------------
@@ -2443,7 +2389,7 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Sternberg Parameters
     # --------------------
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
+    N_monte_carlo_runs = 10 # Number of monte carlo runs
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
@@ -2451,9 +2397,10 @@ def main(verbose=True, av_data_type='planck', region=None):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    clobber = 1 # perform MC and write over current results?
     guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
+
+    clobber = 0 # perform MC and write over current results?
 
     # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
@@ -2462,15 +2409,14 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     sternberg_params = {}
     sternberg_params['N_monte_carlo_runs'] = N_monte_carlo_runs
-    sternberg_params['vary_alphaG'] = vary_alphaG
-    sternberg_params['vary_Z'] = vary_Z
-    sternberg_params['vary_phi_g'] = vary_phi_g
+    sternberg_params['param_vary'] = [vary_alphaG, vary_Z, vary_phi_g]
     sternberg_params['error_method'] = error_method
     sternberg_params['alpha'] = alpha
     sternberg_params['guesses'] = guesses
     sternberg_params['clobber'] = clobber
     sternberg_params['h_sd_fit_range'] = h_sd_fit_range
     sternberg_params['results_filename'] = results_filename
+    sternberg_params['parameters'] = ['alphaG', 'Z', 'phi_g']
 
     # Krumholz Parameters
     # --------------------
@@ -2482,8 +2428,7 @@ def main(verbose=True, av_data_type='planck', region=None):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    clobber = 1 # perform MC and write over current results?
-    guesses=(10, 1.0, 10.0) # Guesses for (phi_cnm, Z, phi_mol)
+    guesses=(10.0, 1.0, 10.0) # Guesses for (phi_cnm, Z, phi_mol)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
@@ -2493,15 +2438,14 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     krumholz_params = {}
     krumholz_params['N_monte_carlo_runs'] = N_monte_carlo_runs
-    krumholz_params['vary_phi_cnm'] = vary_phi_cnm
-    krumholz_params['vary_Z'] = vary_Z
-    krumholz_params['vary_phi_mol'] = vary_phi_mol
+    krumholz_params['param_vary'] = [vary_phi_cnm, vary_Z, vary_phi_mol]
     krumholz_params['error_method'] = error_method
     krumholz_params['alpha'] = alpha
     krumholz_params['guesses'] = guesses
     krumholz_params['clobber'] = clobber
     krumholz_params['h_sd_fit_range'] = h_sd_fit_range
     krumholz_params['results_filename'] = results_filename
+    krumholz_params['parameters'] = ['phi_cnm', 'Z', 'phi_mol']
 
     # Universal properties
     # --------------------
@@ -2520,20 +2464,12 @@ def main(verbose=True, av_data_type='planck', region=None):
             global_property_filename.replace('taurus', region_name)
 
     # Which cores to include in analysis?
-    cores_to_keep = ('L1495', 'L1495A', 'B213', 'L1498', 'B215',
+    cores_to_keep = ['L1495', 'L1495A', 'B213', 'L1498', 'B215',
                      'L1483', 'L1478', 'L1456', 'NGC1579',
-                     'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482')
-
-    # Use core-derived or global-derived likelihoods forr DGR - vel width
-    # combinations. Options are 'cores' and 'global'
-    global likelihood_derivation
-    likelihood_derivation = 'global'
+                     'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482']
 
     # Regions
     # Options are 'ds9' or 'av_gradient'
-    global box_method
-    global region_type
-    box_method = 'av_gradient'
     box_method = 'ds9'
     region_type = 'wedge' # Shape of core region, box or wedge
 
@@ -2602,14 +2538,6 @@ def main(verbose=True, av_data_type='planck', region=None):
     with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
-    # Remove cores
-    cores_to_remove = []
-    for core in cores:
-        if core not in cores_to_keep:
-            cores_to_remove.append(core)
-    for core_to_remove in cores_to_remove:
-        del cores[core_to_remove]
-
     cores = convert_core_coordinates(cores, h)
     cores = load_ds9_core_region(cores,
                             filename_base = region_dir + \
@@ -2631,38 +2559,15 @@ def main(verbose=True, av_data_type='planck', region=None):
     # Set up lists
     sternberg_results = {}
     krumholz_results = {}
-    if 0:
-        hi_image_list = []
-        hi_sd_image_list = []
-        hi_sd_image_error_list = []
-        h_sd_image_list = []
-        h_sd_image_error_list = []
-        av_image_list = []
-        av_image_error_list = []
-        rh2_image_list = []
-        rh2_image_error_list = []
-        rh2_fit_list = []
-        h_sd_fit_list = []
-        alphaG_list = []
-        alphaG_error_list = []
-        phi_g_list = []
-        phi_g_error_list = []
-        Z_list = []
-        Z_error_list = []
-        chisq_list = []
-        p_value_list = []
-        core_name_list = []
-        co_image_list = []
-        hi_vel_range_list = []
-        hi_vel_range_likelihood_list = []
-        hi_sd_fit_list = []
 
     if clobber:
-    #if 0:
         hi_data_orig = np.copy(hi_data)
         noise_cube_orig = np.copy(noise_cube)
         av_data_planck_orig = np.copy(av_data_planck)
         av_error_data_planck_orig = np.copy(av_error_data_planck)
+
+        # Initialize dictionary to store MC results for each core
+        #results = {}
 
         for core in np.sort(cores.keys()):
             print('\nCalculating for core %s' % core)
@@ -2701,7 +2606,7 @@ def main(verbose=True, av_data_type='planck', region=None):
             # refitting.
             # -----------------------------------------------------------------
 
-            sternerg_results[core], krumholz_results[core] = \
+            cores[core] = \
                     run_analysis(hi_cube=hi_data,
                                  hi_noise_cube=noise_cube,
                                  hi_velocity_axis=velocity_axis,
@@ -2718,74 +2623,12 @@ def main(verbose=True, av_data_type='planck', region=None):
                                  results_filename=results_filename + core,
                                  )
 
-            rh2_fit, h_sd_fit, f_H2, f_HI = calc_sternberg(params=params[:2],
-                                                h_sd_extent=h_sd_fit_range,
-                                                return_fractions=True)
-
-            hi_sd_fit = f_HI * h_sd_fit
-            alphaG = params[0]
-            alphaG_error = params[2]
-            Z = params[1]
-            Z_error = params[3]
-            phi_g = params[4]
-            phi_g_error = params[5]
-
-            # Calculate T_cnm from sternberg et al. (2009) Eq 19
-            T_cnm = calc_T_cnm(alphaG, Z=Z)
-            T_cnm_error = []
-            T_cnm_error.append(\
-                    T_cnm - calc_T_cnm(alphaG + alphaG_error[0], Z=Z))
-            T_cnm_error.append(\
-                    T_cnm - calc_T_cnm(alphaG + alphaG_error[1], Z=Z))
-
-            cores[core]['hi_sd_fit'] = hi_sd_fit.tolist()
-            cores[core]['rh2'] = images['rh2'].tolist()
-            cores[core]['rh2_error'] = images['rh2_error'].tolist()
-            cores[core]['hi_sd'] = images['hi_sd'].tolist()
-            cores[core]['hi_sd_error'] = images['hi_sd_error'].tolist()
-            cores[core]['av'] = images['av'].tolist()
-            cores[core]['av_error'] = images['av_error'].tolist()
-            cores[core]['h_sd'] = images['h_sd'].tolist()
-            cores[core]['h_sd_error'] = images['h_sd_error'].tolist()
-            cores[core]['alphaG'] = alphaG
-            cores[core]['alphaG_error'] = alphaG_error
-            cores[core]['T_cnm'] = T_cnm
-            cores[core]['T_cnm_error'] = T_cnm_error
-            cores[core]['Z'] = Z
-            cores[core]['Z_error'] = Z_error
-            cores[core]['phi_g'] = phi_g
-            cores[core]['phi_g_error'] = phi_g_error
-            cores[core]['rh2_fit'] = rh2_fit.tolist()
-            cores[core]['h_sd_fit'] = h_sd_fit.tolist()
-            cores[core]['f_H2'] = f_H2.tolist()
-            cores[core]['f_HI_fit'] = f_HI.tolist()
-
+        # Write results to cores
+        for key in cores:
+            if type(cores[key]) is np.ndarray:
+                    cores[key] = cores[key].tolist()
         with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
             json.dump(cores, f)
-
-    for core in cores:
-        if core in cores_to_keep and \
-           len(cores[core]['hi_sd']) > 0:
-
-            # append to the lists
-            hi_sd_image_list.append(np.array(cores[core]['hi_sd']))
-            hi_sd_image_error_list.append(np.array(cores[core]['hi_sd_error']))
-            h_sd_image_list.append(np.array(cores[core]['h_sd']))
-            h_sd_image_error_list.append(np.array(cores[core]['h_sd_error']))
-            av_image_list.append(np.array(cores[core]['av']))
-            av_image_error_list.append(np.array(cores[core]['av_error']))
-            rh2_image_list.append(np.array(cores[core]['rh2']))
-            rh2_image_error_list.append(np.array(cores[core]['rh2_error']))
-            rh2_fit_list.append(np.array(cores[core]['rh2_fit']))
-            h_sd_fit_list.append(np.array(cores[core]['h_sd_fit']))
-            hi_sd_fit_list.append(np.array(cores[core]['hi_sd_fit']))
-            alphaG_list.append(cores[core]['alphaG'])
-            alphaG_error_list.append(cores[core]['alphaG_error'])
-            Z_list.append(cores[core]['Z'])
-            Z_error_list.append(cores[core]['Z_error'])
-            phi_g_list.append(cores[core]['phi_g'])
-            phi_g_error_list.append(cores[core]['phi_g_error'])
-            core_name_list.append(core)
 
     # Create the figures!
     # -------------------
@@ -2795,47 +2638,34 @@ def main(verbose=True, av_data_type='planck', region=None):
     if write_pdf_figures:
         figure_types.append('pdf')
 
+    # Trim down cores to keep list to include only cores for cloud
+    cores_to_keep_old = list(cores_to_keep)
+    for core in cores_to_keep_old:
+        if core not in cores:
+            cores_to_keep.remove(core)
+
     for figure_type in figure_types:
-        fig_name_rh2 = 'taurus_rh2_vs_hsd_panels_{0:s}'.format(av_data_type)
-        print('\nWriting Rh2 figures to\n' + fig_name_rh2)
+        if 0:
+            fig_name_rh2 = \
+                    'taurus_rh2_vs_hsd_panels_{0:s}'.format(av_data_type)
+            print('\nWriting Rh2 figures to\n' + fig_name_rh2)
 
-        plot_rh2_vs_h_grid(rh2_image_list,
-                h_sd_image_list,
-                rh2_error_images = rh2_image_error_list,
-                h_sd_error_images = h_sd_image_error_list,
-                rh2_fits = rh2_fit_list,
-                h_sd_fits = h_sd_fit_list,
-                limits = [0, 80, 10**-3, 10**2],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('linear', 'log'),
-                filename=fig_name_rh2 + '_linear.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                alphaG_list=alphaG_list,
-                alphaG_error_list=alphaG_error_list,
-                phi_g_list=phi_g_list,
-                phi_g_error_list=phi_g_error_list,
-                Z_list=Z_list,
-                Z_error_list=Z_error_list,
-                show = False)
+            plot_rh2_vs_h_grid(cores,
+                    limits = [0, 80, 10**-3, 10**2],
+                    savedir = figure_dir + 'panel_cores/',
+                    scale = ('linear', 'log'),
+                    filename=fig_name_rh2 + \
+                             '_linear.{0:s}'.format(figure_type),
+                    core_names=cores_to_keep,
+                    show = False)
 
-        plot_rh2_vs_h_grid(rh2_image_list,
-                h_sd_image_list,
-                rh2_error_images = rh2_image_error_list,
-                h_sd_error_images = h_sd_image_error_list,
-                rh2_fits = rh2_fit_list,
-                h_sd_fits = h_sd_fit_list,
-                limits = [1, 200, 10**-3, 10**2],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('log', 'log'),
-                filename=fig_name_rh2 + '_log.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                alphaG_list=alphaG_list,
-                alphaG_error_list=alphaG_error_list,
-                phi_g_list=phi_g_list,
-                phi_g_error_list=phi_g_error_list,
-                Z_list=Z_list,
-                Z_error_list=Z_error_list,
-                show = False)
+            plot_rh2_vs_h_grid(cores,
+                    limits = [1, 200, 10**-3, 10**2],
+                    savedir = figure_dir + 'panel_cores/',
+                    scale = ('log', 'log'),
+                    filename=fig_name_rh2 + '_log.{0:s}'.format(figure_type),
+                    core_names=cores_to_keep,
+                    show = False)
 
         # Calif limits = [0, 80, 0, 8]
         # taur limits = [0, 80, -1.5, 6.5]
@@ -2843,60 +2673,37 @@ def main(verbose=True, av_data_type='planck', region=None):
         fig_name_hivsh = 'taurus_hi_vs_h_panels_{0:s}'.format(av_data_type)
         print('\nWriting HI vs H figures to\n' + fig_name_hivsh)
 
-        plot_hi_vs_h_grid(hi_sd_image_list,
-                h_sd_image_list,
-                hi_sd_error_images=hi_sd_image_error_list,
-                h_sd_error_images=h_sd_image_error_list,
-                hi_fits=hi_sd_fit_list,
-                h_sd_fits=h_sd_fit_list,
+        plot_hi_vs_h_grid(cores,
                 limits=[-9, 80, -1.5, 6.5],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                alphaG_list=alphaG_list,
-                alphaG_error_list=alphaG_error_list,
-                phi_g_list=phi_g_list,
-                phi_g_error_list=phi_g_error_list,
-                Z_list=Z_list,
-                Z_error_list=Z_error_list,
+                cores_to_plot=cores_to_keep,
                 show = False)
 
-        plot_hi_vs_h_grid(hi_sd_image_list,
-                h_sd_image_list,
-                hi_sd_error_images=hi_sd_image_error_list,
-                h_sd_error_images=h_sd_image_error_list,
-                hi_fits=hi_sd_fit_list,
-                h_sd_fits=h_sd_fit_list,
+        plot_hi_vs_h_grid(cores,
                 limits=[1, 100, 1, 100],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('log', 'log'),
                 filename=fig_name_hivsh + '_log.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                alphaG_list=alphaG_list,
-                alphaG_error_list=alphaG_error_list,
-                phi_g_list=phi_g_list,
-                phi_g_error_list=phi_g_error_list,
-                Z_list=Z_list,
-                Z_error_list=Z_error_list,
+                cores_to_plot=cores_to_keep,
                 show = False)
 
-        fig_name_hivsav = 'taurus_hi_vs_av_panels_{0:s}'.format(av_data_type)
-        print('\nWriting HI vs H figures to\n' + fig_name_hivsav)
+        if 0:
+            fig_name_hivsav = \
+                    'taurus_hi_vs_av_panels_{0:s}'.format(av_data_type)
+            print('\nWriting HI vs H figures to\n' + fig_name_hivsav)
 
-        plot_hi_vs_av_grid(hi_sd_image_list,
-                av_image_list,
-                hi_error_images = hi_sd_image_error_list,
-                av_error_images = h_sd_image_error_list,
-                #limits = [10**-1, 10**2, 10**0, 10**2],
-                limits = [0, 50, 1, 8],
-                savedir = figure_dir + 'panel_cores/',
-                scale = ('linear', 'linear'),
-                filename=fig_name_hivsav + '_linear.{0:s}'.format(figure_type),
-                core_names=core_name_list,
-                #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                #        + ' of taurus Cores',
-                show = False)
+            plot_hi_vs_av_grid(cores,
+                    limits = [0, 50, 1, 8],
+                    savedir = figure_dir + 'panel_cores/',
+                    scale = ('linear', 'linear'),
+                    filename=fig_name_hivsav + \
+                             '_linear.{0:s}'.format(figure_type),
+                    core_names=cores_to_keep,
+                    #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
+                    #        + ' of taurus Cores',
+                    show = False)
 
 if __name__ == '__main__':
     main(av_data_type='planck', region=1)
