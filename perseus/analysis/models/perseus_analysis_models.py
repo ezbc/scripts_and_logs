@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
+''' Calculates the N(HI) / Av correlation for the perseus molecular cloud.
 '''
 import matplotlib
 matplotlib.use('Agg')
@@ -1710,7 +1710,7 @@ def run_analysis(hi_cube=None,
             # see eq 6 of sternberg+09
             # alphaG is the number density of the CNM over the minimum number
             # density required for pressure balance
-            # the lower alphaG values than for taurus mean that taurus
+            # the lower alphaG values than for perseus mean that perseus
             # has a more diffuse CNM
 
             # By fitting the model to the observed R_H2 vs total H, you
@@ -2281,7 +2281,7 @@ def read_ds9_region(filename):
 
     return region
 
-def load_ds9_core_region(cores, filename_base = 'taurus_av_boxes_',
+def load_ds9_core_region(cores, filename_base = 'perseus_av_boxes_',
         header=None):
 
     # region[0] in following format:
@@ -2362,11 +2362,11 @@ def main(verbose=True, av_data_type='planck', region=None):
     This script requires analysis output from three other scripts.
     Script                                          Purpose
     ---------------------------------------------------------------------------
-    hi/taurus_analysis_core_properties.py           Defines core positions
-    av/taurus_analysis_av_derive_core_boxes.py      Calculates box sizes
-    hi/taurus_analysis_hi_av_core_likelihoods.py    Calculates HI velocity
+    hi/perseus_analysis_core_properties.py           Defines core positions
+    av/perseus_analysis_av_derive_core_boxes.py      Calculates box sizes
+    hi/perseus_analysis_hi_av_core_likelihoods.py    Calculates HI velocity
                                                         range
-    av/taurus_analysis_av_load_regions.py
+    av/perseus_analysis_av_load_regions.py
 
     '''
 
@@ -2403,8 +2403,8 @@ def main(verbose=True, av_data_type='planck', region=None):
     clobber = 0 # perform MC and write over current results?
 
     # Monte carlo results file bases
-    results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
-                       'monte_carlo_results/taurus_mc_results_sternberg' + \
+    results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
+                       'monte_carlo_results/perseus_mc_results_sternberg' + \
                        av_data_type + '_'
 
     sternberg_params = {}
@@ -2432,8 +2432,8 @@ def main(verbose=True, av_data_type='planck', region=None):
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
-    results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
-                       'monte_carlo_results/taurus_mc_results_krumholz' + \
+    results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
+                       'monte_carlo_results/perseus_mc_results_krumholz' + \
                        av_data_type + '_'
 
     krumholz_params = {}
@@ -2450,18 +2450,18 @@ def main(verbose=True, av_data_type='planck', region=None):
     # Universal properties
     # --------------------
     # global property filename
-    global_property_filename = 'taurus_global_properties'
+    global_property_filename = 'perseus_global_properties'
 
     # Name correct region of cloud
     if region == 1:
-        region_name = 'taurus1'
+        region_name = 'perseus1'
     elif region == 2:
-        region_name = 'taurus2'
+        region_name = 'perseus2'
     else:
-        region_name = 'taurus'
+        region_name = 'perseus'
 
     global_property_filename = \
-            global_property_filename.replace('taurus', region_name)
+            global_property_filename.replace('perseus', region_name)
 
     # Which cores to include in analysis?
     cores_to_keep = ['L1495', 'L1495A', 'B213', 'L1498', 'B215',
@@ -2478,14 +2478,14 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
-    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/perseus/figures/cores/'
+    av_dir = '/d/bip3/ezbc/perseus/data/av/'
+    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
+    co_dir = '/d/bip3/ezbc/perseus/data/co/'
+    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/perseus/data/python_output/ds9_regions/'
     multicloud_region_dir = \
             '/d/bip3/ezbc/multicloud/data/python_output/'
 
@@ -2496,19 +2496,19 @@ def main(verbose=True, av_data_type='planck', region=None):
     # load Planck Av and GALFA HI images, on same grid
     # ------------------------------------------------
     av_data_planck, av_header = load_fits(av_dir + \
-                'taurus_av_planck_5arcmin.fits',
+                'perseus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'taurus_av_error_planck_5arcmin.fits',
+                'perseus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'perseus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'taurus_co_cfa_cube_regrid_planckres.fits',
+                'perseus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -2517,14 +2517,14 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Load global properties of cloud
     # global properties written from script
-    # 'av/taurus_analysis_global_properties.txt'
+    # 'av/perseus_analysis_global_properties.txt'
     with open(property_dir + \
               global_property_filename + '_' + av_data_type + \
               '_scaled.txt', 'r') as f:
         properties = json.load(f)
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
         noise_cube = calculate_noise_cube(cube=hi_data,
                 velocity_axis=velocity_axis,
@@ -2535,13 +2535,13 @@ def main(verbose=True, av_data_type='planck', region=None):
             return_header=True)
 
     # define core properties
-    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
+    with open(core_dir + 'perseus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
     cores = load_ds9_core_region(cores,
                             filename_base = region_dir + \
-                                            'taurus_av_poly_cores',
+                                            'perseus_av_poly_cores',
                             header = av_header)
 
     # Load cloud division regions from ds9
@@ -2550,7 +2550,7 @@ def main(verbose=True, av_data_type='planck', region=None):
                                      'multicloud_divisions.reg',
                             header=av_header)
 
-    region_vertices = properties['regions']['taurus']['poly_verts']['pixel']
+    region_vertices = properties['regions']['perseus']['poly_verts']['pixel']
 
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data_planck,
@@ -2618,7 +2618,7 @@ def main(verbose=True, av_data_type='planck', region=None):
                                  krumholz_params=krumholz_params,
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
-                                         'taurus_%s' % core,
+                                         'perseus_%s' % core,
                                  properties=properties,
                                  results_filename=results_filename + core,
                                  )
@@ -2627,7 +2627,7 @@ def main(verbose=True, av_data_type='planck', region=None):
         for key in cores:
             if type(cores[key]) is np.ndarray:
                     cores[key] = cores[key].tolist()
-        with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
+        with open(core_dir + 'perseus_core_properties.txt', 'w') as f:
             json.dump(cores, f)
 
     # Create the figures!
@@ -2647,7 +2647,7 @@ def main(verbose=True, av_data_type='planck', region=None):
     for figure_type in figure_types:
         if 0:
             fig_name_rh2 = \
-                    'taurus_rh2_vs_hsd_panels_{0:s}'.format(av_data_type)
+                    'perseus_rh2_vs_hsd_panels_{0:s}'.format(av_data_type)
             print('\nWriting Rh2 figures to\n' + fig_name_rh2)
 
             plot_rh2_vs_h_grid(cores,
@@ -2670,7 +2670,7 @@ def main(verbose=True, av_data_type='planck', region=None):
         # Calif limits = [0, 80, 0, 8]
         # taur limits = [0, 80, -1.5, 6.5]
         # Pers limits = [0, 80, 1, 8],
-        fig_name_hivsh = 'taurus_hi_vs_h_panels_{0:s}'.format(av_data_type)
+        fig_name_hivsh = 'perseus_hi_vs_h_panels_{0:s}'.format(av_data_type)
         print('\nWriting HI vs H figures to\n' + fig_name_hivsh)
 
         plot_hi_vs_h_grid(cores,
@@ -2691,7 +2691,7 @@ def main(verbose=True, av_data_type='planck', region=None):
 
         if 0:
             fig_name_hivsav = \
-                    'taurus_hi_vs_av_panels_{0:s}'.format(av_data_type)
+                    'perseus_hi_vs_av_panels_{0:s}'.format(av_data_type)
             print('\nWriting HI vs H figures to\n' + fig_name_hivsav)
 
             plot_hi_vs_av_grid(cores,
@@ -2702,11 +2702,11 @@ def main(verbose=True, av_data_type='planck', region=None):
                              '_linear.{0:s}'.format(figure_type),
                     core_names=cores_to_keep,
                     #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                    #        + ' of taurus Cores',
+                    #        + ' of perseus Cores',
                     show = False)
 
 if __name__ == '__main__':
-    main(av_data_type='planck', region=1)
+    main(av_data_type='planck', region=None)
     main(av_data_type='k09')
 
 
