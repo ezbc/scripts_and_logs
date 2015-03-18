@@ -6,6 +6,7 @@ warnings.filterwarnings('ignore')
 
 ''' Plotting Functions
 '''
+
 def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
         filename=None,show=True, returnimage=False):
     ''' Plots a heat map of likelihoodelation values as a function of velocity width
@@ -136,7 +137,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
 
 def plot_likelihoods_hist(global_props, filename=None, show=True,
         returnimage=False, plot_axes=('centers', 'widths'),
-        contour_confs=None):
+        contour_confs=None, limits=None):
 
     ''' Plots a heat map of likelihoodelation values as a function of velocity width
     and velocity center.
@@ -180,6 +181,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
               #'font.family': 'sans-serif',
               'figure.figsize': (7.3/2.0, 7.3/2.0),
               'figure.titlesize': font_scale,
+              'figure.dpi': 600,
               'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -197,7 +199,10 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
         ax_image.set_xlabel(r'Velocity Width [km/s]')
         x_sum_axes = 1
         y_pdf_label = r'Width PDF'
-        x_limits = (x_grid[0], x_grid[-1])
+        if limits is None:
+            x_limits = (x_grid[0], x_grid[-1])
+        else:
+            x_limits = limits[:2]
     if plot_axes[1] == 'dgrs':
     	y_grid = global_props['dgrs']
     	y_confint = (global_props['dust2gas_ratio']['value'],
@@ -208,7 +213,10 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
         ax_image.set_ylabel(r'DGR [10$^{-20}$ cm$^2$ mag]')
         y_sum_axes = 0
         x_pdf_label = r'DGR PDF'
-        y_limits = (y_grid[0], y_grid[-1])
+        if limits is None:
+            y_limits = (y_grid[0], y_grid[-1])
+        else:
+            y_limits = limits[2:]
 
     # Create axes
     sum_axes = np.array((x_sum_axes, y_sum_axes))
@@ -1433,13 +1441,13 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     contour_confs = (0.95,)
 
     # Name of HI noise cube
-    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise'
+    noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise'
 
     # Threshold for converging DGR
     threshold_delta_dgr = 0.00005
 
     # Name of property files results are written to
-    global_property_file = 'taurus_global_properties'
+    global_property_file = 'california_global_properties'
 
     # Likelihood axis resolutions
     vel_widths = np.arange(1, 20, 2*0.16667)
@@ -1450,10 +1458,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 75, 2*0.16667)
-    dgrs = np.arange(0.001, 0.4, 1e-3)
-    #intercepts = np.arange(-5, 5, 0.1)
-    intercepts = np.arange(0, 1, 1)
+    vel_widths = np.arange(1, 50, 2*0.16667)
+    dgrs = np.arange(0.005, 0.7, 5e-3)
+    intercepts = np.arange(-5, 5, 0.1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1478,42 +1485,42 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
     figure_dir = \
-        '/d/bip3/ezbc/taurus/figures/'
-    av_dir = '/d/bip3/ezbc/taurus/data/av/'
-    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
-    co_dir = '/d/bip3/ezbc/taurus/data/co/'
-    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+        '/d/bip3/ezbc/california/figures/'
+    av_dir = '/d/bip3/ezbc/california/data/av/'
+    hi_dir = '/d/bip3/ezbc/california/data/hi/'
+    co_dir = '/d/bip3/ezbc/california/data/co/'
+    core_dir = '/d/bip3/ezbc/california/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/california/data/python_output/'
     region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
-    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    likelihood_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
 
     # Load data
     # ---------
     # Adjust filenames
     #noise_cube_filename += bin_string
-    likelihood_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
-    results_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
+    likelihood_filename = 'california_likelihood_{0:s}_bin'.format(av_data_type)
+    results_filename = 'california_likelihood_{0:s}_bin'.format(av_data_type)
     # load Planck Av and GALFA HI images, on same grid
     if av_data_type == 'k09':
         print('\nLoading K+09 2MASS data...')
         av_data, av_header = fits.getdata(av_dir + \
-                                  'taurus_av_k09_regrid_planckres.fits',
+                                  'california_av_k09_regrid_planckres.fits',
                                   header=True)
         av_data_error = 0.1 * np.ones(av_data.shape)
     else:
     	print('\nLoading Planck data...')
         av_data, av_header = fits.getdata(av_dir + \
-                                          'taurus_av_planck_5arcmin.fits',
+                                          'california_av_planck_5arcmin.fits',
                                           header=True)
 
         av_data_error, av_error_header = fits.getdata(av_dir + \
-                                    'taurus_av_error_planck_5arcmin.fits',
+                                    'california_av_error_planck_5arcmin.fits',
                                     header=True)
 
     hi_data, hi_header = fits.getdata(hi_dir + \
-                'taurus_hi_galfa_cube_regrid_planckres.fits',
+                'california_hi_galfa_cube_regrid_planckres.fits',
             header=True)
 
     # Load global properties
@@ -1524,12 +1531,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # ---------------------
     # Name correct region of cloud
     if region == 1:
-        region_name = 'taurus1'
+        region_name = 'california1'
     elif region == 2:
-        region_name = 'taurus2'
+        region_name = 'california2'
     else:
-        region_name = 'taurus'
-    global_property_file = global_property_file.replace('taurus', region_name)
+        region_name = 'california'
+    global_property_file = global_property_file.replace('california', region_name)
 
     # Change WCS coords to pixel coords of images
     global_props = convert_limit_coordinates(global_props, header=av_header)
@@ -1635,7 +1642,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                              verbose=1,
                              plot_progress=0,
                              results_filename=figure_dir + 'likelihood/'\
-                                              'taurus_residual_pdf.pdf'
+                                              'california_residual_pdf.pdf'
                              )
 
     # Combine region mask with new mask
@@ -1660,23 +1667,23 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     av_data_error[mask] = np.nan
     hi_data[:, mask] = np.nan
 
-    if not check_file(av_dir + 'taurus_av_planck_5arcmin_masked.fits',
+    if not check_file(av_dir + 'california_av_planck_5arcmin_masked.fits',
                       clobber=clobber_bin_images):
-        fits.writeto(av_dir + 'taurus_av_planck_5arcmin_masked.fits',
+        fits.writeto(av_dir + 'california_av_planck_5arcmin_masked.fits',
                      av_data,
                      av_header)
 
-    if not check_file(av_dir + 'taurus_av_error_planck_5arcmin_masked.fits',
+    if not check_file(av_dir + 'california_av_error_planck_5arcmin_masked.fits',
                       clobber=clobber_bin_images):
-        fits.writeto(av_dir + 'taurus_av_error_planck_5arcmin_masked.fits',
+        fits.writeto(av_dir + 'california_av_error_planck_5arcmin_masked.fits',
                      av_data_error,
                      av_header)
 
     if not check_file(hi_dir + \
-                      'taurus_hi_galfa_cube_regrid_planckres_masked.fits',
+                      'california_hi_galfa_cube_regrid_planckres_masked.fits',
                       clobber=clobber_bin_images):
         fits.writeto(hi_dir + \
-                     'taurus_hi_galfa_cube_regrid_planckres_masked.fits',
+                     'california_hi_galfa_cube_regrid_planckres_masked.fits',
                      hi_data,
                      hi_header)
 
@@ -1695,14 +1702,14 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           func=np.nanmean,
                           return_weights=True)
 
-        if not check_file(av_dir + 'taurus_av_planck_5arcmin_bin.fits',
+        if not check_file(av_dir + 'california_av_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'taurus_av_planck_5arcmin_bin.fits',
+            fits.writeto(av_dir + 'california_av_planck_5arcmin_bin.fits',
                          av_data_bin,
                          av_header_bin)
-        if not check_file(av_dir + 'taurus_av_planck_5arcmin_bin_weights.fits',
+        if not check_file(av_dir + 'california_av_planck_5arcmin_bin_weights.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'taurus_av_planck_5arcmin_bin_weights.fits',
+            fits.writeto(av_dir + 'california_av_planck_5arcmin_bin_weights.fits',
                          bin_weights,
                          av_header_bin)
 
@@ -1718,9 +1725,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           header=av_header,
                           func=noise_func,)
 
-        if not check_file(av_dir + 'taurus_av_error_planck_5arcmin_bin.fits',
+        if not check_file(av_dir + 'california_av_error_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'taurus_av_error_planck_5arcmin_bin.fits',
+            fits.writeto(av_dir + 'california_av_error_planck_5arcmin_bin.fits',
                          av_data_error_bin,
                          av_header_bin)
 
@@ -1732,10 +1739,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           func=np.nanmean)
 
         if not check_file(hi_dir + \
-                          'taurus_hi_galfa_cube_regrid_planckres_bin.fits',
+                          'california_hi_galfa_cube_regrid_planckres_bin.fits',
                           clobber=clobber_bin_images):
             fits.writeto(hi_dir + \
-                         'taurus_hi_galfa_cube_regrid_planckres_bin.fits',
+                         'california_hi_galfa_cube_regrid_planckres_bin.fits',
                          hi_data_bin,
                          hi_header_bin)
 
@@ -1751,19 +1758,19 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                                                            av_data_type)
 
     av_data, av_header = fits.getdata(av_dir + \
-                            'taurus_av_planck_5arcmin' + bin_string + '.fits',
+                            'california_av_planck_5arcmin' + bin_string + '.fits',
                                       header=True)
 
     av_data_error, av_error_header = fits.getdata(av_dir + \
-                'taurus_av_error_planck_5arcmin' + bin_string + '.fits',
+                'california_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
 
     bin_weights = fits.getdata(av_dir + \
-                               'taurus_av_planck_5arcmin' + bin_string + \
+                               'california_av_planck_5arcmin' + bin_string + \
                                '_weights.fits',)
 
     hi_data, hi_header = fits.getdata(hi_dir + \
-                            'taurus_hi_galfa_cube_regrid_planckres' + \
+                            'california_hi_galfa_cube_regrid_planckres' + \
                             bin_string + '.fits',
                             header=True)
 
@@ -2122,101 +2129,53 @@ def main():
 
     av_data_type = 'planck'
 
-    # threshold in velocity range difference
-    vel_range_diff_thres = 3.0 # km/s
-
     property_dir = \
-        '/d/bip3/ezbc/taurus/data/python_output/residual_parameter_results/'
+        '/d/bip3/ezbc/california/data/python_output/residual_parameter_results/'
+    figure_dir = \
+        '/d/bip3/ezbc/california/figures/'
 
-    final_property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    final_property_dir = '/d/bip3/ezbc/california/data/python_output/'
 
-    property_filename = 'taurus_global_properties_planck'
+    property_filename = 'california_global_properties_planck'
 
-    # Number of white noise standard deviations with which to fit the
-    # residuals in iterative masking
-    residual_width_scales = [1.5,]
+    figure_types = ['png', 'pdf']
 
-    regions = [2, 1, None, ]
+    contour_confs = [0.95,]
 
-    clobber_results = True
-
-    table_cols = ('dust2gas_ratio', 'hi_velocity_width',
-                  'hi_velocity_width', 'intercept', 'residual_width_scale')
-    n = len(residual_width_scales)
-    table_df = DataFrame({col:np.empty(n) for col in table_cols})
+    regions = [None,]
 
     for region in regions:
         # Grab correct region
         if region == 1:
-            region_name = 'taurus1'
+            region_name = 'california1'
         elif region == 2:
-            region_name = 'taurus2'
+            region_name = 'california2'
         else:
-            region_name = 'taurus'
+            region_name = 'california'
 
-        property_filename = 'taurus_global_properties_planck'
-        property_filename = property_filename.replace('taurus', region_name)
+        property_filename = 'california_global_properties_planck_scaled'
+        property_filename = property_filename.replace('california', region_name)
 
-        print('\nPerforming likelihood derivations for ' + region_name)
+        with open(final_property_dir + property_filename + '.txt', 'r') as f:
+            global_props = json.load(f)
 
-        for i, residual_width_scale in enumerate(residual_width_scales):
-            iteration = 0
-            vel_range = (-20.0, 30.0)
-            vel_range_new = (-1.0, 1.0)
-            vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                           np.array(vel_range_new)))
 
-            while vel_range_diff > vel_range_diff_thres:
-                json_filename = property_dir + property_filename + '_' + \
-                            av_data_type + \
-                            '_residscale{0:.1f}'.format(residual_width_scale)\
-                            + '_iter{0:.0f}'.format(iteration) + '.txt'
+        results_filename = '{0:s}_likelihood_{1:s}_bin'.format(region_name,
+                                                               av_data_type)
+        results_filename = figure_dir + 'likelihood/'+ results_filename
 
-                exists = path.isfile(json_filename)
-
-                print('Writing iteration data file to ' + json_filename)
-
-                if exists and not clobber_results:
-                    with open(json_filename, 'r') as f:
-                        global_props = json.load(f)
-                else:
-                    global_props = \
-                        run_likelihood_analysis(av_data_type=av_data_type,
-                                        vel_range=vel_range,
-                                        region=region,
-                                        resid_width_scale=residual_width_scale)
-
-                vel_range_new = global_props['hi_velocity_range']
-
-                vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                               np.array(vel_range_new)))
-
-                if clobber_results:
-                    with open(json_filename, 'w') as f:
-                        json.dump(global_props, f)
-
-                print('\n\n\n Next iteration \n-------------------\n\n\n')
-                print('Velocity range difference =' + \
-                      ' {0:.1f}'.format(vel_range_diff))
-
-                vel_range = vel_range_new
-
-                iteration += 1
-
-            # Write important results to table
-            for col in table_df:
-                if col == 'residual_width_scale':
-                    table_df[col][i] = global_props[col]
-                else:
-                    table_df[col][i] = global_props[col]['value']
-
-            # Write the file
-            print('\nWriting results to\n' + property_filename + \
-                    '_' + av_data_type + '_scaled.txt')
-
-            with open(final_property_dir + property_filename +\
-                    '_' + av_data_type + '_scaled.txt', 'w') as f:
-                json.dump(global_props, f)
+        # Plot likelihood space
+        for figure_type in figure_types:
+            print('\nWriting likelihood image to\n' + results_filename + \
+                  '_scaled_wd.{0:s}'.format(figure_type))
+            plot_likelihoods_hist(global_props,
+                                  plot_axes=('widths', 'dgrs'),
+                                  show=0,
+                                  returnimage=False,
+                                  filename=results_filename + \
+                                    '_scaled_wd.{0:s}'.format(figure_type),
+                                  contour_confs=contour_confs,
+                                  limits=[25, 60, 0.05, 0.1])
 
 if __name__ == '__main__':
     main()

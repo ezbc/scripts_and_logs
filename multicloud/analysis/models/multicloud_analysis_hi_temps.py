@@ -32,11 +32,11 @@ def main():
 
     # Data locations in script
     # --------------------------------------------------------------------------
-    filedir = '/home/ezbc/research/data/taurus/python_output/'
+    filedir = '/d/bip3/ezbc/multicloud/data/cnm_data/stanimirovic14/'
 
     # Read the data
-    source_table = read_data(filedir + 'taurus_stanimirovic14_sources.txt')
-    param_table = read_data(filedir + 'taurus_stanimirovic14_temps.txt')
+    source_table = read_data(filedir + 'stanimirovic14_sources.txt')
+    param_table = read_data(filedir + 'stanimirovic14_temps.txt')
 
     # Extract headers and data
     source_cols = source_table.colnames
@@ -121,11 +121,15 @@ def main():
         cloud_t_cnm_lists.append(cloud_t_cnm_list)
         weights_list.append(weights)
 
-        print cloud, np.median(cloud_t_cnm_list), 'Median CNM temp [K]'
-        print cloud, np.average(cloud_t_cnm_list,
-                                weights=weights), 'Intensity-weighted mean CNM temp [K]'
+        avg = np.average(cloud_t_cnm_list,
+                         weights=weights)
+        med = np.median(cloud_t_cnm_list)
 
-
+        print(cloud.capitalize())
+        print('\tMedian CNM temp = ' + \
+              '{0:.2f} [K]'.format(med))
+        print('\tIntensity-weighted mean CNM temp = ' + \
+              '{0:.2f} [K]\n'.format(avg))
 
 if __name__ == '__main__':
     main()

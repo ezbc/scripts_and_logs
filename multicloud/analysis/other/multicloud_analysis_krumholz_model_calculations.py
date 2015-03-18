@@ -1,18 +1,65 @@
 #!/usr/bin/python
 
-def plot_phi_vs_T(T_cnm, phi_cnm, scales=('linear', 'linear'), filename=None,
-        G0s=None, limits=None,
+def plot_phi_vs_T(T_cnm, phi_cnms, scales=('linear', 'linear'), filename=None,
+        Zs=None, limits=None,
         show=False):
 
+    # Import external modules
+    import numpy as np
     import matplotlib.pyplot as plt
+    import matplotlib
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+    plt.rcdefaults()
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, len(Zs))]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
+    params = {#'backend': .pdf',
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
+              'text.fontsize': font_scale,
+              'legend.fontsize': font_scale,
+              'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
+              'ytick.labelsize': font_scale,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
+              'text.usetex': True,
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    # Create plot
+    ax = fig.add_subplot(111)
 
     fig, ax = plt.subplots()
 
-    ax.plot(T_cnm, phi_cnm, linestyle='-', marker='', color='k',)
+    for i, Z in enumerate(Zs):
+        ax.plot(T_cnm, phi_cnms[i],
+                linestyle='-',
+                marker='',
+                label=r'$Z$ = {0:.2f} $Z_\odot$'.format(Z))
 
-    ax.set_xlabel(r'T$_{CNM}$ (K)')
-    ax.set_ylabel(r'$\phi_{CNM}$')
-    ax.legend()
+    ax.set_xlabel(r'T$_{\rm CNM}$ [K]')
+    ax.set_ylabel(r'$\phi_{\rm CNM}$')
+    ax.legend(loc='best')
 
     ax.set_xscale(scales[0])
     ax.set_yscale(scales[1])
@@ -23,7 +70,7 @@ def plot_phi_vs_T(T_cnm, phi_cnm, scales=('linear', 'linear'), filename=None,
     if show:
         plt.show()
     if filename is not None:
-    	plt.savefig(filename)
+    	plt.savefig(filename, bbox_inches='tight')
 
     plt.close()
 
@@ -125,29 +172,37 @@ def main():
     from myscience.krumholz09 import calc_phi_cnm, calc_T_cnm, calc_n_cnm
     import numpy as np
 
-    T_cnm = np.arange(30, 10000, 0.1)
+    T_cnm = np.arange(0.1, 1000, 0.1)
+    T_cnm = np.logspace(-1, 2.5, 100)
     G0s = (0.01, 0.1, 1, 10)
+    Zs = (0.25, 0.5, 1, 2, 4)
+
+    phi_cnms = []
+
+    for Z in Zs:
+        phi_cnms.append(calc_phi_cnm(T_cnm, Z=Z))
 
     phi_cnm = calc_phi_cnm(T_cnm, Z=1.0)
 
-    plot_phi_vs_T(T_cnm, phi_cnm,
-            filename='/d/bip3/ezbc/multicloud/figures/phi_cnm_vs_T_cnm.png',
-            scales=('linear','log'),
-            limits=[10, 200, 0.1, 100],
+    plot_phi_vs_T(T_cnm, phi_cnms,
+            Zs=Zs,
+            filename='/d/bip3/ezbc/multicloud/figures/models/phi_cnm_vs_T_cnm.png',
+            scales=('linear','linear'),
+            limits=[10, 200, 1, 40],
             )
 
     plot_phi_vs_n(T_cnm, phi_cnm,
             G0s=G0s,
             scales=('log', 'linear'),
             limits=[10**-2, 10**4.5, 0.1, 160],
-            filename='/d/bip3/ezbc/multicloud/figures/phi_cnm_vs_n_cnm.png',
+            filename='/d/bip3/ezbc/multicloud/figures/models/phi_cnm_vs_n_cnm.png',
             )
 
     plot_phi_vs_P(T_cnm, phi_cnm,
             G0s=G0s,
             scales=('log', 'log'),
             limits=[10**0, 10**6, 0.18, 160],
-            filename='/d/bip3/ezbc/multicloud/figures/phi_cnm_vs_P.png',
+            filename='/d/bip3/ezbc/multicloud/figures/models/phi_cnm_vs_P.png',
             )
 
     '''

@@ -1452,10 +1452,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 50, 2*0.16667)
-    dgrs = np.arange(0.005, 0.7, 5e-3)
-    #intercepts = np.arange(-1, 1, 0.01)
-    intercepts = np.arange(-5, 5, 0.1)
+    vel_widths = np.arange(1, 75, 2*0.16667)
+    dgrs = np.arange(0.001, 0.3, 1e-3)
+    #intercepts = np.arange(-0.5, 0.5, 0.01)
+    intercepts = np.arange(0, 1, 1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1851,7 +1851,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
           'estimate...')
 
     print('\nVelwidths = ')
-    print(vel_widths)
 
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
@@ -2145,7 +2144,7 @@ def main():
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+    residual_width_scales = [1.5,]
 
     regions = [None,]
 
@@ -2172,7 +2171,7 @@ def main():
 
         for i, residual_width_scale in enumerate(residual_width_scales):
             iteration = 0
-            vel_range = (-30.0, 30.0)
+            vel_range = (-25.0, 25.0)
             vel_range_new = (-1.0, 1.0)
             vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                            np.array(vel_range_new)))

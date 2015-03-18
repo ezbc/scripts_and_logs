@@ -948,6 +948,7 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
               'text.usetex': True,
               #'font.family': 'sans-serif',
               'figure.figsize': (3.6, 3.6*y_scaling),
+              'figure.dpi': 600,
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -1107,7 +1108,7 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
 
     #imagegrid.legend((l2, l3), ('S+14', 'K+09'), loc='lower right',) #bbox_to_anchor=(0.5, 1.05),
           #ncol=3, fancybox=True, shadow=True)
-    ax.legend(bbox_to_anchor=(1.7, 0.5))
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 2))
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
@@ -1400,7 +1401,7 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
 
     # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image=nhi_image,
-                              av_image=av_image + intercept,
+                              av_image=av_image,
                               dgr=dgr)
 
     nh2_image_error = calculate_nh2_error(nhi_image_error=nhi_image_error,
@@ -1638,6 +1639,7 @@ def run_analysis(hi_cube=None,
                 width_list[i] = vel_width_random
                 dgr_list[i] = dgr_random
                 intercept_list[i] = intercept_random
+                print 'intercept', intercept_random
 
                 # Add random error to images
                 hi_cube_noise = np.copy(hi_cube) + hi_random_error
@@ -1670,6 +1672,10 @@ def run_analysis(hi_cube=None,
             rh2_error_ravel = images['rh2_error'].ravel()
             h_sd_ravel = images['h_sd'].ravel()
             h_sd_error_ravel = images['h_sd_error'].ravel()
+
+            print(np.nanmean(images['h_sd'] - images['hi_sd']))
+            print(images['hi_sd'][10], images['h_sd'][10])
+            print(images['av'][10], images['nhi'][10])
 
             # write indices for only ratios > 0
             indices = np.where((rh2_ravel > 1) & \
@@ -2117,13 +2123,13 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('alphaG',
                value=guesses[0],
-               min=0.1,
-               max=10,
+               min=0.01,
+               max=100,
                vary=vary[0])
     params.add('phi_g',
                value=guesses[2],
-               min=0.5,
-               max=2,
+               min=0.1,
+               max=10,
                vary=vary[2])
     params.add('Z',
                value=guesses[1],
@@ -2389,7 +2395,7 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Sternberg Parameters
     # --------------------
-    N_monte_carlo_runs = 10 # Number of monte carlo runs
+    N_monte_carlo_runs = 100 # Number of monte carlo runs
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
@@ -2397,10 +2403,10 @@ def main(verbose=True, av_data_type='planck', region=None):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
+    guesses=(10.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
-    clobber = 0 # perform MC and write over current results?
+    clobber = 1 # perform MC and write over current results?
 
     # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/california/data/python_output/' + \
@@ -2420,7 +2426,6 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Krumholz Parameters
     # --------------------
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
@@ -2522,6 +2527,9 @@ def main(verbose=True, av_data_type='planck', region=None):
               global_property_filename + '_' + av_data_type + \
               '_scaled.txt', 'r') as f:
         properties = json.load(f)
+
+
+    print('\n\nhi vel range', properties['hi_velocity_range'])
 
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -2674,7 +2682,7 @@ def main(verbose=True, av_data_type='planck', region=None):
         print('\nWriting HI vs H figures to\n' + fig_name_hivsh)
 
         plot_hi_vs_h_grid(cores,
-                limits=[-9, 80, -1.5, 6.5],
+                limits=[-9, 80, 5, 20],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),

@@ -570,7 +570,6 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     counts_ext = counts_ext / integrate(counts_ext, x=bin_edges_ext)
     y_fit /= np.max(y_fit)
     y_fit *= np.max(counts_ext)
-    print('max counts', np.max(counts_ext))
 
     ax.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid',
             linewidth=1.5)
@@ -1451,9 +1450,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 50, 2*0.16667)
-    dgrs = np.arange(0.005, 0.7, 5e-3)
+    vel_widths = np.arange(1, 100, 2*0.16667)
+    dgrs = np.arange(0.001, 0.3, 1e-3)
     intercepts = np.arange(-5, 5, 0.1)
+    intercepts = np.arange(0, 1, 1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)

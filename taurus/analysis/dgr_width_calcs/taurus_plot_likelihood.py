@@ -136,7 +136,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
 
 def plot_likelihoods_hist(global_props, filename=None, show=True,
         returnimage=False, plot_axes=('centers', 'widths'),
-        contour_confs=None):
+        contour_confs=None, limits=None):
 
     ''' Plots a heat map of likelihoodelation values as a function of velocity width
     and velocity center.
@@ -180,6 +180,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
               #'font.family': 'sans-serif',
               'figure.figsize': (7.3/2.0, 7.3/2.0),
               'figure.titlesize': font_scale,
+              'figure.dpi': 600,
               'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -197,7 +198,10 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
         ax_image.set_xlabel(r'Velocity Width [km/s]')
         x_sum_axes = 1
         y_pdf_label = r'Width PDF'
-        x_limits = (x_grid[0], x_grid[-1])
+        if limits is None:
+            x_limits = (x_grid[0], x_grid[-1])
+        else:
+            x_limits = limits[:2]
     if plot_axes[1] == 'dgrs':
     	y_grid = global_props['dgrs']
     	y_confint = (global_props['dust2gas_ratio']['value'],
@@ -208,7 +212,10 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
         ax_image.set_ylabel(r'DGR [10$^{-20}$ cm$^2$ mag]')
         y_sum_axes = 0
         x_pdf_label = r'DGR PDF'
-        y_limits = (y_grid[0], y_grid[-1])
+        if limits is None:
+            y_limits = (y_grid[0], y_grid[-1])
+        else:
+            y_limits = limits[2:]
 
     # Create axes
     sum_axes = np.array((x_sum_axes, y_sum_axes))
@@ -1450,10 +1457,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 75, 2*0.16667)
-    dgrs = np.arange(0.001, 0.4, 1e-3)
-    #intercepts = np.arange(-5, 5, 0.1)
-    intercepts = np.arange(0, 1, 1)
+    vel_widths = np.arange(1, 50, 2*0.16667)
+    dgrs = np.arange(0.005, 0.7, 5e-3)
+    intercepts = np.arange(-5, 5, 0.1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -2122,28 +2128,20 @@ def main():
 
     av_data_type = 'planck'
 
-    # threshold in velocity range difference
-    vel_range_diff_thres = 3.0 # km/s
-
     property_dir = \
         '/d/bip3/ezbc/taurus/data/python_output/residual_parameter_results/'
+    figure_dir = \
+        '/d/bip3/ezbc/taurus/figures/'
 
     final_property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
 
     property_filename = 'taurus_global_properties_planck'
 
-    # Number of white noise standard deviations with which to fit the
-    # residuals in iterative masking
-    residual_width_scales = [1.5,]
+    figure_types = ['png', 'pdf']
 
-    regions = [2, 1, None, ]
+    contour_confs = [0.95,]
 
-    clobber_results = True
-
-    table_cols = ('dust2gas_ratio', 'hi_velocity_width',
-                  'hi_velocity_width', 'intercept', 'residual_width_scale')
-    n = len(residual_width_scales)
-    table_df = DataFrame({col:np.empty(n) for col in table_cols})
+    regions = [None, 1, 2,]
 
     for region in regions:
         # Grab correct region
@@ -2154,69 +2152,29 @@ def main():
         else:
             region_name = 'taurus'
 
-        property_filename = 'taurus_global_properties_planck'
+        property_filename = 'taurus_global_properties_planck_scaled'
         property_filename = property_filename.replace('taurus', region_name)
 
-        print('\nPerforming likelihood derivations for ' + region_name)
+        with open(final_property_dir + property_filename + '.txt', 'r') as f:
+            global_props = json.load(f)
 
-        for i, residual_width_scale in enumerate(residual_width_scales):
-            iteration = 0
-            vel_range = (-20.0, 30.0)
-            vel_range_new = (-1.0, 1.0)
-            vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                           np.array(vel_range_new)))
 
-            while vel_range_diff > vel_range_diff_thres:
-                json_filename = property_dir + property_filename + '_' + \
-                            av_data_type + \
-                            '_residscale{0:.1f}'.format(residual_width_scale)\
-                            + '_iter{0:.0f}'.format(iteration) + '.txt'
+        results_filename = '{0:s}_likelihood_{1:s}_bin'.format(region_name,
+                                                               av_data_type)
+        results_filename = figure_dir + 'likelihood/'+ results_filename
 
-                exists = path.isfile(json_filename)
-
-                print('Writing iteration data file to ' + json_filename)
-
-                if exists and not clobber_results:
-                    with open(json_filename, 'r') as f:
-                        global_props = json.load(f)
-                else:
-                    global_props = \
-                        run_likelihood_analysis(av_data_type=av_data_type,
-                                        vel_range=vel_range,
-                                        region=region,
-                                        resid_width_scale=residual_width_scale)
-
-                vel_range_new = global_props['hi_velocity_range']
-
-                vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
-                                               np.array(vel_range_new)))
-
-                if clobber_results:
-                    with open(json_filename, 'w') as f:
-                        json.dump(global_props, f)
-
-                print('\n\n\n Next iteration \n-------------------\n\n\n')
-                print('Velocity range difference =' + \
-                      ' {0:.1f}'.format(vel_range_diff))
-
-                vel_range = vel_range_new
-
-                iteration += 1
-
-            # Write important results to table
-            for col in table_df:
-                if col == 'residual_width_scale':
-                    table_df[col][i] = global_props[col]
-                else:
-                    table_df[col][i] = global_props[col]['value']
-
-            # Write the file
-            print('\nWriting results to\n' + property_filename + \
-                    '_' + av_data_type + '_scaled.txt')
-
-            with open(final_property_dir + property_filename +\
-                    '_' + av_data_type + '_scaled.txt', 'w') as f:
-                json.dump(global_props, f)
+        # Plot likelihood space
+        for figure_type in figure_types:
+            print('\nWriting likelihood image to\n' + results_filename + \
+                  '_scaled_wd.{0:s}'.format(figure_type))
+            plot_likelihoods_hist(global_props,
+                                  plot_axes=('widths', 'dgrs'),
+                                  show=0,
+                                  returnimage=False,
+                                  filename=results_filename + \
+                                    '_scaled_wd.{0:s}'.format(figure_type),
+                                  contour_confs=contour_confs,
+                                  limits=[0, 15, 0, 0.2])
 
 if __name__ == '__main__':
     main()

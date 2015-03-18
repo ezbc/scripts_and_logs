@@ -1452,10 +1452,11 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #vel_widths = np.arange(1, 60, 8*0.16667)
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 50, 2*0.16667)
-    dgrs = np.arange(0.005, 0.7, 5e-3)
+    vel_widths = np.arange(1, 100, 2*0.16667)
+    dgrs = np.arange(0.001, 0.3, 1e-3)
     #intercepts = np.arange(-1, 1, 0.01)
     intercepts = np.arange(-5, 5, 0.1)
+    intercepts = np.arange(0, 1, 1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
     #dgrs = np.arange(0.05, 0.7, 5e-2)
     #intercepts = np.arange(-1, 1, 0.1)
@@ -1851,7 +1852,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
           'estimate...')
 
     print('\nVelwidths = ')
-    print(vel_widths)
 
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],

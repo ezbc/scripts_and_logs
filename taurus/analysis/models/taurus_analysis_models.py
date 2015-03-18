@@ -796,6 +796,7 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
               'text.usetex': True,
               #'font.family': 'sans-serif',
               'figure.figsize': (7.3, 7.3 * y_scaling),
+              'figure.dpi': 600,
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -948,6 +949,7 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
               'text.usetex': True,
               #'font.family': 'sans-serif',
               'figure.figsize': (3.6, 3.6*y_scaling),
+              'figure.dpi': 600,
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -2389,7 +2391,7 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Sternberg Parameters
     # --------------------
-    N_monte_carlo_runs = 10 # Number of monte carlo runs
+    N_monte_carlo_runs = 1000 # Number of monte carlo runs
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
@@ -2400,7 +2402,7 @@ def main(verbose=True, av_data_type='planck', region=None):
     guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
-    clobber = 0 # perform MC and write over current results?
+    clobber = 1 # perform MC and write over current results?
 
     # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \

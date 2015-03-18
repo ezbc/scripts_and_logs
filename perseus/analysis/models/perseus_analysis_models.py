@@ -948,6 +948,7 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
               'text.usetex': True,
               #'font.family': 'sans-serif',
               'figure.figsize': (3.6, 3.6*y_scaling),
+              'figure.dpi': 600,
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -2389,7 +2390,7 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Sternberg Parameters
     # --------------------
-    N_monte_carlo_runs = 10 # Number of monte carlo runs
+    N_monte_carlo_runs = 1000 # Number of monte carlo runs
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
@@ -2400,7 +2401,7 @@ def main(verbose=True, av_data_type='planck', region=None):
     guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
-    clobber = 0 # perform MC and write over current results?
+    clobber = 1 # perform MC and write over current results?
 
     # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
@@ -2674,7 +2675,7 @@ def main(verbose=True, av_data_type='planck', region=None):
         print('\nWriting HI vs H figures to\n' + fig_name_hivsh)
 
         plot_hi_vs_h_grid(cores,
-                limits=[-9, 80, -1.5, 6.5],
+                limits=[-9, 80, -1.5, 10],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),

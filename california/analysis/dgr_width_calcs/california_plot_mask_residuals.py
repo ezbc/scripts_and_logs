@@ -43,6 +43,7 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
               'text.usetex': True,
               #'font.family': 'sans-serif',
               'figure.figsize': (7.3/2.0, 7.3/4.0),
+              'figure.dpi': 600,
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }

@@ -81,8 +81,7 @@ def plot_phi_cnm_vs_glat(glats, phi_cnms, glat_errors=None,
     if show:
         fig.show()
 
-def plot_T_cnm_vs_glat(glats, T_cnms, glat_errors=None,
-        T_cnm_errors=None, limits=None, savedir='./', filename=None,
+def plot_T_cnm_vs_glat(cloud_dict, limits=None, savedir='./', filename=None,
         show=True, scale=['linear', 'linear'], title='', core_names=''):
 
     # Import external modules
@@ -94,23 +93,36 @@ def plot_T_cnm_vs_glat(glats, T_cnms, glat_errors=None,
     from mpl_toolkits.axes_grid1 import ImageGrid
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
     params = {#'backend': .pdf',
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
+              'axes.weight': line_weight,
               'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
+              'legend.fontsize': font_scale,
               'xtick.labelsize': font_scale,
+              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
+              'ytick.weight': line_weight,
+              'font.weight': font_weight,
+              'axes.labelweight': font_weight,
               'text.usetex': True,
-              'figure.figsize': (8, 8),
-              #'axes.color_cycle': color_cycle # colors of different plots
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'figure.titlesize': font_scale,
+              'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
 
@@ -120,17 +132,42 @@ def plot_T_cnm_vs_glat(glats, T_cnms, glat_errors=None,
     # Create plot
     ax = fig.add_subplot(111)
 
-    T_cnm_errors = np.copy(T_cnm_errors).T
+    markers = ['^', 's', 'o']
 
-    image = ax.errorbar(
-                    T_cnms,
-                    glats,
-                    xerr=(T_cnm_errors),
-                    alpha=0.5,
-                    color='k',
-                    marker='^',ecolor='k',linestyle='none',
-                    markersize=4
-                    )
+    for i, cloud in enumerate(cloud_dict):
+
+        glats = []
+        phi_cnms = []
+        phi_cnm_errors = []
+        T_cnms = []
+        T_cnm_errors = []
+
+        for j, core in enumerate(cloud_dict[cloud]['cores']):
+            core_dict = cloud_dict[cloud]['cores'][core]
+            glat = core_dict['center_wcs']['gal'][1]
+            phi_cnm = core_dict['krumholz_results']['phi_cnm']
+            phi_cnm_error = core_dict['krumholz_results']['phi_cnm_error']
+            T_cnm = core_dict['krumholz_results']['T_cnm']
+            T_cnm_error = np.array(core_dict['krumholz_results']['T_cnm_error'])
+            T_cnm_error = np.copy((T_cnm_error,)).T
+
+            if j == 0:
+                label = cloud.capitalize()
+            else:
+                label = None
+
+            image = ax.errorbar(
+                            T_cnm,
+                            glat,
+                            xerr=T_cnm_error,
+                            alpha=0.8,
+                            color=color_cycle[i],
+                            marker=markers[i],
+                            ecolor=color_cycle[i],
+                            linestyle='none',
+                            markersize=4,
+                            label=label,
+                            )
 
     ax.set_xscale(scale[0], nonposx = 'clip')
     ax.set_yscale(scale[1], nonposy = 'clip')
@@ -140,13 +177,15 @@ def plot_T_cnm_vs_glat(glats, T_cnms, glat_errors=None,
         ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel(r'T$_{\rm CNM}$',)
-    ax.set_ylabel(r'Galactic Latitude (deg)',)
+    ax.set_xlabel(r'$T_{\rm CNM}$ [K]',)
+    ax.set_ylabel(r'Galactic Latitude [deg]',)
+
+    ax.legend(loc='best')
 
     if title is not None:
         fig.suptitle(title.capitalize(), fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename) #, bbox_inches='tight')
+        plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -519,7 +558,6 @@ The main script
 
 def main():
 
-    import grid
     import numpy as np
     from os import system,path
     import mygeometry as myg
@@ -529,7 +567,7 @@ def main():
     import pyfits as fits
 
     # define directory locations
-    figure_dir = '/d/bip3/ezbc/multicloud/figures/'
+    figure_dir = '/d/bip3/ezbc/multicloud/figures/models/'
     output_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
 
     cloud_dict = {'taurus' : {},
@@ -592,42 +630,25 @@ def main():
     # Write out cloud_dict
     write_fitting_results(cloud_dict, output_dir + 'k09_fitting_results.txt')
 
-    glats = []
-    phi_cnms = []
-    phi_cnm_errors = []
-    T_cnms = []
-    T_cnm_errors = []
-
-    for cloud in cloud_dict:
-        for core in cloud_dict[cloud]['cores']:
-        	core_dict = cloud_dict[cloud]['cores'][core]
-        	glats.append(core_dict['center_wcs']['gal'][1])
-        	phi_cnms.append(core_dict['phi_cnm'])
-        	phi_cnm_errors.append(core_dict['phi_cnm_error'])
-        	T_cnms.append(core_dict['T_cnm'])
-        	T_cnm_errors.append(core_dict['T_cnm_error'])
-
     # Plot
     figure_types = ['png',]# 'pdf']
     for figure_type in figure_types:
-        plot_phi_cnm_vs_glat(glats,
-                             phi_cnms,
-                             phi_cnm_errors=phi_cnm_errors,
-                             savedir=figure_dir,
-                             filename='multicloud_phi_cnm_vs_glat' + \
-                                '.{0:s}'.format(figure_type),
-                             show=0,
-                             #limits=[5, 45, -6, -22]
-                             )
-        plot_T_cnm_vs_glat(glats,
-                             T_cnms,
-                             T_cnm_errors=T_cnm_errors,
-                             savedir=figure_dir,
-                             filename='multicloud_T_cnm_vs_glat' + \
-                                '.{0:s}'.format(figure_type),
-                             show=0,
-                             #limits=[5, 45, -6, -22]
-                             )
+        if 0:
+            plot_phi_cnm_vs_glat(cloud_dict,
+                                 savedir=figure_dir,
+                                 filename='multicloud_phi_cnm_vs_glat' + \
+                                    '.{0:s}'.format(figure_type),
+                                 show=0,
+                                 #limits=[5, 45, -6, -22]
+                                 )
+
+        plot_T_cnm_vs_glat(cloud_dict,
+                           savedir=figure_dir,
+                           filename='multicloud_T_cnm_vs_glat' + \
+                              '.{0:s}'.format(figure_type),
+                           show=0,
+                           #limits=[5, 45, -6, -22]
+                           )
 
 if __name__ == '__main__':
     main()
