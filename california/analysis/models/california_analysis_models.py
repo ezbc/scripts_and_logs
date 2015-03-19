@@ -2,8 +2,8 @@
 
 ''' Calculates the N(HI) / Av correlation for the california molecular cloud.
 '''
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 
 
 import pyfits as pf
@@ -1048,10 +1048,15 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
 
 
         l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
+                linestyle='-',
+                linewidth=2,
+                alpha=0.8,
                 label='S+14')
 
         l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
                 linestyle='--',
+                linewidth=2,
+                alpha=0.8,
                 label='K+09')
 
         # Annotations
@@ -1106,9 +1111,20 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
                        '[M$_\odot$ / pc$^2$]',)
         ax.set_ylabel(r'$\Sigma_{\rm H{\sc I}}$ [M$_\odot$ / pc$^2$]',)
 
-    #imagegrid.legend((l2, l3), ('S+14', 'K+09'), loc='lower right',) #bbox_to_anchor=(0.5, 1.05),
+    fig.legend(l2 + l3,
+               ('S+14', 'K+09'),
+               loc='lower center',
+               ncol=2,
+               #bbox_transform = plt.gcf().transFigure,
+               #bbox_transform = imagegrid.transFigure,
+               bbox_to_anchor=(0., 0.95, 1.05, -0.0),
+               #mode="expand",
+               borderaxespad=0.)
+
+    #bbox_to_anchor=(0.5, 1.05),
           #ncol=3, fancybox=True, shadow=True)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 2))
+    #ax.legend(loc='upper center', bbox_to_anchor=(0.5, 2),
+    #        transform=fig.transAxes)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
@@ -1639,7 +1655,6 @@ def run_analysis(hi_cube=None,
                 width_list[i] = vel_width_random
                 dgr_list[i] = dgr_random
                 intercept_list[i] = intercept_random
-                print 'intercept', intercept_random
 
                 # Add random error to images
                 hi_cube_noise = np.copy(hi_cube) + hi_random_error
@@ -1673,9 +1688,9 @@ def run_analysis(hi_cube=None,
             h_sd_ravel = images['h_sd'].ravel()
             h_sd_error_ravel = images['h_sd_error'].ravel()
 
-            print(np.nanmean(images['h_sd'] - images['hi_sd']))
-            print(images['hi_sd'][10], images['h_sd'][10])
-            print(images['av'][10], images['nhi'][10])
+            #print(images['hi_sd'][10], images['h_sd'][10])
+            #print(np.nanmean(images['h_sd'] - images['hi_sd']))
+            #print(images['av'][10], images['nhi'][10])
 
             # write indices for only ratios > 0
             indices = np.where((rh2_ravel > 1) & \
@@ -2399,11 +2414,11 @@ def main(verbose=True, av_data_type='planck', region=None):
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
-    # Error method:
+    # Error method:1
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=(10.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
+    guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     clobber = 1 # perform MC and write over current results?
@@ -2470,6 +2485,7 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Which cores to include in analysis?
     cores_to_keep = ['L1495', 'L1495A', 'B213', 'L1498', 'B215',
+                     'L1545', 'L1517', 'L1512', 'L1523', 'L1512',
                      'L1483', 'L1478', 'L1456', 'NGC1579',
                      'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482']
 
@@ -2528,9 +2544,6 @@ def main(verbose=True, av_data_type='planck', region=None):
               '_scaled.txt', 'r') as f:
         properties = json.load(f)
 
-
-    print('\n\nhi vel range', properties['hi_velocity_range'])
-
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
     if not path.isfile(hi_dir + noise_cube_filename):
@@ -2558,15 +2571,31 @@ def main(verbose=True, av_data_type='planck', region=None):
                                      'multicloud_divisions.reg',
                             header=av_header)
 
-    region_vertices = properties['regions']['california']['poly_verts']['pixel']
+    region_vertices = \
+            properties['regions']['california']['poly_verts']['pixel']
 
     # block off region
-    region_mask = np.logical_not(myg.get_polygon_mask(av_data_planck,
+    region_mask1 = np.logical_not(myg.get_polygon_mask(av_data_planck,
                                                       region_vertices))
+
+    region_vertices = \
+            properties['regions']['california2']['poly_verts']['pixel']
+
+    # block off region
+    region_mask2 = np.logical_not(myg.get_polygon_mask(av_data_planck,
+                                                      region_vertices))
+
+    region_mask = ((region_mask1 == 1) & (region_mask2 == 1))
 
     # Set up lists
     sternberg_results = {}
     krumholz_results = {}
+
+    # Trim down cores to keep list to include only cores for cloud
+    cores_to_keep_old = list(cores_to_keep)
+    for core in cores_to_keep_old:
+        if core not in cores:
+            cores_to_keep.remove(core)
 
     if clobber:
         hi_data_orig = np.copy(hi_data)
@@ -2577,12 +2606,16 @@ def main(verbose=True, av_data_type='planck', region=None):
         # Initialize dictionary to store MC results for each core
         #results = {}
 
-        for core in np.sort(cores.keys()):
+        #for core in np.sort(cores.keys()):
+        for core in cores_to_keep:
             print('\nCalculating for core %s' % core)
 
             if box_method == 'ds9':
-                indices = myg.get_polygon_mask(av_data_planck_orig,
-                        cores[core]['poly_verts']['pixel'])
+                try:
+                    indices = myg.get_polygon_mask(av_data_planck_orig,
+                            cores[core]['poly_verts']['pixel'])
+                except KeyError:
+                    indices = None
             elif box_method == 'av_gradient':
                 indices = myg.get_polygon_mask(av_data_planck_orig,
                     cores[core]['{0:s}_vertices_rotated'.format(region_type)])
@@ -2714,6 +2747,7 @@ def main(verbose=True, av_data_type='planck', region=None):
                     show = False)
 
 if __name__ == '__main__':
+    main(av_data_type='planck', region=2)
     main(av_data_type='planck', region=None)
     main(av_data_type='k09')
 

@@ -1902,6 +1902,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['hi_velocity_width'] = {}
     global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
+    global_props['intercept_max'] = {}
     global_props['hi_velocity_center'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
@@ -1916,6 +1917,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
     global_props['dust2gas_ratio_max']['value'] = dgr_max
+    global_props['intercept_max']['value'] = intercept_max
     global_props['intercept']['value'] = intercepts_confint[0]
     global_props['intercept_error']['value'] = intercepts_confint[1:]
     global_props['hi_velocity_center']['value'] = vel_center.tolist()
@@ -2053,6 +2055,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['co_threshold'] = {}
     global_props['hi_velocity_width']['value'] = width_confint[0]
     global_props['hi_velocity_width']['unit'] = 'km/s'
+    global_props['hi_velocity_width_max']['value'] = width_max
+    global_props['hi_velocity_width_max']['unit'] = 'km/s'
     global_props['hi_velocity_width_error']['value'] = width_confint[1:]
     global_props['hi_velocity_width_error']['unit'] = 'km/s'
     global_props['hi_velocity_range'] = vel_range_confint[0:2]

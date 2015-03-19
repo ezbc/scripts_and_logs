@@ -1292,6 +1292,35 @@ def check_file(filename, clobber=False, verbose=False):
 
     return exists
 
+def derive_hi_vel_center(hi_data, mask=None, hi_vel_axis=None,
+        single_vel_center=True):
+
+    import numpy as np
+
+    if single_vel_center:
+        hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
+        vel_center = np.array((np.average(hi_vel_axis,
+                               weights=hi_spectrum**2),))[0]
+        print('\nVelocity center from HI = ' +\
+                '{0:.2f} km/s'.format(vel_center))
+        vel_center_masked = vel_center
+    else:
+        vel_center = np.zeros(hi_data.shape[1:])
+        for i in xrange(0, hi_data.shape[1]):
+            for j in xrange(0, hi_data.shape[2]):
+                hi_spectrum = hi_data[:, i, j]
+                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
+                if np.nansum(hi_spectrum) > 0:
+                    vel_center[i,j] = \
+                            np.array((np.average(hi_vel_axis,
+                                                 weights=hi_spectrum**2),))[0]
+                else:
+                    vel_center[i,j] = np.nan
+
+        vel_center_masked = vel_center[~mask]
+
+    return vel_center_masked, vel_center
+
 ''' DS9 Region and Coordinate Functions
 '''
 
@@ -1453,7 +1482,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #dgrs = np.arange(0.01, 0.5, 1e-2)
     #intercepts = np.arange(-1, 1, 0.1)
     vel_widths = np.arange(1, 75, 2*0.16667)
-    dgrs = np.arange(0.001, 0.3, 1e-3)
+    dgrs = np.arange(0.001, 0.8, 1e-3)
     #intercepts = np.arange(-0.5, 0.5, 0.01)
     intercepts = np.arange(0, 1, 1)
     #vel_widths = np.arange(1, 50, 10*0.16667)
@@ -1654,8 +1683,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # Write full resolution mask to parameters
     global_props['mask'] = mask.tolist()
 
-    if 1:
+    if 0:
         import matplotlib.pyplot as plt
+        plt.close(); plt.clf()
         plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
         plt.show()
 
@@ -1804,6 +1834,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                        (pix[3], pix[0])
                        )
 
+
+
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data,
                                                       region_vertices))
@@ -1820,27 +1852,11 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # Derive center velocity from hi
     # ------------------------------
-    if single_vel_center:
-        hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
-        vel_center = np.array((np.average(hi_vel_axis,
-                               weights=hi_spectrum**2),))[0]
-        print('\nVelocity center from HI = ' +\
-                '{0:.2f} km/s'.format(vel_center))
-        vel_center_masked = vel_center
-    else:
-        vel_center = np.zeros(hi_data.shape[1:])
-        for i in xrange(0, hi_data.shape[1]):
-            for j in xrange(0, hi_data.shape[2]):
-                hi_spectrum = hi_data[:, i, j]
-                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                if np.nansum(hi_spectrum) > 0:
-                    vel_center[i,j] = \
-                            np.array((np.average(hi_vel_axis,
-                                                 weights=hi_spectrum**2),))[0]
-                else:
-                    vel_center[i,j] = np.nan
-
-        vel_center_masked = vel_center[~mask]
+    vel_center_masked, vel_center = \
+            derive_hi_vel_center(hi_data,
+                                 mask=mask,
+                                 hi_vel_axis=hi_vel_axis,
+                                 single_vel_center=single_vel_center)
 
     # Perform likelihood calculation of masked images
     # -----------------------------------------------
@@ -1851,6 +1867,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
           'estimate...')
 
     print('\nVelwidths = ')
+
+    if 0:
+        import matplotlib.pyplot as plt
+        plt.close(); plt.clf()
+        plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
+        plt.show()
 
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
@@ -2144,9 +2166,9 @@ def main():
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5,]
+    residual_width_scales = [3.0,]
 
-    regions = [None,]
+    regions = [2, None, ]
 
     clobber_results = True
 
@@ -2165,7 +2187,8 @@ def main():
             region_name = 'california'
 
         property_filename = 'california_global_properties_planck'
-        property_filename = property_filename.replace('california', region_name)
+        property_filename = property_filename.replace('california',
+                                                      region_name)
 
         print('\nPerforming likelihood derivations for ' + region_name)
 
@@ -2184,9 +2207,8 @@ def main():
 
                 exists = path.isfile(json_filename)
 
-                print('Writing iteration data file to ' + json_filename)
-
                 if exists and not clobber_results:
+                    print('Loading iteration data file from ' + json_filename)
                     with open(json_filename, 'r') as f:
                         global_props = json.load(f)
                 else:
@@ -2196,14 +2218,14 @@ def main():
                                         region=region,
                                         resid_width_scale=residual_width_scale)
 
+                    print('Writing iteration data file to ' + json_filename)
+                    with open(json_filename, 'w') as f:
+                        json.dump(global_props, f)
+
                 vel_range_new = global_props['hi_velocity_range']
 
                 vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                                np.array(vel_range_new)))
-
-                if clobber_results:
-                    with open(json_filename, 'w') as f:
-                        json.dump(global_props, f)
 
                 print('\n\n\n Next iteration \n-------------------\n\n\n')
                 print('Velocity range difference =' + \

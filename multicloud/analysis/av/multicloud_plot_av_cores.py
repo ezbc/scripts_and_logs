@@ -1125,6 +1125,13 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
     cores_to_keep = ('L1495', 'L1495A', 'B213', 'L1498', 'B215',
                      'L1483', 'L1478', 'L1456', 'NGC1579',
                      'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482')
+    # Which cores to include in analysis?
+    cores_to_keep = ['L1495', 'L1495A', 'B213', 'L1498', 'B215',
+                     'B18', 'B217', 'B220', 'L1521', 'L1524', 'L1527',
+                     'L1536',
+                     'L1483', 'L1478', 'L1456', 'NGC1579',
+                     'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482']
+
 
     # Regions, regions to edit the global properties with
     if region == 1:
