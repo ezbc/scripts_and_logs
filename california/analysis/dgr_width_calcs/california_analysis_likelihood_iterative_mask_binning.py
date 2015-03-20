@@ -37,7 +37,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
+              #'figure.figsize': (8, 8 ),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -164,25 +164,38 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/2.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
 
 
     fig, ax_image = plt.subplots()
@@ -432,21 +445,39 @@ def plot_av_image(av_image=None, header=None, title=None,
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     font_scale = 15
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (8, 7),
-              'figure.titlesize': font_scale
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
+              'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
 
     # Create figure instance
     fig = plt.figure()
@@ -527,25 +558,41 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/4.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+
 
     # Create figure instance
     fig = plt.figure()
@@ -570,6 +617,7 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     counts_ext = counts_ext / integrate(counts_ext, x=bin_edges_ext)
     y_fit /= np.max(y_fit)
     y_fit *= np.max(counts_ext)
+    print('max counts', np.max(counts_ext))
 
     ax.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid',
             linewidth=1.5)
@@ -799,6 +847,17 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
     residual_thres = resid_width_scale * np.abs(fit_params[0]) + fit_params[2]
     mask = residuals > residual_thres
 
+    import matplotlib.pyplot as plt
+    plt.clf(); plt.close();
+    x_fit = np.linspace(np.nanmin(residuals),
+                        np.nanmax(residuals),
+                        1000)
+
+    y_fit = gauss(x_fit, *fit_params)
+    plt.plot(bin_edges[:-1], counts)
+    plt.plot(x_fit, y_fit)
+    plt.savefig('/usr/users/ezbc/Desktop/residuals.png')
+
     if results_filename is not None:
         x_fit = np.linspace(np.nanmin(residuals),
                             np.nanmax(residuals),
@@ -806,20 +865,6 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
 
         y_fit = gauss(x_fit, *fit_params)
         y_fit / np.nanmax(residuals)
-
-        if 1:
-            import json
-            residuals_dict = {}
-            residuals_dict['y_fit'] = y_fit.tolist()
-            residuals_dict['x_fit'] = x_fit.tolist()
-            residuals_dict['residuals'] = residuals.tolist()
-            residuals_dict['residual_thres'] = residual_thres
-            residuals_dict['width'] = np.abs(fit_params[0])
-            residuals_dict['x0'] = np.abs(fit_params[2])
-            with open('/d/bip3/ezbc/california/data/python_output/' + \
-                      'residual_parameter_results/' + \
-                      'california_residuals.json', 'w') as f:
-                json.dump(residuals_dict, f, allow_nan=True)
 
         print('\nSaving residual mask PDF figure to\n' + results_filename)
         plot_mask_residuals(residuals=residuals,
@@ -1292,35 +1337,6 @@ def check_file(filename, clobber=False, verbose=False):
 
     return exists
 
-def derive_hi_vel_center(hi_data, mask=None, hi_vel_axis=None,
-        single_vel_center=True):
-
-    import numpy as np
-
-    if single_vel_center:
-        hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
-        vel_center = np.array((np.average(hi_vel_axis,
-                               weights=hi_spectrum**2),))[0]
-        print('\nVelocity center from HI = ' +\
-                '{0:.2f} km/s'.format(vel_center))
-        vel_center_masked = vel_center
-    else:
-        vel_center = np.zeros(hi_data.shape[1:])
-        for i in xrange(0, hi_data.shape[1]):
-            for j in xrange(0, hi_data.shape[2]):
-                hi_spectrum = hi_data[:, i, j]
-                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                if np.nansum(hi_spectrum) > 0:
-                    vel_center[i,j] = \
-                            np.array((np.average(hi_vel_axis,
-                                                 weights=hi_spectrum**2),))[0]
-                else:
-                    vel_center[i,j] = np.nan
-
-        vel_center_masked = vel_center[~mask]
-
-    return vel_center_masked, vel_center
-
 ''' DS9 Region and Coordinate Functions
 '''
 
@@ -1473,21 +1489,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_property_file = 'california_global_properties'
 
     # Likelihood axis resolutions
-    vel_widths = np.arange(1, 20, 2*0.16667)
-    dgrs = np.arange(0.05, 0.8, 5e-3)
-    #intercepts = np.arange(-2, 2, 0.05)
-    #intercepts = np.arange(0, 1, 1)
-    intercepts = np.arange(-1, 1, 0.02)
-    #vel_widths = np.arange(1, 60, 8*0.16667)
-    #dgrs = np.arange(0.01, 0.5, 1e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
     vel_widths = np.arange(1, 75, 2*0.16667)
     dgrs = np.arange(0.001, 0.8, 1e-3)
-    #intercepts = np.arange(-0.5, 0.5, 0.01)
     intercepts = np.arange(0, 1, 1)
-    #vel_widths = np.arange(1, 50, 10*0.16667)
-    #dgrs = np.arange(0.05, 0.7, 5e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:
@@ -1585,18 +1589,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                             header=av_header)
 
     # Derive relevant region
-    pix = global_props['region_limit']['pixel']
-    region_vertices = ((pix[1], pix[0]),
-                       (pix[1], pix[2]),
-                       (pix[3], pix[2]),
-                       (pix[3], pix[0])
-                       )
-
     region_vertices = \
         global_props['regions'][region_name]['poly_verts']['pixel']
 
     # block off region
-    region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                      region_vertices))
 
     if 0:
         import matplotlib.pyplot as plt
@@ -1683,9 +1681,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # Write full resolution mask to parameters
     global_props['mask'] = mask.tolist()
 
-    if 0:
+    if 1:
         import matplotlib.pyplot as plt
-        plt.close(); plt.clf()
         plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
         plt.show()
 
@@ -1834,8 +1831,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                        (pix[3], pix[0])
                        )
 
-
-
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data,
                                                       region_vertices))
@@ -1852,11 +1847,27 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # Derive center velocity from hi
     # ------------------------------
-    vel_center_masked, vel_center = \
-            derive_hi_vel_center(hi_data,
-                                 mask=mask,
-                                 hi_vel_axis=hi_vel_axis,
-                                 single_vel_center=single_vel_center)
+    if single_vel_center:
+        hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
+        vel_center = np.array((np.average(hi_vel_axis,
+                               weights=hi_spectrum**2),))[0]
+        print('\nVelocity center from HI = ' +\
+                '{0:.2f} km/s'.format(vel_center))
+        vel_center_masked = vel_center
+    else:
+        vel_center = np.zeros(hi_data.shape[1:])
+        for i in xrange(0, hi_data.shape[1]):
+            for j in xrange(0, hi_data.shape[2]):
+                hi_spectrum = hi_data[:, i, j]
+                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
+                if np.nansum(hi_spectrum) > 0:
+                    vel_center[i,j] = \
+                            np.array((np.average(hi_vel_axis,
+                                                 weights=hi_spectrum**2),))[0]
+                else:
+                    vel_center[i,j] = np.nan
+
+        vel_center_masked = vel_center[~mask]
 
     # Perform likelihood calculation of masked images
     # -----------------------------------------------
@@ -1865,14 +1876,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     print('\nPerforming likelihood calculations with initial error ' + \
           'estimate...')
-
-    print('\nVelwidths = ')
-
-    if 0:
-        import matplotlib.pyplot as plt
-        plt.close(); plt.clf()
-        plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
-        plt.show()
 
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
@@ -1934,6 +1937,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['hi_velocity_width'] = {}
     global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
+    global_props['intercept_max'] = {}
     global_props['hi_velocity_center'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
@@ -1948,6 +1952,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
     global_props['dust2gas_ratio_max']['value'] = dgr_max
+    global_props['intercept_max']['value'] = intercept_max
     global_props['intercept']['value'] = intercepts_confint[0]
     global_props['intercept_error']['value'] = intercepts_confint[1:]
     global_props['hi_velocity_center']['value'] = vel_center.tolist()
@@ -2085,6 +2090,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['co_threshold'] = {}
     global_props['hi_velocity_width']['value'] = width_confint[0]
     global_props['hi_velocity_width']['unit'] = 'km/s'
+    global_props['hi_velocity_width_max']['value'] = width_max
+    global_props['hi_velocity_width_max']['unit'] = 'km/s'
     global_props['hi_velocity_width_error']['value'] = width_confint[1:]
     global_props['hi_velocity_width_error']['unit'] = 'km/s'
     global_props['hi_velocity_range'] = vel_range_confint[0:2]
@@ -2168,7 +2175,7 @@ def main():
     # residuals in iterative masking
     residual_width_scales = [3.0,]
 
-    regions = [2, None, ]
+    regions = [None, ]
 
     clobber_results = True
 
@@ -2187,14 +2194,13 @@ def main():
             region_name = 'california'
 
         property_filename = 'california_global_properties_planck'
-        property_filename = property_filename.replace('california',
-                                                      region_name)
+        property_filename = property_filename.replace('california', region_name)
 
         print('\nPerforming likelihood derivations for ' + region_name)
 
         for i, residual_width_scale in enumerate(residual_width_scales):
             iteration = 0
-            vel_range = (-25.0, 25.0)
+            vel_range = (-20.0, 30.0)
             vel_range_new = (-1.0, 1.0)
             vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                            np.array(vel_range_new)))
@@ -2207,8 +2213,9 @@ def main():
 
                 exists = path.isfile(json_filename)
 
+                print('Writing iteration data file to ' + json_filename)
+
                 if exists and not clobber_results:
-                    print('Loading iteration data file from ' + json_filename)
                     with open(json_filename, 'r') as f:
                         global_props = json.load(f)
                 else:
@@ -2218,14 +2225,14 @@ def main():
                                         region=region,
                                         resid_width_scale=residual_width_scale)
 
-                    print('Writing iteration data file to ' + json_filename)
-                    with open(json_filename, 'w') as f:
-                        json.dump(global_props, f)
-
                 vel_range_new = global_props['hi_velocity_range']
 
                 vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                                np.array(vel_range_new)))
+
+                if clobber_results:
+                    with open(json_filename, 'w') as f:
+                        json.dump(global_props, f)
 
                 print('\n\n\n Next iteration \n-------------------\n\n\n')
                 print('Velocity range difference =' + \
@@ -2243,22 +2250,12 @@ def main():
                     table_df[col][i] = global_props[col]['value']
 
             # Write the file
-            if residual_width_scale == 3.0:
-                print('\nWriting results to\n' + property_filename + \
-                        '_' + av_data_type + '_scaled.txt')
+            print('\nWriting results to\n' + property_filename + \
+                    '_' + av_data_type + '_scaled.txt')
 
-                with open(final_property_dir + property_filename +\
-                        '_' + av_data_type + '_scaled.txt', 'w') as f:
-                    json.dump(global_props, f)
-
-        # Write dataframe to csv
-        table_filename = property_dir + property_filename + '_' + \
-                         av_data_type
-
-        table_df.to_csv(table_filename + '.csv', index=False)
-        table_df.to_html(table_filename + '.html', index=False)
-        table_df.to_latex(table_filename + '.tex', index=False)
-
+            with open(final_property_dir + property_filename +\
+                    '_' + av_data_type + '_scaled.txt', 'w') as f:
+                json.dump(global_props, f)
 
 if __name__ == '__main__':
     main()

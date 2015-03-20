@@ -39,25 +39,41 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3, 3.5),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (7.3, 4),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
 
     # Create figure instance
     fig = plt.figure()
@@ -1122,15 +1138,41 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
     prop_file = 'multicloud_global_properties'
 
     # Which cores to include in analysis?
-    cores_to_keep = ('L1495', 'L1495A', 'B213', 'L1498', 'B215',
-                     'L1483', 'L1478', 'L1456', 'NGC1579',
-                     'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482')
-    # Which cores to include in analysis?
-    cores_to_keep = ['L1495', 'L1495A', 'B213', 'L1498', 'B215',
-                     'B18', 'B217', 'B220', 'L1521', 'L1524', 'L1527',
+    cores_to_keep = [# taur
+                     'L1495',
+                     'L1495A',
+                     'B213',
+                     'L1498',
+                     'B215',
+                     'B18',
+                     'B217',
+                     'B220-1',
+                     'B220-2',
+                     'L1521',
+                     'L1524',
+                     'L1527-1',
+                     'L1527-2',
+                     # Calif
                      'L1536',
-                     'L1483', 'L1478', 'L1456', 'NGC1579',
-                     'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482']
+                     'L1483',
+                     'L1478',
+                     'L1456',
+                     'NGC1579',
+                     'L1545',
+                     'L1517',
+                     'L1512',
+                     'L1523',
+                     'L1512',
+                     # Pers
+                     'B5',
+                     'IC348',
+                     'B1E',
+                     'B1',
+                     'NGC1333',
+                     'L1482'
+                     ]
+
+
 
 
     # Regions, regions to edit the global properties with
@@ -1297,8 +1339,12 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
              cores = json.load(f)
 
         # Load core regions from DS9 files
-        core_filename = region_dir.replace('multicloud',cloud) + \
-                        '/ds9_regions/{0:s}_av_poly_cores'.format(cloud)
+        if cloud == 'aldobaran':
+            region_cloud = 'california'
+        else:
+            region_cloud = cloud
+        core_filename = region_dir.replace('multicloud',region_cloud) + \
+                        '/ds9_regions/{0:s}_av_poly_cores'.format(region_cloud)
 
         cores = load_ds9_core_region(cores,
                                      filename_base=core_filename,

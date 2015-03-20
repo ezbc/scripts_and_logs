@@ -37,7 +37,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
+              #'figure.figsize': (8, 8 ),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -164,26 +164,38 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'axes.linewidth': 2,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/2.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
 
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
 
     fig, ax_image = plt.subplots()
 
@@ -432,21 +444,40 @@ def plot_av_image(av_image=None, header=None, title=None,
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     font_scale = 15
-    params = {#'backend': .pdf',
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (8, 7),
-              'figure.titlesize': font_scale
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
+              'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
 
     # Create figure instance
     fig = plt.figure()
@@ -527,25 +558,40 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'axes.linewidth': 2,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/4.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+
 
     # Create figure instance
     fig = plt.figure()
@@ -570,6 +616,7 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     counts_ext = counts_ext / integrate(counts_ext, x=bin_edges_ext)
     y_fit /= np.max(y_fit)
     y_fit *= np.max(counts_ext)
+    print('max counts', np.max(counts_ext))
 
     ax.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid',
             linewidth=1.5)
@@ -1064,7 +1111,6 @@ def calc_likelihoods(
 
             # use the hi cube and vel range if no nhi image provided
             if nhi_image is None:
-                print('Vel width = ', vel_width)
                 vel_range = np.array((vel_center - vel_width / 2.,
                                       vel_center + vel_width / 2.))
                 nhi_image = calculate_nhi(cube=hi_cube,
@@ -1433,30 +1479,18 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     contour_confs = (0.95,)
 
     # Name of HI noise cube
-    noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise'
+    noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise'
 
     # Threshold for converging DGR
     threshold_delta_dgr = 0.00005
 
     # Name of property files results are written to
-    global_property_file = 'perseus_global_properties'
+    global_property_file = 'aldobaran_global_properties'
 
     # Likelihood axis resolutions
-    vel_widths = np.arange(1, 20, 2*0.16667)
-    dgrs = np.arange(0.05, 0.8, 5e-3)
-    #intercepts = np.arange(-2, 2, 0.05)
-    #intercepts = np.arange(0, 1, 1)
-    intercepts = np.arange(-1, 1, 0.02)
-    #vel_widths = np.arange(1, 60, 8*0.16667)
-    #dgrs = np.arange(0.01, 0.5, 1e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
-    vel_widths = np.arange(1, 100, 2*0.16667)
-    dgrs = np.arange(0.001, 0.3, 1e-3)
-    intercepts = np.arange(-5, 5, 0.1)
+    vel_widths = np.arange(1, 75, 2*0.16667)
+    dgrs = np.arange(0.001, 0.8, 1e-3)
     intercepts = np.arange(0, 1, 1)
-    #vel_widths = np.arange(1, 50, 10*0.16667)
-    #dgrs = np.arange(0.05, 0.7, 5e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:
@@ -1478,42 +1512,42 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/aldobaran/data/python_output/nhi_av/'
     figure_dir = \
-        '/d/bip3/ezbc/perseus/figures/'
-    av_dir = '/d/bip3/ezbc/perseus/data/av/'
-    hi_dir = '/d/bip3/ezbc/perseus/data/hi/'
-    co_dir = '/d/bip3/ezbc/perseus/data/co/'
-    core_dir = '/d/bip3/ezbc/perseus/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
+        '/d/bip3/ezbc/aldobaran/figures/'
+    av_dir = '/d/bip3/ezbc/california/data/av/'
+    hi_dir = '/d/bip3/ezbc/california/data/hi/'
+    co_dir = '/d/bip3/ezbc/california/data/co/'
+    core_dir = '/d/bip3/ezbc/aldobaran/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/aldobaran/data/python_output/'
     region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
-    likelihood_dir = '/d/bip3/ezbc/perseus/data/python_output/nhi_av/'
+    likelihood_dir = '/d/bip3/ezbc/aldobaran/data/python_output/nhi_av/'
 
     # Load data
     # ---------
     # Adjust filenames
     #noise_cube_filename += bin_string
-    likelihood_filename = 'perseus_likelihood_{0:s}_bin'.format(av_data_type)
-    results_filename = 'perseus_likelihood_{0:s}_bin'.format(av_data_type)
+    likelihood_filename = 'aldobaran_likelihood_{0:s}_bin'.format(av_data_type)
+    results_filename = 'aldobaran_likelihood_{0:s}_bin'.format(av_data_type)
     # load Planck Av and GALFA HI images, on same grid
     if av_data_type == 'k09':
         print('\nLoading K+09 2MASS data...')
         av_data, av_header = fits.getdata(av_dir + \
-                                  'perseus_av_k09_regrid_planckres.fits',
+                                  'california_av_k09_regrid_planckres.fits',
                                   header=True)
         av_data_error = 0.1 * np.ones(av_data.shape)
     else:
     	print('\nLoading Planck data...')
         av_data, av_header = fits.getdata(av_dir + \
-                                          'perseus_av_planck_5arcmin.fits',
+                                          'california_av_planck_5arcmin.fits',
                                           header=True)
 
         av_data_error, av_error_header = fits.getdata(av_dir + \
-                                    'perseus_av_error_planck_5arcmin.fits',
+                                    'california_av_error_planck_5arcmin.fits',
                                     header=True)
 
     hi_data, hi_header = fits.getdata(hi_dir + \
-                'perseus_hi_galfa_cube_regrid_planckres.fits',
+                'california_hi_galfa_cube_regrid_planckres.fits',
             header=True)
 
     # Load global properties
@@ -1524,12 +1558,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # ---------------------
     # Name correct region of cloud
     if region == 1:
-        region_name = 'perseus1'
+        region_name = 'aldobaran1'
     elif region == 2:
-        region_name = 'perseus2'
+        region_name = 'aldobaran2'
     else:
-        region_name = 'perseus'
-    global_property_file = global_property_file.replace('perseus', region_name)
+        region_name = 'aldobaran'
+    global_property_file = global_property_file.replace('aldobaran', region_name)
 
     # Change WCS coords to pixel coords of images
     global_props = convert_limit_coordinates(global_props, header=av_header)
@@ -1554,18 +1588,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                             header=av_header)
 
     # Derive relevant region
-    pix = global_props['region_limit']['pixel']
-    region_vertices = ((pix[1], pix[0]),
-                       (pix[1], pix[2]),
-                       (pix[3], pix[2]),
-                       (pix[3], pix[0])
-                       )
-
     region_vertices = \
         global_props['regions'][region_name]['poly_verts']['pixel']
 
     # block off region
-    region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                      region_vertices))
 
     if 0:
         import matplotlib.pyplot as plt
@@ -1641,7 +1669,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                              verbose=1,
                              plot_progress=0,
                              results_filename=figure_dir + 'likelihood/'\
-                                              'perseus_residual_pdf.pdf'
+                                              'aldobaran_residual_pdf.pdf'
                              )
 
     # Combine region mask with new mask
@@ -1666,23 +1694,23 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     av_data_error[mask] = np.nan
     hi_data[:, mask] = np.nan
 
-    if not check_file(av_dir + 'perseus_av_planck_5arcmin_masked.fits',
+    if not check_file(av_dir + 'california_av_planck_5arcmin_masked.fits',
                       clobber=clobber_bin_images):
-        fits.writeto(av_dir + 'perseus_av_planck_5arcmin_masked.fits',
+        fits.writeto(av_dir + 'california_av_planck_5arcmin_masked.fits',
                      av_data,
                      av_header)
 
-    if not check_file(av_dir + 'perseus_av_error_planck_5arcmin_masked.fits',
+    if not check_file(av_dir + 'california_av_error_planck_5arcmin_masked.fits',
                       clobber=clobber_bin_images):
-        fits.writeto(av_dir + 'perseus_av_error_planck_5arcmin_masked.fits',
+        fits.writeto(av_dir + 'california_av_error_planck_5arcmin_masked.fits',
                      av_data_error,
                      av_header)
 
     if not check_file(hi_dir + \
-                      'perseus_hi_galfa_cube_regrid_planckres_masked.fits',
+                      'california_hi_galfa_cube_regrid_planckres_masked.fits',
                       clobber=clobber_bin_images):
         fits.writeto(hi_dir + \
-                     'perseus_hi_galfa_cube_regrid_planckres_masked.fits',
+                     'california_hi_galfa_cube_regrid_planckres_masked.fits',
                      hi_data,
                      hi_header)
 
@@ -1701,14 +1729,14 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           func=np.nanmean,
                           return_weights=True)
 
-        if not check_file(av_dir + 'perseus_av_planck_5arcmin_bin.fits',
+        if not check_file(av_dir + 'california_av_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'perseus_av_planck_5arcmin_bin.fits',
+            fits.writeto(av_dir + 'california_av_planck_5arcmin_bin.fits',
                          av_data_bin,
                          av_header_bin)
-        if not check_file(av_dir + 'perseus_av_planck_5arcmin_bin_weights.fits',
+        if not check_file(av_dir + 'california_av_planck_5arcmin_bin_weights.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'perseus_av_planck_5arcmin_bin_weights.fits',
+            fits.writeto(av_dir + 'california_av_planck_5arcmin_bin_weights.fits',
                          bin_weights,
                          av_header_bin)
 
@@ -1724,9 +1752,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           header=av_header,
                           func=noise_func,)
 
-        if not check_file(av_dir + 'perseus_av_error_planck_5arcmin_bin.fits',
+        if not check_file(av_dir + 'california_av_error_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'perseus_av_error_planck_5arcmin_bin.fits',
+            fits.writeto(av_dir + 'california_av_error_planck_5arcmin_bin.fits',
                          av_data_error_bin,
                          av_header_bin)
 
@@ -1738,10 +1766,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           func=np.nanmean)
 
         if not check_file(hi_dir + \
-                          'perseus_hi_galfa_cube_regrid_planckres_bin.fits',
+                          'california_hi_galfa_cube_regrid_planckres_bin.fits',
                           clobber=clobber_bin_images):
             fits.writeto(hi_dir + \
-                         'perseus_hi_galfa_cube_regrid_planckres_bin.fits',
+                         'california_hi_galfa_cube_regrid_planckres_bin.fits',
                          hi_data_bin,
                          hi_header_bin)
 
@@ -1757,19 +1785,19 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                                                            av_data_type)
 
     av_data, av_header = fits.getdata(av_dir + \
-                            'perseus_av_planck_5arcmin' + bin_string + '.fits',
+                            'california_av_planck_5arcmin' + bin_string + '.fits',
                                       header=True)
 
     av_data_error, av_error_header = fits.getdata(av_dir + \
-                'perseus_av_error_planck_5arcmin' + bin_string + '.fits',
+                'california_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
 
     bin_weights = fits.getdata(av_dir + \
-                               'perseus_av_planck_5arcmin' + bin_string + \
+                               'california_av_planck_5arcmin' + bin_string + \
                                '_weights.fits',)
 
     hi_data, hi_header = fits.getdata(hi_dir + \
-                            'perseus_hi_galfa_cube_regrid_planckres' + \
+                            'california_hi_galfa_cube_regrid_planckres' + \
                             bin_string + '.fits',
                             header=True)
 
@@ -1848,9 +1876,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     print('\nPerforming likelihood calculations with initial error ' + \
           'estimate...')
 
-    print('\nVelwidths = ')
-    print(vel_widths)
-
     results = calc_likelihoods(
                      hi_cube=hi_data[:, ~mask],
                      hi_vel_axis=hi_vel_axis,
@@ -1911,6 +1936,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['hi_velocity_width'] = {}
     global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
+    global_props['intercept_max'] = {}
     global_props['hi_velocity_center'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
@@ -1925,6 +1951,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
     global_props['dust2gas_ratio_max']['value'] = dgr_max
+    global_props['intercept_max']['value'] = intercept_max
     global_props['intercept']['value'] = intercepts_confint[0]
     global_props['intercept_error']['value'] = intercepts_confint[1:]
     global_props['hi_velocity_center']['value'] = vel_center.tolist()
@@ -2062,6 +2089,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['co_threshold'] = {}
     global_props['hi_velocity_width']['value'] = width_confint[0]
     global_props['hi_velocity_width']['unit'] = 'km/s'
+    global_props['hi_velocity_width_max']['value'] = width_max
+    global_props['hi_velocity_width_max']['unit'] = 'km/s'
     global_props['hi_velocity_width_error']['value'] = width_confint[1:]
     global_props['hi_velocity_width_error']['unit'] = 'km/s'
     global_props['hi_velocity_range'] = vel_range_confint[0:2]
@@ -2135,15 +2164,15 @@ def main():
     vel_range_diff_thres = 3.0 # km/s
 
     property_dir = \
-        '/d/bip3/ezbc/perseus/data/python_output/residual_parameter_results/'
+        '/d/bip3/ezbc/aldobaran/data/python_output/residual_parameter_results/'
 
-    final_property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
+    final_property_dir = '/d/bip3/ezbc/aldobaran/data/python_output/'
 
-    property_filename = 'perseus_global_properties_planck'
+    property_filename = 'aldobaran_global_properties_planck'
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+    residual_width_scales = [3.0,]
 
     regions = [None, ]
 
@@ -2157,14 +2186,14 @@ def main():
     for region in regions:
         # Grab correct region
         if region == 1:
-            region_name = 'perseus1'
+            region_name = 'aldobaran1'
         elif region == 2:
-            region_name = 'perseus2'
+            region_name = 'aldobaran2'
         else:
-            region_name = 'perseus'
+            region_name = 'aldobaran'
 
-        property_filename = 'perseus_global_properties_planck'
-        property_filename = property_filename.replace('perseus', region_name)
+        property_filename = 'aldobaran_global_properties_planck'
+        property_filename = property_filename.replace('aldobaran', region_name)
 
         print('\nPerforming likelihood derivations for ' + region_name)
 
@@ -2220,22 +2249,12 @@ def main():
                     table_df[col][i] = global_props[col]['value']
 
             # Write the file
-            if residual_width_scale == 1.5:
-                print('\nWriting results to\n' + property_filename + \
-                        '_' + av_data_type + '_scaled.txt')
+            print('\nWriting results to\n' + property_filename + \
+                    '_' + av_data_type + '_scaled.txt')
 
-                with open(final_property_dir + property_filename +\
-                        '_' + av_data_type + '_scaled.txt', 'w') as f:
-                    json.dump(global_props, f)
-
-        # Write dataframe to csv
-        table_filename = property_dir + property_filename + '_' + \
-                         av_data_type
-
-        table_df.to_csv(table_filename + '.csv', index=False)
-        table_df.to_html(table_filename + '.html', index=False)
-        table_df.to_latex(table_filename + '.tex', index=False)
-
+            with open(final_property_dir + property_filename +\
+                    '_' + av_data_type + '_scaled.txt', 'w') as f:
+                json.dump(global_props, f)
 
 if __name__ == '__main__':
     main()

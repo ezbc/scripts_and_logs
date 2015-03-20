@@ -37,7 +37,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
+              #'figure.figsize': (8, 8 ),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -164,25 +164,38 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/2.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
 
 
     fig, ax_image = plt.subplots()
@@ -432,21 +445,39 @@ def plot_av_image(av_image=None, header=None, title=None,
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     font_scale = 15
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (8, 7),
-              'figure.titlesize': font_scale
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
+              'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
 
     # Create figure instance
     fig = plt.figure()
@@ -527,25 +558,41 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/4.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+
 
     # Create figure instance
     fig = plt.figure()
@@ -1442,21 +1489,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_property_file = 'perseus_global_properties'
 
     # Likelihood axis resolutions
-    vel_widths = np.arange(1, 20, 2*0.16667)
-    dgrs = np.arange(0.05, 0.8, 5e-3)
-    #intercepts = np.arange(-2, 2, 0.05)
-    #intercepts = np.arange(0, 1, 1)
-    intercepts = np.arange(-1, 1, 0.02)
-    #vel_widths = np.arange(1, 60, 8*0.16667)
-    #dgrs = np.arange(0.01, 0.5, 1e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
     vel_widths = np.arange(1, 75, 2*0.16667)
-    dgrs = np.arange(0.001, 0.4, 1e-3)
-    #intercepts = np.arange(-5, 5, 0.1)
+    dgrs = np.arange(0.001, 0.8, 1e-3)
     intercepts = np.arange(0, 1, 1)
-    #vel_widths = np.arange(1, 50, 10*0.16667)
-    #dgrs = np.arange(0.05, 0.7, 5e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:
@@ -1498,25 +1533,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # load Planck Av and GALFA HI images, on same grid
     if av_data_type == 'k09':
         print('\nLoading K+09 2MASS data...')
-        av_data, av_header = \
-                fits.getdata(av_dir + \
-                             'perseus_av_k09_regrid_planckres.fits',
-                             header=True)
-
-        av_data_error = 0.1 * np.ones(av_data.shape)
-    elif av_data_type == 'lee12_iris':
-        print('\nLoading Lee+12 IRIS data...')
-        av_data, av_header = \
-                fits.getdata(av_dir + \
-                             'perseus_av_lee12_iris_regrid_planckres.fits',
-                             header=True)
-        av_data_error = 0.1 * np.ones(av_data.shape)
-    elif av_data_type == 'lee12_2mass':
-        print('\nLoading Lee+12 2mass data...')
-        av_data, av_header = \
-                fits.getdata(av_dir + \
-                             'perseus_av_lee12_2mass_regrid_planckres.fits',
-                             header=True)
+        av_data, av_header = fits.getdata(av_dir + \
+                                  'perseus_av_k09_regrid_planckres.fits',
+                                  header=True)
         av_data_error = 0.1 * np.ones(av_data.shape)
     else:
     	print('\nLoading Planck data...')
@@ -1531,7 +1550,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     hi_data, hi_header = fits.getdata(hi_dir + \
                 'perseus_hi_galfa_cube_regrid_planckres.fits',
             header=True)
-
 
     # Load global properties
     with open(property_dir + global_property_file + '.txt', 'r') as f:
@@ -1571,18 +1589,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                             header=av_header)
 
     # Derive relevant region
-    pix = global_props['region_limit']['pixel']
-    region_vertices = ((pix[1], pix[0]),
-                       (pix[1], pix[2]),
-                       (pix[3], pix[2]),
-                       (pix[3], pix[0])
-                       )
-
     region_vertices = \
         global_props['regions'][region_name]['poly_verts']['pixel']
 
     # block off region
-    region_mask = np.logical_not(myg.get_polygon_mask(av_data, region_vertices))
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                      region_vertices))
 
     if 0:
         import matplotlib.pyplot as plt
@@ -1925,6 +1937,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['hi_velocity_width'] = {}
     global_props['hi_velocity_width_error'] = {}
     global_props['dust2gas_ratio_max'] = {}
+    global_props['intercept_max'] = {}
     global_props['hi_velocity_center'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
@@ -1939,6 +1952,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['dust2gas_ratio']['value'] = dgr_confint[0]
     global_props['dust2gas_ratio_error']['value'] = dgr_confint[1:]
     global_props['dust2gas_ratio_max']['value'] = dgr_max
+    global_props['intercept_max']['value'] = intercept_max
     global_props['intercept']['value'] = intercepts_confint[0]
     global_props['intercept_error']['value'] = intercepts_confint[1:]
     global_props['hi_velocity_center']['value'] = vel_center.tolist()
@@ -2076,6 +2090,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['co_threshold'] = {}
     global_props['hi_velocity_width']['value'] = width_confint[0]
     global_props['hi_velocity_width']['unit'] = 'km/s'
+    global_props['hi_velocity_width_max']['value'] = width_max
+    global_props['hi_velocity_width_max']['unit'] = 'km/s'
     global_props['hi_velocity_width_error']['value'] = width_confint[1:]
     global_props['hi_velocity_width_error']['unit'] = 'km/s'
     global_props['hi_velocity_range'] = vel_range_confint[0:2]
@@ -2143,8 +2159,7 @@ def main():
     import json
     from pandas import DataFrame
 
-    av_data_type = 'k09'
-    av_data_type = 'iris'
+    av_data_type = 'planck'
 
     # threshold in velocity range difference
     vel_range_diff_thres = 3.0 # km/s
@@ -2154,11 +2169,11 @@ def main():
 
     final_property_dir = '/d/bip3/ezbc/perseus/data/python_output/'
 
-    property_filename = 'perseus_global_properties_' + av_data_type
+    property_filename = 'perseus_global_properties_planck'
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5,]
+    residual_width_scales = [3.0,]
 
     regions = [None, ]
 
@@ -2178,7 +2193,7 @@ def main():
         else:
             region_name = 'perseus'
 
-        property_filename = 'perseus_global_properties_' + av_data_type
+        property_filename = 'perseus_global_properties_planck'
         property_filename = property_filename.replace('perseus', region_name)
 
         print('\nPerforming likelihood derivations for ' + region_name)
@@ -2235,22 +2250,12 @@ def main():
                     table_df[col][i] = global_props[col]['value']
 
             # Write the file
-            if residual_width_scale == 3.0:
-                print('\nWriting results to\n' + property_filename + \
-                        '_' + av_data_type + '_scaled.txt')
+            print('\nWriting results to\n' + property_filename + \
+                    '_' + av_data_type + '_scaled.txt')
 
-                with open(final_property_dir + property_filename +\
-                        '_' + av_data_type + '_scaled.txt', 'w') as f:
-                    json.dump(global_props, f)
-
-        # Write dataframe to csv
-        table_filename = property_dir + property_filename + '_' + \
-                         av_data_type
-
-        table_df.to_csv(table_filename + '.csv', index=False)
-        table_df.to_html(table_filename + '.html', index=False)
-        table_df.to_latex(table_filename + '.tex', index=False)
-
+            with open(final_property_dir + property_filename +\
+                    '_' + av_data_type + '_scaled.txt', 'w') as f:
+                json.dump(global_props, f)
 
 if __name__ == '__main__':
     main()

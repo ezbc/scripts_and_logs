@@ -37,7 +37,7 @@ def plot_likelihoods(likelihoods,velocity_centers,velocity_widths,
               'font.weight': 500,
               'axes.labelweight': 500,
               'text.usetex': False,
-              #'figure.figsize': (8, 8 * y_scaling),
+              #'figure.figsize': (8, 8 ),
               #'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
@@ -164,25 +164,38 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/2.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
 
 
     fig, ax_image = plt.subplots()
@@ -432,21 +445,39 @@ def plot_av_image(av_image=None, header=None, title=None,
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     font_scale = 15
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': False,
-              'figure.figsize': (8, 7),
-              'figure.titlesize': font_scale
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
+              'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
 
     # Create figure instance
     fig = plt.figure()
@@ -527,25 +558,41 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/4.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+
 
     # Create figure instance
     fig = plt.figure()
@@ -1442,21 +1489,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_property_file = 'taurus_global_properties'
 
     # Likelihood axis resolutions
-    vel_widths = np.arange(1, 20, 2*0.16667)
-    dgrs = np.arange(0.05, 0.8, 5e-3)
-    #intercepts = np.arange(-2, 2, 0.05)
-    #intercepts = np.arange(0, 1, 1)
-    intercepts = np.arange(-1, 1, 0.02)
-    #vel_widths = np.arange(1, 60, 8*0.16667)
-    #dgrs = np.arange(0.01, 0.5, 1e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
     vel_widths = np.arange(1, 75, 2*0.16667)
-    dgrs = np.arange(0.001, 0.4, 1e-3)
-    #intercepts = np.arange(-5, 5, 0.1)
+    dgrs = np.arange(0.001, 0.8, 1e-3)
     intercepts = np.arange(0, 1, 1)
-    #vel_widths = np.arange(1, 50, 10*0.16667)
-    #dgrs = np.arange(0.05, 0.7, 5e-2)
-    #intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:
@@ -2138,7 +2173,7 @@ def main():
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5,]
+    residual_width_scales = [3.0,]
 
     regions = [2, 1, None, ]
 

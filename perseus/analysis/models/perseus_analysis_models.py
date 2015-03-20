@@ -796,6 +796,7 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
               'text.usetex': True,
               #'font.family': 'sans-serif',
               'figure.figsize': (7.3, 7.3 * y_scaling),
+              'figure.dpi': 600,
               'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
@@ -905,6 +906,7 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
     import matplotlib.pyplot as plt
     import matplotlib
     from mpl_toolkits.axes_grid1 import ImageGrid
+    from astroML.plotting import scatter_contour
 
     n = int(np.ceil(len(cores_to_plot)**0.5))
     if n**2 - n > len(cores_to_plot):
@@ -933,27 +935,39 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
               'figure.figsize': (3.6, 3.6*y_scaling),
               'figure.dpi': 600,
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
 
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
 
     # Create figure instance
     fig = plt.figure()
@@ -1019,10 +1033,12 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
             h_sd_error_nonans = h_sd_error * \
                     np.ones(h_sd[indices].shape)
 
-                # Create plot
+        # Create plot
         ax = imagegrid[i]
 
-        if 1:
+        #ax.set_xticks([0, 40, 80, 120])
+
+        if 0:
             l1 = ax.errorbar(h_sd_nonans.ravel(),
                     hi_sd_nonans.ravel(),
                     xerr=(h_sd_error_nonans.ravel()),
@@ -1032,27 +1048,42 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
                     marker='^',ecolor='k',linestyle='None',
                     markersize=3
                     )
-        elif 0:
-            ax.hexbin(h_sd_nonans.ravel(),
-                      hi_sd_nonans.ravel(),
-                      cmap=cmap,
-                      mincnt=1)
-        else:
-            h, x, y = np.histogram2d(h_sd_nonans.ravel(),
-                                hi_sd_nonans.ravel(),
-                                bins=1000,)
-            ax.imshow(h,
-                      origin='lower',
-                      interpolation='bicubic',
-                      extent=[x[0], x[-1], y[0], y[-1]])
-
+        elif 1:
+            l1 = scatter_contour(h_sd_nonans.ravel(),
+                                 hi_sd_nonans.ravel(),
+                                 threshold=2,
+                                 log_counts=0,
+                                 levels=5,
+                                 ax=ax,
+                                 histogram2d_args=dict(bins=30,
+                                        range=((limits[0], limits[1]),
+                                               (limits[2], limits[3]))),
+                                 plot_args=dict(marker='o',
+                                                linestyle='none',
+                                                color='black',
+                                                alpha=0.7,
+                                                markersize=2),
+                                 contour_args=dict(
+                                                   cmap=plt.cm.gray_r,
+                                                   #cmap=cmap,
+                                                   ),
+                                 )
 
         l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
-                label='S+14')
+                label='S+14',
+                color=color_cycle[1],
+                alpha=0.75,
+                )
 
         l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
                 linestyle='--',
-                label='K+09')
+                label='K+09',
+                color=color_cycle[2],
+                alpha=0.75
+                )
+
+        if i == 0:
+            ax.legend(loc='upper left')
 
         # Annotations
         anno_xpos = 0.95
@@ -1102,13 +1133,26 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel(r'$\Sigma_{\rm H{\sc I}}$ + $\Sigma_{\rm H2}$ ' + \
-                       '[M$_\odot$ / pc$^2$]',)
-        ax.set_ylabel(r'$\Sigma_{\rm H{\sc I}}$ [M$_\odot$ / pc$^2$]',)
+        ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
+                       '[M$_\odot$ pc$^{-2}$]',)
+        ax.set_ylabel(r'$\Sigma_{\rm H\,I}$ [M$_\odot$ pc$^{-2}$]',)
 
-    #imagegrid.legend((l2, l3), ('S+14', 'K+09'), loc='lower right',) #bbox_to_anchor=(0.5, 1.05),
-          #ncol=3, fancybox=True, shadow=True)
-    ax.legend(bbox_to_anchor=(1.7, 0.5))
+        if 'log' not in scale:
+            ax.locator_params(nbins=6)
+
+    if 0:
+        fig.legend(l2 + l3,
+                   ('S+14', 'K+09'),
+                   loc='upper center',
+                   #loc=3,
+                   ncol=2,
+                   numpoints=6,
+                   bbox_transform = plt.gcf().transFigure,
+                   #bbox_transform = imagegrid.transFigure,
+                   #bbox_to_anchor=(0., 0.95, 1.05, -0.0),
+                   mode="expand",
+                   bbox_to_anchor=(0.3, 1.0, 0.5, 0.1),
+                   borderaxespad=0.0)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
@@ -1681,7 +1725,6 @@ def run_analysis(hi_cube=None,
             h_sd_ravel = h_sd_ravel[indices]
             h_sd_error_ravel = h_sd_error_ravel[indices]
 
-
             # Fit to sternberg model
             alphaG, Z, phi_g = fit_sternberg(h_sd_ravel,
                                       rh2_ravel,
@@ -1769,14 +1812,21 @@ def run_analysis(hi_cube=None,
 
     nhi_error = np.std(results_dict['nhi errors'])
 
-    dgr = properties['dust2gas_ratio']['value']
-    intercept = properties['intercept']['value']
+    dgr = properties['dust2gas_ratio_max']['value']
+    intercept = properties['intercept_max']['value']
     #intercept_error = properties['intercept_error']['value']
     #dgr_error = properties['dust2gas_ratio_error']['value']
     vel_center = properties['hi_velocity_center']['value']
-    vel_width = properties['hi_velocity_width']['value']
-    #hi_vel_range = (vel_center - vel_width/2.0, vel_center + vel_width/2.0)
-    hi_vel_range = properties['hi_velocity_range']
+    vel_width = properties['hi_velocity_width_max']['value']
+    hi_vel_range = (vel_center - vel_width/2.0, vel_center + vel_width/2.0)
+    #hi_vel_range = properties['hi_velocity_range']
+
+
+    # Get values of best-fit model parameters
+    #max_loc = np.where(likelihoods == np.max(likelihoods))
+    #vel_width = vel_widths[max_loc[0][0]]
+    #hi_velocity_range =
+
 
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
@@ -1788,6 +1838,49 @@ def run_analysis(hi_cube=None,
                            av_image=av_image,
                            av_image_error=av_image_error,
                            )
+    if 0:
+        # Fit R_H2
+        #---------
+        # Unravel images to single dimension
+        rh2_ravel = images['rh2'].ravel()
+        rh2_error_ravel = images['rh2_error'].ravel()
+        h_sd_ravel = images['h_sd'].ravel()
+        h_sd_error_ravel = images['h_sd_error'].ravel()
+
+        # write indices for only ratios > 0
+        indices = np.where((rh2_ravel > 1) & \
+                           (rh2_ravel == rh2_ravel) & \
+                           (rh2_error_ravel == rh2_error_ravel))
+        rh2_ravel = rh2_ravel[indices]
+        rh2_error_ravel = rh2_error_ravel[indices]
+        h_sd_ravel = h_sd_ravel[indices]
+        h_sd_error_ravel = h_sd_error_ravel[indices]
+
+        # Fit to sternberg model
+        alphaG, Z, phi_g = fit_sternberg(h_sd_ravel,
+                                  rh2_ravel,
+                                  guesses=sternberg_params['guesses'],
+                                  vary=sternberg_params['param_vary'],
+                                  rh2_error=rh2_error_ravel,
+                                  verbose=verbose)
+
+        # keep results
+        sternberg_results['alphaG fits'][i] = alphaG
+        sternberg_results['phi_g fits'][i] = phi_g
+        sternberg_results['Z fits'][i] = Z
+
+        # Fit to krumholz model
+        phi_cnm, Z, phi_mol = fit_krumholz(h_sd_ravel,
+                                  rh2_ravel,
+                                  guesses=krumholz_params['guesses'],
+                                  vary=krumholz_params['param_vary'],
+                                  rh2_error=rh2_error_ravel,
+                                  verbose=verbose)
+
+        # keep results
+        krumholz_results['phi_cnm fits'][i] = phi_cnm
+        krumholz_results['phi_mol fits'][i] = phi_mol
+        krumholz_results['Z fits'][i] = Z
 
     results_dict.update(core_dict)
     results_dict.update({'rh2' : images['rh2'],
@@ -2356,7 +2449,7 @@ def load_ds9_region(props, filename=None, header=None):
 The main script
 '''
 
-def main(verbose=True, av_data_type='planck', region=None):
+def main(verbose=True, av_data_type='planck', regions=None):
 
     '''
 
@@ -2401,7 +2494,7 @@ def main(verbose=True, av_data_type='planck', region=None):
     guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
-    clobber = 1 # perform MC and write over current results?
+    clobber = 0 # perform MC and write over current results?
 
     # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
@@ -2421,7 +2514,6 @@ def main(verbose=True, av_data_type='planck', region=None):
 
     # Krumholz Parameters
     # --------------------
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
@@ -2453,21 +2545,50 @@ def main(verbose=True, av_data_type='planck', region=None):
     # global property filename
     global_property_filename = 'perseus_global_properties'
 
-    # Name correct region of cloud
-    if region == 1:
-        region_name = 'perseus1'
-    elif region == 2:
-        region_name = 'perseus2'
-    else:
-        region_name = 'perseus'
+    if 0:
+        # Name correct region of cloud
+        if region == 1:
+            region_name = 'perseus1'
+        elif region == 2:
+            region_name = 'perseus2'
+        else:
+            region_name = 'perseus'
 
-    global_property_filename = \
-            global_property_filename.replace('perseus', region_name)
 
     # Which cores to include in analysis?
-    cores_to_keep = ['L1495', 'L1495A', 'B213', 'L1498', 'B215',
-                     'L1483', 'L1478', 'L1456', 'NGC1579',
-                     'B5', 'IC348', 'B1E', 'B1', 'NGC1333', 'L1482']
+    cores_to_keep = [# taur
+                     'L1495',
+                     'L1495A',
+                     'B213',
+                     'L1498',
+                     'B215',
+                     'B18',
+                     'B217',
+                     'B220-1',
+                     'B220-2',
+                     'L1521',
+                     'L1524',
+                     'L1527-1',
+                     'L1527-2',
+                     # Calif
+                     'L1536',
+                     'L1483',
+                     'L1478',
+                     'L1456',
+                     'NGC1579',
+                     'L1545',
+                     'L1517',
+                     'L1512',
+                     'L1523',
+                     'L1512',
+                     # Pers
+                     'B5',
+                     'IC348',
+                     'B1E',
+                     'B1',
+                     'NGC1333',
+                     'L1482'
+                     ]
 
     # Regions
     # Options are 'ds9' or 'av_gradient'
@@ -2519,10 +2640,17 @@ def main(verbose=True, av_data_type='planck', region=None):
     # Load global properties of cloud
     # global properties written from script
     # 'av/perseus_analysis_global_properties.txt'
-    with open(property_dir + \
-              global_property_filename + '_' + av_data_type + \
-              '_scaled.txt', 'r') as f:
-        properties = json.load(f)
+    global_properties_list = []
+    for region_name in regions:
+        filename = \
+                global_property_filename.replace('perseus', region_name)
+
+        with open(property_dir + \
+                  filename + '_' + av_data_type + \
+                  '_scaled.txt', 'r') as f:
+            properties = json.load(f)
+
+        global_properties_list.append(properties)
 
     # Plot NHI vs. Av for a given velocity range
     noise_cube_filename = 'perseus_hi_galfa_cube_regrid_planckres_noise.fits'
@@ -2557,6 +2685,12 @@ def main(verbose=True, av_data_type='planck', region=None):
     region_mask = np.logical_not(myg.get_polygon_mask(av_data_planck,
                                                       region_vertices))
 
+    # Trim down cores to keep list to include only cores for cloud
+    cores_to_keep_old = list(cores_to_keep)
+    for core in cores_to_keep_old:
+        if core not in cores:
+            cores_to_keep.remove(core)
+
     # Set up lists
     sternberg_results = {}
     krumholz_results = {}
@@ -2570,7 +2704,7 @@ def main(verbose=True, av_data_type='planck', region=None):
         # Initialize dictionary to store MC results for each core
         #results = {}
 
-        for core in np.sort(cores.keys()):
+        for core in cores_to_keep:
             print('\nCalculating for core %s' % core)
 
             if box_method == 'ds9':
@@ -2586,7 +2720,13 @@ def main(verbose=True, av_data_type='planck', region=None):
             indices = indices.astype('bool')
             mask = ~indices
 
-            mask += region_mask
+            #mask += region_mask
+
+            # find which region the core is in
+            for global_properties in global_properties_list:
+                center = cores[core]['center_pixel']
+                if myg.point_in_polygon(center, region_vertices):
+                    properties = global_properties
 
             if 0:
                 import matplotlib.pyplot as plt
@@ -2639,11 +2779,7 @@ def main(verbose=True, av_data_type='planck', region=None):
     if write_pdf_figures:
         figure_types.append('pdf')
 
-    # Trim down cores to keep list to include only cores for cloud
-    cores_to_keep_old = list(cores_to_keep)
-    for core in cores_to_keep_old:
-        if core not in cores:
-            cores_to_keep.remove(core)
+
 
     for figure_type in figure_types:
         if 0:
@@ -2675,20 +2811,22 @@ def main(verbose=True, av_data_type='planck', region=None):
         print('\nWriting HI vs H figures to\n' + fig_name_hivsh)
 
         plot_hi_vs_h_grid(cores,
-                limits=[-9, 80, -1.5, 10],
+                #limits=[-9, 80, -1.5, 6.5],
+                limits=[-9, 159, -1.5, 10],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),
                 cores_to_plot=cores_to_keep,
                 show = False)
 
-        plot_hi_vs_h_grid(cores,
-                limits=[1, 100, 1, 100],
-                savedir=figure_dir + 'panel_cores/',
-                scale=('log', 'log'),
-                filename=fig_name_hivsh + '_log.{0:s}'.format(figure_type),
-                cores_to_plot=cores_to_keep,
-                show = False)
+        if 0:
+            plot_hi_vs_h_grid(cores,
+                    limits=[1, 100, 1, 100],
+                    savedir=figure_dir + 'panel_cores/',
+                    scale=('log', 'log'),
+                    filename=fig_name_hivsh + '_log.{0:s}'.format(figure_type),
+                    cores_to_plot=cores_to_keep,
+                    show = False)
 
         if 0:
             fig_name_hivsav = \
@@ -2707,8 +2845,6 @@ def main(verbose=True, av_data_type='planck', region=None):
                     show = False)
 
 if __name__ == '__main__':
-    main(av_data_type='planck', region=None)
+    main(av_data_type='planck', regions=('perseus',))
     main(av_data_type='k09')
-
-
 
