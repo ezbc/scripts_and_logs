@@ -1685,6 +1685,8 @@ def run_analysis(hi_cube=None,
                 dgr_list[i] = dgr_random
                 intercept_list[i] = intercept_random
 
+                print vel_width_random, dgr_random
+
                 # Add random error to images
                 hi_cube_noise = np.copy(hi_cube) + hi_random_error
                 av_image_noise = np.copy(av_image) + av_random_error
@@ -2055,8 +2057,8 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('phi_cnm',
                value=guesses[0],
-               min=0.5,
-               max=100,
+               min=0.1,
+               max=1000,
                vary=vary[0])
     params.add('phi_mol',
                value=guesses[2],
@@ -2212,8 +2214,8 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('alphaG',
                value=guesses[0],
-               min=0.1,
-               max=10,
+               min=0.01,
+               max=1000,
                vary=vary[0])
     params.add('phi_g',
                value=guesses[2],
@@ -2484,7 +2486,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
     # Sternberg Parameters
     # --------------------
-    N_monte_carlo_runs = 1000 # Number of monte carlo runs
+    N_monte_carlo_runs = 100 # Number of monte carlo runs
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
@@ -2813,7 +2815,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
         plot_hi_vs_h_grid(cores,
                 #limits=[-9, 80, -1.5, 6.5],
-                limits=[-9, 159, -1.5, 20],
+                limits=[-9, 159, -1.5, 10],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),

@@ -30,21 +30,39 @@ def plot_phi_cnm_vs_glat(glats, phi_cnms, glat_errors=None,
     colormap = plt.cm.gist_ncar
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     font_scale = 12
-    params = {#'backend': .pdf',
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
+              'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
-              'figure.figsize': (8, 8),
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
 
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
     # Create figure instance
     fig = plt.figure()
 
@@ -101,30 +119,42 @@ def plot_T_cnm_vs_glat(cloud_dict, limits=None, savedir='./', filename=None,
     cmap = plt.cm.gnuplot
 
     # Color cycle, grabs colors from cmap
-    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, len(cloud_dict))]
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale,
-              'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
-              'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
-              'font.weight': font_weight,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
               'axes.labelweight': font_weight,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
               'figure.figsize': (3.6, 3.6),
               'figure.dpi': 600,
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
 
     # Create figure instance
     fig = plt.figure()
@@ -132,7 +162,7 @@ def plot_T_cnm_vs_glat(cloud_dict, limits=None, savedir='./', filename=None,
     # Create plot
     ax = fig.add_subplot(111)
 
-    markers = ['^', 's', 'o']
+    markers = ['^', 's', 'o', 'd', 'x']
 
     for i, cloud in enumerate(cloud_dict):
 
@@ -185,6 +215,138 @@ def plot_T_cnm_vs_glat(cloud_dict, limits=None, savedir='./', filename=None,
     # Adjust asthetics
     ax.set_xlabel(r'$T_{\rm CNM}$ [K]',)
     ax.set_ylabel(r'Galactic Latitude [deg]',)
+
+    ax.legend(loc='best', numpoints=1)
+
+    if title is not None:
+        fig.suptitle(title.capitalize(), fontsize=font_scale*1.5)
+    if filename is not None:
+        plt.savefig(savedir + filename, bbox_inches='tight')
+    if show:
+        fig.show()
+
+def plot_T_cnm_vs_gdist(cloud_dict, limits=None, savedir='./', filename=None,
+        show=True, scale=['linear', 'linear'], title='', core_names=''):
+
+    # Import external modules
+    import numpy as np
+    import math
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import ImageGrid
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+    plt.rcdefaults()
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
+              'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    # Create plot
+    ax = fig.add_subplot(111)
+
+    markers = ['^', 's', 'o', 'd', 'x']
+
+    for i, cloud in enumerate(cloud_dict):
+
+        glats = []
+        phi_cnms = []
+        phi_cnm_errors = []
+        T_cnms = []
+        T_cnm_errors = []
+        core_plot_count = 0
+
+        for j, core in enumerate(cloud_dict[cloud]['cores']):
+            core_dict = cloud_dict[cloud]['cores'][core]
+            glat = core_dict['center_wcs']['gal'][1]
+            D = cloud_dict[cloud]['distance']
+
+            try:
+                phi_cnm = core_dict['krumholz_results']['phi_cnm']
+                phi_cnm_error = core_dict['krumholz_results']['phi_cnm_error']
+                T_cnm = core_dict['krumholz_results']['T_cnm']
+                T_cnm_error = np.array(core_dict['krumholz_results']['T_cnm_error'])
+                T_cnm_error = np.copy((T_cnm_error,)).T
+
+                if core_plot_count == 0:
+                    label = cloud.capitalize()
+                else:
+                    label = None
+
+
+                # Height of sun above galactic plane = 10.0 pc
+                gdist = D * np.sin(np.deg2rad(glat)) - 10.0
+
+                image = ax.errorbar(
+                                T_cnm,
+                                gdist,
+                                xerr=T_cnm_error,
+                                alpha=0.8,
+                                color=color_cycle[i],
+                                marker=markers[i],
+                                ecolor=color_cycle[i],
+                                linestyle='none',
+                                markersize=4,
+                                label=label,
+                                )
+                core_plot_count += 1
+
+            except KeyError:
+                pass
+
+    ax.set_xscale(scale[0], nonposx = 'clip')
+    ax.set_yscale(scale[1], nonposy = 'clip')
+
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
+
+    # Adjust asthetics
+    ax.set_xlabel(r'$T_{\rm CNM}$ [K]',)
+    ax.set_ylabel(r'Distance from Galactic Plane [pc]',)
 
     ax.legend(loc='best', numpoints=1)
 
@@ -579,21 +741,27 @@ def main():
     cloud_dict = {'taurus' : {},
                   'perseus' : {},
                   'california' : {},
+                  'aldobaran' : {},
                   }
 
     # load Planck Av and GALFA HI images, on same grid
     for cloud in cloud_dict:
-        file_dir = '/d/bip3/ezbc/{0:s}/data/av/'.format(cloud)
+        if cloud == 'aldobaran':
+            cloud_data = 'california'
+        else:
+            cloud_data = cloud
+
+        file_dir = '/d/bip3/ezbc/{0:s}/data/av/'.format(cloud_data)
         av_data, av_header = fits.getdata(file_dir + \
-                    '{0:s}_av_planck_5arcmin.fits'.format(cloud),
+                    '{0:s}_av_planck_5arcmin.fits'.format(cloud_data),
                     header=True)
         av_error_data, av_error_header = fits.getdata(file_dir + \
-                '{0:s}_av_error_planck_5arcmin.fits'.format(cloud),
+                '{0:s}_av_error_planck_5arcmin.fits'.format(cloud_data),
                 header=True)
 
-        hi_dir = '/d/bip3/ezbc/{0:s}/data/hi/'.format(cloud)
+        hi_dir = '/d/bip3/ezbc/{0:s}/data/hi/'.format(cloud_data)
         hi_data, hi_header = fits.getdata(hi_dir + \
-                '{0:s}_hi_galfa_cube_regrid_planckres.fits'.format(cloud),
+                '{0:s}_hi_galfa_cube_regrid_planckres.fits'.format(cloud_data),
                 header=True)
 
         cloud_dict[cloud]['av_data'] = av_data
@@ -624,9 +792,13 @@ def main():
                                           ((3, 20, 0), (35, 0, 0)))
     cloud_dict['california']['limit_wcs'] = (((4, 49, 0), (31, 54, 0)),
                                              ((3, 40, 0), (42, 24, 0)))
-    cloud_dict['taurus']['plot_cores'] = ('L1495A', 'L1495')
-    cloud_dict['perseus']['plot_cores'] = ('NGC1333', 'B5')
-    cloud_dict['california']['plot_cores'] = ('L1482', 'L1456')
+    cloud_dict['aldobaran']['limit_wcs'] = (((4, 49, 0), (31, 54, 0)),
+                                             ((3, 40, 0), (42, 24, 0)))
+
+    cloud_dict['taurus']['distance'] = 135.0 # pc
+    cloud_dict['perseus']['distance'] = 260.0 # pc
+    cloud_dict['california']['distance'] = 410.0 # pc
+    cloud_dict['aldobaran']['distance'] = 410.0 # pc
 
     cloud_dict = convert_limit_coordinates(cloud_dict)
 
@@ -651,6 +823,13 @@ def main():
         plot_T_cnm_vs_glat(cloud_dict,
                            savedir=figure_dir,
                            filename='multicloud_T_cnm_vs_glat' + \
+                              '.{0:s}'.format(figure_type),
+                           show=0,
+                           #limits=[5, 45, -6, -22]
+                           )
+        plot_T_cnm_vs_gdist(cloud_dict,
+                           savedir=figure_dir,
+                           filename='multicloud_T_cnm_vs_gdist' + \
                               '.{0:s}'.format(figure_type),
                            show=0,
                            #limits=[5, 45, -6, -22]

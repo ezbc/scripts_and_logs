@@ -15,13 +15,43 @@ def main():
                  'map': None,
                  'threshold': None,
                  },
+              'L1482-1':
+                {'center_wcs': [(4, 30, 40), (35, 15, 57.60)],
+                 'map': None,
+                 'threshold': None,
+                 },
+              'L1482-2':
+                {'center_wcs': [(4, 30, 40), (35, 52, 57.60)],
+                 'map': None,
+                 'threshold': None,
+                 },
               'L1483':
                 {'center_wcs': [(4, 35, 15), (36, 18, 12)],
                  'map': None,
                  'threshold': None,
                  },
+              'L1483-1':
+                {'center_wcs': [(4, 35, 15), (36, 21, 12)],
+                 'map': None,
+                 'threshold': None,
+                 },
+              'L1483-2':
+                {'center_wcs': [(4, 39, 15), (34, 58, 12)],
+                 'map': None,
+                 'threshold': None,
+                 },
               'L1478':
                 {'center_wcs': [(4, 25, 7), (37, 9, 0)],
+                 'map': None,
+                 'threshold': None,
+                 },
+              'L1478-1':
+                {'center_wcs': [(4, 25, 7), (37, 10, 0)],
+                 'map': None,
+                 'threshold': None,
+                 },
+              'L1478-2':
+                {'center_wcs': [(4, 21, 7), (37, 33, 0)],
                  'map': None,
                  'threshold': None,
                  },

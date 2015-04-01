@@ -2054,7 +2054,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('phi_cnm',
                value=guesses[0],
-               min=0.5,
+               min=0.1,
                max=100,
                vary=vary[0])
     params.add('phi_mol',
@@ -2211,8 +2211,8 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('alphaG',
                value=guesses[0],
-               min=0.1,
-               max=10,
+               min=0.01,
+               max=100,
                vary=vary[0])
     params.add('phi_g',
                value=guesses[2],
@@ -2494,7 +2494,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
     guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
-    clobber = 0 # perform MC and write over current results?
+    clobber = 1 # perform MC and write over current results?
 
     # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/perseus/data/python_output/' + \
@@ -2572,23 +2572,31 @@ def main(verbose=True, av_data_type='planck', regions=None):
                      'L1527-2',
                      # Calif
                      'L1536',
-                     'L1483',
-                     'L1478',
+                     'L1483-1',
+                     'L1483-2',
+                     'L1482-1',
+                     'L1482-2',
+                     'L1478-1',
+                     'L1478-2',
                      'L1456',
                      'NGC1579',
-                     'L1545',
-                     'L1517',
-                     'L1512',
-                     'L1523',
-                     'L1512',
+                     #'L1545',
+                     #'L1517',
+                     #'L1512',
+                     #'L1523',
+                     #'L1512',
                      # Pers
                      'B5',
                      'IC348',
                      'B1E',
                      'B1',
                      'NGC1333',
-                     'L1482'
+                     'B4',
+                     'B3',
+                     'L1455',
+                     'L1448',
                      ]
+
 
     # Regions
     # Options are 'ds9' or 'av_gradient'

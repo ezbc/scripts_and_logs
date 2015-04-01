@@ -617,6 +617,7 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     counts_ext = counts_ext / integrate(counts_ext, x=bin_edges_ext)
     y_fit /= np.max(y_fit)
     y_fit *= np.max(counts_ext)
+    print('max counts', np.max(counts_ext))
 
     ax.plot(bin_edges_ext, counts_ext, drawstyle='steps-mid',
             linewidth=1.5)
@@ -843,8 +844,7 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
                               bounds=bounds,)
 
     # Include only residuals within 3 sigma
-    intercept = fit_params[2]
-    residual_thres = resid_width_scale * np.abs(fit_params[0]) + intercept
+    residual_thres = resid_width_scale * np.abs(fit_params[0]) + fit_params[2]
     mask = residuals > residual_thres
 
     import matplotlib.pyplot as plt
@@ -880,7 +880,7 @@ def get_residual_mask(residuals, resid_width_scale=3.0, plot_progress=False,
                             filename=results_filename.replace('.pdf', '.png'),
                             show=plot_progress)
 
-    return mask, intercept
+    return mask
 
 def iterate_residual_masking(
                              nhi_image=None,
@@ -1007,14 +1007,10 @@ def iterate_residual_masking(
             plot_filename = results_filename
         else:
             plot_filename = None
-
-        mask_new, intercept = \
-                get_residual_mask(residuals,
+        mask_new = get_residual_mask(residuals,
                                      resid_width_scale=resid_width_scale,
                                      plot_progress=plot_progress,
                                      results_filename=plot_filename)
-
-        #intercepts = np.linspace(intercept, intercept + 1.0, 1.0)
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -1039,7 +1035,7 @@ def iterate_residual_masking(
     av_model = dgr * nhi_image
     av_model[mask] = np.nan
 
-    return (av_model, mask, dgr, intercepts)
+    return (av_model, mask, dgr)
 
 def calc_likelihoods(
         hi_cube=None,
@@ -1484,19 +1480,18 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     contour_confs = (0.95,)
 
     # Name of HI noise cube
-    noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise'
+    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise'
 
     # Threshold for converging DGR
     threshold_delta_dgr = 0.00005
 
     # Name of property files results are written to
-    global_property_file = 'california_global_properties'
+    global_property_file = 'taurus_global_properties'
 
     # Likelihood axis resolutions
     vel_widths = np.arange(1, 75, 2*0.16667)
     dgrs = np.arange(0.001, 0.8, 1e-3)
     intercepts = np.arange(0, 1, 1)
-    #intercepts = np.arange(-3, 3, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:
@@ -1511,49 +1506,49 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     clobber_bin_images = True
 
     # Use single velocity center for entire image?
-    single_vel_center = False
+    single_vel_center = True
 
     # Filetype extensions for figures
     figure_types = ('png', 'pdf')
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
     figure_dir = \
-        '/d/bip3/ezbc/california/figures/'
-    av_dir = '/d/bip3/ezbc/california/data/av/'
-    hi_dir = '/d/bip3/ezbc/california/data/hi/'
-    co_dir = '/d/bip3/ezbc/california/data/co/'
-    core_dir = '/d/bip3/ezbc/california/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/california/data/python_output/'
+        '/d/bip3/ezbc/taurus/figures/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
     region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
-    likelihood_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
+    likelihood_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
 
     # Load data
     # ---------
     # Adjust filenames
     #noise_cube_filename += bin_string
-    likelihood_filename = 'california_likelihood_{0:s}_bin'.format(av_data_type)
-    results_filename = 'california_likelihood_{0:s}_bin'.format(av_data_type)
+    likelihood_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
+    results_filename = 'taurus_likelihood_{0:s}_bin'.format(av_data_type)
     # load Planck Av and GALFA HI images, on same grid
     if av_data_type == 'k09':
         print('\nLoading K+09 2MASS data...')
         av_data, av_header = fits.getdata(av_dir + \
-                                  'california_av_k09_regrid_planckres.fits',
+                                  'taurus_av_k09_regrid_planckres.fits',
                                   header=True)
         av_data_error = 0.1 * np.ones(av_data.shape)
     else:
     	print('\nLoading Planck data...')
         av_data, av_header = fits.getdata(av_dir + \
-                                          'california_av_planck_5arcmin.fits',
+                                          'taurus_av_planck_5arcmin.fits',
                                           header=True)
 
         av_data_error, av_error_header = fits.getdata(av_dir + \
-                                    'california_av_error_planck_5arcmin.fits',
+                                    'taurus_av_error_planck_5arcmin.fits',
                                     header=True)
 
     hi_data, hi_header = fits.getdata(hi_dir + \
-                'california_hi_galfa_cube_regrid_planckres.fits',
+                'taurus_hi_galfa_cube_regrid_planckres.fits',
             header=True)
 
     # Load global properties
@@ -1564,12 +1559,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # ---------------------
     # Name correct region of cloud
     if region == 1:
-        region_name = 'california1'
+        region_name = 'taurus1'
     elif region == 2:
-        region_name = 'california2'
+        region_name = 'taurus2'
     else:
-        region_name = 'california'
-    global_property_file = global_property_file.replace('california', region_name)
+        region_name = 'taurus'
+    global_property_file = global_property_file.replace('taurus', region_name)
 
     # Change WCS coords to pixel coords of images
     global_props = convert_limit_coordinates(global_props, header=av_header)
@@ -1661,7 +1656,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     print('\nDeriving mask for correlated residuals...')
 
-    av_model, mask, dgr, _intercepts = iterate_residual_masking(
+    av_model, mask, dgr = iterate_residual_masking(
                              nhi_image=nhi_image,
                              nhi_image_error=nhi_image_error,
                              av_data=av_data,
@@ -1675,7 +1670,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                              verbose=1,
                              plot_progress=0,
                              results_filename=figure_dir + 'likelihood/'\
-                                              'california_residual_pdf.pdf'
+                                              'taurus_residual_pdf.pdf'
                              )
 
     # Combine region mask with new mask
@@ -1691,27 +1686,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
         plt.imshow(np.ma.array(av_data, mask=mask), origin='lower')
         plt.show()
 
-    # Derive center velocity from hi
-    # ------------------------------
-    if single_vel_center:
-        hi_spectrum = np.sum(hi_data, axis=(1,2))
-        vel_center = np.array((np.average(hi_vel_axis,
-                               weights=hi_spectrum**2),))[0]
-        print('\nVelocity center from HI = ' +\
-                '{0:.2f} km/s'.format(vel_center))
-    else:
-        vel_center = np.zeros(hi_data.shape[1:])
-        for i in xrange(0, hi_data.shape[1]):
-            for j in xrange(0, hi_data.shape[2]):
-                hi_spectrum = hi_data[:, i, j]
-                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                if np.nansum(hi_spectrum) > 0:
-                    vel_center[i,j] = \
-                            np.array((np.average(hi_vel_axis,
-                                                 weights=hi_spectrum**2),))[0]
-                else:
-                    vel_center[i,j] = np.nan
-
     # Bin the masked images
     # ---------------------
     print('\nBinning masked images...')
@@ -1721,23 +1695,23 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     av_data_error[mask] = np.nan
     hi_data[:, mask] = np.nan
 
-    if not check_file(av_dir + 'california_av_planck_5arcmin_masked.fits',
+    if not check_file(av_dir + 'taurus_av_planck_5arcmin_masked.fits',
                       clobber=clobber_bin_images):
-        fits.writeto(av_dir + 'california_av_planck_5arcmin_masked.fits',
+        fits.writeto(av_dir + 'taurus_av_planck_5arcmin_masked.fits',
                      av_data,
                      av_header)
 
-    if not check_file(av_dir + 'california_av_error_planck_5arcmin_masked.fits',
+    if not check_file(av_dir + 'taurus_av_error_planck_5arcmin_masked.fits',
                       clobber=clobber_bin_images):
-        fits.writeto(av_dir + 'california_av_error_planck_5arcmin_masked.fits',
+        fits.writeto(av_dir + 'taurus_av_error_planck_5arcmin_masked.fits',
                      av_data_error,
                      av_header)
 
     if not check_file(hi_dir + \
-                      'california_hi_galfa_cube_regrid_planckres_masked.fits',
+                      'taurus_hi_galfa_cube_regrid_planckres_masked.fits',
                       clobber=clobber_bin_images):
         fits.writeto(hi_dir + \
-                     'california_hi_galfa_cube_regrid_planckres_masked.fits',
+                     'taurus_hi_galfa_cube_regrid_planckres_masked.fits',
                      hi_data,
                      hi_header)
 
@@ -1756,14 +1730,14 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           func=np.nanmean,
                           return_weights=True)
 
-        if not check_file(av_dir + 'california_av_planck_5arcmin_bin.fits',
+        if not check_file(av_dir + 'taurus_av_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'california_av_planck_5arcmin_bin.fits',
+            fits.writeto(av_dir + 'taurus_av_planck_5arcmin_bin.fits',
                          av_data_bin,
                          av_header_bin)
-        if not check_file(av_dir + 'california_av_planck_5arcmin_bin_weights.fits',
+        if not check_file(av_dir + 'taurus_av_planck_5arcmin_bin_weights.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'california_av_planck_5arcmin_bin_weights.fits',
+            fits.writeto(av_dir + 'taurus_av_planck_5arcmin_bin_weights.fits',
                          bin_weights,
                          av_header_bin)
 
@@ -1779,9 +1753,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           header=av_header,
                           func=noise_func,)
 
-        if not check_file(av_dir + 'california_av_error_planck_5arcmin_bin.fits',
+        if not check_file(av_dir + 'taurus_av_error_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
-            fits.writeto(av_dir + 'california_av_error_planck_5arcmin_bin.fits',
+            fits.writeto(av_dir + 'taurus_av_error_planck_5arcmin_bin.fits',
                          av_data_error_bin,
                          av_header_bin)
 
@@ -1793,10 +1767,10 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                           func=np.nanmean)
 
         if not check_file(hi_dir + \
-                          'california_hi_galfa_cube_regrid_planckres_bin.fits',
+                          'taurus_hi_galfa_cube_regrid_planckres_bin.fits',
                           clobber=clobber_bin_images):
             fits.writeto(hi_dir + \
-                         'california_hi_galfa_cube_regrid_planckres_bin.fits',
+                         'taurus_hi_galfa_cube_regrid_planckres_bin.fits',
                          hi_data_bin,
                          hi_header_bin)
 
@@ -1812,19 +1786,19 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                                                            av_data_type)
 
     av_data, av_header = fits.getdata(av_dir + \
-                            'california_av_planck_5arcmin' + bin_string + '.fits',
+                            'taurus_av_planck_5arcmin' + bin_string + '.fits',
                                       header=True)
 
     av_data_error, av_error_header = fits.getdata(av_dir + \
-                'california_av_error_planck_5arcmin' + bin_string + '.fits',
+                'taurus_av_error_planck_5arcmin' + bin_string + '.fits',
             header=True)
 
     bin_weights = fits.getdata(av_dir + \
-                               'california_av_planck_5arcmin' + bin_string + \
+                               'taurus_av_planck_5arcmin' + bin_string + \
                                '_weights.fits',)
 
     hi_data, hi_header = fits.getdata(hi_dir + \
-                            'california_hi_galfa_cube_regrid_planckres' + \
+                            'taurus_hi_galfa_cube_regrid_planckres' + \
                             bin_string + '.fits',
                             header=True)
 
@@ -1875,25 +1849,25 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # ------------------------------
     if single_vel_center:
         hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
-        vel_center_bin = np.array((np.average(hi_vel_axis,
-                                   weights=hi_spectrum**2),))[0]
+        vel_center = np.array((np.average(hi_vel_axis,
+                               weights=hi_spectrum**2),))[0]
         print('\nVelocity center from HI = ' +\
-                '{0:.2f} km/s'.format(vel_center_bin))
-        vel_center_masked_bin = vel_center
+                '{0:.2f} km/s'.format(vel_center))
+        vel_center_masked = vel_center
     else:
-        vel_center_bin = np.zeros(hi_data.shape[1:])
+        vel_center = np.zeros(hi_data.shape[1:])
         for i in xrange(0, hi_data.shape[1]):
             for j in xrange(0, hi_data.shape[2]):
                 hi_spectrum = hi_data[:, i, j]
                 hi_spectrum[np.isnan(hi_spectrum)] = 0.0
                 if np.nansum(hi_spectrum) > 0:
-                    vel_center_bin[i,j] = \
+                    vel_center[i,j] = \
                             np.array((np.average(hi_vel_axis,
                                                  weights=hi_spectrum**2),))[0]
                 else:
-                    vel_center_bin[i,j] = np.nan
+                    vel_center[i,j] = np.nan
 
-        vel_center_masked_bin = vel_center[~mask]
+        vel_center_masked = vel_center[~mask]
 
     # Perform likelihood calculation of masked images
     # -----------------------------------------------
@@ -1909,7 +1883,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                      av_image=av_data[~mask],
                      av_image_error=av_data_error[~mask],
                      #image_weights=bin_weights[~mask],
-                     vel_center=vel_center_masked_bin,
+                     vel_center=vel_center_masked,
                      vel_widths=vel_widths,
                      dgrs=dgrs,
                      intercepts=intercepts,
@@ -1930,8 +1904,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     print('%.1f to %.1f km/s' % (vel_range_confint[0],
                                  vel_range_confint[1]))
 
-    vel_range_max = (vel_center_bin - width_max / 2.0,
-                     vel_center_bin + width_max / 2.0)
+    vel_range_max = (vel_center - width_max / 2.0,
+                     vel_center + width_max / 2.0)
 
     # Calulate chi^2 for best fit models
     # ----------------------------------
@@ -1965,7 +1939,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['dust2gas_ratio_max'] = {}
     global_props['intercept_max'] = {}
     global_props['hi_velocity_center'] = {}
-    global_props['hi_velocity_center_bin'] = {}
     global_props['hi_velocity_width_max'] = {}
     global_props['hi_velocity_range_max'] =  {}
     global_props['av_threshold'] = {}
@@ -1983,10 +1956,6 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['intercept']['value'] = intercepts_confint[0]
     global_props['intercept_error']['value'] = intercepts_confint[1:]
     global_props['hi_velocity_center']['value'] = vel_center.tolist()
-    global_props['hi_velocity_center']['unit'] = 'km/s'
-    global_props['hi_velocity_center_bin']['value'] = vel_center_bin.tolist()
-    global_props['hi_velocity_center_bin']['unit'] = 'km/s'
-    global_props['single_vel_center'] = single_vel_center
     #global_props['hi_velocity_width_max']['value'] = width_max
     #global_props['hi_velocity_range_max']['value'] = vel_range_max
     global_props['hi_velocity_range_conf'] = conf
@@ -2056,7 +2025,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                      av_image=av_data[~mask],
                      av_image_error=av_data_error[~mask],
                      image_weights=bin_weights[~mask],
-                     vel_center=vel_center_masked_bin,
+                     vel_center=vel_center_masked,
                      vel_widths=vel_widths,
                      dgrs=dgrs,
                      intercepts=intercepts,
@@ -2196,17 +2165,17 @@ def main():
     vel_range_diff_thres = 3.0 # km/s
 
     property_dir = \
-        '/d/bip3/ezbc/california/data/python_output/residual_parameter_results/'
+        '/d/bip3/ezbc/taurus/data/python_output/residual_parameter_results/'
 
-    final_property_dir = '/d/bip3/ezbc/california/data/python_output/'
+    final_property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
 
-    property_filename = 'california_global_properties_planck'
+    property_filename = 'taurus_global_properties_planck'
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
     residual_width_scales = [3.0,]
 
-    regions = [None, ]
+    regions = [2, 1, None, ]
 
     clobber_results = True
 
@@ -2218,20 +2187,20 @@ def main():
     for region in regions:
         # Grab correct region
         if region == 1:
-            region_name = 'california1'
+            region_name = 'taurus1'
         elif region == 2:
-            region_name = 'california2'
+            region_name = 'taurus2'
         else:
-            region_name = 'california'
+            region_name = 'taurus'
 
-        property_filename = 'california_global_properties_planck'
-        property_filename = property_filename.replace('california', region_name)
+        property_filename = 'taurus_global_properties_planck'
+        property_filename = property_filename.replace('taurus', region_name)
 
         print('\nPerforming likelihood derivations for ' + region_name)
 
         for i, residual_width_scale in enumerate(residual_width_scales):
             iteration = 0
-            vel_range = (-30, 40.0)
+            vel_range = (-20.0, 30.0)
             vel_range_new = (-1.0, 1.0)
             vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                            np.array(vel_range_new)))

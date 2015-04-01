@@ -28,14 +28,38 @@ def main():
                  'threshold': None,
                  'box_wcs': None,
                  },
+             'L1448':
+                {'center_wcs': [(3, 25, 27), (30, 45, 18)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+             'L1455':
+                {'center_wcs': [(3, 27, 27), (30, 10, 18)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
              'B1E':
                 {'center_wcs': [(3, 36, 27), (31, 07, 18)],
                  'map': None,
                  'threshold': None,
                  'box_wcs': None,
                  },
+             'B3':
+                {'center_wcs': [(3, 40, 31), (31, 46, 31)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
              'B1':
                 {'center_wcs': [(3, 33, 31), (31, 10, 31)],
+                 'map': None,
+                 'threshold': None,
+                 'box_wcs': None,
+                 },
+             'B4':
+                {'center_wcs': [(3, 44, 31), (31, 41, 31)],
                  'map': None,
                  'threshold': None,
                  'box_wcs': None,

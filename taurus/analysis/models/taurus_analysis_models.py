@@ -918,9 +918,11 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
         y_scaling = 1.0
 
     n = len(cores_to_plot)
-    ncols = 2
-    nrows = (n + 1) / ncols
+    ncols = 4
+    nrows = n / ncols + 1
     y_scaling = nrows / float(ncols)
+
+    print nrows, ncols, n
 
     # Set up plot aesthetics
     # ----------------------
@@ -952,7 +954,8 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
               'text.usetex': True,
               'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (3.6, 3.6*y_scaling),
+              #'figure.figsize': (3.6, 3.6*y_scaling),
+              'figure.figsize': (7.5, 7.5*y_scaling),
               'figure.dpi': 600,
               'backend' : 'pdf',
               #'figure.titlesize': font_scale,
@@ -2494,7 +2497,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
     guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
-    clobber = 1 # perform MC and write over current results?
+    clobber = 0 # perform MC and write over current results?
 
     # Monte carlo results file bases
     results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \

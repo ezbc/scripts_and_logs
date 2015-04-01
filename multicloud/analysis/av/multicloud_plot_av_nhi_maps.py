@@ -29,25 +29,49 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # Set up plot aesthetics
     plt.clf()
     plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
     font_scale = 9
-    params = {#'backend': .pdf',
+    line_weight = 600
+    font_weight = 600
+
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
               'figure.figsize': (7.3, 7.3),
-              'figure.titlesize': font_scale
-              #'axes.color_cycle': color_cycle # colors of different plots
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
 
     # Create figure instance
     fig = plt.figure()
@@ -78,8 +102,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # ------------------
     # create axes
     ax = imagegrid[0]
-    cmap = cm.Greys # colormap
-    cmap = cm.gnuplot # colormap
+
     # show the image
     im = ax.imshow(nhi_image,
             interpolation='nearest',origin='lower',
@@ -962,6 +985,7 @@ def load_fits(filename,return_header=False):
     '''
 
     import pyfits as pf
+    from astropy.io import fits
 
     f = pf.open(filename)
     if return_header:
@@ -1061,7 +1085,8 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     '''
 
     # import external modules
-    import pyfits as fits
+    #import pyfits as fits
+    from astropy.io import fits
     import numpy as np
     from mycoords import make_velocity_axis
     import mygeometry as myg
@@ -1277,8 +1302,9 @@ if __name__ == '__main__':
 
     main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
             av_data_type='planck')
-    main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
-            av_data_type='planck_rad')
+
+    #main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
+    #        av_data_type='planck_rad')
     #main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
     #        av_data_type='lee12_2mass')
     #main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,

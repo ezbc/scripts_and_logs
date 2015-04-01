@@ -10,6 +10,7 @@ import numpy as np
 '''
 
 def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
+        cores_to_keep=None,
         props=None, cloud_dict=None, regions=None, title=None, limits=None,
         contours=None, boxes=False, savedir='./', filename=None, show=True,
         hi_vlimits=None, av_vlimits=None,):
@@ -25,6 +26,7 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
     import pywcs
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
+    import matplotlib.patheffects as PathEffects
 
     # Set up plot aesthetics
     # ----------------------
@@ -143,9 +145,16 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
 
         cores = cloud_dict[cloud]['cores']
 
+        cores_in_cloud = []
+
+        for core in cores_to_keep:
+            if core in cores:
+                cores_in_cloud.append(core)
+
+
         # Convert sky to pix coordinates
         wcs_header = pywcs.WCS(header)
-        for core in cores:
+        for core in cores_in_cloud:
             pix_coords = cores[core]['center_pixel']
 
             anno_color = (0.3, 0.5, 1)
@@ -174,14 +183,19 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
                 center_xy = (np.sum(vertices[:, 1]) / n,
                              np.sum(vertices[:, 0]) / n)
 
+                if core == 'L1521':
+                    center_xy += np.array((1, 7))
+
                 ax.annotate(str(count),
                         #xy=[pix_coords[0], pix_coords[1]],
                         xy=center_xy,
-                        xytext=(-2,-2),
+                        xytext=(-4,-4),
                         label=core,
                         textcoords='offset points',
-                        fontsize=font_scale,
-                        color='w')
+                        fontsize=font_scale*0.75,
+                        color='k',
+                        path_effects=[PathEffects.withStroke(linewidth=2,
+                                                 foreground="w")])
 
                 count += 1
             except KeyError:
@@ -1019,9 +1033,12 @@ def load_ds9_core_region(cores, filename_base = 'taurus_av_boxes_',
                                             dec=poly_verts[i][1],
                                             header=header)[:-1][::-1].tolist())
 
-        cores[core]['poly_verts'] = {}
-        cores[core]['poly_verts']['wcs'] = poly_verts
-        cores[core]['poly_verts']['pixel'] = poly_verts_pix
+        if core in cores:
+            cores[core]['poly_verts'] = {}
+            cores[core]['poly_verts']['wcs'] = poly_verts
+            cores[core]['poly_verts']['pixel'] = poly_verts_pix
+        else:
+            pass
 
     return cores
 
@@ -1154,26 +1171,30 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
                      'L1527-2',
                      # Calif
                      'L1536',
-                     'L1483',
-                     'L1478',
+                     'L1483-1',
+                     'L1483-2',
+                     'L1482-1',
+                     'L1482-2',
+                     'L1478-1',
+                     'L1478-2',
                      'L1456',
                      'NGC1579',
-                     'L1545',
-                     'L1517',
-                     'L1512',
-                     'L1523',
-                     'L1512',
+                     #'L1545',
+                     #'L1517',
+                     #'L1512',
+                     #'L1523',
+                     #'L1512',
                      # Pers
                      'B5',
                      'IC348',
                      'B1E',
                      'B1',
                      'NGC1333',
-                     'L1482'
+                     'B4',
+                     'B3',
+                     'L1455',
+                     'L1448',
                      ]
-
-
-
 
     # Regions, regions to edit the global properties with
     if region == 1:
@@ -1375,6 +1396,7 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
                        limits=props['plot_limit']['pixel'],
                        regions=props['regions'],
                        cloud_dict=cloud_dict,
+                       cores_to_keep=cores_to_keep,
                        props=props,
                        hi_vlimits=(0,20),
                        av_vlimits=(0,16),

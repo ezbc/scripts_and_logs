@@ -1427,12 +1427,22 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
         calculate_sd, calculate_nh2, calculate_nh2_error
 
     # Calculate N(HI) and the error
-    nhi_image, nhi_image_error = calculate_nhi(cube=hi_cube,
-                                               velocity_axis=hi_velocity_axis,
-                                               noise_cube=hi_noise_cube,
-                                               velocity_range=hi_vel_range,
-                                               return_nhi_error=True,
-                                               header=hi_header)
+    if 0:
+        nhi_image, nhi_image_error = calculate_nhi(cube=hi_cube,
+                                         velocity_axis=hi_velocity_axis,
+                                                   noise_cube=hi_noise_cube,
+                                                   velocity_range=hi_vel_range,
+                                                   return_nhi_error=True,
+                                                   header=hi_header)
+    if 1:
+        hi_vel_range = np.array(hi_vel_range)
+        nhi_image = calculate_nhi(cube=hi_cube,
+                                  velocity_axis=hi_velocity_axis,
+                                                   #noise_cube=hi_noise_cube,
+                                                   velocity_range=hi_vel_range,
+                                                   header=hi_header)
+        nhi_image_error = 0.01 * nhi_image
+        #print nhi_image[~np.isnan(nhi_image)]
 
     if nhi_error is not None:
         nhi_image_error = nhi_error
@@ -1624,7 +1634,7 @@ def run_analysis(hi_cube=None,
     intercept_likelihoods = np.asarray(properties['intercept_likelihood'])
 
     # Load center velocity
-    vel_center = properties['hi_velocity_center']['value']
+    vel_center = properties['hi_velocity_center_masked']
 
     # Load the full 3D likelihood space
     likelihoods = np.asarray(properties['likelihoods'])
@@ -1675,10 +1685,10 @@ def run_analysis(hi_cube=None,
                         likelihood_pdf.rvs()
 
                 # Create the velocity range
-                hi_vel_range_noise = (vel_center - \
-                                        vel_width_random / 2.,
-                                      vel_center + \
-                                        vel_width_random / 2.)
+                hi_vel_range_noise = np.array((vel_center - \
+                                                vel_width_random / 2.,
+                                               vel_center + \
+                                                vel_width_random / 2.))
 
                 width_list[i] = vel_width_random
                 dgr_list[i] = dgr_random
@@ -1816,9 +1826,15 @@ def run_analysis(hi_cube=None,
     intercept = properties['intercept_max']['value']
     #intercept_error = properties['intercept_error']['value']
     #dgr_error = properties['dust2gas_ratio_error']['value']
-    vel_center = properties['hi_velocity_center']['value']
+    vel_center = properties['hi_velocity_center_masked']
     vel_width = properties['hi_velocity_width_max']['value']
-    hi_vel_range = (vel_center - vel_width/2.0, vel_center + vel_width/2.0)
+    if isinstance(vel_center, list):
+        vel_center = np.array(vel_center)
+    hi_vel_range = np.array((vel_center - vel_width/2.0,
+                             vel_center + vel_width/2.0))
+
+    print hi_vel_range[~np.isnan(hi_vel_range)]
+
     #hi_vel_range = properties['hi_velocity_range']
 
 
@@ -1826,7 +1842,6 @@ def run_analysis(hi_cube=None,
     #max_loc = np.where(likelihoods == np.max(likelihoods))
     #vel_width = vel_widths[max_loc[0][0]]
     #hi_velocity_range =
-
 
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
@@ -2054,7 +2069,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('phi_cnm',
                value=guesses[0],
-               min=0.5,
+               min=0.1,
                max=100,
                vary=vary[0])
     params.add('phi_mol',
@@ -2572,22 +2587,29 @@ def main(verbose=True, av_data_type='planck', regions=None):
                      'L1527-2',
                      # Calif
                      'L1536',
-                     'L1483',
-                     'L1478',
+                     'L1483-1',
+                     'L1483-2',
+                     'L1482-1',
+                     'L1482-2',
+                     'L1478-1',
+                     'L1478-2',
                      'L1456',
                      'NGC1579',
-                     'L1545',
-                     'L1517',
-                     'L1512',
-                     'L1523',
-                     'L1512',
+                     #'L1545',
+                     #'L1517',
+                     #'L1512',
+                     #'L1523',
+                     #'L1512',
                      # Pers
                      'B5',
                      'IC348',
                      'B1E',
                      'B1',
                      'NGC1333',
-                     'L1482'
+                     'B4',
+                     'B3',
+                     'L1455',
+                     'L1448',
                      ]
 
     # Regions
@@ -2653,15 +2675,18 @@ def main(verbose=True, av_data_type='planck', regions=None):
         global_properties_list.append(properties)
 
     # Plot NHI vs. Av for a given velocity range
-    noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
-    if not path.isfile(hi_dir + noise_cube_filename):
-        noise_cube = calculate_noise_cube(cube=hi_data,
-                velocity_axis=velocity_axis,
-                velocity_noise_range=[90,110], header=h, Tsys=30.,
-                filename=hi_dir + noise_cube_filename)
-    else:
-        noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
-            return_header=True)
+    if 0:
+        noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
+        if not path.isfile(hi_dir + noise_cube_filename):
+            noise_cube = calculate_noise_cube(cube=hi_data,
+                    velocity_axis=velocity_axis,
+                    velocity_noise_range=[90,110], header=h, Tsys=30.,
+                    filename=hi_dir + noise_cube_filename)
+        else:
+            noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
+                return_header=True)
+
+    noise_cube = 0.01 * hi_data
 
     # define core properties
     with open(core_dir + 'california_core_properties.txt', 'r') as f:
@@ -2679,7 +2704,8 @@ def main(verbose=True, av_data_type='planck', regions=None):
                                      'multicloud_divisions.reg',
                             header=av_header)
 
-    region_vertices = properties['regions']['california']['poly_verts']['pixel']
+    region_vertices = \
+            properties['regions']['california']['poly_verts']['pixel']
 
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data_planck,
@@ -2703,6 +2729,28 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
         # Initialize dictionary to store MC results for each core
         #results = {}
+
+        # Derive center velocity from hi
+        # ------------------------------
+        single_vel_center = False
+        if single_vel_center:
+            hi_spectrum = np.sum(hi_data, axis=(1))
+            vel_center = np.array((np.average(velocity_axis,
+                                   weights=hi_spectrum**2),))[0]
+            print('\nVelocity center from HI = ' +\
+                    '{0:.2f} km/s'.format(vel_center))
+        else:
+            vel_center = np.zeros(hi_data.shape[1:])
+            for i in xrange(0, hi_data.shape[1]):
+                for j in xrange(0, hi_data.shape[2]):
+                    hi_spectrum = hi_data[:, i, j]
+                    hi_spectrum[np.isnan(hi_spectrum)] = 0.0
+                    if np.nansum(hi_spectrum) > 0:
+                        vel_center[i,j] = \
+                                np.array((np.average(velocity_axis,
+                                            weights=hi_spectrum**2),))[0]
+                    else:
+                        vel_center[i,j] = np.nan
 
         for core in cores_to_keep:
             print('\nCalculating for core %s' % core)
@@ -2739,6 +2787,17 @@ def main(verbose=True, av_data_type='planck', regions=None):
             noise_cube = np.copy(noise_cube_orig[:, ~mask])
             av_data_planck = np.copy(av_data_planck_orig[~mask])
             av_error_data_planck = np.copy(av_error_data_planck_orig[~mask])
+
+
+            properties['hi_velocity_center']['value'] = \
+                    np.asarray(properties['hi_velocity_center']['value'])
+
+            if properties['hi_velocity_center']['value'].size > 2:
+                properties['hi_velocity_center_masked'] = \
+                        properties['hi_velocity_center']['value'][~mask]
+            else:
+                properties['hi_velocity_center_masked'] = \
+                    properties['hi_velocity_center']['value']
 
             # -----------------------------------------------------------------
             # Perform analysis on cores, including fitting the sternberg
@@ -2812,7 +2871,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
         plot_hi_vs_h_grid(cores,
                 #limits=[-9, 80, -1.5, 6.5],
-                limits=[-9, 159, -1.5, 20],
+                limits=[-9, 159, 5, 25],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),
@@ -2846,5 +2905,5 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
 if __name__ == '__main__':
     main(av_data_type='planck', regions=('california',))
-    main(av_data_type='k09')
+    #main(av_data_type='k09')
 

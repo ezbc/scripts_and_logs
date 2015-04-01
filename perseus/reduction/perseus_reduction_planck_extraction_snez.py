@@ -78,6 +78,35 @@ def extract_data(datatype = 'ebv'):
             dr_version = 2,
             verbose = True)
 
+    if datatype == 'temp':
+        ra_range = (40, 70)
+        dec_range = (20, 38)
+
+        (data, header) = pl.get_data(data_location = data_location,
+            data_type = 'Dust Opacity',
+            x_range = ra_range,
+            y_range = dec_range,
+            coord_type = 'equatorial',
+            field = 4,
+            resolution = 0.01,
+            cut_last_pixel = False,
+            dr_version = 2,
+            verbose = True)
+
+    if datatype == 'temp_error':
+        ra_range = (40, 70)
+        dec_range = (20, 38)
+        (data, header) = pl.get_data(data_location = data_location,
+            data_type = 'Dust Opacity',
+            x_range = ra_range,
+            y_range = dec_range,
+            coord_type = 'equatorial',
+            field = 5,
+            resolution = 0.01,
+            cut_last_pixel = False,
+            dr_version = 2,
+            verbose = True)
+
     return (data, header)
 
 def write_data(data, header, filename):
@@ -121,28 +150,38 @@ def main():
     av_dir = '/d/bip3/ezbc/perseus/data/av/'
     planck_dir = '/d/bip3/ezbc/perseus/data/planck/'
 
-    (data, header) = extract_data(datatype = 'co-type3')
-    write_data(data, header, planck_dir + 'perseus_planck_cotype3_snez.fits')
+    if 0:
+        (data, header) = extract_data(datatype = 'co-type3')
+        write_data(data, header, planck_dir + 'perseus_planck_cotype3_snez.fits')
 
-    (data, header) = extract_data(datatype = 'co-type3_error')
-    write_data(data, header, planck_dir + \
-            'perseus_planck_cotype3_error_snez.fits')
+        (data, header) = extract_data(datatype = 'co-type3_error')
+        write_data(data, header, planck_dir + \
+                'perseus_planck_cotype3_error_snez.fits')
 
-    (data, header) = extract_data(datatype = 'co-type1-j10')
-    write_data(data, header, planck_dir + \
-            'perseus_planck_cotype1_j1-0_snez.fits')
+        (data, header) = extract_data(datatype = 'co-type1-j10')
+        write_data(data, header, planck_dir + \
+                'perseus_planck_cotype1_j1-0_snez.fits')
 
-    (data, header) = extract_data(datatype = 'co-type1-j10_error')
-    write_data(data, header, planck_dir + \
-            'perseus_planck_cotype1_j1-0_error_snez.fits')
+        (data, header) = extract_data(datatype = 'co-type1-j10_error')
+        write_data(data, header, planck_dir + \
+                'perseus_planck_cotype1_j1-0_error_snez.fits')
 
-    (data, header) = extract_data(datatype = 'ebv')
-    write_data(data, header, planck_dir + \
-        'perseus_planck_ebv_snez.fits')
+        (data, header) = extract_data(datatype = 'ebv')
+        write_data(data, header, planck_dir + \
+            'perseus_planck_ebv_snez.fits')
 
-    (data, header) = extract_data(datatype = 'ebv_error')
-    write_data(data, header, planck_dir + \
-        'perseus_planck_ebv_error_snez.fits')
+        (data, header) = extract_data(datatype = 'ebv_error')
+        write_data(data, header, planck_dir + \
+            'perseus_planck_ebv_error_snez.fits')
+
+    if 1:
+        (data, header) = extract_data(datatype = 'temp_error')
+        write_data(data, header, planck_dir + \
+            'perseus_planck_temp_error_min.fits')
+
+        (data, header) = extract_data(datatype = 'temp')
+        write_data(data, header, planck_dir + \
+            'perseus_planck_temp_min.fits')
 
 if __name__ == '__main__':
 	main()
