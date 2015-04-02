@@ -2187,7 +2187,7 @@ def main():
                                   filename=results_filename + \
                                     '_scaled_wd.{0:s}'.format(figure_type),
                                   contour_confs=contour_confs,
-                                  #limits=[25, 60, 0.05, 0.1],
+                                  limits=[25, 60, 0.05, 0.1],
                                   )
 
 if __name__ == '__main__':

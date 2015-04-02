@@ -914,6 +914,7 @@ def iterate_residual_masking(
                              plot_progress=False,
                              results_filename=None,
                              verbose=False,
+                             return_masking_results=True,
                              ):
 
     '''
@@ -946,48 +947,32 @@ def iterate_residual_masking(
     # Iterate masking pixels which are correlated and rederiving a linear least
     # squares solution for the DGR
     # -------------------------------------------------------------------------
+    masking_results = {}
     use_intercept = True
     delta_dgr = 1e10
     dgr = 1e10
     iteration = 0
     dgr_list = []
-    while delta_dgr > threshold_delta_dgr:
-        if 0:
-            N = len(np.ravel(nhi_image[~mask]))
-            if use_intercept:
-                A = np.array((np.ones(N),
-                              np.ravel(nhi_image[~mask] / \
-                                       nhi_image_error[~mask]),))
-            else:
-                A = np.array((np.ravel(nhi_image[~mask] / \
-                              nhi_image_error[~mask]),))
-            b = np.array((np.ravel(av_data[~mask] / av_data_error[~mask]),))
-            A = np.matrix(A).T
-            b = np.matrix(b).T
+    width_list = []
+    intercept_list = []
+    mask_list = []
 
-            a = (np.linalg.pinv(A) * b)
-            if use_intercept:
-                intercept = a[0, 0]
-                dgr_new = a[1, 0]
-            else:
-                dgr_new = a[0, 0]
-                intercept = 0
-        else:
-            results = calc_likelihoods(
-                             nhi_image=nhi_image[~mask],
-                             av_image=av_data[~mask],
-                             av_image_error=av_data_error[~mask],
-                             #image_weights=bin_weights[~mask],
-                             #vel_center=vel_center_masked,
-                             vel_widths=np.arange(0,1,1),
-                             dgrs=dgrs,
-                             intercepts=intercepts,
-                             results_filename='',
-                             return_likelihoods=True,
-                             likelihood_filename=None,
-                             clobber=False,
-                             verbose=False
-                             )
+    while delta_dgr > threshold_delta_dgr:
+        results = calc_likelihoods(
+                         nhi_image=nhi_image[~mask],
+                         av_image=av_data[~mask],
+                         av_image_error=av_data_error[~mask],
+                         #image_weights=bin_weights[~mask],
+                         #vel_center=vel_center_masked,
+                         vel_widths=np.arange(0,1,1),
+                         dgrs=dgrs,
+                         intercepts=intercepts,
+                         results_filename='',
+                         return_likelihoods=True,
+                         likelihood_filename=None,
+                         clobber=False,
+                         verbose=False
+                         )
 
         # Unpack output of likelihood calculation
         (vel_range_confint, width_confint, dgr_confint, intercepts_confint,
@@ -997,8 +982,6 @@ def iterate_residual_masking(
 
         dgr_new = dgr_max
         intercept = intercept_max
-
-        dgr_list.append(dgr_new)
 
         # Create model with the DGR
         if verbose:
@@ -1029,13 +1012,14 @@ def iterate_residual_masking(
         else:
             plot_filename = None
 
-        mask_new, intercepts = \
+        mask_new, intercept = \
                 get_residual_mask(residuals,
                                      resid_width_scale=resid_width_scale,
                                      plot_progress=plot_progress,
                                      results_filename=plot_filename)
 
         intercepts = np.linspace(intercept, intercept + 1.0, 1.0)
+
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -1044,12 +1028,21 @@ def iterate_residual_masking(
             npix = mask.size - np.sum(mask)
             print('\tNumber of non-masked pixels = {0:.0f}'.format(npix))
 
+        dgr_list.append(dgr_max)
+        width_list.append(width_max)
+        intercept_list.append(intercept)
+        mask_list.append(mask.tolist())
+
         # Reset while loop conditions
         delta_dgr = np.abs(dgr - dgr_new)
         dgr = dgr_new
         iteration += 1
 
-    np.savetxt('/usr/users/ezbc/Desktop/dgr_data.txt', dgr_list)
+    #np.savetxt('/usr/users/ezbc/Desktop/dgr_data.txt', dgr_list)
+    masking_results['dgrs'] = dgr_list
+    masking_results['widths'] = width_list
+    masking_results['intercepts'] = intercept_list
+    masking_results['masks'] = mask_list
 
     # Plot results
     if 0:
@@ -1062,7 +1055,11 @@ def iterate_residual_masking(
     av_model = dgr * nhi_image
     av_model[mask] = np.nan
 
-    return (av_model, mask, dgr, intercepts)
+    output = [av_model, mask, dgr, intercepts,]
+    if return_masking_results:
+        output.append(masking_results)
+
+    return output
 
 def calc_likelihoods(
         hi_cube=None,
@@ -1196,15 +1193,10 @@ def calc_likelihoods(
     # Normalize the likelihoods
     likelihoods = likelihoods / np.nansum(likelihoods)
 
-
-    if 1:
+    if 0:
         import matplotlib.pyplot as plt
         plt.imshow(likelihoods[:, :, 0], origin='lower')
         plt.show()
-
-    print('number of nans', np.sum(np.isnan(likelihoods)))
-
-    print likelihoods.shape
 
     # Derive marginal distributions of both centers and widths
     intercept_likelihood = np.sum(likelihoods, axis=(0, 1)) / \
@@ -1376,6 +1368,42 @@ def check_file(filename, clobber=False, verbose=False):
             exists = False
 
     return exists
+
+def calc_vel_center(hi_data=None, hi_vel_axis=None, single_vel_center=True,
+        mask=None):
+
+    ''' Calculates velocity center for region.
+
+    Parameters
+    ----------
+    mask : array-like
+        If not a single_vel_center, mask will be applied to the vel centers.
+
+    '''
+
+    import numpy as np
+
+    if single_vel_center:
+        hi_spectrum = np.sum(hi_data, axis=(1,2))
+        vel_center = np.array((np.average(hi_vel_axis,
+                               weights=hi_spectrum**2),))[0]
+    else:
+        vel_center = np.zeros(hi_data.shape[1:])
+        for i in xrange(0, hi_data.shape[1]):
+            for j in xrange(0, hi_data.shape[2]):
+                hi_spectrum = hi_data[:, i, j]
+                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
+                if np.nansum(hi_spectrum) > 0:
+                    vel_center[i,j] = \
+                            np.array((np.average(hi_vel_axis,
+                                                 weights=hi_spectrum**2),))[0]
+                else:
+                    vel_center[i,j] = np.nan
+
+        if mask is not None:
+            vel_center = vel_center[~mask]
+
+    return vel_center
 
 ''' DS9 Region and Coordinate Functions
 '''
@@ -1657,50 +1685,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                               Tsys=30.0,
                               return_nhi_error=True,
                               )
-    if 0:
-        vel_center = np.zeros(hi_data.shape[1:])
-        for i in xrange(0, hi_data.shape[1]):
-            for j in xrange(0, hi_data.shape[2]):
-                hi_spectrum = hi_data[:, i, j]
-                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                if np.nansum(hi_spectrum) > 0:
-                    vel_center[i,j] = \
-                            np.array((np.average(hi_vel_axis,
-                                                 weights=hi_spectrum**2),))[0]
-                else:
-                    vel_center[i,j] = np.nan
-        vel_range = (vel_center - 5, vel_center + 5)
-        nhi_image1, nhi_image_error = calculate_nhi(cube=hi_data,
-                                  velocity_axis=hi_vel_axis,
-                                  velocity_range=vel_range,
-                                  noise_cube=noise_cube,
-                                  velocity_noise_range=[90, 110],
-                                  Tsys=30.0,
-                                  return_nhi_error=True,
-                                  )
-        hi_spectrum = np.sum(hi_data, axis=(1,2))
-        vel_center = np.array((np.average(hi_vel_axis,
-                               weights=hi_spectrum**2),))[0]
-        vel_range = (vel_center - 5, vel_center + 5)
-        nhi_image2, nhi_image_error = calculate_nhi(cube=hi_data,
-                                  velocity_axis=hi_vel_axis,
-                                  velocity_range=vel_range,
-                                  noise_cube=noise_cube,
-                                  velocity_noise_range=[90, 110],
-                                  Tsys=30.0,
-                                  return_nhi_error=True,
-                                  )
-        import matplotlib.pyplot as plt
-        plt.close(); plt.clf()
-        plt.imshow(nhi_image1 - nhi_image2, origin='lower left')
-        plt.colorbar()
-        plt.show()
 
     print('\nDeriving mask for correlated residuals...')
 
-    if not testing:
-        av_model, mask, dgr, _intercepts = iterate_residual_masking(
-                                 nhi_image=nhi_image,
+    #if not testing:
+    av_model, mask, dgr, intercepts, masking_results = \
+        iterate_residual_masking(nhi_image=nhi_image,
                                  nhi_image_error=nhi_image_error,
                                  av_data=av_data,
                                  av_data_error=av_data_error,
@@ -1716,14 +1706,15 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                                                   'california_residual_pdf.pdf'
                                  )
 
-        np.save('/usr/users/ezbc/Desktop/mask.npy', mask)
+        #np.save('/usr/users/ezbc/Desktop/mask.npy', mask)
 
-        # Combine region mask with new mask
-        #mask += np.logical_not(region_mask)
-        mask += region_mask
-        mask = mask.astype('bool')
-    else:
-        mask = np.load('/usr/users/ezbc/Desktop/mask.npy')
+    # Combine region mask with new mask
+    #mask += np.logical_not(region_mask)
+    mask += region_mask
+    mask = mask.astype('bool')
+
+    #else:
+    #    mask = np.load('/usr/users/ezbc/Desktop/mask.npy')
 
     # Write full resolution mask to parameters
     global_props['mask'] = mask.tolist()
@@ -1735,24 +1726,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # Derive center velocity from hi
     # ------------------------------
-    if single_vel_center:
-        hi_spectrum = np.sum(hi_data, axis=(1,2))
-        vel_center = np.array((np.average(hi_vel_axis,
-                               weights=hi_spectrum**2),))[0]
-        print('\nVelocity center from HI = ' +\
-                '{0:.2f} km/s'.format(vel_center))
-    else:
-        vel_center = np.zeros(hi_data.shape[1:])
-        for i in xrange(0, hi_data.shape[1]):
-            for j in xrange(0, hi_data.shape[2]):
-                hi_spectrum = hi_data[:, i, j]
-                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                if np.nansum(hi_spectrum) > 0:
-                    vel_center[i,j] = \
-                            np.array((np.average(hi_vel_axis,
-                                                 weights=hi_spectrum**2),))[0]
-                else:
-                    vel_center[i,j] = np.nan
+    vel_center = calc_vel_center(hi_data=hi_data,
+                                 hi_vel_axis=hi_vel_axis,
+                                 single_vel_center=single_vel_center)
 
     # Bin the masked images
     # ---------------------
@@ -1920,27 +1896,14 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # Derive center velocity from hi
     # ------------------------------
-    if single_vel_center:
-        hi_spectrum = np.sum(hi_data[:, ~mask], axis=(1))
-        vel_center_bin = np.array((np.average(hi_vel_axis,
-                                   weights=hi_spectrum**2),))[0]
-        print('\nVelocity center from HI = ' +\
-                '{0:.2f} km/s'.format(vel_center_bin))
-        vel_center_masked_bin = vel_center
+    vel_center_bin = \
+        calc_vel_center(hi_data=hi_data,
+                        hi_vel_axis=hi_vel_axis,
+                        single_vel_center=single_vel_center)
+    if not single_vel_center:
+        vel_center_masked_bin = vel_center_bin[~mask]
     else:
-        vel_center_bin = np.zeros(hi_data.shape[1:])
-        for i in xrange(0, hi_data.shape[1]):
-            for j in xrange(0, hi_data.shape[2]):
-                hi_spectrum = hi_data[:, i, j]
-                hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                if np.nansum(hi_spectrum) > 0:
-                    vel_center_bin[i,j] = \
-                            np.array((np.average(hi_vel_axis,
-                                                 weights=hi_spectrum**2),))[0]
-                else:
-                    vel_center_bin[i,j] = np.nan
-
-        vel_center_masked_bin = vel_center[~mask]
+        vel_center_masked_bin = vel_center_bin
 
     # Perform likelihood calculation of masked images
     # -----------------------------------------------
@@ -1990,7 +1953,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     av_image_model = nhi_image_temp * dgr_max + intercept_max
 
-    if 1:
+    if 0:
         import matplotlib.pyplot as plt
         plt.close(); plt.clf()
         plt.imshow(np.ma.array(av_data - av_image_model,
@@ -2099,9 +2062,9 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     #std = np.sqrt(np.sum((av_data - av_image_model)**2 \
     #                     / (av_data.size - 2)))
 
-    #av_data_error = std * np.ones(av_data_error.shape)
+    av_data_error = std * np.ones(av_data_error.shape)
     #av_image_error += np.std(av_data[~mask] - av_image_model[~mask])
-    av_data_error[~mask] *= std / av_data_error[~mask]
+    #av_data_error[~mask] *= std / av_data_error[~mask]
     #av_data_error *= 10
 
     print('\nSystematic error between model and data Av images:')
@@ -2216,6 +2179,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     global_props['use_binned_image'] = True
     global_props['residual_width_scale'] = resid_width_scale
     global_props['threshold_delta_dgr'] = threshold_delta_dgr
+    global_props['masking_results'] = masking_results
 
     # Write the file
     print('\nWriting results to\n' + global_property_file + '_' + \
@@ -2276,6 +2240,12 @@ def main():
     n = len(residual_width_scales)
     table_df = DataFrame({col:np.empty(n) for col in table_cols})
 
+    results_summary = {}
+    results_summary['masking_results'] = []
+    results_summary['widths'] = []
+    results_summary['dgrs'] = []
+    results_summary['intercepts'] = []
+
     for region in regions:
         # Grab correct region
         if region == 1:
@@ -2287,6 +2257,8 @@ def main():
 
         property_filename = 'california_global_properties_planck'
         property_filename = property_filename.replace('california', region_name)
+        summary_filename = property_filename.replace('global_properties',
+                                                     'summary')
 
         print('\nPerforming likelihood derivations for ' + region_name)
 
@@ -2322,6 +2294,15 @@ def main():
                 vel_range_diff = np.sum(np.abs(np.array(vel_range) - \
                                                np.array(vel_range_new)))
 
+                results_summary['masking_results'].\
+                        append(global_props['masking_results'])
+                results_summary['dgrs'].\
+                        append(global_props['dust2gas_ratio_max']['value'])
+                results_summary['widths'].\
+                        append(global_props['hi_velocity_width_max']['value'])
+                results_summary['intercepts'].\
+                        append(global_props['intercept_max']['value'])
+
                 if clobber_results:
                     with open(json_filename, 'w') as f:
                         json.dump(global_props, f)
@@ -2340,6 +2321,12 @@ def main():
                     table_df[col][i] = global_props[col]
                 else:
                     table_df[col][i] = global_props[col]['value']
+
+            # Write results summary
+            summary_filename = property_dir + property_filename + '_' + \
+                            av_data_type + \
+                            '_residscale{0:.1f}'.format(residual_width_scale)\
+                            + '.txt'
 
             # Write the file
             print('\nWriting results to\n' + property_filename + \
