@@ -2271,8 +2271,7 @@ def main():
 
             while vel_range_diff > vel_range_diff_thres:
                 json_filename = property_dir + property_filename + '_' + \
-                            av_data_type + \
-                            '_residscale{0:.1f}'.format(residual_width_scale)\
+                            'residscale{0:.1f}'.format(residual_width_scale)\
                             + '_iter{0:.0f}'.format(iteration) + '.txt'
 
                 exists = path.isfile(json_filename)
@@ -2326,7 +2325,11 @@ def main():
             summary_filename = property_dir + property_filename + '_' + \
                             av_data_type + \
                             '_residscale{0:.1f}'.format(residual_width_scale)\
-                            + '.txt'
+                            + '_summary.txt'
+
+            with open(final_property_dir + property_filename +\
+                    '_' + av_data_type + '_scaled.txt', 'w') as f:
+                json.dump(global_props, f)
 
             # Write the file
             print('\nWriting results to\n' + property_filename + \
