@@ -5,12 +5,6 @@
 '''
 
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-
-
-import pyfits as pf
-import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -18,10 +12,11 @@ warnings.filterwarnings('ignore')
 ''' Plotting Functions
 '''
 
-def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
-        av_image=None, cores=None, props=None, regions=None, title=None,
-        limits=None, contours=None, boxes=False, savedir='./', filename=None,
-        show=True, hi_vlimits=None, av_vlimits=None,):
+def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
+        cores_to_keep=None,
+        props=None, cloud_dict=None, regions=None, title=None, limits=None,
+        contours=None, boxes=False, savedir='./', filename=None, show=True,
+        hi_vlimits=None, av_vlimits=None,):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -34,9 +29,11 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     import pywcs
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
+    import matplotlib.patheffects as PathEffects
 
     # Set up plot aesthetics
-    plt.clf()
+    # ----------------------
+    plt.close;plt.clf()
     plt.rcdefaults()
 
     # Color map
@@ -44,10 +41,10 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
-    #font_scale = 9
     font_scale = 15
     line_weight = 600
     font_weight = 600
+
 
     params = {
               'axes.color_cycle': color_cycle, # colors of different plots
@@ -56,7 +53,8 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
               #'axes.weight': line_weight,
               'axes.linewidth': 1.2,
               'axes.labelweight': font_weight,
-              'legend.fontsize': font_scale*3/4,
+              #'legend.fontsize': font_scale*3/4,
+              'legend.fontsize': 6,
               'xtick.labelsize': font_scale,
               'ytick.labelsize': font_scale,
               'font.weight': font_weight,
@@ -65,7 +63,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
               'text.usetex': True,
               'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (7.3, 7.3),
+              'figure.figsize': (7.3, 4),
               'figure.dpi': 600,
               'backend' : 'pdf',
               #'figure.titlesize': font_scale,
@@ -82,13 +80,11 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     }
     plt.rcParams.update(pgf_with_pdflatex)
 
+
     # Create figure instance
     fig = plt.figure()
 
     if av_image is not None:
-        nrows_ncols=(2,1)
-        ngrids=2
-    else:
         nrows_ncols=(1,1)
         ngrids=1
 
@@ -107,17 +103,16 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                  share_all=True)
 
     # ------------------
-    # NHI image
+    # Av image
     # ------------------
     # create axes
     ax = imagegrid[0]
-
     # show the image
-    im = ax.imshow(nhi_image,
+    im = ax.imshow(av_image,
             interpolation='nearest',origin='lower',
             cmap=cmap,
-            vmin=hi_vlimits[0],
-            vmax=hi_vlimits[1],
+            vmin=av_vlimits[0],
+            vmax=av_vlimits[1],
             #norm=matplotlib.colors.LogNorm()
             )
 
@@ -133,6 +128,8 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # colorbar
     cb = ax.cax.colorbar(im)
     cmap.set_bad(color='w')
+    cb.set_label_text(r'$A_V$ [mag]',)
+
     # plot limits
     if limits is not None:
         ax.set_xlim(limits[0],limits[2])
@@ -142,106 +139,75 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     if contour_image is not None:
         ax.contour(contour_image, levels=contours, colors='r')
 
-    # Write label to colorbar
-    cb.set_label_text(r'$N$(H\textsc{i}) [10$^{20}$ cm$^{-2}$]',)
 
-    # Convert sky to pix coordinates
-    wcs_header = pywcs.WCS(header)
-    if type(cores) is dict:
-        for core in cores:
+    # Plot cores for each cloud
+    # -------------------------
+    count = 0
+    rects = []
+    core_labels = []
+    for i, cloud in enumerate(cloud_dict):
+
+        cores = cloud_dict[cloud]['cores']
+
+        cores_in_cloud = []
+
+        for core in cores_to_keep:
+            if core in cores:
+                cores_in_cloud.append(core)
+
+
+        # Convert sky to pix coordinates
+        wcs_header = pywcs.WCS(header)
+        for core in cores_in_cloud:
             pix_coords = cores[core]['center_pixel']
 
             anno_color = (0.3, 0.5, 1)
 
-            ax.scatter(pix_coords[0],pix_coords[1],
-                    color=anno_color,
-                    s=200,
-                    marker='+',
-                    linewidths=2)
+            if 0:
+                ax.scatter(pix_coords[0],pix_coords[1],
+                        color='w',
+                        s=100,
+                        marker='+',
+                        linewidths=1.5)
 
-            ax.annotate(core,
-                    xy=[pix_coords[0], pix_coords[1]],
-                    xytext=(5,5),
-                    textcoords='offset points',
-                    color=anno_color)
+            try:
 
-            if boxes:
-                rect = ax.add_patch(Polygon(
-                    cores[core]['box_vertices'][:, ::-1],
-                        facecolor='none',
-                        edgecolor=anno_color))
+                vertices = np.copy(cores[core]['poly_verts']['pixel'])
 
-    if regions is not None:
-        for region in regions:
-            vertices = np.copy(regions[region]['poly_verts']['pixel'])
-            rect = ax.add_patch(Polygon(
-                    vertices[:, ::-1],
-                    facecolor='none',
-                    edgecolor='w'))
+                #[:, ::-1]
+                rects.append(ax.add_patch(Polygon(
+                                vertices[:, ::-1],
+                                facecolor='none',
+                                edgecolor='w')
+                                )
+                            )
+                core_labels.append(str(count) + ' - ' + core)
 
-    # ------------------
-    # Av image
-    # ------------------
-    if av_image is not None:
-        # create axes
-        ax = imagegrid[1]
-        # show the image
-        im = ax.imshow(av_image,
-                interpolation='nearest',origin='lower',
-                cmap=cmap,
-                vmin=av_vlimits[0],
-                vmax=av_vlimits[1],
-                #norm=matplotlib.colors.LogNorm()
-                )
+                n = float(vertices.shape[0])
+                center_xy = (np.sum(vertices[:, 1]) / n,
+                             np.sum(vertices[:, 0]) / n)
 
-        # Asthetics
-        ax.set_display_coord_system("fk5")
-        ax.set_ticklabel_type("hms", "dms")
+                if core == 'L1521':
+                    center_xy += np.array((1, 7))
 
-        ax.set_xlabel('Right Ascension [J2000]',)
-        ax.set_ylabel('Declination [J2000]',)
+                ax.annotate(str(count),
+                        #xy=[pix_coords[0], pix_coords[1]],
+                        xy=center_xy,
+                        xytext=(-4,-4),
+                        label=core,
+                        textcoords='offset points',
+                        fontsize=7,
+                        color='k',
+                        path_effects=[PathEffects.withStroke(linewidth=2,
+                                                 foreground="w")])
 
-        ax.locator_params(nbins=6)
-
-        # colorbar
-        cb = ax.cax.colorbar(im)
-        cmap.set_bad(color='w')
-        # plot limits
-        if limits is not None:
-            ax.set_xlim(limits[0],limits[2])
-            ax.set_ylim(limits[1],limits[3])
+                count += 1
+            except KeyError:
+                pass
 
 
-        # Plot Av contours
-        if contour_image is not None:
-            ax.contour(contour_image, levels=contours, colors='r')
-
-        # Write label to colorbar
-        cb.set_label_text(r'$A_V$ [mag]',)
-
-        # Convert sky to pix coordinates
-        wcs_header = pywcs.WCS(header)
-        if type(cores) is dict:
-            for core in cores:
-                pix_coords = cores[core]['center_pixel']
-
-                anno_color = (0.3, 0.5, 1)
-
-                if boxes:
-                    rect = ax.add_patch(Polygon(
-                        cores[core]['box_vertices'][:, ::-1],
-                            facecolor='none',
-                            edgecolor='w'))
-
-        if regions is not None:
-            for region in regions:
-                vertices = np.copy(regions[region]['poly_verts']['pixel'])
-                rect = ax.add_patch(Polygon(
-                        vertices[:, ::-1],
-                        facecolor='none',
-                        edgecolor='w'))
-
-            if props is not None:
+        if props is not None:
+            if 0:
                 for region in props['region_name_pos']:
                     if region == 'taurus1':
                         region = 'taurus 1'
@@ -252,8 +218,15 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                                 xytext=(0,0),
                                 textcoords='offset points',
                                 color='w',
-                                fontsize=font_scale*7.0/9.0,
+                                fontsize=7,
                                 zorder=10)
+
+   # ax.legend(rects, core_labels, bbox_to_anchor=(1.05, 1), loc=2,
+   #         borderaxespad=0.)
+    #ax.legend(rects, core_labels, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+    #       ncol=5, mode="expand", borderaxespad=0.)
+
+    ax.legend(rects, core_labels, loc='lower right', ncol=2)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
@@ -994,7 +967,6 @@ def load_fits(filename,return_header=False):
     '''
 
     import pyfits as pf
-    from astropy.io import fits
 
     f = pf.open(filename)
     if return_header:
@@ -1040,6 +1012,40 @@ def hrs2degs(ra=None, dec=None):
 
     return (ra_deg, dec_deg)
 
+def load_ds9_core_region(cores, filename_base = 'taurus_av_boxes_',
+        header=None):
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    regions = read_ds9_region(filename_base + '.reg')
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        core = tag[tag.find('{')+1:tag.find('}')]
+
+        # Format vertices to be 2 x N array
+        poly_verts = []
+        for i in xrange(0, len(region.coord_list)/2):
+            poly_verts.append((region.coord_list[2*i],
+                               region.coord_list[2*i+1]))
+
+        poly_verts_pix = []
+        for i in xrange(0, len(poly_verts)):
+            poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                            dec=poly_verts[i][1],
+                                            header=header)[:-1][::-1].tolist())
+
+        if core in cores:
+            cores[core]['poly_verts'] = {}
+            cores[core]['poly_verts']['wcs'] = poly_verts
+            cores[core]['poly_verts']['pixel'] = poly_verts_pix
+        else:
+            pass
+
+    return cores
+
 def load_ds9_region(props, filename=None, header=None):
 
     import pyregion as pyr
@@ -1051,7 +1057,6 @@ def load_ds9_region(props, filename=None, header=None):
     regions = pyr.open(filename)
 
     props['regions'] = {}
-
 
     for region in regions:
         # Cores defined in following format: 'tag={L1495A}'
@@ -1077,11 +1082,48 @@ def load_ds9_region(props, filename=None, header=None):
 
     return props
 
+def read_ds9_region(filename):
+
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
+    '''
+
+    # Import external modules
+    import pyregion as pyr
+
+    # Read region file
+    try:
+        region = pyr.open(filename)
+    except IOError:
+        return None
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    return region
+
 '''
 The main script
 '''
 
-def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
+def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
         av_data_type='planck'):
     ''' Executes script.
 
@@ -1094,8 +1136,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     '''
 
     # import external modules
-    #import pyfits as fits
-    from astropy.io import fits
+    import pyfits as fits
     import numpy as np
     from mycoords import make_velocity_axis
     import mygeometry as myg
@@ -1116,6 +1157,48 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
 
     # Global parameter file
     prop_file = 'multicloud_global_properties'
+
+    # Which cores to include in analysis?
+    cores_to_keep = [# taur
+                     'L1495',
+                     'L1495A',
+                     'B213',
+                     'L1498',
+                     'B215',
+                     'B18',
+                     'B217',
+                     'B220-1',
+                     'B220-2',
+                     'L1521',
+                     'L1524',
+                     'L1527-1',
+                     'L1527-2',
+                     # Calif
+                     'L1536',
+                     'L1483-1',
+                     'L1483-2',
+                     'L1482-1',
+                     'L1482-2',
+                     'L1478-1',
+                     'L1478-2',
+                     'L1456',
+                     'NGC1579',
+                     #'L1545',
+                     #'L1517',
+                     #'L1512',
+                     #'L1523',
+                     #'L1512',
+                     # Pers
+                     'B5',
+                     'IC348',
+                     'B1E',
+                     'B1',
+                     'NGC1333',
+                     'B4',
+                     'B3',
+                     'L1455',
+                     'L1448',
+                     ]
 
     # Regions, regions to edit the global properties with
     if region == 1:
@@ -1194,13 +1277,13 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     if region is not None:
         likelihood_filename += '_region{0:.0f}'.format(region)
         results_filename += '_region{0:.0f}'.format(region)
+
+    print('\nLoading global property file {0:s}.txt'.format(prop_file))
     with open(property_dir + prop_file + '.txt', 'r') as f:
         props = json.load(f)
 
-    if vel_range is not None:
-        props['hi_velocity_range'] = vel_range
-    else:
-        vel_range = props['hi_velocity_range']
+    # Define velocity range
+    props['hi_velocity_range'] = vel_range
 
     # make velocity axis for hi cube
     velocity_axis = make_velocity_axis(hi_header)
@@ -1261,34 +1344,63 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             print('%.1f to %.1f km/s' % (vel_range[i, 0],
                                          vel_range[i, 1]))
 
+
+    cloud_dict = {'taurus' : {},
+                  'perseus' : {},
+                  'california' : {},
+                  }
+
+    # load Planck Av and GALFA HI images, on same grid
+    for cloud in cloud_dict:
+
+        print('\nLoading core properties for {0:s}'.format(cloud))
+
+        file_dir = '/d/bip3/ezbc/{0:s}/data/av/'.format(cloud)
+
+        # define core properties
+        with open('/d/bip3/ezbc/{0:s}/data/python_output/'.format(cloud) + \
+                  'core_properties/{0:s}_core_properties.txt'.format(cloud),
+                  'r') as f:
+             cores = json.load(f)
+
+        # Load core regions from DS9 files
+        if cloud == 'aldobaran':
+            region_cloud = 'california'
+        else:
+            region_cloud = cloud
+        core_filename = region_dir.replace('multicloud',region_cloud) + \
+                        '/ds9_regions/{0:s}_av_poly_cores'.format(region_cloud)
+
+        cores = load_ds9_core_region(cores,
+                                     filename_base=core_filename,
+                                     header=av_header)
+
+        cores = convert_core_coordinates(cores, av_header)
+
+        # Remove cores
+        cores_to_remove = []
+        for core in cores:
+            if core not in cores_to_keep:
+                cores_to_remove.append(core)
+        for core_to_remove in cores_to_remove:
+            del cores[core_to_remove]
+
+        cloud_dict[cloud]['cores'] = cores
+
     # Plot
     figure_types = ['png', 'pdf']
     for figure_type in figure_types:
-        if region is None:
-            if vel_range_type == 'single':
-                filename = 'multicloud_av_nhi_map_' + \
-                    av_data_type + '.%s' % figure_type
-                    #'dgr{0:.3f}_'.format(dgr) + \
-                    #'{0:.1f}to{1:.1f}kms'.format(vel_range[0], vel_range[1]) + \
-                    #'_' + \
-            elif vel_range_type == 'multiple':
-                filename = 'multiple_vel_range/multicloud_av_model_map_' + \
-                           'dgr{0:.3f}'.format(dgr)
-                for i in xrange(0, vel_range.shape[0]):
-                    filename += '_{0:.1f}to{1:.1f}kms'.format(vel_range[i, 0],
-                                                              vel_range[i, 1])
-                filename += '.%s' % figure_type
-        else:
-            filename = 'multicloud_av_model_map_region{0:.0f}'.format(region) + \
-                       '.{0:s}'.format(figure_type)
+        filename = 'multicloud_av_cores_map' + \
+                   '.{0:s}'.format(figure_type)
 
-        print('\nSaving Av model image to \n' + filename)
+        print('\nSaving Av cores map to \n' + filename)
 
-        plot_nhi_image(nhi_image=nhi_image,
-                       header=av_header,
+        plot_cores_map(header=av_header,
                        av_image=av_image,
                        limits=props['plot_limit']['pixel'],
                        regions=props['regions'],
+                       cloud_dict=cloud_dict,
+                       cores_to_keep=cores_to_keep,
                        props=props,
                        hi_vlimits=(0,20),
                        av_vlimits=(0,16),
@@ -1298,26 +1410,8 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                        show=False)
 
 if __name__ == '__main__':
-    dgrs = np.arange(0.05, 0.4, 0.025)
-    vel_widths = (4, 6, 8, 10, 12, 18, 34, 50)
-    vel_widths = (50,)
-    vel_center = 6.15
 
-    regions = (1,2,3)
-
-    # Use Planck dust Av map or Kainulainen 2009 optical extinction Av map?
-
-    vel_range = (-5, 15)
-
-    main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
-            av_data_type='planck')
-
-    #main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
-    #        av_data_type='planck_rad')
-    #main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
-    #        av_data_type='lee12_2mass')
-    #main(dgr=None, vel_range=vel_range, vel_range_type='single', region=None,
-    #        av_data_type='lee12_iris')
+    main(av_data_type='planck')
 
 
 

@@ -18,36 +18,14 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     # Set up plot aesthetics
     # ----------------------
     plt.close;plt.clf()
-    plt.rcdefaults()
+    #plt.rcdefaults()
 
     # Color map
     cmap = plt.cm.gnuplot
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
-    font_scale = 9
-    line_weight = 600
-    font_weight = 600
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
-              'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
-              'font.weight': font_weight,
-              'axes.labelweight': font_weight,
-              'text.usetex': True,
-              #'font.family': 'sans-serif',
-              'figure.figsize': (7.3/2.0, 7.3/4.0),
-              'figure.dpi': 600,
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
-             }
-    plt.rcParams.update(params)
+    matplotlib.rcParams['axes.color_cycle'] = color_cycle # colors of different plots
 
     # Create figure instance
     fig = plt.figure()
@@ -93,7 +71,7 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
-        plt.savefig(filename, bbox_inches='tight', dpi=600)
+        plt.savefig(filename, bbox_inches='tight')
     if show:
         plt.show()
 

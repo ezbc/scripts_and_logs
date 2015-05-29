@@ -642,6 +642,117 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     if show:
         plt.show()
 
+def plot_residual_map(av_image, header=None, dgr=None):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    from mpl_toolkits.axes_grid1 import ImageGrid
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import pywcsgrid2 as wcs
+    import pywcs
+    from pylab import cm # colormaps
+    from matplotlib.patches import Polygon
+
+    # Set up plot aesthetics
+    plt.clf()
+    colormap = plt.cm.gist_ncar
+    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
+    font_scale = 15
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
+              'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (3.6, 3.6),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+
+    # Create figure instance
+    fig = plt.figure()
+
+    nrows_ncols=(1,1)
+    ngrids=1
+
+    imagegrid = ImageGrid(fig, (1,1,1),
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
+                 cbar_location='right',
+                 cbar_pad="2%",
+                 cbar_size='3%',
+                 axes_pad=1,
+                 axes_class=(wcs.Axes,
+                             dict(header=header)),
+                 aspect=True,
+                 label_mode='L',
+                 share_all=True)
+
+    # create axes
+    ax = imagegrid[0]
+    cmap = cm.jet # colormap
+    # show the image
+    im = ax.imshow(av_image,
+            interpolation='nearest',origin='lower',
+            cmap=cmap,
+            #norm=matplotlib.colors.LogNorm()
+            vmin=0,
+            vmax=1.4
+            )
+
+    # Asthetics
+    ax.set_display_coord_system("fk5")
+    ax.set_ticklabel_type("hms", "dms")
+
+    ax.set_xlabel('Right Ascension (J2000)',)
+    ax.set_ylabel('Declination (J2000)',)
+
+    # colorbar
+    cb = ax.cax.colorbar(im)
+    cmap.set_bad(color='w')
+    # plot limits
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[2])
+        ax.set_ylim(limits[1],limits[3])
+
+    # Write label to colorbar
+    cb.set_label_text(r'A$_V$ (Mag)',)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=font_scale)
+    if filename is not None:
+        plt.savefig(savedir + filename, bbox_inches='tight')
+    if show:
+        fig.show()
+
+
 ''' Calculations
 '''
 
@@ -1000,11 +1111,11 @@ def iterate_residual_masking(
 
         residuals[mask] = np.nan
 
+        # plot progress
         if 0:
-            import matplotlib.pyplot as plt
-            plt.imshow(residuals, origin='lower')
-            plt.colorbar(cmap=plt.cm.gnuplot)
-            plt.show()
+            plot_residual_map(residuals,
+                              header=av_header,
+                              dgr=dgr_new)
 
         # Include only residuals which are white noise
         if iteration == 0:
@@ -1018,8 +1129,7 @@ def iterate_residual_masking(
                                      plot_progress=plot_progress,
                                      results_filename=plot_filename)
 
-        intercepts = np.linspace(intercept, intercept + 1.0, 1.0)
-
+        #intercepts = np.linspace(intercept, intercept + 1.0, 1.0)
 
         # Mask non-white noise, i.e. correlated residuals.
         mask[mask_new] = 1
@@ -1384,7 +1494,7 @@ def calc_vel_center(hi_data=None, hi_vel_axis=None, single_vel_center=True,
     import numpy as np
 
     if single_vel_center:
-        hi_spectrum = np.sum(hi_data, axis=(1,2))
+        hi_spectrum = np.nansum(hi_data, axis=(1,2))
         vel_center = np.array((np.average(hi_vel_axis,
                                weights=hi_spectrum**2),))[0]
     else:
@@ -1559,9 +1669,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     # Likelihood axis resolutions
     vel_widths = np.arange(1, 75, 2*0.16667)
     dgrs = np.arange(0.001, 0.8, 1e-3)
-    dgrs = np.arange(0.001, 0.3, 5e-4)
     intercepts = np.arange(0, 1, 1)
-    #intercepts = np.arange(-3, 3, 0.1)
+
+    vel_widths = np.arange(1, 75, 6*0.16667)
+    dgrs = np.arange(0.001, 0.3, 5e-3)
+    intercepts = np.arange(-1, 1, 0.1)
+    #intercepts = np.arange(0, 1, 1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:
@@ -1576,7 +1689,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     clobber_bin_images = True
 
     # Use single velocity center for entire image?
-    single_vel_center = False
+    single_vel_center = True
 
     # Filetype extensions for figures
     figure_types = ('png', 'pdf')
@@ -1729,6 +1842,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     vel_center = calc_vel_center(hi_data=hi_data,
                                  hi_vel_axis=hi_vel_axis,
                                  single_vel_center=single_vel_center)
+
+    print('\nVelocity center: {0:.1f} km/s'.format(vel_center))
 
     # Bin the masked images
     # ---------------------
@@ -2221,7 +2336,7 @@ def main():
     vel_range_diff_thres = 3.0 # km/s
 
     property_dir = \
-        '/d/bip3/ezbc/california/data/python_output/residual_parameter_results/'
+    '/d/bip3/ezbc/california/data/python_output/residual_parameter_results/'
 
     final_property_dir = '/d/bip3/ezbc/california/data/python_output/'
 

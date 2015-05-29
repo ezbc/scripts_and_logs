@@ -1,5 +1,5 @@
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -162,7 +162,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
-    font_scale = 9
+    font_scale = 15
     line_weight = 600
     font_weight = 600
     params = {
@@ -209,7 +209,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     	             )
         x_extent = x_grid[0], x_grid[-1]
         ax_image.set_xlabel(r'Velocity Width [km/s]')
-        x_sum_axes = (1, 2)
+        x_sum_axes = 1
         y_pdf_label = r'Width PDF'
         if limits is None:
             x_limits = (x_grid[0], x_grid[-1])
@@ -223,51 +223,24 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
     	             )
         y_extent = y_grid[0], y_grid[-1]
         ax_image.set_ylabel(r'DGR [10$^{-20}$ cm$^2$ mag]')
-        y_sum_axes = (0, 2)
+        y_sum_axes = 0
         x_pdf_label = r'DGR PDF'
         if limits is None:
             y_limits = (y_grid[0], y_grid[-1])
         else:
             y_limits = limits[2:]
-    if plot_axes[1] == 'intercepts':
-    	y_grid = global_props['intercepts']
-    	y_confint = (global_props['intercept']['value'],
-    	             global_props['intercept_error']['value'][0],
-    	             global_props['intercept_error']['value'][1],
-    	             )
-        y_extent = y_grid[0], y_grid[-1]
-        ax_image.set_ylabel(r'Intercept [mag]')
-        y_sum_axes = (0, 1)
-        x_pdf_label = r'Intercept PDF'
-        if limits is None:
-            y_limits = (y_grid[0], y_grid[-1])
-        else:
-            y_limits = limits[2:]
-
 
     # Create axes
     sum_axes = np.array((x_sum_axes, y_sum_axes))
     sum_axis = np.argmax(np.bincount(np.ravel(sum_axes)))
 
     # Mask NaNs
-    likelihoods = np.array(global_props['likelihoods'])
+    likelihoods = np.sum(global_props['likelihoods'], axis=(2))
     image = np.ma.array(likelihoods, mask=np.isnan(likelihoods))
 
     # Create likelihood image
-    image = np.sum(likelihoods, axis=sum_axis) / np.sum(likelihoods)
-
-    if 0:
-        from mystats import rv3d_discrete
-        import triangle
-        samples = rv3d_discrete(likelihoods,
-                                param_grid1=global_props['vel_widths'],
-                                param_grid2=global_props['dgrs'],
-                                param_grid3=global_props['intercepts'],
-                                L_scalar=100000,
-                                ).pdf
-        print samples.shape
-        fig = triangle.corner(samples, labels=["width", "dgr", "int"],)
-        fig.savefig("/usr/users/ezbc/Desktop/triangle.png")
+    #image = np.sum(likelihoods, axis=sum_axis) / np.sum(likelihoods)
+    image = likelihoods / np.sum(likelihoods)
 
     # Derive marginal distributions of both centers and widths
     x_sum = np.sum(likelihoods, axis=x_sum_axes)
@@ -451,7 +424,7 @@ def plot_likelihoods_hist(global_props, filename=None, show=True,
 
     if filename is not None:
         plt.draw()
-        plt.savefig(filename, bbox_inches='tight')
+        plt.savefig(filename, bbox_inches='tight', dpi=800)
     if show:
         plt.draw()
         plt.show()
@@ -2165,7 +2138,6 @@ def main():
     from os import path
     import json
     from pandas import DataFrame
-    import triangle
 
     av_data_type = 'planck'
 
@@ -2182,7 +2154,7 @@ def main():
 
     contour_confs = [0.95,]
 
-    regions = [None,]
+    regions = [None,2]
 
     for region in regions:
         # Grab correct region
@@ -2208,8 +2180,6 @@ def main():
         for figure_type in figure_types:
             print('\nWriting likelihood image to\n' + results_filename + \
                   '_scaled_wd.{0:s}'.format(figure_type))
-
-
             plot_likelihoods_hist(global_props,
                                   plot_axes=('widths', 'dgrs'),
                                   show=0,
@@ -2217,17 +2187,7 @@ def main():
                                   filename=results_filename + \
                                     '_scaled_wd.{0:s}'.format(figure_type),
                                   contour_confs=contour_confs,
-                                  #limits=[25, 60, 0.05, 0.1],
-                                  )
-
-            plot_likelihoods_hist(global_props,
-                                  plot_axes=('widths', 'intercepts'),
-                                  show=0,
-                                  returnimage=False,
-                                  filename=results_filename + \
-                                    '_scaled_wi.{0:s}'.format(figure_type),
-                                  contour_confs=contour_confs,
-                                  #limits=[25, 60, 0.05, 0.1],
+                                  limits=[20, 49, 0.055, 0.089],
                                   )
 
 if __name__ == '__main__':

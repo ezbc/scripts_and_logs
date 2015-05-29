@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-''' Calculates the N(HI) / Av correlation for the california molecular cloud.
+''' Calculates the N(HI) / Av correlation for the taurus molecular cloud.
 '''
 import matplotlib
 matplotlib.use('Agg')
@@ -897,7 +897,7 @@ def plot_hi_vs_av_grid(hi_images, av_images, hi_error_images=None,
 
 def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
         cores_to_plot=None, filename=None, show=True, scale=('linear',
-            'linear'), title='',):
+            'linear'), title='', plot_fit=True, plot_errors=False):
 
     # Import external modules
     import numpy as np
@@ -908,19 +908,28 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
     from mpl_toolkits.axes_grid1 import ImageGrid
     from astroML.plotting import scatter_contour
 
-    n = int(np.ceil(len(cores_to_plot)**0.5))
-    if n**2 - n > len(cores_to_plot):
-        nrows = n - 1
-        ncols = 2
-        y_scaling = 1.0 - 1.0 / n
-    else:
-        nrows, ncols = n, n
-        y_scaling = 1.0
+    if len(cores_to_plot) > 1:
+        n = int(np.ceil(len(cores_to_plot)**0.5))
+        if n**2 - n > len(cores_to_plot):
+            nrows = n - 1
+            ncols = 2
+            y_scaling = 1.0 - 1.0 / n
+        else:
+            nrows, ncols = n, n
+            y_scaling = 1.0
 
-    n = len(cores_to_plot)
-    ncols = 2
-    nrows = (n + 1) / ncols
-    y_scaling = nrows / float(ncols)
+        n = len(cores_to_plot)
+        ncols = 4
+        nrows = n / ncols + 1
+        y_scaling = nrows / float(ncols)
+
+        figsize = (7.5, 7.5*y_scaling)
+        font_scale = 9
+    else:
+        nrows, ncols = 1, 1
+        n = 1
+        figsize = (4, 4)
+        font_scale = 18
 
     # Set up plot aesthetics
     # ----------------------
@@ -932,7 +941,6 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
-    font_scale = 9
     line_weight = 600
     font_weight = 600
 
@@ -952,7 +960,8 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
               'text.usetex': True,
               'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (3.6, 3.6*y_scaling),
+              #'figure.figsize': (3.6, 3.6*y_scaling),
+              'figure.figsize': figsize,
               'figure.dpi': 600,
               'backend' : 'pdf',
               #'figure.titlesize': font_scale,
@@ -1038,13 +1047,20 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
 
         #ax.set_xticks([0, 40, 80, 120])
 
-        if 1:
-            print('Average HI surf dens error:')
-            print('\t {0:.1f} Msun pc^-2'.format(\
-                    np.nanmean(hi_sd_error_nonans.ravel())))
-            print('Average H surf dens error:')
-            print('\t {0:.1f} Msun pc^-2'.format(\
-                    np.nanmean(h_sd_error_nonans.ravel())))
+
+        if plot_errors:
+            ax.axvline(np.nanmean(h_sd_error_nonans.ravel()),
+                       color='k',
+                       linestyle='--',
+                       linewidth=2,
+                       alpha=0.5,
+                       zorder=0)
+            ax.axhline(np.nanmean(hi_sd_error_nonans.ravel()),
+                       color='k',
+                       linestyle='--',
+                       linewidth=2,
+                       alpha=0.5,
+                       zorder=1)
 
         if 0:
             l1 = ax.errorbar(h_sd_nonans.ravel(),
@@ -1077,21 +1093,24 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
                                                    ),
                                  )
 
-        l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
-                label='S+14',
-                color=color_cycle[1],
-                alpha=0.75,
-                )
+        if plot_fit:
+            if 0:
+                l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
+                        label='S+14',
+                        color=color_cycle[1],
+                        alpha=0.75,
+                        )
+                if i == 0:
+                    ax.legend(loc='upper left')
 
-        l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
-                linestyle='--',
-                label='K+09',
-                color=color_cycle[2],
-                alpha=0.75
-                )
+            l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
+                    linestyle='-',
+                    linewidth=3,
+                    label='K+09',
+                    color=color_cycle[2],
+                    alpha=0.75
+                    )
 
-        if i == 0:
-            ax.legend(loc='upper left')
 
         # Annotations
         anno_xpos = 0.95
@@ -1105,19 +1124,21 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
                        r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
                                                    phi_cnm_error[1])
 
-        ax.annotate(alphaG_text + phi_cnm_text,
-                xytext=(anno_xpos, 0.05),
-                xy=(anno_xpos, 0.05),
-                textcoords='axes fraction',
-                xycoords='axes fraction',
-                size=font_scale*3/4.0,
-                color='k',
-                bbox=dict(boxstyle='round',
-                          facecolor='w',
-                          alpha=1),
-                horizontalalignment='right',
-                verticalalignment='bottom',
-                )
+
+        if 0:
+            ax.annotate(alphaG_text + phi_cnm_text,
+                    xytext=(anno_xpos, 0.05),
+                    xy=(anno_xpos, 0.05),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=font_scale*3/4.0,
+                    color='k',
+                    bbox=dict(boxstyle='round',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='bottom',
+                    )
 
         ax.annotate(core,
                     xytext=(0.95, 0.95),
@@ -1165,7 +1186,7 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
     if title is not None:
         fig.suptitle(title, fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename, bbox_inches='tight', dpi=800)
     if show:
         fig.show()
 
@@ -1435,22 +1456,12 @@ def derive_images(hi_cube=None, hi_velocity_axis=None, hi_noise_cube=None,
         calculate_sd, calculate_nh2, calculate_nh2_error
 
     # Calculate N(HI) and the error
-    if 0:
-        nhi_image, nhi_image_error = calculate_nhi(cube=hi_cube,
-                                         velocity_axis=hi_velocity_axis,
-                                                   noise_cube=hi_noise_cube,
-                                                   velocity_range=hi_vel_range,
-                                                   return_nhi_error=True,
-                                                   header=hi_header)
-    if 1:
-        hi_vel_range = np.array(hi_vel_range)
-        nhi_image = calculate_nhi(cube=hi_cube,
-                                  velocity_axis=hi_velocity_axis,
-                                                   #noise_cube=hi_noise_cube,
-                                                   velocity_range=hi_vel_range,
-                                                   header=hi_header)
-        nhi_image_error = 0.01 * nhi_image
-        #print nhi_image[~np.isnan(nhi_image)]
+    nhi_image, nhi_image_error = calculate_nhi(cube=hi_cube,
+                                               velocity_axis=hi_velocity_axis,
+                                               noise_cube=hi_noise_cube,
+                                               velocity_range=hi_vel_range,
+                                               return_nhi_error=True,
+                                               header=hi_header)
 
     if nhi_error is not None:
         nhi_image_error = nhi_error
@@ -1642,7 +1653,7 @@ def run_analysis(hi_cube=None,
     intercept_likelihoods = np.asarray(properties['intercept_likelihood'])
 
     # Load center velocity
-    vel_center = properties['hi_velocity_center_masked']
+    vel_center = properties['hi_velocity_center']['value']
 
     # Load the full 3D likelihood space
     likelihoods = np.asarray(properties['likelihoods'])
@@ -1693,10 +1704,10 @@ def run_analysis(hi_cube=None,
                         likelihood_pdf.rvs()
 
                 # Create the velocity range
-                hi_vel_range_noise = np.array((vel_center - \
-                                                vel_width_random / 2.,
-                                               vel_center + \
-                                                vel_width_random / 2.))
+                hi_vel_range_noise = (vel_center - \
+                                        vel_width_random / 2.,
+                                      vel_center + \
+                                        vel_width_random / 2.)
 
                 width_list[i] = vel_width_random
                 dgr_list[i] = dgr_random
@@ -1772,7 +1783,7 @@ def run_analysis(hi_cube=None,
             # see eq 6 of sternberg+09
             # alphaG is the number density of the CNM over the minimum number
             # density required for pressure balance
-            # the lower alphaG values than for california mean that california
+            # the lower alphaG values than for taurus mean that taurus
             # has a more diffuse CNM
 
             # By fitting the model to the observed R_H2 vs total H, you
@@ -1834,15 +1845,9 @@ def run_analysis(hi_cube=None,
     intercept = properties['intercept_max']['value']
     #intercept_error = properties['intercept_error']['value']
     #dgr_error = properties['dust2gas_ratio_error']['value']
-    vel_center = properties['hi_velocity_center_masked']
+    vel_center = properties['hi_velocity_center']['value']
     vel_width = properties['hi_velocity_width_max']['value']
-    if isinstance(vel_center, list):
-        vel_center = np.array(vel_center)
-    hi_vel_range = np.array((vel_center - vel_width/2.0,
-                             vel_center + vel_width/2.0))
-
-    print hi_vel_range[~np.isnan(hi_vel_range)]
-
+    hi_vel_range = (vel_center - vel_width/2.0, vel_center + vel_width/2.0)
     #hi_vel_range = properties['hi_velocity_range']
 
 
@@ -1850,6 +1855,7 @@ def run_analysis(hi_cube=None,
     #max_loc = np.where(likelihoods == np.max(likelihoods))
     #vel_width = vel_widths[max_loc[0][0]]
     #hi_velocity_range =
+
 
     images = derive_images(hi_cube=hi_cube,
                            hi_velocity_axis=hi_velocity_axis,
@@ -2077,7 +2083,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('phi_cnm',
                value=guesses[0],
-               min=0.1,
+               min=0.5,
                max=100,
                vary=vary[0])
     params.add('phi_mol',
@@ -2234,8 +2240,8 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('alphaG',
                value=guesses[0],
-               min=0.01,
-               max=100,
+               min=0.1,
+               max=10,
                vary=vary[0])
     params.add('phi_g',
                value=guesses[2],
@@ -2398,7 +2404,7 @@ def read_ds9_region(filename):
 
     return region
 
-def load_ds9_core_region(cores, filename_base = 'california_av_boxes_',
+def load_ds9_core_region(cores, filename_base = 'taurus_av_boxes_',
         header=None):
 
     # region[0] in following format:
@@ -2479,11 +2485,11 @@ def main(verbose=True, av_data_type='planck', regions=None):
     This script requires analysis output from three other scripts.
     Script                                          Purpose
     ---------------------------------------------------------------------------
-    hi/california_analysis_core_properties.py           Defines core positions
-    av/california_analysis_av_derive_core_boxes.py      Calculates box sizes
-    hi/california_analysis_hi_av_core_likelihoods.py    Calculates HI velocity
+    hi/taurus_analysis_core_properties.py           Defines core positions
+    av/taurus_analysis_av_derive_core_boxes.py      Calculates box sizes
+    hi/taurus_analysis_hi_av_core_likelihoods.py    Calculates HI velocity
                                                         range
-    av/california_analysis_av_load_regions.py
+    av/taurus_analysis_av_load_regions.py
 
     '''
 
@@ -2506,7 +2512,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
     # Sternberg Parameters
     # --------------------
-    N_monte_carlo_runs = 100 # Number of monte carlo runs
+    N_monte_carlo_runs = 1000 # Number of monte carlo runs
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
@@ -2520,8 +2526,8 @@ def main(verbose=True, av_data_type='planck', regions=None):
     clobber = 0 # perform MC and write over current results?
 
     # Monte carlo results file bases
-    results_filename = '/d/bip3/ezbc/california/data/python_output/' + \
-                       'monte_carlo_results/california_mc_results_sternberg' + \
+    results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
+                       'monte_carlo_results/taurus_mc_results_sternberg' + \
                        av_data_type + '_'
 
     sternberg_params = {}
@@ -2548,8 +2554,8 @@ def main(verbose=True, av_data_type='planck', regions=None):
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
-    results_filename = '/d/bip3/ezbc/california/data/python_output/' + \
-                       'monte_carlo_results/california_mc_results_krumholz' + \
+    results_filename = '/d/bip3/ezbc/taurus/data/python_output/' + \
+                       'monte_carlo_results/taurus_mc_results_krumholz' + \
                        av_data_type + '_'
 
     krumholz_params = {}
@@ -2566,58 +2572,51 @@ def main(verbose=True, av_data_type='planck', regions=None):
     # Universal properties
     # --------------------
     # global property filename
-    global_property_filename = 'california_global_properties'
+    global_property_filename = 'taurus_global_properties'
 
     if 0:
         # Name correct region of cloud
         if region == 1:
-            region_name = 'california1'
+            region_name = 'taurus1'
         elif region == 2:
-            region_name = 'california2'
+            region_name = 'taurus2'
         else:
-            region_name = 'california'
+            region_name = 'taurus'
 
 
     # Which cores to include in analysis?
     cores_to_keep = [# taur
                      'L1495',
-                     'L1495A',
+                     #'L1495A',
                      'B213',
                      'L1498',
                      'B215',
                      'B18',
-                     'B217',
-                     'B220-1',
+                     #'B217',
+                     #'B220-1',
                      'B220-2',
-                     'L1521',
+                     #'L1521',
                      'L1524',
-                     'L1527-1',
+                     #'L1527-1',
                      'L1527-2',
                      # Calif
-                     'L1536',
-                     'L1483-1',
-                     'L1483-2',
-                     'L1482-1',
-                     'L1482-2',
-                     'L1478-1',
-                     'L1478-2',
+                     #'L1536',
+                     'L1483',
+                     'L1478',
                      'L1456',
                      'NGC1579',
-                     #'L1545',
-                     #'L1517',
-                     #'L1512',
-                     #'L1523',
-                     #'L1512',
+                     'L1545',
+                     'L1517',
+                     'L1512',
+                     'L1523',
+                     'L1512',
                      # Pers
                      'B5',
                      'IC348',
                      'B1E',
                      'B1',
                      'NGC1333',
-                     'B4',
-                     'B3',
-                     'L1455',
-                     'L1448',
+                     'L1482'
                      ]
 
     # Regions
@@ -2630,14 +2629,14 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
     # define directory locations
     # --------------------------
-    output_dir = '/d/bip3/ezbc/california/data/python_output/nhi_av/'
-    figure_dir = '/d/bip3/ezbc/california/figures/cores/'
-    av_dir = '/d/bip3/ezbc/california/data/av/'
-    hi_dir = '/d/bip3/ezbc/california/data/hi/'
-    co_dir = '/d/bip3/ezbc/california/data/co/'
-    core_dir = '/d/bip3/ezbc/california/data/python_output/core_properties/'
-    property_dir = '/d/bip3/ezbc/california/data/python_output/'
-    region_dir = '/d/bip3/ezbc/california/data/python_output/ds9_regions/'
+    output_dir = '/d/bip3/ezbc/taurus/data/python_output/nhi_av/'
+    figure_dir = '/d/bip3/ezbc/taurus/figures/cores/'
+    av_dir = '/d/bip3/ezbc/taurus/data/av/'
+    hi_dir = '/d/bip3/ezbc/taurus/data/hi/'
+    co_dir = '/d/bip3/ezbc/taurus/data/co/'
+    core_dir = '/d/bip3/ezbc/taurus/data/python_output/core_properties/'
+    property_dir = '/d/bip3/ezbc/taurus/data/python_output/'
+    region_dir = '/d/bip3/ezbc/taurus/data/python_output/ds9_regions/'
     multicloud_region_dir = \
             '/d/bip3/ezbc/multicloud/data/python_output/'
 
@@ -2648,19 +2647,19 @@ def main(verbose=True, av_data_type='planck', regions=None):
     # load Planck Av and GALFA HI images, on same grid
     # ------------------------------------------------
     av_data_planck, av_header = load_fits(av_dir + \
-                'california_av_planck_5arcmin.fits',
+                'taurus_av_planck_5arcmin.fits',
             return_header=True)
 
     av_error_data_planck, av_error_header = load_fits(av_dir + \
-                'california_av_error_planck_5arcmin.fits',
+                'taurus_av_error_planck_5arcmin.fits',
             return_header=True)
 
     hi_data, h = load_fits(hi_dir + \
-                'california_hi_galfa_cube_regrid_planckres.fits',
+                'taurus_hi_galfa_cube_regrid_planckres.fits',
             return_header=True)
 
     co_data, co_header = load_fits(co_dir + \
-                'california_co_cfa_cube_regrid_planckres.fits',
+                'taurus_co_cfa_cube_regrid_planckres.fits',
             return_header=True)
 
     # make the velocity axis
@@ -2669,11 +2668,11 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
     # Load global properties of cloud
     # global properties written from script
-    # 'av/california_analysis_global_properties.txt'
+    # 'av/taurus_analysis_global_properties.txt'
     global_properties_list = []
     for region_name in regions:
         filename = \
-                global_property_filename.replace('california', region_name)
+                global_property_filename.replace('taurus', region_name)
 
         with open(property_dir + \
                   filename + '_' + av_data_type + \
@@ -2683,27 +2682,24 @@ def main(verbose=True, av_data_type='planck', regions=None):
         global_properties_list.append(properties)
 
     # Plot NHI vs. Av for a given velocity range
-    if 0:
-        noise_cube_filename = 'california_hi_galfa_cube_regrid_planckres_noise.fits'
-        if not path.isfile(hi_dir + noise_cube_filename):
-            noise_cube = calculate_noise_cube(cube=hi_data,
-                    velocity_axis=velocity_axis,
-                    velocity_noise_range=[90,110], header=h, Tsys=30.,
-                    filename=hi_dir + noise_cube_filename)
-        else:
-            noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
-                return_header=True)
-
-    noise_cube = 0.01 * hi_data
+    noise_cube_filename = 'taurus_hi_galfa_cube_regrid_planckres_noise.fits'
+    if not path.isfile(hi_dir + noise_cube_filename):
+        noise_cube = calculate_noise_cube(cube=hi_data,
+                velocity_axis=velocity_axis,
+                velocity_noise_range=[90,110], header=h, Tsys=30.,
+                filename=hi_dir + noise_cube_filename)
+    else:
+        noise_cube, noise_header = load_fits(hi_dir + noise_cube_filename,
+            return_header=True)
 
     # define core properties
-    with open(core_dir + 'california_core_properties.txt', 'r') as f:
+    with open(core_dir + 'taurus_core_properties.txt', 'r') as f:
         cores = json.load(f)
 
     cores = convert_core_coordinates(cores, h)
     cores = load_ds9_core_region(cores,
                             filename_base = region_dir + \
-                                            'california_av_poly_cores',
+                                            'taurus_av_poly_cores',
                             header = av_header)
 
     # Load cloud division regions from ds9
@@ -2712,8 +2708,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
                                      'multicloud_divisions.reg',
                             header=av_header)
 
-    region_vertices = \
-            properties['regions']['california']['poly_verts']['pixel']
+    region_vertices = properties['regions']['taurus']['poly_verts']['pixel']
 
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data_planck,
@@ -2737,28 +2732,6 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
         # Initialize dictionary to store MC results for each core
         #results = {}
-
-        # Derive center velocity from hi
-        # ------------------------------
-        single_vel_center = False
-        if single_vel_center:
-            hi_spectrum = np.sum(hi_data, axis=(1))
-            vel_center = np.array((np.average(velocity_axis,
-                                   weights=hi_spectrum**2),))[0]
-            print('\nVelocity center from HI = ' +\
-                    '{0:.2f} km/s'.format(vel_center))
-        else:
-            vel_center = np.zeros(hi_data.shape[1:])
-            for i in xrange(0, hi_data.shape[1]):
-                for j in xrange(0, hi_data.shape[2]):
-                    hi_spectrum = hi_data[:, i, j]
-                    hi_spectrum[np.isnan(hi_spectrum)] = 0.0
-                    if np.nansum(hi_spectrum) > 0:
-                        vel_center[i,j] = \
-                                np.array((np.average(velocity_axis,
-                                            weights=hi_spectrum**2),))[0]
-                    else:
-                        vel_center[i,j] = np.nan
 
         for core in cores_to_keep:
             print('\nCalculating for core %s' % core)
@@ -2796,17 +2769,6 @@ def main(verbose=True, av_data_type='planck', regions=None):
             av_data_planck = np.copy(av_data_planck_orig[~mask])
             av_error_data_planck = np.copy(av_error_data_planck_orig[~mask])
 
-
-            properties['hi_velocity_center']['value'] = \
-                    np.asarray(properties['hi_velocity_center']['value'])
-
-            if properties['hi_velocity_center']['value'].size > 2:
-                properties['hi_velocity_center_masked'] = \
-                        properties['hi_velocity_center']['value'][~mask]
-            else:
-                properties['hi_velocity_center_masked'] = \
-                    properties['hi_velocity_center']['value']
-
             # -----------------------------------------------------------------
             # Perform analysis on cores, including fitting the sternberg
             # model.  If calc_errors is True then a monte carlo is run by
@@ -2826,7 +2788,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
                                  krumholz_params=krumholz_params,
                                  results_figure_name=figure_dir + \
                                          'monte_carlo_results/' + \
-                                         'california_%s' % core,
+                                         'taurus_%s' % core,
                                  properties=properties,
                                  results_filename=results_filename + core,
                                  )
@@ -2835,7 +2797,7 @@ def main(verbose=True, av_data_type='planck', regions=None):
         for key in cores:
             if type(cores[key]) is np.ndarray:
                     cores[key] = cores[key].tolist()
-        with open(core_dir + 'california_core_properties.txt', 'w') as f:
+        with open(core_dir + 'taurus_core_properties.txt', 'w') as f:
             json.dump(cores, f)
 
     # Create the figures!
@@ -2849,69 +2811,51 @@ def main(verbose=True, av_data_type='planck', regions=None):
 
 
     for figure_type in figure_types:
-        if 0:
-            fig_name_rh2 = \
-                    'california_rh2_vs_hsd_panels_{0:s}'.format(av_data_type)
-            print('\nWriting Rh2 figures to\n' + fig_name_rh2)
-
-            plot_rh2_vs_h_grid(cores,
-                    limits = [0, 80, 10**-3, 10**2],
-                    savedir = figure_dir + 'panel_cores/',
-                    scale = ('linear', 'log'),
-                    filename=fig_name_rh2 + \
-                             '_linear.{0:s}'.format(figure_type),
-                    core_names=cores_to_keep,
-                    show = False)
-
-            plot_rh2_vs_h_grid(cores,
-                    limits = [1, 200, 10**-3, 10**2],
-                    savedir = figure_dir + 'panel_cores/',
-                    scale = ('log', 'log'),
-                    filename=fig_name_rh2 + '_log.{0:s}'.format(figure_type),
-                    core_names=cores_to_keep,
-                    show = False)
 
         # Calif limits = [0, 80, 0, 8]
         # taur limits = [0, 80, -1.5, 6.5]
         # Pers limits = [0, 80, 1, 8],
-        fig_name_hivsh = 'california_hi_vs_h_panels_{0:s}'.format(av_data_type)
+        fig_name_hivsh = 'taurus_hi_vs_h_panels_{0:s}'.format(av_data_type)
         print('\nWriting HI vs H figures to\n' + fig_name_hivsh)
 
         plot_hi_vs_h_grid(cores,
                 #limits=[-9, 80, -1.5, 6.5],
-                limits=[-9, 159, 5, 25],
+                limits=[-9, 159, -1.5, 30],
                 savedir=figure_dir + 'panel_cores/',
                 scale=('linear', 'linear'),
                 filename=fig_name_hivsh + '_linear.{0:s}'.format(figure_type),
                 cores_to_plot=cores_to_keep,
                 show = False)
 
-        if 0:
-            plot_hi_vs_h_grid(cores,
-                    limits=[1, 100, 1, 100],
-                    savedir=figure_dir + 'panel_cores/',
-                    scale=('log', 'log'),
-                    filename=fig_name_hivsh + '_log.{0:s}'.format(figure_type),
-                    cores_to_plot=cores_to_keep,
-                    show = False)
+        plot_hi_vs_h_grid(cores,
+                #limits=[-9, 80, -1.5, 6.5],
+                limits=[-9, 159, -1.5, 20],
+                savedir=figure_dir + 'panel_cores/',
+                scale=('linear', 'linear'),
+                filename=fig_name_hivsh + '_linear_B213_fit.{0:s}'.format(figure_type),
+                cores_to_plot=('B213',),
+                show = False)
 
-        if 0:
-            fig_name_hivsav = \
-                    'california_hi_vs_av_panels_{0:s}'.format(av_data_type)
-            print('\nWriting HI vs H figures to\n' + fig_name_hivsav)
+        plot_hi_vs_h_grid(cores,
+                #limits=[-9, 80, -1.5, 6.5],
+                limits=[-9, 159, -1.5, 20],
+                savedir=figure_dir + 'panel_cores/',
+                scale=('linear', 'linear'),
+                plot_errors=True,
+                filename=fig_name_hivsh + '_linear_B213_fit_errors.{0:s}'.format(figure_type),
+                cores_to_plot=('B213',),
+                show = False)
 
-            plot_hi_vs_av_grid(cores,
-                    limits = [0, 50, 1, 8],
-                    savedir = figure_dir + 'panel_cores/',
-                    scale = ('linear', 'linear'),
-                    filename=fig_name_hivsav + \
-                             '_linear.{0:s}'.format(figure_type),
-                    core_names=cores_to_keep,
-                    #title = r'$\Sigma_{\rm HI}$ vs. $\Sigma_{\rm H}$'\
-                    #        + ' of california Cores',
-                    show = False)
+        plot_hi_vs_h_grid(cores,
+                #limits=[-9, 80, -1.5, 6.5],
+                limits=[-9, 159, -1.5, 20],
+                savedir=figure_dir + 'panel_cores/',
+                scale=('linear', 'linear'),
+                filename=fig_name_hivsh + '_linear_B213_nofit.{0:s}'.format(figure_type),
+                cores_to_plot=('B213',),
+                plot_fit=False,
+                show = False)
 
 if __name__ == '__main__':
-    main(av_data_type='planck', regions=('california',))
-    #main(av_data_type='k09')
+    main(av_data_type='planck', regions=('taurus1', 'taurus2',))
 

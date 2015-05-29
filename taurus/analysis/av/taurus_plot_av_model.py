@@ -8,6 +8,9 @@ import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
 
+import matplotlib
+matplotlib.use('Agg')
+
 ''' Plotting Functions
 '''
 
@@ -21,7 +24,6 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     import matplotlib
     import numpy as np
     from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
     import matplotlib.pyplot as plt
     import pywcsgrid2 as wcs
     import pywcs
@@ -204,7 +206,6 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     import matplotlib
     import numpy as np
     from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
     import matplotlib.pyplot as plt
     import pywcsgrid2 as wcs
     import pywcs
@@ -245,12 +246,9 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
               'text.usetex': True,
               #'font.family': 'sans-serif',
               'figure.figsize': figsize,
-              'figure.titlesize': font_scale,
               'axes.color_cycle': color_cycle # colors of different plots
              }
     plt.rcParams.update(params)
-
-
 
     # Create figure instance
     fig = plt.figure()
@@ -560,15 +558,14 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
         fit=True, savedir='./', filename=None, show=True,
         scale=('linear','linear'), title = '', gridsize=(100,100), std=None):
 
-    # Import external modules
+    # import external modules
     import numpy as np
     import math
-    import pyfits as pf
     import matplotlib.pyplot as plt
     import matplotlib
     from mpl_toolkits.axes_grid1 import ImageGrid
-    from myscience.krumholz09 import calc_T_cnm
     from matplotlib import cm
+    from astroML.plotting import scatter_contour
 
     n = int(np.ceil(len(av_images)**0.5))
     if n**2 - n > len(av_images):
@@ -579,29 +576,22 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
         nrows, ncols = n, n
         y_scaling = 1.0
 
-    # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
-    colormap = plt.cm.gist_ncar
-    #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
-    font_scale = 12
-    params = {#'backend': .pdf',
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              'text.fontsize': font_scale,
-              'legend.fontsize': font_scale * 3 / 4.0,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': 500,
-              'axes.labelweight': 500,
-              'text.usetex': True,
-              'figure.figsize': (5, 5 * y_scaling),
-              #'axes.color_cycle': color_cycle # colors of different plots
+    # set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+    #plt.rcdefaults()
+
+    # color map
+    cmap = plt.cm.gnuplot
+
+    # color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    params = {'axes.color_cycle': color_cycle, # colors of different plots
              }
-    plt.rcParams.update(params)
+    #plt.rcparams.update(params)
 
     # Create figure instance
-    fig = plt.figure()
+    fig = plt.figure(figsize=(3.6, 3.6))
 
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
@@ -648,7 +638,7 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
         # Create plot
         ax = imagegrid[i]
 
-        if 1:
+        if 0:
             image = ax.errorbar(av_nonans.ravel(),
                     avmod_nonans.ravel(),
                     xerr=(av_error_nonans.ravel()),
@@ -673,6 +663,28 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
             cb = ax.cax.colorbar(image,)
             # Write label to colorbar
             cb.set_label_text('Bin Counts',)
+        if 1:
+            l1 = scatter_contour(av_nonans.ravel(),
+                                 avmod_nonans.ravel(),
+                                 threshold=2,
+                                 log_counts=0,
+                                 levels=5,
+                                 ax=ax,
+                                 histogram2d_args=dict(bins=30,
+                                        range=((limits[0], limits[1]),
+                                               (limits[2], limits[3]))),
+                                 plot_args=dict(marker='o',
+                                                linestyle='none',
+                                                color='black',
+                                                alpha=0.7,
+                                                markersize=2),
+                                 contour_args=dict(
+                                                   cmap=plt.cm.gray_r,
+                                                   #cmap=cmap,
+                                                   ),
+                                 )
+
+
 
         # Plot sensitivies
         av_limit = np.median(av_errors[0])
@@ -704,14 +716,12 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
             ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_xlabel(r'$A_V$ Data (mag)')
-        ax.set_ylabel(r'$A_V$ Model (mag)')
+        ax.set_xlabel(r'$A_V$ Data [mag]')
+        ax.set_ylabel(r'$A_V$ Model [mag]')
         #ax.set_title(core_names[i])
 
-    if title is not None:
-        fig.suptitle(title, fontsize=font_scale*1.5)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(savedir + filename)
     if show:
         fig.show()
 
@@ -1208,17 +1218,20 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     # Get mask and mask images
     mask = np.asarray(props['mask' + bin_string])
 
+    mask_images = False
     av_image_masked = np.copy(av_image)
     #av_image_masked[(mask == 1) & (region_mask == 1)] = np.nan
-    av_image_masked[mask] = np.nan
 
     av_error_masked = np.copy(av_image_error)
     #av_image_masked[(mask == 1) & (region_mask == 1)] = np.nan
-    av_error_masked[mask] = np.nan
 
     av_model_masked = np.copy(av_model)
     #av_model_masked[(mask == 1) & (region_mask == 1)] = np.nan
-    av_model_masked[mask] = np.nan
+
+    if mask_images:
+        av_image_masked[mask] = np.nan
+        av_error_masked[mask] = np.nan
+        av_model_masked[mask] = np.nan
 
     indices = ((np.isnan(av_model_masked)) & \
                (np.isnan(av_image_masked)) & \
@@ -1269,17 +1282,19 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
         print('\nSaving Av model image to \n' + figure_dir + filename + \
                 '.' + figure_type)
 
-        plot_av_model(av_image=av_image_masked,
-                      av_model=av_model_masked,
-                      header=av_header,
-                      results=props,
-                      limits=props['plot_limit' + bin_string]['pixel'],
-                      savedir=figure_dir + 'maps/av_models/',
-                      filename=filename + '.' + figure_type,
-                      show=False)
-
         if 0:
-            if not use_binned_images:
+            plot_av_model(av_image=av_image_masked,
+                          av_model=av_model_masked,
+                          header=av_header,
+                          results=props,
+                          limits=props['plot_limit' + bin_string]['pixel'],
+                          savedir=figure_dir + 'maps/av_models/',
+                          filename=filename + '.' + figure_type,
+                          show=False)
+
+        if 1:
+            #if not use_binned_images:
+            if 0:
                 plot_av_model(av_image=av_image_masked,
                               av_model=av_model_masked,
                               header=av_header,
@@ -1301,7 +1316,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                     (av_image_masked,),
                     av_errors=(av_error_masked,),
                     #limits=[10**-1, 10**1.9, 10**0, 10**1.7],
-                    limits=[0,1.5,0,1.5],
+                    limits=[0,20,0,3],
                     savedir=figure_dir + 'av/',
                     gridsize=(10,10),
                     #scale=('log', 'log'),

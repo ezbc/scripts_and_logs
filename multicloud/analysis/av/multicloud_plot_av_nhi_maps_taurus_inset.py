@@ -41,25 +41,42 @@ def plot_nhi_images(nhi_image=None, nhi_image_inset=None, header=None,
     font_scale = 9
     line_weight = 600
     font_weight = 600
-    params = {#'backend': .pdf',
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
               'axes.labelsize': font_scale,
               'axes.titlesize': font_scale,
-              'axes.weight': line_weight,
-              'text.fontsize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
               'legend.fontsize': font_scale*3/4,
               'xtick.labelsize': font_scale,
-              'xtick.weight': line_weight,
               'ytick.labelsize': font_scale,
-              'ytick.weight': line_weight,
               'font.weight': font_weight,
-              'axes.labelweight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
               'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
               #'font.family': 'sans-serif',
-              'figure.figsize': (4.0, 4.0),
-              'figure.titlesize': font_scale,
-              'axes.color_cycle': color_cycle # colors of different plots
+              'figure.figsize': (4, 4),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+
+
 
 
     # Create figure instance
@@ -249,7 +266,271 @@ def plot_nhi_images(nhi_image=None, nhi_image_inset=None, header=None,
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
-        plt.tight_layout()
+        #plt.tight_layout()
+        plt.savefig(savedir + filename, bbox_inches='tight')
+    if show:
+        plt.show()
+
+def plot_nhi_images_bare(nhi_image=None, nhi_image_inset=None, header=None,
+        contour_image=None, av_image=None, cores=None, regions=None,
+        title=None, limits=None, inset_limits=None, contours=None,
+        boxes=False, savedir='./', filename=None, show=True, vlimits=None,
+        inset_vlimits=None, region_vertices=None):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    from mpl_toolkits.axes_grid1 import ImageGrid, AxesGrid
+    import pyfits as pf
+    import matplotlib.pyplot as plt
+    import pywcsgrid2 as wcs
+    import pywcs
+    from pylab import cm # colormaps
+    from matplotlib.patches import Polygon
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes, \
+        zoomed_inset_axes, mark_inset
+
+    # Set up plot aesthetics
+    plt.clf()
+    plt.rcdefaults()
+
+    # Color map
+    cmap = plt.cm.gnuplot
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+    line_weight = 600
+    font_weight = 600
+
+
+    params = {
+              'axes.color_cycle': color_cycle, # colors of different plots
+              'axes.labelsize': font_scale,
+              'axes.titlesize': font_scale,
+              #'axes.weight': line_weight,
+              'axes.linewidth': 1.2,
+              'axes.labelweight': font_weight,
+              'legend.fontsize': font_scale*3/4,
+              'xtick.labelsize': font_scale,
+              'ytick.labelsize': font_scale,
+              'font.weight': font_weight,
+              'font.serif': 'computer modern roman',
+              'text.fontsize': font_scale,
+              'text.usetex': True,
+              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
+              #'font.family': 'sans-serif',
+              'figure.figsize': (4, 4),
+              'figure.dpi': 600,
+              'backend' : 'pdf',
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    pgf_with_pdflatex = {
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": [
+             r"\usepackage[utf8x]{inputenc}",
+             r"\usepackage[T1]{fontenc}",
+             r"\usepackage{cmbright}",
+             ]
+    }
+    plt.rcParams.update(pgf_with_pdflatex)
+
+
+
+
+
+    # Create figure instance
+    fig = plt.figure()
+
+    imgrid = False
+    if imgrid:
+        imagegrid = ImageGrid(fig, (1,2,1),
+                     nrows_ncols=(1,1),
+                     ngrids=1,
+                     cbar_mode="each",
+                     cbar_location='top',
+                     cbar_pad="2%",
+                     cbar_size='6%',
+                     axes_pad=0.1,
+                     axes_class=(wcs.Axes,
+                                 dict(header=header)),
+                     aspect=True,
+                     label_mode='L',
+                     share_all=False)
+    else:
+        imagegrid = AxesGrid(fig, (1,1,1),
+                     nrows_ncols=(1,1),
+                     ngrids=1,
+                     cbar_mode="each",
+                     cbar_location='top',
+                     cbar_pad="2%",
+                     cbar_size='6%',
+                     axes_pad=0.1,
+                     axes_class=(wcs.Axes,
+                                 dict(header=header)),
+                     aspect=True,
+                     label_mode='L',
+                     share_all=False)
+
+    # ------------------
+    # Main NHI image
+    # ------------------
+    if 0:
+        # create axes
+        ax1 = imagegrid[0]
+
+        # show the image
+        im = ax1.imshow(nhi_image - nhi_image_inset,
+                interpolation='nearest',origin='lower',
+                cmap=cmap,
+                vmin=vlimits[0],
+                vmax=vlimits[1],
+                #norm=matplotlib.colors.LogNorm()
+                )
+
+        # Asthetics
+        # ---------
+        # Number of tick label bins
+        ax1.locator_params(nbins=5)
+
+        #
+        ax1.set_display_coord_system("fk5")
+        ax1.set_ticklabel_type("hms", "dms")
+
+        ax1.set_xlabel('Right Ascension [J2000]',)
+        ax1.set_ylabel('Declination [J2000]',)
+
+        # colorbar
+        cb = ax1.cax.colorbar(im)
+        cmap.set_bad(color='w')
+
+        # Write label to colorbar
+        #cb.set_label_text(r'$N$(H\textsc{i}) [10$^{20}$ cm$^{-2}$]',)
+        cb.set_label_text(r'$\Sigma_{HI}$ [$M_\odot$ pc$^{-2}$]',)
+
+
+        rect = ax1.add_patch(Polygon(region_vertices,
+                                     facecolor='none',
+                                     edgecolor='w'))
+
+        ax1.annotate(r'LOS H$\textsc{i}\\- Taurus H$\textsc{i} Envelope',
+                xy=(0.05, 0.05),
+                xycoords='axes fraction',
+                color='w',
+                zorder=10)
+
+
+        if regions is not None:
+            for region in regions:
+                vertices = np.copy(regions[region]['poly_verts']['pixel'])
+                rect = ax1.add_patch(Polygon(
+                        vertices[:, ::-1],
+                        facecolor='none',
+                        edgecolor='w'))
+
+        # plot limits
+        if limits is not None:
+            ax1.set_xlim(limits[0],limits[2])
+            ax1.set_ylim(limits[1],limits[3])
+
+    # ------------------
+    # Inset NHI image
+    # ------------------
+    if imgrid:
+        imagegrid = ImageGrid(fig, (1,2,2),
+                     nrows_ncols=(1,1),
+                     ngrids=1,
+                     cbar_mode="each",
+                     cbar_location='top',
+                     cbar_pad="2%",
+                     cbar_size='6%',
+                     axes_pad=0.4,
+                     axes_class=(wcs.Axes,
+                                 dict(header=header)),
+                     aspect=True,
+                     label_mode='each',
+                     share_all=False)
+        ax2 = imagegrid[0]
+    else:
+        ax2 = imagegrid[0]
+
+    # Create axes
+    ax2.locator_params(nbins=5)
+
+    im2 = ax2.imshow(nhi_image_inset,
+                            interpolation='nearest',
+                            origin='lower',
+                            cmap=cmap,
+                            vmin=inset_vlimits[0],
+                            vmax=inset_vlimits[1],
+                            #norm=matplotlib.colors.LogNorm()
+                            )
+    # Plot Av contours
+    if contour_image is not None:
+        colors=['k']
+        if len(contours) > 1:
+            colors.append('w')
+        ax2.contour(contour_image,
+                    levels=contours,
+                    colors=colors)
+
+    if 0:
+        ax2.annotate(r'\noindent Taurus $\Sigma_{\rm HI}$ map ' + \
+                     r'\\ with $\Sigma_{\rm H_2}$ contours',
+                xy=(0.55, .8),
+                xycoords='axes fraction',
+                color='w',
+                zorder=10)
+
+        # Convert sky to pix coordinates
+        wcs_header = pywcs.WCS(header)
+        if type(cores) is dict:
+            for core in cores:
+                pix_coords = cores[core]['center_pixel']
+
+                anno_color='#FFFF00'
+
+                ax2.scatter(pix_coords[0],pix_coords[1],
+                        color='#00CC00',
+                        s=200,
+                        marker='+',
+                        linewidths=2,
+                        zorder=10)
+
+                ax2.annotate(core,
+                        xy=[pix_coords[0], pix_coords[1]],
+                        xytext=(5,-12),
+                        textcoords='offset points',
+                        color=anno_color,
+                        zorder=10)
+
+    # colorbar
+    cb = ax2.cax.colorbar(im2)
+    cmap.set_bad(color='w')
+
+    # Write label to colorbar
+    #cb.set_label_text(r'$N$(H\textsc{i}) [10$^{20}$ cm$^{-2}$]',)
+    cb.set_label_text(r'$\Sigma_{HI}$ [$M_\odot$ pc$^{-2}$]',)
+
+    # plot limits
+    if inset_limits is not None:
+        ax2.set_xlim(inset_limits[0],inset_limits[2])
+        ax2.set_ylim(inset_limits[1],inset_limits[3])
+
+    #inset_axes.set_ticklabel_type('delta')
+    ax2.set_display_coord_system("fk5")
+    ax2.set_ticklabel_type("hms", "dms")
+    ax2.set_xlabel('Right Ascension [J2000]',)
+    ax2.set_ylabel('Declination [J2000]',)
+    #ax2.set_ylabel('',)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=font_scale)
+    if filename is not None:
+        #plt.tight_layout()
         plt.savefig(savedir + filename, bbox_inches='tight')
     if show:
         plt.show()
@@ -1293,6 +1574,21 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
         print('\nSaving Av model image to \n' + filename)
 
         plot_nhi_images(nhi_image=hi_sd_image,
+                        nhi_image_inset=hi_sd_image_taurus,
+                        header=av_header,
+                        limits=taurus_props['plot_limit']['pixel'],
+                        inset_limits=taurus_props['plot_limit']['pixel'],
+                        vlimits=(2, 14),
+                        inset_vlimits=(1,8),
+                        region_vertices=region_vertices_taurus,
+                        contour_image=h2_sd_image_taurus,
+                        contours=(7,),
+                        savedir=figure_dir + 'maps/',
+                        filename=filename,
+                        cores=cores,
+                        show=0,
+                        )
+        plot_nhi_images_bare(nhi_image=hi_sd_image,
                         nhi_image_inset=hi_sd_image_taurus,
                         header=av_header,
                         limits=taurus_props['plot_limit']['pixel'],
