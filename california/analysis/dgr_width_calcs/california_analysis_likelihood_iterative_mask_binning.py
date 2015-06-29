@@ -1,5 +1,5 @@
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -642,7 +642,8 @@ def plot_mask_residuals(residuals=None, x_fit=None, y_fit=None,
     if show:
         plt.show()
 
-def plot_residual_map(av_image, header=None, dgr=None):
+def plot_residual_map(av_image, header=None, dgr=None, show=False,
+        filename=None):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -662,25 +663,7 @@ def plot_residual_map(av_image, header=None, dgr=None):
     #color_cycle = [colormap(i) for i in np.linspace(0, 0.9, len(flux_list))]
     font_scale = 15
     params = {
-              'axes.color_cycle': color_cycle, # colors of different plots
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              #'axes.weight': line_weight,
-              'axes.linewidth': 1.2,
-              'axes.labelweight': font_weight,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': font_weight,
-              'font.serif': 'computer modern roman',
-              'text.fontsize': font_scale,
-              'text.usetex': True,
-              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
-              #'font.family': 'sans-serif',
               'figure.figsize': (3.6, 3.6),
-              'figure.dpi': 600,
-              'backend' : 'pdf',
-              #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
 
@@ -723,8 +706,8 @@ def plot_residual_map(av_image, header=None, dgr=None):
             interpolation='nearest',origin='lower',
             cmap=cmap,
             #norm=matplotlib.colors.LogNorm()
-            vmin=0,
-            vmax=1.4
+            vmin=-1,
+            vmax=1
             )
 
     # Asthetics
@@ -738,6 +721,7 @@ def plot_residual_map(av_image, header=None, dgr=None):
     cb = ax.cax.colorbar(im)
     cmap.set_bad(color='w')
     # plot limits
+    limits = None
     if limits is not None:
         ax.set_xlim(limits[0],limits[2])
         ax.set_ylim(limits[1],limits[3])
@@ -745,12 +729,10 @@ def plot_residual_map(av_image, header=None, dgr=None):
     # Write label to colorbar
     cb.set_label_text(r'A$_V$ (Mag)',)
 
-    if title is not None:
-        fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(filename, bbox_inches='tight')
     if show:
-        fig.show()
+        plt.show()
 
 
 ''' Calculations
@@ -1023,6 +1005,7 @@ def iterate_residual_masking(
                              threshold_delta_dgr=None,
                              resid_width_scale=3.0,
                              plot_progress=False,
+                             av_header=None,
                              results_filename=None,
                              verbose=False,
                              return_masking_results=True,
@@ -1112,10 +1095,14 @@ def iterate_residual_masking(
         residuals[mask] = np.nan
 
         # plot progress
-        if 0:
+        if 1:
             plot_residual_map(residuals,
                               header=av_header,
-                              dgr=dgr_new)
+                              dgr=dgr_new,
+                              filename=\
+                        '/usr/users/ezbc/Desktop/residual_map_' + \
+                        str(iteration) + '.png',
+                               show=False)
 
         # Include only residuals which are white noise
         if iteration == 0:
@@ -1262,7 +1249,8 @@ def calc_likelihoods(
                     logL = calc_logL(av_image_model,
                                      av_image,
                                      data_error=av_image_error,
-                                     weights=image_weights)
+                                     #weights=image_weights
+                                     )
 
                     #print logL
 
@@ -1673,7 +1661,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     vel_widths = np.arange(1, 75, 6*0.16667)
     dgrs = np.arange(0.001, 0.3, 5e-3)
-    intercepts = np.arange(-1, 1, 0.1)
+    intercepts = np.arange(-1, 3, 0.1)
     #intercepts = np.arange(0, 1, 1)
 
     # Velocity range over which to integrate HI for deriving the mask
@@ -1730,6 +1718,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                                     'california_av_error_planck_5arcmin.fits',
                                     header=True)
 
+        #av_data -= 0.9 # background
+
     hi_data, hi_header = fits.getdata(hi_dir + \
                 'california_hi_galfa_cube_regrid_planckres.fits',
             header=True)
@@ -1768,7 +1758,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # Load cloud division regions from ds9
     global_props = load_ds9_region(global_props,
-                            filename=region_dir + 'multicloud_divisions.reg',
+                            filename=region_dir + 'multicloud_divisions_2.reg',
                             header=av_header)
 
     # Derive relevant region
@@ -1815,6 +1805,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                                  init_mask=region_mask,
                                  verbose=1,
                                  plot_progress=0,
+                                 av_header=av_header,
                                  results_filename=figure_dir + 'likelihood/'\
                                                   'california_residual_pdf.pdf'
                                  )

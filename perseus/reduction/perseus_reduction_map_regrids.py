@@ -65,7 +65,7 @@ def main():
     os.chdir('/d/bip3/ezbc/perseus/data')
 
     # If true, deletes files to be written
-    clobber = False
+    clobber = True
 
     # First, change zeros in lee image to nans
     data, header = pyfits.getdata('av/perseus_av_lee12_2mass.fits', header=True)
@@ -76,8 +76,8 @@ def main():
                    clobber=True)
 
     in_images = ('hi/perseus_hi_galfa_cube',
-              'av/perseus_av_planck',
-              'av/perseus_av_error_planck',
+              'av/perseus_av_planck_tau353',
+              'av/perseus_av_error_planck_tau353',
               'av/perseus_av_planck_radiance',
               'av/perseus_av_error_planck_radiance',
               'co/perseus_co_cfa_cube',
@@ -86,8 +86,8 @@ def main():
               'av/perseus_av_lee12_iris_masked')
 
     im_hi = 'hi/perseus_hi_galfa_cube'
-    im_pl = 'av/perseus_av_planck'
-    im_pl_err = 'av/perseus_av_error_planck'
+    im_pl = 'av/perseus_av_planck_tau353'
+    im_pl_err = 'av/perseus_av_error_planck_tau353'
     im_pl2 = 'av/perseus_av_planck_radiance'
     im_pl2_err = 'av/perseus_av_error_planck_radiance'
     im_co = 'co/perseus_co_cfa_cube'

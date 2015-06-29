@@ -73,13 +73,13 @@ def main():
     os.chdir('/d/bip3/ezbc/taurus/data')
 
     # If true, deletes files to be written
-    clobber = False
+    clobber = True
 
     in_images = ('av/taurus_av_kainulainen2009_nan',
               'av/taurus_av_pineda2010',
               'hi/taurus_hi_galfa_cube',
-              'av/taurus_av_planck',
-              'av/taurus_av_error_planck',
+              'av/taurus_av_planck_tau353',
+              'av/taurus_av_error_planck_tau353',
               'av/taurus_av_planck_radiance',
               'av/taurus_av_error_planck_radiance',
               'co/taurus_co_cfa_cube',
@@ -93,8 +93,8 @@ def main():
               'co/taurus_co_3-2_error_planck',
               )
 
-    im_pl = 'av/taurus_av_planck'
-    im_pl_err = 'av/taurus_av_error_planck'
+    im_pl = 'av/taurus_av_planck_tau353'
+    im_pl_err = 'av/taurus_av_error_planck_tau353'
     im_pl2 = 'av/taurus_av_planck_radiance'
     im_pl2_err = 'av/taurus_av_error_planck_radiance'
     im_hi = 'hi/taurus_hi_galfa_cube'
