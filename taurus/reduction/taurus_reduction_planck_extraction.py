@@ -284,12 +284,15 @@ def main():
         (data, header) = extract_data(datatype = 'tau353err')
         write_data(data, header, planck_dir + 'taurus_planck_tau353_error.fits')
 
-        (data, header) = tau353_to_ebv(data, header)
-        write_data(data, header, planck_dir + 'taurus_planck_ebv_error.fits')
+        (data_ebv_tau353_error, header) = tau353_to_ebv(data, header)
+        write_data(data_ebv_tau353, header,
+                   planck_dir + 'taurus_ebv_error_planck_tau353.fits')
 
-        (data, header) = ebv2av(data, header)
-        write_data(data, header, av_dir + 'taurus_av_error_planck.fits')
+        (data_av_tau353_error, header) = ebv2av(data_ebv_tau353_error, header)
+        write_data(data_av_tau353_error, header,
+                   av_dir + 'taurus_av_error_planck_tau353.fits')
 
+    if 0:
         # radiance
         (data, header) = extract_data(datatype = 'radiance')
         write_data(data, header, planck_dir + 'taurus_planck_radiance.fits')

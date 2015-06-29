@@ -1560,8 +1560,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
     vel_widths = np.arange(1, 75, 2*0.16667)
     dgrs = np.arange(0.001, 0.8, 1e-3)
     dgrs = np.arange(0.001, 0.3, 5e-4)
-    intercepts = np.arange(0, 1, 1)
-    #intercepts = np.arange(-3, 3, 0.1)
+    #intercepts = np.arange(0, 1, 1)
+    intercepts = np.arange(-1, 1, 0.1)
 
     # Velocity range over which to integrate HI for deriving the mask
     if vel_range is None:

@@ -75,12 +75,12 @@ def main():
 
     in_images = (
               'hi/california_hi_galfa_cube',
-              'av/california_av_planck',
-              'av/california_av_error_planck',
+              'av/california_av_planck_tau353',
+              'av/california_av_error_planck_tau353',
               'co/california_co_cfa_cube')
 
-    im_pl = 'av/california_av_planck'
-    im_pl_err = 'av/california_av_error_planck'
+    im_pl = 'av/california_av_planck_tau353'
+    im_pl_err = 'av/california_av_error_planck_tau353'
     im_hi = 'hi/california_hi_galfa_cube'
     im_co = 'co/california_co_cfa_cube'
 
@@ -89,7 +89,7 @@ def main():
     out_images = (im_hi, im_pl, im_pl_err, im_co)
 
     for i in xrange(len(in_images)):
-        exists = check_file(out_images[i] + '.mir', clobber=True)
+        exists = check_file(out_images[i] + '.mir', clobber=clobber)
         print('\t{:s}.fits\n'.format(in_images[i]))
         if not exists:
             fits(in_images[i] + '.fits',
@@ -104,8 +104,8 @@ def main():
     delta_dec = 0.083333333
 
     # Greater RA value comes first
-    ref_pix, npix = calc_image_origin(x_limits=(81, 55),
-                                      y_limits=(25, 45),
+    ref_pix, npix = calc_image_origin(x_limits=(73, 55),
+                                      y_limits=(31, 39),
                                       delta_x=delta_ra,
                                       delta_y=delta_dec)
 

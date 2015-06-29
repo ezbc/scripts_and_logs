@@ -1,0 +1,56 @@
+
+
++ choose 
+
++ Iterate residual masking
+
+    - 
+
+
+
+1. Derive a mask for the cloud which excludes infrared
+emission not associated H i.
+
+(a) Derive N (H i) given an H i width.
+
+(b) Derive a MLE of the DGR and new H i width from Equation 5 given the model A
+V,model = DGR × N (H i).
+
+(c) Mask pixels with high residuals between A_V,data and A_V,model .
+
+(d) Perform Steps 1a through 1c, using the H i width derived from Step 1b for
+Step 1a until the H i width converges to a single value.  Masking pixels with
+large residuals is complete.
+
+2. Bin the image pixels to sizes where residuals are
+not correlated, ∼ 1 ◦ .
+
+3. Calculate likelihoods for the DGR and H i width using the binned image.
+
+4. Estimate error of binned A_V pixels by calculating the variance in the
+residuals from Step 3.
+
+5. Calculate likelihoods for the DGR and H i width
+using the binned image, and the new estimated
+variance of the binned A_V pixels.
+
+6. Use MLE H i width from Step 5 as the initial H i width in Step 1a. Repeat
+Step 1a through 6 until the input H i width in Step 1a is similar as the MLE HI
+width derived in Step 5.
+
+
+
+Proposed coding:
+
+Data structure to include all variables
+
+Allows for choice to perform previous analysis, e.g. regions
+
+
+
+
+
+
+
+
+
