@@ -47,37 +47,53 @@ def setup_background_subtraction():
 
     pass
 
-def plot_likelihoods(cloud):
+def plot_likelihoods(cloud_results):
 
     likelihood_filename_base = \
-            '/d/bip3/ezbc/perseus/figures/likelihood/' + \
-            'perseus_likelihood_lee12_'
+            cloud_results['figure_dir'] + 'likelihood/' + \
+            cloud_results['filename_extension'] + '_likelihood_'
 
-    cloudpy.plot_likelihoods_hist(cloud=cloud,
+    cloudpy.plot_likelihoods_hist(cloud=cloud_results['cloud'],
                       plot_axes=('widths', 'dgrs'),
                       show=0,
                       returnimage=False,
                       filename=likelihood_filename_base + 'wd.png',
-                      limits=[10, 20, 0.05, 0.15],
+                      #limits=[10, 20, 0.05, 0.15],
                       )
-    cloudpy.plot_likelihoods_hist(cloud=cloud,
+    cloudpy.plot_likelihoods_hist(cloud=cloud_results['cloud'],
                       plot_axes=('widths', 'intercepts'),
                       show=0,
                       returnimage=False,
                       filename=likelihood_filename_base + 'wi.png',
-                      limits=[10, 20, -1, 1],
+                      #limits=[10, 20, -1, 1],
                       )
 
-def plot_dgr_intercept_progression(cloud):
+def plot_dgr_intercept_progression(cloud_results):
 
     filename = \
-            '/d/bip3/ezbc/perseus/figures/diagnostics/' + \
-            'perseus_dgr_intercept_progress_lee12.png'
+            cloud_results['figure_dir'] + 'diagnostics/' + \
+            cloud_results['filename_extension'] + '_dgr_intercept_progress.png'
 
-    cloudpy.plot_dgr_intercept_progression(cloud,
+    cloudpy.plot_dgr_intercept_progression(cloud_results['cloud'],
                       filename=filename,
                       #limits=[10, 20, -1, 1],
                       )
+
+def make_map_movie(cloud_results):
+
+    filename = \
+            cloud_results['figure_dir'] + 'diagnostics/' + \
+            cloud_results['filename_extension'] + '_residual_maps.gif'
+
+    cloudpy.plot_map_movie(cloud_results['cloud'], filename=filename)
+
+def make_residual_hist_movie(cloud_results):
+
+    filename = \
+            cloud_results['figure_dir'] + 'diagnostics/' + \
+            cloud_results['filename_extension'] + '_residual_hists.gif'
+
+    cloudpy.plot_residual_hist_movie(cloud_results['cloud'], filename=filename)
 
 def run_cloud_analysis(args,
     cloud_name = 'perseus',
@@ -149,6 +165,7 @@ def run_cloud_analysis(args,
     else:
         weights_name = ''
         weights_filename = None
+
     filename_extension = cloud_name + '_' + data_type + background_name + \
             bin_name + weights_name + '_' + args['likelihood_resolution'] + \
             'res'
@@ -187,11 +204,11 @@ def run_cloud_analysis(args,
             filename_extension + '_diagnostic.txt'
 
     if args['likelihood_resolution'] == 'fine':
-        width_grid = np.arange(1, 75, 2*0.16667)
+        width_grid = np.arange(1, 100, 2*0.16667)
         dgr_grid = np.arange(0.000, 0.2, 2e-4)
         intercept_grid = np.arange(-2, 2, 0.01)
     elif args['likelihood_resolution'] == 'coarse':
-        width_grid = np.arange(1, 50, 2*0.16667)
+        width_grid = np.arange(1, 20, 2*0.16667)
         dgr_grid = np.arange(0.000, 0.2, 3e-3)
         intercept_grid = np.arange(-1, 2, 0.1)
     else:
@@ -223,7 +240,7 @@ def run_cloud_analysis(args,
                               intercept_grid=intercept_grid,
                               width_grid=width_grid,
                               residual_width_scale=1.5,
-                              threshold_delta_dgr=0.001,
+                              threshold_delta_dgr=0.05,
                               hi_noise_vel_range=[90,110],
                               vel_range_diff_thres=2,
                               init_vel_range=[-40,30],
@@ -263,9 +280,6 @@ def main():
 
     load_clouds = 0
 
-    q = Queue(maxsize=0)
-    num_threads = 10
-
     results = {}
     #clouds['perseus'] = run_cloud_analysis('perseus')
     #clouds['california'] = run_cloud_analysis('california')
@@ -274,61 +288,29 @@ def main():
     clouds = (
               #'perseus',
               'california',
-              'taurus'
+              'taurus',
               )
 
-    if 1:
-        for cloud in clouds:
-            args = {'cloud_name':cloud,
-                    'region':None,
-                    'load': 0,
-                    'data_type': 'planck',
-                    'background_subtract': False,
-                    'bin_image': True,
-                    'use_weights': False,
-                    'binned_data_filename_ext': '_bin',
-                    'likelihood_resolution': 'fine',
-                    }
+    for cloud in clouds:
+        args = {'cloud_name':cloud,
+                'region':None,
+                'load': 0,
+                #'data_type': 'lee12',
+                'data_type': 'planck',
+                'background_subtract': False,
+                'bin_image': True,
+                'use_weights': False,
+                'binned_data_filename_ext': '_bin',
+                'likelihood_resolution': 'fine',
+                #'likelihood_resolution': 'coarse',
+                }
 
-            results[cloud] = run_cloud_analysis(args)
+        results[cloud] = run_cloud_analysis(args)
 
-    # Define a worker function for multiprocessing
-    if 0:
-        def worker(args):
-            """thread worker function"""
-            try:
-                results[cloud] = run_cloud_analysis(args)
-            except KeyboardInterrupt:
-                raise KeyboardInterruptError()
-
-            return results
-
-        jobs = []
-        clouds = (
-                  'perseus',
-                  #'california',
-                  #'taurus'
-                  )
-        data_type = 'lee12'
-
-        for cloud in clouds:
-            args = {'cloud_name':cloud,
-                    'region':None,
-                    'load': True,
-                    'data_type': 'lee12'}
-
-            try:
-                p = multiprocessing.Process(target=worker, args=(args,))
-                jobs.append(p)
-                p.start()
-                p.join()
-            except KeyboardInterrupt():
-                p.terminate()
-
-        p.terminate()
-
-    plot_likelihoods(results['perseus'], args)
-    plot_dgr_intercept_progression(results['perseus'], args)
+    plot_likelihoods(results[cloud])
+    plot_dgr_intercept_progression(results[cloud])
+    make_map_movie(results[cloud])
+    make_residual_hist_movie(results[cloud])
 
 
 
