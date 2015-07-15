@@ -58,14 +58,25 @@ def plot_likelihoods(cloud):
                       show=0,
                       returnimage=False,
                       filename=likelihood_filename_base + 'wd.png',
-                      limits=[10, 60, 0.0, 0.2],
+                      limits=[10, 20, 0.05, 0.15],
                       )
     cloudpy.plot_likelihoods_hist(cloud=cloud,
                       plot_axes=('widths', 'intercepts'),
                       show=0,
                       returnimage=False,
                       filename=likelihood_filename_base + 'wi.png',
-                      limits=[10, 60, -1.0, 2.0],
+                      limits=[10, 20, -1, 1],
+                      )
+
+def plot_dgr_intercept_progression(cloud):
+
+    filename = \
+            '/d/bip3/ezbc/perseus/figures/diagnostics/' + \
+            'perseus_dgr_intercept_progress_lee12.png'
+
+    cloudpy.plot_dgr_intercept_progression(cloud,
+                      filename=filename,
+                      #limits=[10, 20, -1, 1],
                       )
 
 def run_cloud_analysis(args,
@@ -112,7 +123,7 @@ def run_cloud_analysis(args,
             av_background = 0.5
         else:
             av_background = None
-    if cloud_name == 'perseus' and data_type == 'planck':
+    if data_type == 'planck':
         av_filename = av_dir + \
            cloud_name + '_av_planck_tau353_5arcmin.fits'
         av_error_filename = av_dir + \
@@ -120,15 +131,37 @@ def run_cloud_analysis(args,
         av_error = None,
         av_background = 0.0
 
+    # Name of diagnostic files
+    if background_subtract:
+        background_name = '_backsub'
+    else:
+        background_name = ''
+
+    if args['bin_image']:
+        bin_name = '_binned'
+    else:
+        bin_name = ''
+
+    if args['use_weights']:
+        weights_name = '_weights'
+        weights_filename = av_dir + \
+           cloud_name + '_bin_weights.fits'
+    else:
+        weights_name = ''
+        weights_filename = None
+    filename_extension = cloud_name + '_' + data_type + background_name + \
+            bin_name + weights_name + '_' + args['likelihood_resolution'] + \
+            'res'
+
     # Plot args
     residual_hist_filename_base = figure_dir + 'diagnostics/residuals/' + \
-                                  cloud_name + '_residual_hist'
+                                  filename_extension + '_residual_hist'
     residual_map_filename_base = figure_dir + 'diagnostics/residuals/' + \
-                                  cloud_name + '_residual_map'
+                                  filename_extension + '_residual_map'
     likelihood_filename_base = figure_dir + 'diagnostics/likelihoods/' + \
-                                  cloud_name + '_likelihood'
+                                  filename_extension + '_likelihood'
     av_bin_map_filename_base = figure_dir + 'diagnostics/maps/' + \
-                                  cloud_name + '_bin_map'
+                                  filename_extension + '_bin_map'
 
     plot_args = {
             'residual_hist_filename_base': residual_hist_filename_base,
@@ -142,36 +175,43 @@ def run_cloud_analysis(args,
         os.system('rm -rf ' + hi_error_filename)
 
     region_filename = region_dir + 'multicloud_divisions.reg'
+
+
     cloud_filename = \
             '/d/bip3/ezbc/multicloud/data/python_output/' + \
-            cloud_name + '.pickle'
+            filename_extension + \
+            '.pickle'
+
     diagnostic_filename = \
             '/d/bip3/ezbc/multicloud/data/python_output/diagnostics/' + \
-            cloud_name + '_diagnostic.txt'
+            filename_extension + '_diagnostic.txt'
 
-    width_grid = np.arange(1, 75, 2*0.16667)
-    dgr_grid = np.arange(0.001, 0.4, 1e-3)
-    intercept_grid = np.arange(-2, 2, 0.01)
-    intercept_grid = np.arange(-2, 2, 0.1)
-    #intercept_grid = np.arange(0, 1, 1)
-
-    width_grid = width_grid
-    dgr_grid = dgr_grid
-    intercept_grid = intercept_grid
+    if args['likelihood_resolution'] == 'fine':
+        width_grid = np.arange(1, 75, 2*0.16667)
+        dgr_grid = np.arange(0.000, 0.2, 2e-4)
+        intercept_grid = np.arange(-2, 2, 0.01)
+    elif args['likelihood_resolution'] == 'coarse':
+        width_grid = np.arange(1, 50, 2*0.16667)
+        dgr_grid = np.arange(0.000, 0.2, 3e-3)
+        intercept_grid = np.arange(-1, 2, 0.1)
+    else:
+        raise ValueError('likelihood_resolution should be either ' + \
+                         '"coarse" or "fine"')
 
     # Define number of pixels in each bin
     # size of binned pixel in degrees * number of arcmin / degree * number of
     # arcmin / pixel
-    binsize = 1.0 * 60.0 / 5.0
+    binsize = 0.5 * 60.0 / 5.0
 
     if cloud_name == 'taurus':
         region = 'taurus'
     else:
         region = cloud_name
 
-    print('Performing analysis on ' + cloud_name)
 
     if not load:
+        print('Performing analysis on ' + cloud_name)
+
         cloud = cloudpy.Cloud(av_filename,
                               hi_filename,
                               av_error_filename=av_error_filename,
@@ -182,14 +222,20 @@ def run_cloud_analysis(args,
                               dgr_grid=dgr_grid,
                               intercept_grid=intercept_grid,
                               width_grid=width_grid,
-                              residual_width_scale=5.0,
-                              threshold_delta_dgr=0.01,
+                              residual_width_scale=1.5,
+                              threshold_delta_dgr=0.001,
                               hi_noise_vel_range=[90,110],
                               vel_range_diff_thres=2,
                               init_vel_range=[-40,30],
                               verbose=True,
                               clobber_likelihoods=True,
                               binsize=binsize,
+                              use_bin_weights=args['use_weights'],
+                              use_only_binned_data=args['bin_image'],
+                              pixel_mask_increase_fraction=0.03,
+                              binned_data_filename_ext=\
+                                args['binned_data_filename_ext'],
+                              weights_filename=weights_filename,
                               #diagnostic_filename=diagnostic_filename,
                               plot_args=plot_args,
                               )
@@ -199,9 +245,15 @@ def run_cloud_analysis(args,
 
         cloudpy.save(cloud, cloud_filename)
     else:
+        print('Loading cloud from file \n' + cloud_filename)
         cloud = cloudpy.load(cloud_filename)
 
-    return cloud
+    results = {}
+    results['cloud'] = cloud
+    results['filename_extension'] = filename_extension
+    results['figure_dir'] = figure_dir
+
+    return results
 
 def main():
 
@@ -220,9 +272,9 @@ def main():
     #clouds['taurus'] = run_cloud_analysis('taurus')
 
     clouds = (
-              'perseus',
-              #'california',
-              #'taurus'
+              #'perseus',
+              'california',
+              'taurus'
               )
 
     if 1:
@@ -230,8 +282,13 @@ def main():
             args = {'cloud_name':cloud,
                     'region':None,
                     'load': 0,
-                    'data_type': 'lee12',
-                    'background_subtract': False}
+                    'data_type': 'planck',
+                    'background_subtract': False,
+                    'bin_image': True,
+                    'use_weights': False,
+                    'binned_data_filename_ext': '_bin',
+                    'likelihood_resolution': 'fine',
+                    }
 
             results[cloud] = run_cloud_analysis(args)
 
@@ -270,7 +327,8 @@ def main():
 
         p.terminate()
 
-    plot_likelihoods(results['perseus'])
+    plot_likelihoods(results['perseus'], args)
+    plot_dgr_intercept_progression(results['perseus'], args)
 
 
 

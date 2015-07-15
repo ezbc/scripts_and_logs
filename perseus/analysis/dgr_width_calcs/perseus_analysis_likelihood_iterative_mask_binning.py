@@ -933,9 +933,8 @@ def iterate_residual_masking(
     mask = (np.isnan(av_data) | \
             np.isnan(av_data_error) | \
             (av_data_error == 0) | \
-            np.isnan(nhi_image) | \
-            np.isnan(nhi_image_error) | \
-            (nhi_image_error == 0))
+            np.isnan(nhi_image)
+            )
 
     # Apply initial mask to exclude throughout process
     if init_mask is not None:
@@ -1018,7 +1017,7 @@ def iterate_residual_masking(
                                      plot_progress=plot_progress,
                                      results_filename=plot_filename)
 
-        intercepts = np.linspace(intercept, intercept + 1.0, 1.0)
+        #intercepts = np.linspace(intercept, intercept + 1.0, 1.0)
 
 
         # Mask non-white noise, i.e. correlated residuals.
@@ -1558,8 +1557,8 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
 
     # Likelihood axis resolutions
     vel_widths = np.arange(1, 75, 2*0.16667)
-    dgrs = np.arange(0.001, 0.8, 1e-3)
     dgrs = np.arange(0.001, 0.3, 5e-4)
+    dgrs = np.arange(0.001, 0.8, 1e-3)
     #intercepts = np.arange(0, 1, 1)
     intercepts = np.arange(-1, 1, 0.1)
 
@@ -1605,6 +1604,12 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
         print('\nLoading K+09 2MASS data...')
         av_data, av_header = fits.getdata(av_dir + \
                                   'perseus_av_k09_regrid_planckres.fits',
+                                  header=True)
+        av_data_error = 0.1 * np.ones(av_data.shape)
+    if av_data_type == 'lee12':
+        print('\nLoading Lee12 2MASS data...')
+        av_data, av_header = fits.getdata(av_dir + \
+                                  'perseus_av_lee12_iris_regrid_planckres.fits',
                                   header=True)
         av_data_error = 0.1 * np.ones(av_data.shape)
     else:
@@ -1795,7 +1800,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
                 bin_image(av_data_error,
                           binsize=(binsize, binsize),
                           header=av_header,
-                          func=noise_func,)
+                          func=np.nanmean,)
 
         if not check_file(av_dir + 'perseus_av_error_planck_5arcmin_bin.fits',
                           clobber=clobber_bin_images):
@@ -1806,7 +1811,7 @@ def run_likelihood_analysis(av_data_type='planck', region=None,
         # Hi image
         hi_data_bin, hi_header_bin = \
                 bin_image(hi_data,
-                          binsize=(binsize, binsize),
+                          binsize=(1, binsize, binsize),
                           header=hi_header,
                           func=np.nanmean)
 
@@ -2215,7 +2220,7 @@ def main():
     import json
     from pandas import DataFrame
 
-    av_data_type = 'planck'
+    av_data_type = 'lee12'
 
     # threshold in velocity range difference
     vel_range_diff_thres = 3.0 # km/s
@@ -2229,7 +2234,7 @@ def main():
 
     # Number of white noise standard deviations with which to fit the
     # residuals in iterative masking
-    residual_width_scales = [1.5,]
+    residual_width_scales = [3.0,]
 
     regions = [None, ]
 
