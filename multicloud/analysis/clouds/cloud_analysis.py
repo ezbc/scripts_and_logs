@@ -424,8 +424,8 @@ def run_cloud_analysis(args,
 
     if args['likelihood_resolution'] == 'fine':
         width_grid = np.arange(1, 100, 2*0.16667)
-        dgr_grid = np.arange(0.000, 0.2, 2e-4)
-        intercept_grid = np.arange(-2, 2, 0.01)
+        dgr_grid = np.arange(0.000, 0.3, 2e-4)
+        intercept_grid = np.arange(-2, 2, 0.005)
     elif args['likelihood_resolution'] == 'coarse':
         width_grid = np.arange(1, 100, 2*0.16667)
         #width_grid = np.arange(100, 101, 1)
@@ -534,15 +534,15 @@ def main():
     #clouds['taurus'] = run_cloud_analysis('taurus')
 
     clouds = (
-              'perseus',
-              'taurus',
+              #'perseus',
+              #'taurus',
               'california',
               )
 
     for cloud in clouds:
         args = {'cloud_name':cloud,
                 'region':None,
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type': 'planck',
                 #'data_type': 'lee12',
@@ -551,8 +551,8 @@ def main():
                 'use_weights': False,
                 'av_mask_threshold': None,
                 'binned_data_filename_ext': '_bin',
-                #'likelihood_resolution': 'fine',
-                'likelihood_resolution': 'coarse',
+                'likelihood_resolution': 'fine',
+                #'likelihood_resolution': 'coarse',
                 }
 
         results[cloud] = run_cloud_analysis(args)
@@ -569,8 +569,8 @@ def main():
         plot_dgr_intercept_progression(results[cloud])
         plot_av_vs_nhi(results[cloud])
         plot_nh2_vs_nhi(results[cloud])
-        #make_map_movie(results[cloud])
-        #make_residual_hist_movie(results[cloud])
+        make_map_movie(results[cloud])
+        make_residual_hist_movie(results[cloud])
 
 
 
