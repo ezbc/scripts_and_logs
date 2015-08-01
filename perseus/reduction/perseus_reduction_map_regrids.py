@@ -65,7 +65,8 @@ def main():
     os.chdir('/d/bip3/ezbc/perseus/data')
 
     # If true, deletes files to be written
-    clobber = True
+    clobber = 1
+    clobber_hi = 0
 
     # First, change zeros in lee image to nans
     data, header = pyfits.getdata('av/perseus_av_lee12_2mass.fits', header=True)
@@ -81,7 +82,8 @@ def main():
               'av/perseus_av_planck_radiance',
               'av/perseus_av_error_planck_radiance',
               'co/perseus_co_cfa_cube',
-              'av/perseus_av_k09_nan',
+              #'av/perseus_av_k09_nan',
+              '/d/bip3/ezbc/multicloud/data/av/multicloud_av_k09_nan',
               'av/perseus_av_lee12_2mass_nan',
               'av/perseus_av_lee12_iris_masked')
 
@@ -96,7 +98,7 @@ def main():
     im_lee_iris = 'av/perseus_av_lee12_iris'
 
     # Load the images into miriad
-    print('\nLoading images into miriad')
+    print('\nLoading images into miriad...')
     out_images = (im_hi,
                   im_pl,
                   im_pl_err,
@@ -108,9 +110,13 @@ def main():
                   im_lee_iris)
 
     for i in xrange(len(in_images)):
-        exists = check_file(out_images[i] + '.mir', clobber=clobber)
-        print('\tLoading {:s}.fits\n'.format(in_images[i]))
+        if out_images[i] == im_hi:
+            clobber_temp = clobber_hi
+        else:
+            clobber_temp = clobber
+        exists = check_file(out_images[i] + '.mir', clobber=clobber_temp)
         if not exists:
+            print('\tLoading {:s}.fits\n'.format(in_images[i]))
             fits(in_images[i] + '.fits',
                     out=out_images[i] + '.mir',
                     op='xyin')
@@ -125,8 +131,8 @@ def main():
     delta_ra = -0.083333333
     delta_dec = 0.083333333
 
-    ref_pix, npix = calc_image_origin(x_limits=(59.75, 44.75),
-                                      y_limits=(26.05, 37.05),
+    ref_pix, npix = calc_image_origin(x_limits=(70, 40),
+                                      y_limits=(21, 38),
                                       delta_x=delta_ra,
                                       delta_y=delta_dec)
 
@@ -232,6 +238,15 @@ def main():
             fits(image + '.mir',
                  out=image + '.fits',
                  op='xyout')
+
+    # write masked Planck image as same as Lee+12
+    data_pl, header = pyfits.getdata(im_pl + '_5arcmin.fits', header=True)
+    data_l12 = pyfits.getdata(im_lee_iris + '_regrid_planckres.fits')
+    data_pl[np.isnan(data_l12)] = np.nan
+    pyfits.writeto(im_pl + '_5arcmin_lee12mask.fits',
+                   data_pl,
+                   header,
+                   clobber=True)
 
 if __name__ == '__main__':
     main()

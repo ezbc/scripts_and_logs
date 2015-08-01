@@ -73,9 +73,11 @@ def main():
     os.chdir('/d/bip3/ezbc/taurus/data')
 
     # If true, deletes files to be written
-    clobber = True
+    clobber = 1
 
-    in_images = ('av/taurus_av_kainulainen2009_nan',
+    in_images = (
+              #'av/taurus_av_kainulainen2009_nan',
+              '/d/bip3/ezbc/multicloud/data/av/multicloud_av_k09_nan',
               'av/taurus_av_pineda2010',
               'hi/taurus_hi_galfa_cube',
               'av/taurus_av_planck_tau353',
@@ -138,6 +140,8 @@ def main():
                     out=out_images[i] + '.mir',
                     op='xyin')
 
+            print('\tout = ' + out_images[i] + '.mir')
+
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
@@ -162,8 +166,8 @@ def main():
     lim_ra_wcs, lim_dec_wcs = 77.5, 18.0
     ref_ra_wcs, ref_dec_wcs = 0.0, 0.0
 
-    ref_pix, npix = calc_image_origin(x_limits=(77.5, 57.0),
-                                      y_limits=(18.0, 33.0),
+    ref_pix, npix = calc_image_origin(x_limits=(83, 53.0),
+                                      y_limits=(15.0, 35.0),
                                       delta_x=delta_ra,
                                       delta_y=delta_dec)
 

@@ -8,8 +8,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 
-
-import pyfits as pf
+from astropy.io import fits
 import numpy as np
 import warnings
 warnings.filterwarnings('ignore')
@@ -27,13 +26,13 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     import matplotlib.pyplot as plt
     import matplotlib
     import numpy as np
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
+    import pyfits as fits
     import matplotlib.pyplot as plt
     import pywcsgrid2 as wcs
     import pywcs
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
 
     # Set up plot aesthetics
     plt.clf()
@@ -92,7 +91,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         nrows_ncols=(1,1)
         ngrids=1
 
-    imagegrid = ImageGrid(fig, (1,1,1),
+    axes = AxesGrid(fig, (1,1,1),
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
                  cbar_mode="each",
@@ -110,7 +109,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # NHI image
     # ------------------
     # create axes
-    ax = imagegrid[0]
+    ax = axes[0]
 
     # show the image
     im = ax.imshow(nhi_image,
@@ -146,7 +145,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     cb.set_label_text(r'$N$(H\textsc{i}) [10$^{20}$ cm$^{-2}$]',)
 
     # Convert sky to pix coordinates
-    wcs_header = pywcs.WCS(header)
+    #wcs_header = pywcs.WCS(header)
     if type(cores) is dict:
         for core in cores:
             pix_coords = cores[core]['center_pixel']
@@ -184,7 +183,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # ------------------
     if av_image is not None:
         # create axes
-        ax = imagegrid[1]
+        ax = axes[1]
         # show the image
         im = ax.imshow(av_image,
                 interpolation='nearest',origin='lower',
@@ -211,6 +210,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
             ax.set_xlim(limits[0],limits[2])
             ax.set_ylim(limits[1],limits[3])
 
+        ax.tick_params(axis='xy', which='major', colors='w')
 
         # Plot Av contours
         if contour_image is not None:
@@ -220,7 +220,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         cb.set_label_text(r'$A_V$ [mag]',)
 
         # Convert sky to pix coordinates
-        wcs_header = pywcs.WCS(header)
+        #wcs_header = pywcs.WCS(header)
         if type(cores) is dict:
             for core in cores:
                 pix_coords = cores[core]['center_pixel']
@@ -273,8 +273,8 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     import matplotlib.pyplot as plt
     import matplotlib
     import numpy as np
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
+    from mpl_toolkits.axes_grid1 import axes
+    import pyfits as fits
     import matplotlib.pyplot as plt
     import pywcsgrid2 as wcs
     import pywcs
@@ -323,7 +323,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
         nrows_ncols=(1,2)
         ngrids=2
 
-    imagegrid = ImageGrid(fig, (2,1,1),
+    axes = axes(fig, (2,1,1),
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
                  cbar_mode='each',
@@ -341,7 +341,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     # Av model
     # ------------------
     # create axes
-    ax = imagegrid[0]
+    ax = axes[0]
     cmap = cm.Greys # colormap
     cmap = cm.gnuplot # colormap
     cmap.set_bad(color='w')
@@ -408,7 +408,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     # ------------------
     if av_image is not None:
         # create axes
-        ax = imagegrid[1]
+        ax = axes[1]
         # show the image
         im = ax.imshow(av_image,
                 interpolation='nearest',origin='lower',
@@ -447,7 +447,7 @@ def plot_av_model(av_image=None, header=None, contour_image=None,
     # Av residuals
     # ------------------
     if plot_residuals:
-        ax = imagegrid[2]
+        ax = axes[2]
         #cmap = cm.Greys # colormap
         # show the image
         vmax = np.max((np.max(av_image[av_image == av_image]),
@@ -577,10 +577,10 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
     # Import external modules
     import numpy as np
     import math
-    import pyfits as pf
+    import pyfits as fits
     import matplotlib.pyplot as plt
     import matplotlib
-    from mpl_toolkits.axes_grid1 import ImageGrid
+    from mpl_toolkits.axes_grid1 import axes
     from myscience.krumholz09 import calc_T_cnm
     from matplotlib import cm
 
@@ -617,7 +617,7 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
     # Create figure instance
     fig = plt.figure()
 
-    imagegrid = ImageGrid(fig, (1,1,1),
+    axes = axes(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
                  ngrids=len(av_images),
                  axes_pad=0.25,
@@ -660,7 +660,7 @@ def plot_avmod_vs_av(avmod_images, av_images, av_errors=None, limits=None,
             av_error_nonans = np.array(av_error[indices])
 
         # Create plot
-        ax = imagegrid[i]
+        ax = axes[i]
 
         if 1:
             image = ax.errorbar(av_nonans.ravel(),
@@ -743,7 +743,7 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
     from scipy import fftpack
     import matplotlib.pyplot as plt
     import matplotlib
-    from mpl_toolkits.axes_grid1 import ImageGrid
+    from mpl_toolkits.axes_grid1 import axes
     from matplotlib import cm
 
     if 0:
@@ -819,7 +819,7 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
 
     nrows = 1; ncols = 1; ngrids = 1;
 
-    imagegrid = ImageGrid(fig, (1,1,1),
+    axes = axes(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
                  ngrids=ngrids,
                  axes_pad=0.25,
@@ -831,7 +831,7 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
                  cbar_size=0.2,
                  )
 
-    ax = imagegrid[0]
+    ax = axes[0]
 
     ax.plot(freq, power_spectrum / np.nanmax(power_spectrum),
             color='k',
@@ -870,7 +870,7 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
 
     nrows = 1; ncols = 1; ngrids = 1;
 
-    imagegrid = ImageGrid(fig, (1,1,1),
+    axes = axes(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
                  ngrids=ngrids,
                  axes_pad=0.25,
@@ -882,7 +882,7 @@ def plot_power_spectrum(image, title=None, filename_prefix=None,
                  cbar_size=0.2,
                  )
 
-    ax = imagegrid[0]
+    ax = axes[0]
 
     extent = [- image.shape[0] / 2.0, + image.shape[0] / 2.0,
               - image.shape[1] / 2.0, + image.shape[1] / 2.0]
@@ -993,10 +993,10 @@ def load_fits(filename,return_header=False):
     ''' Loads a fits file.
     '''
 
-    import pyfits as pf
+    import pyfits as fits
     from astropy.io import fits
 
-    f = pf.open(filename)
+    f = fits.open(filename)
     if return_header:
         return f[0].data,f[0].header
     else:
@@ -1006,39 +1006,6 @@ def get_sub_image(image, indices):
 
     return image[indices[1]:indices[3],
             indices[0]:indices[2]]
-
-def get_pix_coords(ra=None, dec=None, header=None):
-
-    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec), or Ra in degrees
-    and dec in degrees.
-    '''
-
-    import pywcsgrid2 as wcs
-    import pywcs
-
-    # convert to degrees if ra and dec are array-like
-    try:
-        if len(ra) == 3 and len(dec) == 3:
-            ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
-        else:
-            raise ValueError('RA and Dec must be in (hrs,min,sec) and' + \
-                    ' (deg,arcmin,arcsec) or in degrees.')
-    except TypeError:
-        ra_deg, dec_deg = ra, dec
-
-    wcs_header = pywcs.WCS(header)
-    pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
-
-    return pix_coords
-
-def hrs2degs(ra=None, dec=None):
-    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
-    '''
-
-    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
-    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
-
-    return (ra_deg, dec_deg)
 
 def load_ds9_region(props, filename=None, header=None):
 
@@ -1076,6 +1043,43 @@ def load_ds9_region(props, filename=None, header=None):
         props['regions'][region_name]['poly_verts']['pixel'] = poly_verts_pix
 
     return props
+
+def get_pix_coords(ra=None, dec=None, header=None):
+
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec), or Ra in degrees
+    and dec in degrees.
+    '''
+
+    import pywcsgrid2 as wcs
+    import pywcs
+    from astropy.wcs import WCS
+
+    # convert to degrees if ra and dec are array-like
+    try:
+        if len(ra) == 3 and len(dec) == 3:
+            ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+        else:
+            raise ValueError('RA and Dec must be in (hrs,min,sec) and' + \
+                    ' (deg,arcmin,arcsec) or in degrees.')
+    except TypeError:
+        ra_deg, dec_deg = ra, dec
+
+    #wcs_header = pywcs.WCS(header)
+    wcs_header = WCS(header)
+    #pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
+    pix_coords = wcs_header.wcs_world2pix([[ra_deg, dec_deg],], 0)[0]
+
+    return np.hstack((pix_coords, -1))
+
+def hrs2degs(ra=None, dec=None):
+    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
+    '''
+
+    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
+    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
+
+    return (ra_deg, dec_deg)
+
 
 '''
 The main script
@@ -1224,6 +1228,30 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             header=hi_header,
             noise_cube=hi_noise_cube)
 
+    props['plot_limit']['wcs'] = (((5, 20, 0), (19, 0 ,0)),
+                                  ((2, 30, 0), (37, 0, 0))
+                                  )
+    props['region_name_pos'] = {
+             'taurus 1' : {'wcs' : ((3, 50,  0),
+                                    (21.5, 0, 0)),
+                          },
+             'taurus 2' : {'wcs' : ((5, 10,  0),
+                                    (21.5, 0, 0)),
+                          },
+             #'perseus' : {'wcs' : ((3, 0,  0),
+             #                      (34, 0, 0)),
+             #             },
+             'perseus 1' : {'wcs' : ((3, 0,  0),
+                                   (34, 0, 0)),
+                          },
+             'perseus 2' : {'wcs' : ((3, 10,  0),
+                                   (22.5, 0, 0)),
+                          },
+             'california' : {'wcs' : ((5, 15,  0),
+                                      (33.5, 0, 0)),
+                             },
+             }
+
     # Change WCS coords to pixel coords of images
     props = convert_limit_coordinates(props,
                                       header=av_header,
@@ -1262,7 +1290,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                                          vel_range[i, 1]))
 
     # Plot
-    figure_types = ['png', 'pdf']
+    figure_types = ['png',]# 'pdf']
     for figure_type in figure_types:
         if region is None:
             if vel_range_type == 'single':

@@ -7,8 +7,8 @@ from astropy.io import fits as pf
 def extract_data(datatype = 'ebv'):
     data_location = '/d/bip3/ezbc/planck/planck_raw_data/'
 
-    dec_range = (25, 35)
-    ra_range = (40, 65)
+    dec_range = (21, 38)
+    ra_range = (40, 70)
 
     if datatype == 'ebv':
         (data, header) = pl.get_data(data_location = data_location,

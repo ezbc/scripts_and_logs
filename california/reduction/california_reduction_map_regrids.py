@@ -71,22 +71,24 @@ def main():
     os.chdir('/d/bip3/ezbc/california/data')
 
     # If true, deletes files to be written
-    clobber = True
+    clobber = 1
 
     in_images = (
               'hi/california_hi_galfa_cube',
               'av/california_av_planck_tau353',
               'av/california_av_error_planck_tau353',
+              '/d/bip3/ezbc/multicloud/data/av/multicloud_av_k09_nan',
               'co/california_co_cfa_cube')
 
     im_pl = 'av/california_av_planck_tau353'
     im_pl_err = 'av/california_av_error_planck_tau353'
+    im_k09 = 'av/california_av_k09'
     im_hi = 'hi/california_hi_galfa_cube'
     im_co = 'co/california_co_cfa_cube'
 
     # Load the images into miriad
     print('\nLoading images into miriad')
-    out_images = (im_hi, im_pl, im_pl_err, im_co)
+    out_images = (im_hi, im_pl, im_pl_err, im_k09, im_co)
 
     for i in xrange(len(in_images)):
         exists = check_file(out_images[i] + '.mir', clobber=clobber)
@@ -104,8 +106,8 @@ def main():
     delta_dec = 0.083333333
 
     # Greater RA value comes first
-    ref_pix, npix = calc_image_origin(x_limits=(73, 55),
-                                      y_limits=(31, 39),
+    ref_pix, npix = calc_image_origin(x_limits=(81, 60),
+                                      y_limits=(25, 39),
                                       delta_x=delta_ra,
                                       delta_y=delta_dec)
 
@@ -144,15 +146,16 @@ def main():
     print('\nSmoothing images to Planck resolution')
 
     planck_beam = 5.0 # arcsec
-    im_beams = np.array([3.7,]) # arcsec
+    im_beams = np.array([3.7, 2.7]) # arcsec
     conv_beams = (planck_beam**2 - im_beams**2)**0.5
 
-    images = [im_hi,]
+    images = [im_hi, im_k09]
 
     for i in xrange(len(images)):
-        check_file(images[i] + '_smooth_planckres.mir', clobber=clobber)
+        exists = check_file(images[i] + \
+                 '_smooth_planckres.mir', clobber=clobber)
 
-        print('\t{:s}.mir\n'.format(image))
+        print('\t{:s}.mir\n'.format(images[i]))
 
         if not exists:
             if images[i] == im_hi:
@@ -173,7 +176,7 @@ def main():
     images.append(im_co)
 
     for image in images:
-        check_file(image + '_regrid_planckres.mir', clobber=clobber)
+        exists = check_file(image + '_regrid_planckres.mir', clobber=clobber)
         print('\t{:s}_smooth_planckres.mir\n'.format(image))
 
         if not exists:
@@ -193,11 +196,12 @@ def main():
 
     images = [im_pl + '_5arcmin',
               im_pl_err + '_5arcmin',
+              im_k09 + '_regrid_planckres',
               im_co + '_regrid_planckres',
               im_hi + '_regrid_planckres']
 
     for image in images:
-        check_file(image + '.fits', clobber=clobber)
+        exists = check_file(image + '.fits', clobber=clobber)
 
         print('\t{:s}.mir\n'.format(image))
 
