@@ -145,6 +145,16 @@ def plot_likelihoods(cloud_results):
                       logscale=False,
                       )
 
+    cloudpy.plot_likelihoods_hist(cloud=cloud_results['cloud'],
+                      props=cloud_results['props'],
+                      plot_axes=('dgrs', 'intercepts'),
+                      show=0,
+                      returnimage=False,
+                      filename=likelihood_filename_base + 'di.png',
+                      #limits=[0, 100, -2, 2],
+                      logscale=False,
+                      )
+
 def plot_dgr_intercept_progression(cloud_results):
 
     filename = \
@@ -182,7 +192,6 @@ def plot_av_vs_nhi(cloud_results):
         hi_data = fits.getdata(cloud.hi_filename)
 
     av_data = fits.getdata(cloud.av_filename_bin)
-    av_error_data = fits.getdata(cloud.av_error_filename_bin)
     if cloud.av_error_filename_bin is not None:
         av_error_data = fits.getdata(cloud.av_error_filename_bin)
     else:
@@ -200,15 +209,23 @@ def plot_av_vs_nhi(cloud_results):
     if cloud.av_background is not None:
         av_data = av_data - cloud.av_background
 
+    if cloud_results['args']['bin_image']:
+        contour_plot = False
+    else:
+        contour_plot = True
+
+    levels = np.logspace(np.log10(0.999), np.log10(0.5), 10)
+    levels = 7
+
     cloudpy.plot_av_vs_nhi(nhi_image[~cloud.mask],
                       av_data[~cloud.mask],
                       av_error=av_error_data[~cloud.mask],
                       filename=filename_base + '_masked.png',
                       fit_params=fit_params,
-                      gridsize=(10,10),
                       #limits=[3,20, 0, 3],
-                      std=0.22,
-                      contour_plot=0,
+                      title=cloud_results['args']['data_type'] + ', masked',
+                      levels=levels,
+                      contour_plot=contour_plot,
                       #limits=[10, 20, -1, 1],
                       )
     if 1:
@@ -241,6 +258,8 @@ def plot_av_vs_nhi(cloud_results):
                       fit_params=fit_params,
                       gridsize=(10,10),
                       #limits=[1,20, 0, 4],
+                      title=cloud_results['args']['data_type'] + \
+                            ', unmasked',
                       std=0.22,
                       contour_plot=True,
                       #limits=[10, 20, -1, 1],
@@ -284,21 +303,19 @@ def plot_nh2_vs_nhi(cloud_results):
 
     mask = (region_mask) | (nhi_image < 0)
 
-    print(np.sum(mask))
-    print(nhi_image.size)
-
     nhi_image[mask] = np.nan
     nh2_image[mask] = np.nan
+    #levels = np.logspace(np.log10(0.999), np.log10(0.5), 10)
+    levels = 7
 
     cloudpy.plot_nh2_vs_nhi(nhi_image,
                       nh2_image,
                       filename=filename_base + '.png',
+                      title=cloud_results['args']['data_type'] + ', unmasked',
                       fit_params=fit_params,
-                      gridsize=(10,10),
+                      levels=levels,
                       #limits=[3,20, 0, 3],
-                      #std=0.22,
                       contour_plot=1,
-                      #limits=[10, 20, -1, 1],
                       )
 
 def plot_hi_spectrum(cloud_results, plot_co=1):
@@ -316,12 +333,16 @@ def plot_hi_spectrum(cloud_results, plot_co=1):
 
     if plot_co:
 
+        co_filename = cloud.co_filename
+
+        if cloud_results['args']['bin_procedure'] in ('all', 'mle'):
+            co_filename = co_filename.replace('.fits', '_bin.fits')
+
         exists = \
-            check_file(cloud.co_filename.replace('.fits',
-                                                 '_bin.fits'), clobber=False)
+            check_file(co_filename, clobber=False)
 
         if not exists:
-            co_data, co_header = fits.getdata(cloud.co_filename,
+            co_data, co_header = fits.getdata(co_filename,
                                                           header=True,
                                                           )
             cloud.co_data, cloud.co_header = \
@@ -336,7 +357,7 @@ def plot_hi_spectrum(cloud_results, plot_co=1):
                          )
         else:
             cloud.co_data, cloud.co_header = \
-                fits.getdata(cloud.co_filename.replace('.fits', '_bin.fits'),
+                fits.getdata(co_filename,
                                                           header=True,
                                                           )
 
@@ -417,18 +438,23 @@ def make_nhi_movie(cloud_results,):
 
 def plot_results(results):
 
+    print('\nPlotting results...')
+
     for cloud in results:
 
-        plot_nhi_map(results[cloud])
-        plot_likelihoods(results[cloud])
-        plot_hi_spectrum(results[cloud])
-        plot_mask_map(results[cloud])
-        plot_dgr_intercept_progression(results[cloud])
-        plot_av_vs_nhi(results[cloud])
-        plot_nh2_vs_nhi(results[cloud])
+        if 1:
+            plot_av_vs_nhi(results[cloud])
+            plot_nh2_vs_nhi(results[cloud])
+            plot_nhi_map(results[cloud])
+            plot_likelihoods(results[cloud])
+            plot_hi_spectrum(results[cloud])
+            plot_mask_map(results[cloud])
+            if 'masking_var' in results[cloud]['cloud'].iter_vars[0]:
+                plot_dgr_intercept_progression(results[cloud])
         if 0:
-            make_map_movie(results[cloud])
-            make_residual_hist_movie(results[cloud])
+            if 'masking_var' in results[cloud]['cloud'].iter_vars[0]:
+                make_residual_hist_movie(results[cloud])
+                make_map_movie(results[cloud])
         if 0:
             make_nhi_movie(results[cloud])
 
@@ -493,6 +519,9 @@ def run_cloud_analysis(args,
         av_error_filename = av_dir + \
            cloud_name + '_av_error_planck_tau353_5arcmin.fits'
         av_error = None
+        if 0:
+            av_error_filename = None
+            av_error = 1
         av_background = None
     if cloud_name == 'perseus' and data_type == 'planck_lee12mask':
         av_filename = av_dir + \
@@ -506,7 +535,7 @@ def run_cloud_analysis(args,
            cloud_name + '_av_k09_regrid_planckres.fits'
 
         av_error_filename = None
-        av_error = 0.1
+        av_error = 0.4
 
         av_background = 0.0
 
@@ -518,9 +547,16 @@ def run_cloud_analysis(args,
 
     if args['bin_image']:
         bin_name = '_binned'
+        args['bin_procedure'] = 'all'
     else:
         bin_name = ''
-
+        args['bin_procedure'] = 'none'
+    if args['fixed_width'] is not None:
+        width_name = '_fixedwidth'
+        init_vel_width = args['fixed_width']
+    else:
+        width_name = ''
+        init_vel_width = args['init_vel_width']
     if args['use_weights']:
         weights_name = '_weights'
         weights_filename = av_dir + \
@@ -534,10 +570,23 @@ def run_cloud_analysis(args,
     else:
         region_name = '_region' + args['region']
         region = cloud_name + args['region']
+    if args['av_mask_threshold'] is not None:
+        avthres_name = 'avthres'
+    else:
+        avthres_name = ''
+    if not args['use_intercept']:
+        intercept_name = 'noint'
+    else:
+        intercept_name = ''
+    if args['recalculate_likelihoods']:
+        error_name = 'errorrecalc'
+    else:
+        error_name = ''
 
     filename_extension = cloud_name + '_' + data_type + background_name + \
             bin_name + weights_name + '_' + args['likelihood_resolution'] + \
-            'res' + region_name
+            'res' + region_name + width_name + '_' + avthres_name + '_' + \
+            intercept_name + '_' + error_name
 
     # Plot args
     residual_hist_filename_base = figure_dir + 'diagnostics/residuals/' + \
@@ -588,17 +637,27 @@ def run_cloud_analysis(args,
             filename_extension + '_diagnostic.txt'
 
     if args['likelihood_resolution'] == 'fine':
-        width_grid = np.arange(1, 70, 2*0.16667)
+        if args['fixed_width'] is not None:
+            width_grid = np.array((args['fixed_width'],))
+        else:
+            width_grid = np.arange(1, 70, 2*0.16667)
         #width_grid = np.arange(30, 70, 2*0.16667)
         dgr_grid = np.arange(0.0, 0.2, 2e-4)
         #dgr_grid = np.arange(0.05, 0.15, 2e-4)
         intercept_grid = np.arange(-1, 0.5, 0.005)
         #intercept_grid = np.arange(-1, 0., 0.005)
     elif args['likelihood_resolution'] == 'coarse':
-        width_grid = np.arange(1, 70, 2*0.16667)
+        if args['fixed_width'] is not None:
+            width_grid = np.array((args['fixed_width'],))
+        else:
+            width_grid = np.arange(1, 70, 2*0.16667)
         #width_grid = np.arange(100, 101, 1)
         dgr_grid = np.arange(0.000, 0.3, 3e-3)
-        intercept_grid = np.arange(-2, 2, 0.1)
+        if args['use_intercept']:
+            intercept_grid = np.arange(-2, 2, 0.1)
+        else:
+            intercept_grid = np.array((0,))
+
         #dgr_grid = np.arange(0.1, 0.5, 3e-3)
         #intercept_grid = np.arange(-5, 1, 0.1)
         #intercept_grid = np.array((0.9,))
@@ -629,6 +688,7 @@ def run_cloud_analysis(args,
                 av_background = 0.9
                 #results['av_background'] = av_background
 
+
         cloud = cloudpy.Cloud(av_filename,
                               hi_filename,
                               av_error_filename=av_error_filename,
@@ -642,14 +702,18 @@ def run_cloud_analysis(args,
                               width_grid=width_grid,
                               residual_width_scale=3,
                               threshold_delta_dgr=0.001,
+                              #threshold_delta_dgr=1,
                               hi_noise_vel_range=[90,110],
                               vel_range_diff_thres=2,
-                              init_vel_width=70,
+                              init_vel_width=init_vel_width,
                               verbose=True,
                               clobber_likelihoods=True,
+                              recalculate_likelihoods=\
+                                      args['recalculate_likelihoods'],
                               binsize=binsize,
                               use_bin_weights=args['use_weights'],
                               use_only_binned_data=args['bin_image'],
+                              bin_procedure=args['bin_procedure'],
                               pixel_mask_increase_fraction=0.05,
                               binned_data_filename_ext=\
                                 args['binned_data_filename_ext'],
@@ -667,14 +731,16 @@ def run_cloud_analysis(args,
         print('\nSaving cloud to file \n' + cloud_filename)
         cloudpy.save(cloud,
                      cloud_filename,
-                     binary_likelihood_filename=cloud_likelihood_filename)
+                     binary_likelihood_filename=cloud_likelihood_filename,
+                     write_fits=False)
         cloudpy.save(cloud.props, props_filename)
         props = cloud.props
     else:
         if not args['load_props']:
             print('\nLoading cloud from file \n' + cloud_filename)
             cloud = cloudpy.load(cloud_filename,
-                           binary_likelihood_filename=cloud_likelihood_filename)
+                           binary_likelihood_filename=cloud_likelihood_filename,
+                           load_fits=True)
             cloudpy.save(cloud.props, props_filename)
             props = cloud.props
         else:
@@ -688,6 +754,7 @@ def run_cloud_analysis(args,
     results['cloud'] = cloud
     results['cloud_name'] = cloud_name
     results['props'] = props
+    results['args'] = args
     results['filename_extension'] = filename_extension
     results['figure_dir'] = figure_dir
 
@@ -707,8 +774,8 @@ def main():
     #clouds['taurus'] = run_cloud_analysis('taurus')
 
     clouds = (
-              'taurus',
               'perseus',
+              'taurus',
               'california',
               )
 
@@ -724,9 +791,15 @@ def main():
                 #'data_type': 'planck_lee12mask',
                 #'data_type': 'lee12',
                 'background_subtract': 0,
-                'bin_image': True,
-                'use_weights': False,
+                'recalculate_likelihoods': 0,
+                'bin_image': 1,
+                'use_weights': 0,
+                'init_vel_width': 50,
+                #'fixed_width': 20,
+                'fixed_width': None,
+                'use_intercept': 0,
                 'av_mask_threshold': None,
+                #'av_mask_threshold': 1.2,
                 'binned_data_filename_ext': '_bin',
                 #'likelihood_resolution': 'fine',
                 'likelihood_resolution': 'coarse',
