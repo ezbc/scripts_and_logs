@@ -378,6 +378,98 @@ def plot_hi_spectrum(cloud_results, plot_co=1):
                       co_mask=co_mask,
                       )
 
+def plot_hi_width_correlation(cloud_results,):
+
+    from astropy.io import fits
+    from myimage_analysis import calculate_nhi
+    import mygeometry as myg
+    import mycoords
+    from scipy.stats import pearsonr
+
+    filename = \
+            cloud_results['figure_dir'] + 'diagnostics/' + \
+            cloud_results['filename_extension'] + '_width_correlations.png'
+
+    cloud = cloud_results['cloud']
+    props = cloud.props
+    fit_params = {
+                  'dgr': props['dust2gas_ratio_max']['value'],
+                  'intercept': props['intercept_max']['value']}
+
+    if 1:
+        if cloud_results['args']['data_type'] == 'lee12':
+            av_filename = cloud.av_filename.replace('iris', '2mass')
+        else:
+            av_filename = cloud.av_filename
+
+        av_data_2mass, av_header = fits.getdata(av_filename, header=True)
+
+
+        av_filename = av_filename.replace('lee12_2mass_regrid_planckres',
+                                          'planck_tau353_5arcmin')
+        av_data_planck, av_header = fits.getdata(av_filename, header=True)
+        hi_data = fits.getdata(cloud.hi_filename)
+
+    # Derive relevant region
+    cloud.load_region(cloud.region_filename, header=av_header)
+    cloud._derive_region_mask(av_data=av_data_2mass)
+    region_mask = cloud.region_mask
+
+    widths = np.arange(2, 80, 2)
+    vel_center = 5
+    correlations = np.empty(widths.shape)
+    correlations_masked_2mass = np.empty(widths.shape)
+    correlations_masked_planck = np.empty(widths.shape)
+
+    for i, width in enumerate(widths):
+
+        vel_range = (vel_center - width/2.0, vel_center + width/2.0)
+
+        nhi_image = calculate_nhi(cube=hi_data,
+                            velocity_axis=cloud.hi_vel_axis,
+                            velocity_range=vel_range,
+                            )
+
+        #print av_data.shape, region_mask.shape, nhi_image.shape
+        nan_mask = (nhi_image < 0) | (np.isnan(av_data_2mass)) | \
+                   (np.isnan(nhi_image))
+
+        mask = np.copy(nan_mask)
+        mask[(region_mask) | (cloud.mask)] = True
+
+        lee12_mask = np.copy(nan_mask)
+        lee12_mask[av_data_2mass < 5 * 0.20] = True
+
+        # mask
+        nhi_image_masked = nhi_image[~mask]
+        av_data_2mass_masked = av_data_2mass[~mask]
+        av_data_planck_masked = av_data_planck[~mask]
+
+        # derive correlations for each mask
+        correlations_masked_2mass[i] = \
+                pearsonr(nhi_image_masked, av_data_2mass_masked)[0]
+        correlations_masked_planck[i] = \
+                pearsonr(nhi_image_masked, av_data_planck_masked)[0]
+        correlations[i] = pearsonr(nhi_image[~lee12_mask],
+                                   av_data_2mass[~lee12_mask])[0]
+
+    import matplotlib.pyplot as plt
+    plt.close(); plt.clf
+    av_masked = np.copy(av_data_2mass)
+    av_masked[mask] = np.nan
+    plt.imshow(av_masked, interpolation='nearest', origin='lower')
+    plt.savefig('/usr/users/ezbc/Desktop/av_lee12map.png')
+
+    cloudpy.plot_hi_width_correlation(widths,
+                                      correlations,
+                                      correlations_masked_2mass=\
+                                              correlations_masked_2mass,
+                                      correlations_masked_planck=\
+                                              correlations_masked_planck,
+                                      filename=filename,
+                                      #limits=[0, 80, 0, 0.4]
+                                      )
+
 def make_map_movie(cloud_results):
 
     filename = \
@@ -443,6 +535,7 @@ def plot_results(results):
     for cloud in results:
 
         if 1:
+            #plot_hi_width_correlation(results[cloud])
             plot_av_vs_nhi(results[cloud])
             plot_nh2_vs_nhi(results[cloud])
             plot_nhi_map(results[cloud])
@@ -551,12 +644,37 @@ def run_cloud_analysis(args,
     else:
         bin_name = ''
         args['bin_procedure'] = 'none'
-    if args['fixed_width'] is not None:
-        width_name = '_fixedwidth'
-        init_vel_width = args['fixed_width']
-    else:
+    if args['fixed_width'] is None:
         width_name = ''
         init_vel_width = args['init_vel_width']
+        vel_center_gauss_fit_kwargs = None
+    else:
+        if args['fixed_width'] == 'gaussfit':
+            if args['cloud_name'] == 'perseus':
+                guesses = (28, 3, 5,
+                           2, -20, 20)
+                ncomps = 2
+            elif args['cloud_name'] == 'taurus':
+                guesses = (28, 3, 5,
+                           5, -30, 20,
+                           3, -15, 5,
+                           )
+                ncomps = 3
+            elif args['cloud_name'] == 'california':
+                guesses = (50, 3, 5,
+                           5, -10, 10,
+                           4, -30, 15,
+                           #2, -20, 20,
+                           )
+                ncomps = 3
+            vel_center_gauss_fit_kwargs = {'guesses': guesses,
+                                           'ncomps': ncomps,
+                                           #'width_scale': 2,
+                                           }
+        else:
+            vel_center_gauss_fit_kwargs = None
+        width_name = '_fixedwidth'
+        init_vel_width = args['fixed_width']
     if args['use_weights']:
         weights_name = '_weights'
         weights_filename = av_dir + \
@@ -571,22 +689,22 @@ def run_cloud_analysis(args,
         region_name = '_region' + args['region']
         region = cloud_name + args['region']
     if args['av_mask_threshold'] is not None:
-        avthres_name = 'avthres'
+        avthres_name = '_avthres'
     else:
         avthres_name = ''
     if not args['use_intercept']:
-        intercept_name = 'noint'
+        intercept_name = '_noint'
     else:
         intercept_name = ''
     if args['recalculate_likelihoods']:
-        error_name = 'errorrecalc'
+        error_name = '_errorrecalc'
     else:
         error_name = ''
 
     filename_extension = cloud_name + '_' + data_type + background_name + \
             bin_name + weights_name + '_' + args['likelihood_resolution'] + \
-            'res' + region_name + width_name + '_' + avthres_name + '_' + \
-            intercept_name + '_' + error_name
+            'res' + region_name + width_name + avthres_name + \
+            intercept_name + error_name
 
     # Plot args
     residual_hist_filename_base = figure_dir + 'diagnostics/residuals/' + \
@@ -644,7 +762,7 @@ def run_cloud_analysis(args,
         #width_grid = np.arange(30, 70, 2*0.16667)
         dgr_grid = np.arange(0.0, 0.2, 2e-4)
         #dgr_grid = np.arange(0.05, 0.15, 2e-4)
-        intercept_grid = np.arange(-1, 0.5, 0.005)
+        intercept_grid = np.arange(-1, 1, 0.005)
         #intercept_grid = np.arange(-1, 0., 0.005)
     elif args['likelihood_resolution'] == 'coarse':
         if args['fixed_width'] is not None:
@@ -670,7 +788,29 @@ def run_cloud_analysis(args,
     # arcmin / pixel
     binsize = 0.5 * 60.0 / 5.0
 
-    if not load:
+    if load:
+        try:
+            if not args['load_props']:
+                print('\nAttempting to load cloud from file \n' + \
+                      cloud_filename)
+                cloud = cloudpy.load(cloud_filename,
+                           binary_likelihood_filename=cloud_likelihood_filename,
+                               load_fits=True)
+                cloudpy.save(cloud.props, props_filename)
+                props = cloud.props
+            else:
+                print('\nAttempting to load cloud props from file \n' + \
+                      props_filename)
+                cloud = None
+                props = cloudpy.load(props_filename)
+            run_analysis = False
+        except (EOFError, IOError):
+            print('\nLoading failed, performing analysis')
+            run_analysis = True
+    else:
+        run_analysis = True
+
+    if run_analysis:
         print('\n\nPerforming analysis on ' + cloud_name)
 
         if cloud_name == 'california':
@@ -706,6 +846,8 @@ def run_cloud_analysis(args,
                               hi_noise_vel_range=[90,110],
                               vel_range_diff_thres=2,
                               init_vel_width=init_vel_width,
+                              vel_center_gauss_fit_kwargs=\
+                                      vel_center_gauss_fit_kwargs,
                               verbose=True,
                               clobber_likelihoods=True,
                               recalculate_likelihoods=\
@@ -735,18 +877,6 @@ def run_cloud_analysis(args,
                      write_fits=False)
         cloudpy.save(cloud.props, props_filename)
         props = cloud.props
-    else:
-        if not args['load_props']:
-            print('\nLoading cloud from file \n' + cloud_filename)
-            cloud = cloudpy.load(cloud_filename,
-                           binary_likelihood_filename=cloud_likelihood_filename,
-                           load_fits=True)
-            cloudpy.save(cloud.props, props_filename)
-            props = cloud.props
-        else:
-            print('\nLoading cloud props from file \n' + props_filename)
-            cloud = None
-            props = cloudpy.load(props_filename)
 
     cloud.co_filename = co_filename
 
@@ -762,63 +892,97 @@ def run_cloud_analysis(args,
 
 def main():
 
-    from Queue import Queue
-    from threading import Thread
-    import multiprocessing
-
-    #load_clouds = 0
+    import itertools
 
     results = {}
-    #clouds['perseus'] = run_cloud_analysis('perseus')
-    #clouds['california'] = run_cloud_analysis('california')
-    #clouds['taurus'] = run_cloud_analysis('taurus')
 
     clouds = (
-              'perseus',
-              'taurus',
               'california',
+              'taurus',
+              'perseus',
               )
 
-    for cloud in clouds:
-        args = {'cloud_name':cloud,
-                'region':None,
-                #'region':'1',
-                #'region':'2',
-                'load': 0,
+    data_types = ('planck',
+                  #'k09',
+                  #'planck_lee12mask',
+                  'lee12',
+                  )
+    recalculate_likelihoods = (
+                               False,
+                               True,
+                               )
+    bin_image = (
+                 True,
+                 #False,
+                 )
+    init_vel_width = (#20,
+                      50,
+                      #70,
+                      )
+    fixed_width = (
+                   'gaussfit',
+                   #None,
+                   #20,
+                   )
+    use_intercept = (True,
+                     #False,
+                     )
+    av_mask_threshold = (#None,
+                         1.2,
+                         )
+
+    regions = (None,
+               '1',
+               '2'
+               )
+
+    elements = (clouds, data_types, recalculate_likelihoods, bin_image,
+            init_vel_width, fixed_width, use_intercept, av_mask_threshold,
+            regions)
+
+    permutations = list(itertools.product(*elements))
+
+    print('Number of permutations to run: ' + str(len(permutations)))
+
+    #for cloud in clouds:
+    for permutation in permutations:
+        args = {'cloud_name':permutation[0],
+                'load': 1,
                 'load_props': 0,
-                'data_type': 'planck',
+                #'data_type': 'planck',
                 #'data_type': 'k09',
                 #'data_type': 'planck_lee12mask',
                 #'data_type': 'lee12',
+                'data_type' : permutation[1],
                 'background_subtract': 0,
-                'recalculate_likelihoods': 0,
-                'bin_image': 1,
+                'recalculate_likelihoods': permutation[2],
+                'bin_image': permutation[3],
                 'use_weights': 0,
-                'init_vel_width': 50,
+                'init_vel_width': permutation[4],
                 #'fixed_width': 20,
-                'fixed_width': None,
-                'use_intercept': 0,
-                'av_mask_threshold': None,
+                'fixed_width': permutation[5],
+                'use_intercept': permutation[6],
+                'av_mask_threshold': permutation[7],
                 #'av_mask_threshold': 1.2,
                 'binned_data_filename_ext': '_bin',
                 #'likelihood_resolution': 'fine',
                 'likelihood_resolution': 'coarse',
+                'region': permutation[8]
                 }
+        run_analysis = False
+        if args['data_type'] in ('planck_lee12mask', 'lee12'):
+            if args['cloud_name'] == 'perseus':
+                run_analysis = True
+        else:
+            if args['cloud_name'] == 'california':
+                if args['region'] is None:
+                    run_analysis = True
+            else:
+                run_analysis = True
 
-        results[cloud] = run_cloud_analysis(args)
-        plot_results(results)
-
-        if cloud != 'california':
-            args['region'] = '1'
-
-            results[cloud] = run_cloud_analysis(args)
+        if run_analysis:
+            results[args['cloud_name']] = run_cloud_analysis(args)
             plot_results(results)
-
-            args['region'] = '2'
-
-            results[cloud] = run_cloud_analysis(args)
-            plot_results(results)
-
 
 if __name__ == '__main__':
     main()
