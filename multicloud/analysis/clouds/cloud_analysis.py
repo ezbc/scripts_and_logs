@@ -214,6 +214,8 @@ def plot_av_vs_nhi(cloud_results):
     else:
         contour_plot = True
 
+    #contour_plot = 1
+
     levels = np.logspace(np.log10(0.999), np.log10(0.5), 10)
     levels = 7
 
@@ -262,6 +264,7 @@ def plot_av_vs_nhi(cloud_results):
                             ', unmasked',
                       std=0.22,
                       contour_plot=True,
+                      plot_median=True,
                       #limits=[10, 20, -1, 1],
                       )
 
@@ -335,8 +338,8 @@ def plot_hi_spectrum(cloud_results, plot_co=1):
 
         co_filename = cloud.co_filename
 
-        if cloud_results['args']['bin_procedure'] in ('all', 'mle'):
-            co_filename = co_filename.replace('.fits', '_bin.fits')
+        #if cloud_results['args']['bin_procedure'] in ('all', 'mle'):
+        #    co_filename = co_filename.replace('.fits', '_bin.fits')
 
         exists = \
             check_file(co_filename, clobber=False)
@@ -365,10 +368,72 @@ def plot_hi_spectrum(cloud_results, plot_co=1):
 
     # Derive relevant region
     hi_mask = cloud.region_mask
+    av_data, av_header = fits.getdata(cloud.av_filename, header=True)
+    cloud.hi_data, cloud.hi_header = \
+            fits.getdata(cloud.hi_filename, header=True)
+    cloud.load_region(cloud.region_filename, header=cloud.av_header)
+    cloud._derive_region_mask(av_data=av_data)
+    co_mask = cloud.region_mask
+    hi_mask = co_mask
+
+    cloudpy.plot_hi_spectrum(cloud,
+                      filename=filename_base + '.png',
+                      limits=[-50, 30, -10, 70],
+                      plot_co=plot_co,
+                      hi_mask=hi_mask,
+                      co_mask=co_mask,
+                      )
+
+def plot_co_spectra(results,):
+
+    filename_base = \
+            cloud_results['figure_dir'] + 'diagnostics/' + \
+            cloud_results['filename_extension'] + '_co_spectra'
+
+    from astropy.io import fits
+    from mycoords import make_velocity_axis
+    from myimage_analysis import bin_image
+    from myio import check_file
+
+    cloud = cloud_results['cloud']
+
+    co_filename = cloud.co_filename
+
+    if cloud_results['args']['bin_procedure'] in ('all', 'mle'):
+        co_filename = co_filename.replace('.fits', '_bin.fits')
+
+    exists = \
+        check_file(co_filename, clobber=False)
+
+    if not exists:
+        co_data, co_header = fits.getdata(co_filename,
+                                                      header=True,
+                                                      )
+        cloud.co_data, cloud.co_header = \
+            bin_image(co_data,
+                      binsize=(1, cloud.binsize, cloud.binsize),
+                      header=co_header,
+                      statistic=np.nanmean)
+
+        fits.writeto(cloud.co_filename.replace('.fits', '_bin.fits'),
+                     cloud.co_data,
+                     cloud.co_header,
+                     )
+    else:
+        cloud.co_data, cloud.co_header = \
+            fits.getdata(co_filename,
+                                                      header=True,
+                                                      )
+
+    cloud.co_vel_axis = make_velocity_axis(cloud.co_header)
+
+    # Derive relevant region
+    hi_mask = cloud.region_mask
     av_data, av_header = fits.getdata(cloud.av_filename_bin, header=True)
     cloud.load_region(cloud.region_filename, header=cloud.av_header)
     cloud._derive_region_mask(av_data=av_data)
     co_mask = cloud.region_mask
+    hi_mask = co_mask
 
     cloudpy.plot_hi_spectrum(cloud,
                       filename=filename_base + '.png',
@@ -532,6 +597,8 @@ def plot_results(results):
 
     print('\nPlotting results...')
 
+    #plot_co_spectra(results)
+
     for cloud in results:
 
         if 1:
@@ -587,7 +654,7 @@ def run_cloud_analysis(args,
     likelihood_dir = \
             '/d/bip3/ezbc/' + cloud_name + '/data/python_output/nhi_av/'
 
-    # define filenames
+    # define filename
     prop_filename = property_dir + \
        cloud_name + '_global_properties.txt'
     hi_filename = hi_dir + \
@@ -727,7 +794,7 @@ def run_cloud_analysis(args,
         import os
         os.system('rm -rf ' + hi_error_filename)
 
-    region_filename = region_dir + 'multicloud_divisions.reg'
+    region_filename = region_dir + 'multicloud_divisions_2.reg'
 
 
     cloud_filename = \
@@ -768,7 +835,7 @@ def run_cloud_analysis(args,
         if args['fixed_width'] is not None:
             width_grid = np.array((args['fixed_width'],))
         else:
-            width_grid = np.arange(1, 70, 2*0.16667)
+            width_grid = np.arange(1, 200, 2*0.16667)
         #width_grid = np.arange(100, 101, 1)
         dgr_grid = np.arange(0.000, 0.3, 3e-3)
         if args['use_intercept']:
@@ -897,19 +964,20 @@ def main():
     results = {}
 
     clouds = (
+              'perseus',
               'california',
               'taurus',
-              'perseus',
               )
 
-    data_types = ('planck',
-                  #'k09',
+    data_types = (
                   #'planck_lee12mask',
                   'lee12',
+                  'planck',
+                  #'k09',
                   )
     recalculate_likelihoods = (
+                               #True,
                                False,
-                               True,
                                )
     bin_image = (
                  True,
@@ -917,7 +985,7 @@ def main():
                  )
     init_vel_width = (#20,
                       50,
-                      #70,
+                      #200,
                       )
     fixed_width = (
                    'gaussfit',
@@ -927,13 +995,13 @@ def main():
     use_intercept = (True,
                      #False,
                      )
-    av_mask_threshold = (#None,
-                         1.2,
+    av_mask_threshold = (None,
+                         #1.2,
                          )
 
     regions = (None,
-               '1',
-               '2'
+               #'1',
+               #'2'
                )
 
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
@@ -965,8 +1033,8 @@ def main():
                 'av_mask_threshold': permutation[7],
                 #'av_mask_threshold': 1.2,
                 'binned_data_filename_ext': '_bin',
-                #'likelihood_resolution': 'fine',
-                'likelihood_resolution': 'coarse',
+                'likelihood_resolution': 'fine',
+                #'likelihood_resolution': 'coarse',
                 'region': permutation[8]
                 }
         run_analysis = False
