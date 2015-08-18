@@ -1,0 +1,54 @@
+"RFITS
+    CTYPE4=hide
+    FITSFILE=749237_cube_regrid.fits
+    OUTSET=749237_cube_regrid
+    OKAY=y;"
+
+"GALMOD
+    INSET=749237_cube_regrid VELO
+    DRVAL3=1.41885E+09
+    BOX=
+    POS=0 0
+    VSYS=377
+    RADII=10 20 30
+    EMPTY=N
+    VROT=10 20 30
+    VDISP=1
+    DENS=10E20 4E20 2E20
+    Z0=3 2 1
+    NRESTR=0
+    CMODE=1
+    CDENS=
+    INCL=60
+    PA=270
+    LTYPE=1
+    NV=
+    OUTSET=test1
+    OKAY=y
+    "
+"WFITS
+    INSET=test1
+    BOX=
+    FITSFILE=test1.fits
+    BITPIX=
+    OKAY=y
+    "
+
+!"RFITS AUTO=Y CTYPE3=hide FITSFILE=749237_nhi_regrid.fits
+!OUTSET=749237_nhi_regrid;
+!OKAY=y;"
+
+"ELLINT
+    INSET=749237_nhi_regrid
+    OPTION=
+    RADII=10 20
+    WIDTH=10
+    PA=240
+    INCL=0
+    SEGMENTS=
+    POS=* 12 26 23 * 27 44 44.50
+    SUBPIX=
+    MEDIAN=N
+    FORMAT=
+    PLOTOPT= "
+

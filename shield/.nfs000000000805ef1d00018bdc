@@ -1,0 +1,18 @@
+#log# Automatic Logger file. *** THIS MUST BE THE FIRST LINE ***
+#log# DO NOT CHANGE THIS LINE OR THE TWO BELOW -* coding: UTF-8 *-
+#log# opts = Struct({'__allownew': True,
+ 'autocall': 2,
+ 'banner': 0,
+ 'colors': 'LightBG',
+ 'ipythondir': '/usr/users/ezbc/.casa/ipython',
+ 'logfile': 'ipython-20150818-205618.log',
+ 'messages': 0,
+ 'prompt_in1': 'CASA <\\#>: '})
+#log# args = []
+#log# It is safe to make manual edits below here.
+#log#-----------------------------------------------------------------------
+execfile("/usr/local/casapy-41.0.24668-001-64b/lib64/python2.6/assignmentFilter.py")
+execfile('
+execfile('shield_cube_regrids.py')
+execfile('regrid.py')
+viewer()
