@@ -45,20 +45,36 @@ def main():
 
             print('\tBinsize = ' + str(binsize))
 
+            cube_error = 0.1 * cube
+
             cube_bin, header_bin = bin_image(cube,
                                              binsize=(1, binsize, binsize),
                                              header=header,
                                              statistic=np.nanmean,
                                              )
+            noise_func = lambda x: (1 / np.nansum(x**-2))**0.5
+            cube_error_bin = bin_image(cube_error,
+                                             binsize=(1, binsize, binsize),
+                                             statistic=noise_func,
+                                             )
 
-            if 0:
-                print header_bin['CDELT1']
-                print header_bin['CDELT2']
-                print header_bin['CRVAL1']
-                print header_bin['CRVAL2']
+            fits.writeto(in_image,
+                         cube,
+                         header,
+                         clobber=clobber)
+
+            fits.writeto(in_image.replace('cube', 'cube_error'),
+                         cube_error,
+                         header,
+                         clobber=clobber)
 
             fits.writeto(in_image.replace('cube.fits', 'cube_regrid.fits'),
                          cube_bin,
+                         header_bin,
+                         clobber=clobber)
+
+            fits.writeto(in_image.replace('cube', 'cube_error_regrid'),
+                         cube_error_bin,
                          header_bin,
                          clobber=clobber)
         else:
@@ -74,12 +90,20 @@ def main():
                       (header_bin['BMAJ'] * 3600.) / \
                       (3600. * header_bin['BMIN'])
 
+        cube_tb = 1.36 * 21 * cube * 1000.0 / \
+                      (header['BMAJ'] * 3600.) / \
+                      (3600. * header['BMIN'])
+
         nhi_image = calculate_nhi(cube_bin_tb,
                                   velocity_axis=velocity_axis,
                                   header=header_bin,
                                   fits_filename=\
                             in_image.replace('cube.fits', 'nhi_regrid.fits')  )
-
+        nhi_image = calculate_nhi(cube_tb,
+                                  velocity_axis=velocity_axis,
+                                  header=header,
+                                  fits_filename=\
+                            in_image.replace('cube.fits', 'nhi.fits')  )
 
 
 if __name__ == '__main__':

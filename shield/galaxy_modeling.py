@@ -22,7 +22,11 @@ def make_model_dir(cubes):
 def main():
 
     cube_dir = '/d/bip3/ezbc/shield/'
-    cubes = (cube_dir + '749237_cube_regrid.fits',)
+    cubes = (
+             cube_dir + '749237_cube_regrid.fits',
+             cube_dir + '749237_cube_error_regrid.fits',
+             cube_dir + '749237_cube.fits',
+             )
 
     make_model_dir(cubes)
 

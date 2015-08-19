@@ -4,30 +4,32 @@ SPAWN, 'rm -r models'
 SPAWN, 'mkdir models'
 
 ellint_filename = 'ellint.txt'
-cube_name = '749237_cube_regrid'
-nhi_name = '749237_nhi_regrid'
+;cube_name = '749237_cube_regrid'
+cube_name = '749237_cube'
+;nhi_name = '749237_nhi_regrid'
+nhi_name = '749237_nhi'
 beamsizes = '10 10'
 vsys = '377'
 center_pos = '* 12 26 23 * 27 44 44.50'
 
 
 incl=[30,35,40,45,50,55,60,65,70,75,80,85]
-incl=[90]
-pa=[50, 60, 70]
+;incl=[90]
+;pa=[50, 60, 70]
 pa=[240]
 R=10 * FINDGEN(5) + 10.
 
 ;Vrot[R] = Vflat*[1 - EXP(-R/lflat)].  
 vflat=[5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
-vflat=[10]
+;vflat=[10]
 lflat=[10,20,30,40,50,60,70,80,90,100]
-lflat=[10]
+;lflat=[10]
 vdisp=[0]
 
-;1 arcsec ~ 18 pc
-; so 100 pc to 400 pc ~ 5 to 22 pixels
-Z0=[5,10,20,30,40,50,60,70,80,90,100]	
-Z0=[30]
+;1 arcsec ~ 53 pc, 1.5 arcsec/pix
+; so 50 pc to 500 pc --> 1.5 to 6 arcsec
+Z0=[1, 3, 5, 7, 9]	
+;Z0=[1]
 
 PRINT, 'Number of models: ', N_ELEMENTS(incl)*N_ELEMENTS(pa)*N_ELEMENTS(vflat)*N_ELEMENTS(lflat)*N_ELEMENTS(vdisp)*N_ELEMENTS(Z0)
 count=0

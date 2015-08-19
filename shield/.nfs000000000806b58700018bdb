@@ -256,3 +256,19 @@
 2015-08-18 22:09:46	INFO	ImageRegion::fromRecord+	    [0, 0, 0] to [25, 25, 119]  (12:26:31.672, +27.42.54.484, 1.418855e+09Hz to 12:26:14.723, +27.46.39.484, 1.41839e+09Hz)
 2015-08-18 22:09:46	INFO	ImageStatsCalculator::statistics	# Npts          Sum           Mean          Rms           Std dev       Minimum       Maximum     
 2015-08-18 22:09:46	INFO	ImageStatsCalculator::statistics+	 6.912000e+04  3.422138e+01  4.951010e-04  3.016595e-02  3.016210e-02  0.000000e+00  3.626759e+00
+2015-08-18 22:16:57	INFO	ImageRegion::fromRecord	Selected bounding box : 
+2015-08-18 22:16:57	INFO	ImageRegion::fromRecord+	    [0, 0, 0] to [25, 25, 119]  (12:26:31.672, +27.42.54.484, 1.418855e+09Hz to 12:26:14.723, +27.46.39.484, 1.41839e+09Hz)
+2015-08-18 22:16:57	INFO	CasacRegionManager::fromBCS	No directional region specified. Using full positional plane.
+2015-08-18 22:16:57	INFO	CasacRegionManager::fromBCS	Using all spectral channels.
+2015-08-18 22:16:57	INFO	ImageRegion::fromRecord	Selected bounding box : 
+2015-08-18 22:16:57	INFO	ImageRegion::fromRecord+	    [0, 0, 0] to [25, 25, 119]  (12:26:31.672, +27.42.54.484, 1.418855e+09Hz to 12:26:14.723, +27.46.39.484, 1.41839e+09Hz)
+2015-08-18 22:16:57	INFO	ImageStatsCalculator::statistics	# Npts          Sum           Mean          Rms           Std dev       Minimum       Maximum     
+2015-08-18 22:16:57	INFO	ImageStatsCalculator::statistics+	 6.912000e+04  3.422138e+01  4.951010e-04  3.016595e-02  3.016210e-02  0.000000e+00  3.626759e+00
+2015-08-18 22:18:11	INFO	ImageRegion::fromRecord	Selected bounding box : 
+2015-08-18 22:18:11	INFO	ImageRegion::fromRecord+	    [0, 0, 0] to [25, 25, 119]  (12:26:31.672, +27.42.54.484, 1.418855e+09Hz to 12:26:14.723, +27.46.39.484, 1.41839e+09Hz)
+2015-08-18 22:18:11	INFO	CasacRegionManager::fromBCS	No directional region specified. Using full positional plane.
+2015-08-18 22:18:11	INFO	CasacRegionManager::fromBCS	Using all spectral channels.
+2015-08-18 22:18:11	INFO	ImageRegion::fromRecord	Selected bounding box : 
+2015-08-18 22:18:11	INFO	ImageRegion::fromRecord+	    [0, 0, 0] to [25, 25, 119]  (12:26:31.672, +27.42.54.484, 1.418855e+09Hz to 12:26:14.723, +27.46.39.484, 1.41839e+09Hz)
+2015-08-18 22:18:11	INFO	ImageStatsCalculator::statistics	# Npts          Sum           Mean          Rms           Std dev       Minimum       Maximum     
+2015-08-18 22:18:11	INFO	ImageStatsCalculator::statistics+	 6.912000e+04  3.422138e+01  4.951010e-04  3.016595e-02  3.016210e-02  0.000000e+00  3.626759e+00
