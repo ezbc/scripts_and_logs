@@ -1002,15 +1002,15 @@ def main():
     results = {}
 
     clouds = (
-              'perseus',
               'california',
+              'perseus',
               'taurus',
               )
 
     data_types = (
                   #'planck_lee12mask',
-                  #'planck',
-                  'lee12',
+                  'planck',
+                  #'lee12',
                   #'k09',
                   )
     recalculate_likelihoods = (
@@ -1050,9 +1050,13 @@ def main():
                       False,
                       )
 
+    bootstrap = (True,
+                 #False,
+                 )
+
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
-            regions, subtract_comps)
+            regions, subtract_comps, bootstrap)
 
     permutations = list(itertools.product(*elements))
 
@@ -1062,7 +1066,7 @@ def main():
     #for cloud in clouds:
     for permutation in permutations:
         args = {'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 #'data_type': 'planck',
                 #'data_type': 'k09',
@@ -1084,6 +1088,7 @@ def main():
                 'likelihood_resolution': 'coarse',
                 'region': permutation[8],
                 'subtract_comps': permutation[9],
+                'bootstrap': permutation[10],
                 }
         run_analysis = False
         if args['data_type'] in ('planck_lee12mask', 'lee12'):
