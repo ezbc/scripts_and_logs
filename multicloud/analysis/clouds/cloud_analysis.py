@@ -824,8 +824,19 @@ def run_cloud_analysis(args,
         import os
         os.system('rm -rf ' + hi_error_filename)
 
+    # Load cloud division regions from ds9
     region_filename = region_dir + 'multicloud_divisions.reg'
+    global_props = load_ds9_region(global_props,
+                    filename='/d/bip3/ezbc/multicloud/data/' + \
+                    'python_output/multicloud_divisions.reg',
+                    #'python_output/multicloud_divisions_2.reg',
+                            header=av_header)
 
+    # Derive relevant region
+    region_vertices = \
+        np.array(global_props['regions'][cloud]['poly_verts']['pixel'])
+    region_mask = np.logical_not(myg.get_polygon_mask(av_data,
+                                                      region_vertices))
 
     cloud_filename = \
             '/d/bip3/ezbc/multicloud/data/python_output/' + \
