@@ -45,13 +45,18 @@ def main():
 
             print('\tBinsize = ' + str(binsize))
 
-            cube_error = 0.1 * cube
+            # cube measurement error = 700 uJy/Beam = 0.7 mJy/Beam
+            # cube flux calibration error = 10%
+            # add errors quadratically
+            cube_std = np.nanstd(cube[0, :, :])
+            cube_error = (0.1 * cube**2 + cube_std**2)**0.5
 
             cube_bin, header_bin = bin_image(cube,
                                              binsize=(1, binsize, binsize),
                                              header=header,
                                              statistic=np.nanmean,
                                              )
+
             noise_func = lambda x: (1 / np.nansum(x**-2))**0.5
             cube_error_bin = bin_image(cube_error,
                                              binsize=(1, binsize, binsize),

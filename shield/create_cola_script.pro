@@ -12,24 +12,32 @@ beamsizes = '10 10'
 vsys = '377'
 center_pos = '* 12 26 23 * 27 44 44.50'
 
-
-incl=[30,35,40,45,50,55,60,65,70,75,80,85]
-;incl=[90]
-;pa=[50, 60, 70]
-pa=[240]
+; set parameter ranges
 R=10 * FINDGEN(5) + 10.
 
+incl=[49, 59]
+incl=indgen(11)*1 + 49
+;incl=[90]
+;pa=[50, 60, 70]
+
 ;Vrot[R] = Vflat*[1 - EXP(-R/lflat)].  
-vflat=[5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
-;vflat=[10]
-lflat=[10,20,30,40,50,60,70,80,90,100]
-;lflat=[10]
-vdisp=[0]
+vflat=[20, 40]
+vflat=indgen(11)*2 + 20
+lflat=[10, 30]
+lflat=indgen(11)*2 + 10
 
 ;1 arcsec ~ 53 pc, 1.5 arcsec/pix
 ; so 50 pc to 500 pc --> 1.5 to 6 arcsec
-Z0=[1, 3, 5, 7, 9]	
-;Z0=[1]
+Z0=[1, 21]
+Z0=indgen(21)*1 + 1
+
+print, incl
+print, vflat
+print, lflat
+print, Z0
+
+pa=[240]
+vdisp=[0]
 
 PRINT, 'Number of models: ', N_ELEMENTS(incl)*N_ELEMENTS(pa)*N_ELEMENTS(vflat)*N_ELEMENTS(lflat)*N_ELEMENTS(vdisp)*N_ELEMENTS(Z0)
 count=0

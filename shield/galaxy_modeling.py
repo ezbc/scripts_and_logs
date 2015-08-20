@@ -5,16 +5,16 @@ import os
 
 def make_model_dir(cubes):
 
-    model_dir = '/d/bip3/ezbc/shield/modeling/'
+    model_dir = '/d/bip3/ezbc/shield/modeling_fineres/'
 
-    if 0:
+    if 1:
         try:
             os.system('mkdir ' + model_dir)
         except:
             pass
 
     os.system('cp create_cola_script.pro ' + model_dir)
-    os.system('cp gipsy_script.col ' + model_dir)
+    #os.system('cp gipsy_script.col ' + model_dir)
     for cube in cubes:
         os.system('cp  ' + cube + ' ' + model_dir)
         os.system('cp  ' + cube.replace('cube','nhi') + ' ' + model_dir)
