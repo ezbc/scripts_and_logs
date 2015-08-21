@@ -65,7 +65,7 @@ def main():
     os.chdir('/d/bip3/ezbc/perseus/data')
 
     # If true, deletes files to be written
-    clobber = 1
+    clobber = 0
     clobber_hi = 0
 
     # First, change zeros in lee image to nans

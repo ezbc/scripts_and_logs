@@ -375,20 +375,20 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
                 dgr_error_text + \
                 '\nIntercept = {0:.2f}'.format(fit_params['intercept']) + \
                 intercept_error_text
+        #if i == 0:
+        #    ax.set_title('Full line-of-sight')
+        #    av_fit = fit_params['dgr_cloud'] * nhi_fit + \
+        #             fit_params['dgr_background'] * nhi_fit + \
+        #             fit_params['intercept']
+        #    label=''
+        #    if ngrids == 1:
+        #        label = cloud_text
         if i == 0:
-            ax.set_title('Full line-of-sight')
-            av_fit = fit_params['dgr_cloud'] * nhi_fit + \
-                     fit_params['dgr_background'] * nhi_fit + \
-                     fit_params['intercept']
-            label=''
-            if ngrids == 1:
-                label = cloud_text
-        elif i == 1:
             ax.set_title('Cloud')
             av_fit = fit_params['dgr_cloud'] * nhi_fit + \
                      fit_params['intercept']
             label = cloud_text
-        elif i == 2:
+        elif i == 1:
             ax.set_title('Background')
             av_fit = fit_params['dgr_background'] * nhi_fit + \
                      fit_params['intercept']
@@ -727,9 +727,13 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
                                          nhi_boot,
                                          dgr_cloud,)
             if nhi_back_boot is not None:
-                nhi_total = nhi_boot + nhi_back_boot
-                av_images = (av_boot, av_cloud, av_background)
-                nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
+                #nhi_total = nhi_boot + nhi_back_boot
+                #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
+                #av_boot = np.hstack((av_cloud, av_background))
+                #av_images = (av_boot, av_cloud, av_background)
+                av_images = (av_cloud, av_background)
+                #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
+                nhi_images = (nhi_boot, nhi_back_boot)
             else:
                 nhi_total = nhi_boot
                 av_images = (av_boot,)
@@ -749,6 +753,7 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
                            av_error=av_error_boot,
                            fit_params=fit_params,
                            contour_plot=plot_kwargs['av_nhi_contour'],
+                           limits=plot_kwargs['av_nhi_limits'],
                            filename=filename,
                            )
             if 0:
@@ -911,7 +916,9 @@ def run_cloud_analysis(args,):
                    'cloud_name': cloud_name,
                    'filename_base': filename_base,
                    'plot_diagnostics': args['plot_diagnostics'],
-                   'av_nhi_contour': av_nhi_contour,
+                   #'av_nhi_contour': av_nhi_contour,
+                   'av_nhi_contour': True,
+                   'av_nhi_limits': [5, 30, -1, 7],
                     }
 
     print('Filename base = \n' + filename_base + '\n')
@@ -954,6 +961,7 @@ def main():
                  True,
                  False,
                  )
+
     init_vel_width = (#20,
                       20,
                       #200,

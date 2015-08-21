@@ -18,117 +18,46 @@ def plot_spectra_grid(hi_velocity_axis_list=None, hi_spectrum_list=None,
 
     # Import external modules
     import matplotlib.pyplot as plt
-    import matplotlib
     import numpy as np
-    from mpl_toolkits.axes_grid1 import ImageGrid
-    import pyfits as pf
     import matplotlib.pyplot as plt
-    import pywcsgrid2 as wcs
-    import pywcs
-    from pylab import cm # colormaps
-    from matplotlib.patches import Polygon
+    import myplotting as myplt
 
     # Set up plot aesthetics
     # ----------------------
     plt.close;plt.clf()
 
-    # Color map
-    cmap = plt.cm.gnuplot
-
     # Create figure instance
-    fig = plt.figure()
+    fig = plt.figure(figsize=(3.6, 3.6))
+    ax = fig.add_subplot(111)
 
-    # Determine number of plots on each axis
-    imagegrid = ImageGrid(fig, (1,1,1),
-                 nrows_ncols=(len(hi_velocity_axis_list), 1),
-                 ngrids=len(hi_velocity_axis_list),
-                 axes_pad=0,
-                 aspect=False,
-                 label_mode='L',
-                 share_all=True)
+    myplt.set_color_cycle(num_colors=3)
 
     for i in xrange(len(hi_velocity_axis_list)):
 
         # create axes
-        ax = imagegrid[i]
-
-        ax.plot(hi_velocity_axis_list[i],
-                hi_spectrum_list[i],
-                #color='k',
-                linestyle='--',
-                label='Median HI',
-                drawstyle = 'steps-mid'
-                )
-
-        if hi_std_list is not None:
-            ax.plot(hi_velocity_axis_list[i],
-                    hi_std_list[i],
-                    #color='k',
-                    linestyle='-.',
-                    label=r'$\sigma_{\rm HI}$',
-                    drawstyle='steps-mid'
-                    )
-
-        if co_velocity_axis_list is not None:
-            ax.plot(co_velocity_axis_list[i],
-                    co_spectrum_list[i] * 50.,
-                    #color='k',
-                    label=r'Median $^{12}$CO $\times$ 50',
-                    drawstyle = 'steps-mid'
-                    )
-
         spectra_names[i] = spectra_names[i].replace('1', ' 1')
         spectra_names[i] = spectra_names[i].replace('2', ' 2')
-        if 0:
-            ax.annotate(spectra_names[i].capitalize(),
-                    xytext=(0.1, 0.9),
-                    xy=(0.1, 0.9),
-                    textcoords='axes fraction',
-                    xycoords='axes fraction',
-                    color='k'
-                    )
-        else:
-            ax.annotate(spectra_names[i].capitalize(),
-                        xytext=(0.96, 0.9),
-                        xy=(0.96, 0.9),
-                        textcoords='axes fraction',
-                        xycoords='axes fraction',
-                        size=12,
-                        color='k',
-                        bbox=dict(boxstyle='square',
-                                  facecolor='w',
-                                  alpha=1),
-                        horizontalalignment='right',
-                        verticalalignment='top',
-                        )
 
-        if 0:
-            ax.axvspan(hi_vel_range_list[i][0],
-                       hi_vel_range_list[i][1],
-                       alpha=0.3,
-                       color='k',
-                       )
+        ax.plot(co_velocity_axis_list[i],
+                co_spectrum_list[i],
+                #color='k',
+                drawstyle = 'steps-mid',
+                label=spectra_names[i].capitalize(),
+                )
 
         ax.set_xlabel('Velocity [km/s]')
         ax.set_ylabel(r'T$_b$ [K]')
 
-        if i == 0:
-            ax.legend(loc='upper left')
+    ax.legend(loc='upper left')
 
-        # plot limits
-        if limits is not None:
-            ax.set_xlim(limits[0],limits[1])
-            ax.set_ylim(limits[2],limits[3])
-
-    if 0:
-        if co_velocity_axis_list is not None:
-            # Single legend
-            ax.legend(bbox_to_anchor=(1.5, 0.2),
-                    loc='lower right',
-                    borderaxespad=0.)
+    # plot limits
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
 
     if filename is not None:
         plt.savefig(savedir + filename, bbox_inches='tight', dpi=100)
+
 
 ''' Calculations
 '''
@@ -271,7 +200,7 @@ def load_ds9_region(props, filename=None, header=None):
 
     return props
 
-def calc_data(cloud_list):
+def calc_data():
     ''' Executes script.
     '''
     import numpy as np
@@ -281,6 +210,11 @@ def calc_data(cloud_list):
     import json
 
 
+    cloud_list = ('taurus',
+                  #'taurus1',
+                  #'taurus2',
+                  'california',
+                  'perseus')
     data_dict = {}
 
     for i, cloud in enumerate(cloud_list):
@@ -334,7 +268,6 @@ def calc_data(cloud_list):
         global_props = load_ds9_region(global_props,
                         filename='/d/bip3/ezbc/multicloud/data/' + \
                         'python_output/multicloud_divisions.reg',
-                        #'python_output/multicloud_divisions_2.reg',
                                 header=av_header)
 
         # Derive relevant region
@@ -350,6 +283,13 @@ def calc_data(cloud_list):
             plt.show()
         hi_data[:, region_mask] = np.nan
         co_data[:, region_mask] = np.nan
+
+        import matplotlib.pyplot as plt
+        plt.close(); plt.clf();
+        co = np.copy(co_data[30,:,:])
+        co[region_mask] = np.nan
+        plt.imshow(co, origin='lower')
+        plt.savefig('/usr/users/ezbc/Desktop/comap_' + cloud_name + '.png')
 
 
         # sum along spatial axes
@@ -371,7 +311,6 @@ def calc_data(cloud_list):
         #                              vel_center - vel_width / 2.0)
         #cloud_dict['hi_vel_range'] = global_props['hi_velocity_range_conf']
         cloud_dict['hi_vel_range'] = global_props['hi_velocity_range']
-        print global_props['hi_velocity_range']
 
         # Calculate velocity
         cloud_dict['hi_velocity_axis'] = make_velocity_axis(
@@ -399,15 +338,8 @@ def main():
 
     clobber_results = 1
 
-    cloud_list = ('taurus',
-                  #'taurus1',
-                  #'taurus2',
-                  'california',
-                  'perseus'
-                  )
-
     if clobber_results:
-        data_dict = calc_data(cloud_list)
+        data_dict = calc_data()
         with open(output_dir + 'multicloud_hi_spectra.pickle', 'w') as f:
             pickle.dump(data_dict, f)
     else:
@@ -422,6 +354,11 @@ def main():
     co_spectrum_list = []
     spectra_names = []
 
+    cloud_list = ('taurus',
+                  #'taurus1',
+                  #'taurus2',
+                  'california',
+                  'perseus')
 
     for cloud in cloud_list:
         hi_velocity_axis_list.append(data_dict[cloud]['hi_velocity_axis'])
@@ -434,7 +371,8 @@ def main():
 
     figure_types = ('png', 'pdf')
     for figure_type in figure_types:
-        limits = [-40, 40, -9, 61]
+        #limits = [-40, 40, -9, 61]
+        limits = None
 
         # scatter plot
         plot_spectra_grid(hi_velocity_axis_list=hi_velocity_axis_list,
@@ -445,7 +383,7 @@ def main():
                         hi_vel_range_list=hi_vel_range_list,
                         savedir=figure_dir,
                         limits=limits,
-                        filename='multicloud_hi_spectrum_global.%s' % \
+                        filename='multicloud_co_spectrum_global.%s' % \
                                 figure_type,
                         show=False,
                         spectra_names=spectra_names,

@@ -3,6 +3,7 @@
 import planckpy as pl
 reload(pl)
 from astropy.io import fits as pf
+import numpy as np
 
 def extract_data(datatype = 'ebv'):
     data_location = '/d/bip3/ezbc/planck/planck_raw_data/'
@@ -54,15 +55,29 @@ def write_data(data, header, filename):
             clobber = True,
             output_verify = 'fix')
 
-def ebv2av(data, header):
+def ebv2av(data, header, error=None):
     # Av=E(B-V) x 3.05263, 152 in Tielens' ISM book.
 
-    data *= 3.05363
     header['BUNIT'] = 'mag'
 
-    return (data, header)
+    rv = 3.05363
+    av = data * rv
 
-def tau353_to_ebv(data, header):
+    if error is None:
+        return (av, header)
+    else:
+        rv_data = np.loadtxt('/usr/users/ezbc/research/scripts/multicloud/' + \
+                             'analysis/clouds/cloud_errors.csv',
+                             skiprows=1, delimiter=',')
+
+        rv_rms = np.mean(rv_data[:,0]**2)**0.5
+        rv_std = np.std(rv_data[:,0])
+
+        av_error = av * ((rv_std / rv)**2 + (error / data)**2)**0.5
+
+        return (av_error, header)
+
+def tau353_to_ebv(data, header, error=None):
 
     '''
 
@@ -78,10 +93,15 @@ def tau353_to_ebv(data, header):
 
     '''
 
-    data *= 1.49e4
     header['BUNIT'] = 'mag'
 
-    return (data, header)
+    ebv = data * 1.49e4
+
+    if error is None:
+        return (ebv, header)
+    else:
+        ebv_error = ebv * ((0.03e4 / 1.49e4)**2 + (error / data)**2)**0.5
+        return (ebv_error, header)
 
 def radiance_to_ebv(data, header):
 
@@ -134,26 +154,32 @@ def main():
         # Color excess maps
         # -----------------
         # tau_353
-        (data, header) = extract_data(datatype = 'tau353')
-        write_data(data, header, planck_dir + 'california_planck_tau353.fits')
+        (data_tau353, header) = extract_data(datatype = 'tau353')
+        write_data(data_tau353, header,
+                   planck_dir + 'california_planck_tau353.fits')
 
-        (data_ebv_tau353, header) = tau353_to_ebv(data, header)
+        (data_ebv_tau353, header) = tau353_to_ebv(data_tau353, header)
         write_data(data_ebv_tau353, header,
                    planck_dir + 'california_ebv_planck_tau353.fits')
 
         (data_av_tau353, header) = ebv2av(data_ebv_tau353, header)
         write_data(data_av_tau353, header,
                    av_dir + 'california_av_planck_tau353.fits')
+    if 1:
 
         # tau 353 error
-        (data, header) = extract_data(datatype = 'tau353err')
-        write_data(data, header, planck_dir + 'california_planck_tau353_error.fits')
+        (data_tau353_error, header) = extract_data(datatype = 'tau353err')
+        write_data(data_tau353_error, header,
+                   planck_dir + 'california_planck_tau353_error.fits')
 
-        (data_ebv_tau353_error, header) = tau353_to_ebv(data, header)
+        (data_ebv_tau353_error, header) = tau353_to_ebv(data_tau353,
+                                                        header,
+                                                        error=data_tau353_error)
         write_data(data_ebv_tau353, header,
                    planck_dir + 'california_ebv_error_planck_tau353.fits')
 
-        (data_av_tau353_error, header) = ebv2av(data_ebv_tau353_error, header)
+        (data_av_tau353_error, header) = ebv2av(data_ebv_tau353, header,
+                                                error=data_ebv_tau353_error)
         write_data(data_av_tau353_error, header,
                    av_dir + 'california_av_error_planck_tau353.fits')
 

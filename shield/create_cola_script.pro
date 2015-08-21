@@ -96,7 +96,7 @@ FOR o=0, N_ELEMENTS(Z0)-1 DO BEGIN
 	vrot=vflat[l]*(1.-EXP(-R/lflat[k]))	; km/s
     ;nrings = size(R, /N_ELEMENTS)
     ;vrot=vflat[l]*(indgen(nrings) / float(nrings - 1) )
-	cgPLOT, R, vrot, XTITLE='R [arcsec]', YTITLE='V!Drot!N [km/s]', YRANGE=[0,MAX(vflat)]
+	;cgPLOT, R, vrot, XTITLE='R [arcsec]', YTITLE='V!Drot!N [km/s]', YRANGE=[0,MAX(vflat)]
 
 	OPENW, ounit, 'profiles/profile_'+STRCOMPRESS(STRING(count), /REMOVE_ALL)+'.txt', /GET_LUN
 	FOR m=0, N_ELEMENTS(R)-1 DO PRINTF, ounit, R[m], vrot[m]
@@ -126,12 +126,15 @@ FOR o=0, N_ELEMENTS(Z0)-1 DO BEGIN
                 STRCOMPRESS(STRING(count), /REMOVE_ALL)+'.smooth ; scale=;"'
 
 	PRINTF, outunit, '"DELETE INSET=models/model_'+STRCOMPRESS(STRING(count), /REMOVE_ALL)+'; OK=y;"'
+	
 
 	PRINTF, outunit, '"WFITS INSET=models/model_'+$
                 STRCOMPRESS(count, /REMOVE_ALL)+$
                 '.smooth BOX= FITSFILE=models/model_'+$
                 STRCOMPRESS(count, /REMOVE_ALL)+$
                 '.smooth.FITS BITPIX=-32"'
+
+    PRINTF, outunit, '"DELETE INSET=models/model_'+STRCOMPRESS(STRING(count), /REMOVE_ALL)+'.smooth; OK=y;"'
 
 	PRINTF, ounit1, model_name+' '+STRCOMPRESS(STRING(incl[i]), /REMOVE_ALL)+' '+$
                 STRCOMPRESS(STRING(pa[j]), /REMOVE_ALL)+' '+$
