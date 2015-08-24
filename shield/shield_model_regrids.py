@@ -43,6 +43,7 @@ def main():
 
     stats = {
             'logL': np.empty(len(filename_list)),
+            'model_names': [],
             'std': np.empty(len(filename_list)),
             'mean_abs_resid': np.empty(len(filename_list)),
             'sum_abs_resid': np.empty(len(filename_list)),
@@ -102,6 +103,7 @@ def main():
                          clobber=clobber)
 
         residuals = model_bin[~mask] - data[~mask]
+        stats['model_names'].append(model_bin_name)
         stats['logL'][i] = mystats.calc_logL(model_bin[~mask],
                                              data[~mask],
                                              data_error=error[~mask])

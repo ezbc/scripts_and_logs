@@ -26,7 +26,7 @@ def rewrite_param_file(input_param_filename, output_param_filename):
     file.writelines(['model #  ', 'inc \t',
                      'pa \t','iflat \t','vflat \t','vdisp \t','z0 \n'])
 
-    # modelNum column data
+    # modelNum column dat
     for i in xrange(0, params.shape[0]):
         file.writelines([str(modelNames[i]) + '\t',
                          str(params[i,0]) + '\t',
@@ -46,7 +46,7 @@ def main():
     import myio
     import pickle
 
-    os.chdir('/d/bip3/ezbc/shield/modeling/')
+    os.chdir('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/')
     os.system('rm -rf *.image *.descr')
 
     input_param_filename = 'parameters.txt'
@@ -55,17 +55,34 @@ def main():
     with open('statistics.pickle', 'rb') as f:
         stats = pickle.load(f)
 
+    if 0:
+        import matplotlib.pyplot as plt
+        model_names_int = [int(model_name.replace('model_', '')) for model_name in model_names ]
+        plt.plot(model_names_int)
+        plt.plot(stats['logL'])
+        plt.savefig('likelihood_test.png')
+
+
     stats['likelihoods'] = mystats.logL2L(stats['logL'])
 
     params, model_names, param_names = rewrite_param_file(input_param_filename,
                                                           output_param_filename)
 
-
+    print np.nanmax(stats['logL'])
+    print np.sort(stats['logL'])
+    print np.argsort(stats['likelihoods'])
     print stats['likelihoods']
     print len(stats['likelihoods'])
     print param_names
-    print model_names[stats == np.nanmax(stats['likelihoods'])]
-    print params[stats == np.nanmax(stats['likelihoods'])]
+    print model_names
+    print stats['model_names'][np.argmax(stats['likelihoods'])]
+    print params[np.argmax(stats['likelihoods'])]
+
+    if 0:
+        import matplotlib.pyplot as plt
+        plt.plot(model_names_int)
+        plt.plot(stats['likelihoods'])
+        plt.savefig('likelihood_test.png')
 
 if __name__ == '__main__':
     main()
