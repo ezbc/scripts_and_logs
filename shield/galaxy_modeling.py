@@ -5,7 +5,7 @@ import os
 
 def make_model_dir(cubes):
 
-    model_dir = '/d/bip3/ezbc/shield/modeling_fineres/'
+    model_dir = '/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/'
 
     if 1:
         try:
@@ -21,11 +21,11 @@ def make_model_dir(cubes):
 
 def main():
 
-    cube_dir = '/d/bip3/ezbc/shield/'
+    cube_dir = '/d/bip3/ezbc/shield/749237_lowres/'
     cubes = (
-             cube_dir + '749237_cube_regrid.fits',
-             cube_dir + '749237_cube_error_regrid.fits',
-             cube_dir + '749237_cube.fits',
+             cube_dir + '749237_rebin_cube_regrid.fits',
+             cube_dir + '749237_rebin_cube_error_regrid.fits',
+             cube_dir + '749237_rebin_cube.fits',
              )
 
     make_model_dir(cubes)

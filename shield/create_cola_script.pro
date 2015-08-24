@@ -5,15 +5,15 @@ SPAWN, 'mkdir models'
 
 ellint_filename = 'ellint.txt'
 ;cube_name = '749237_cube_regrid'
-cube_name = '749237_cube'
+cube_name = '749237_rebin_cube'
 ;nhi_name = '749237_nhi_regrid'
-nhi_name = '749237_nhi'
+nhi_name = '749237_rebin_nhi'
 beamsizes = '10 10'
 vsys = '377'
 center_pos = '* 12 26 23 * 27 44 44.50'
 
 ; set parameter ranges
-R=10 * FINDGEN(5) + 10.
+R=10 * FINDGEN(8) + 10.
 
 incl=[49, 59]
 incl=indgen(11)*1 + 49
@@ -29,7 +29,7 @@ lflat=indgen(11)*2 + 10
 ;1 arcsec ~ 53 pc, 1.5 arcsec/pix
 ; so 50 pc to 500 pc --> 1.5 to 6 arcsec
 Z0=[1, 21]
-Z0=indgen(21)*1 + 1
+Z0=indgen(11)*2 + 1
 
 print, incl
 print, vflat

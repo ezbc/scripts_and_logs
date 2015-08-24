@@ -20,7 +20,7 @@ def main():
     import myio
     import pickle
 
-    os.chdir('/d/bip3/ezbc/shield/modeling_fineres/models')
+    os.chdir('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/models')
 
     # Ddelete gipsy files, leaving only fits files
     filename_delete_list = os.listdir('./')
@@ -48,14 +48,23 @@ def main():
             'sum_abs_resid': np.empty(len(filename_list)),
             }
 
-    cube_name = '749237_cube_regrid.fits'
-    cube_error_name = '749237_cube_error_regrid.fits'
-    data, header = fits.getdata('/d/bip3/ezbc/shield/modeling_fineres/' + cube_name,
-                        header=True)
-    error = fits.getdata('/d/bip3/ezbc/shield/modeling_fineres/' + cube_error_name)
+    cube_name = '749237_rebin_cube_regrid.fits'
+    unbinned_cube_name = '749237_rebin_cube.fits'
+    cube_error_name = '749237_rebin_cube_error_regrid.fits'
+    data, header = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/' + \
+                                cube_name,
+                                header=True)
+    error = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/' + \
+                         cube_error_name)
 
     data_sum = np.nansum(data)
-    binsize = 6
+    #binsize = 6
+
+    _, unbinned_header = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/' + \
+                          unbinned_cube_name, header=True)
+    beamsize = unbinned_header['BMAJ']
+    cdelt = np.abs(unbinned_header['CDELT1'])
+    binsize = int(beamsize / cdelt)
 
     mask = (np.isnan(data) | np.isnan(error))
 
@@ -100,10 +109,10 @@ def main():
         stats['mean_abs_resid'][i] = np.nanmean(np.abs(residuals))
         stats['sum_abs_resid'][i] = np.nansum(np.abs(residuals))
 
-    with open('/d/bip3/ezbc/shield/modeling_fineres/statistics.pickle', 'wb') as f:
+    with open('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/statistics.pickle', 'wb') as f:
         pickle.dump(stats, f)
 
-    with open('/d/bip3/ezbc/shield/modeling_fineres/statistics.pickle', 'rb') as f:
+    with open('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/statistics.pickle', 'rb') as f:
         stats = pickle.load(f)
 
 if __name__ == '__main__':
