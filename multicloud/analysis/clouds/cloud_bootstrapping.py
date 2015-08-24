@@ -431,6 +431,36 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
 '''
 
 '''
+from multiprocessing.queues import Queue
+
+class QueueGet(Queue):
+    """Queue which will retry if interrupted with EINTR."""
+    def get(self, block=True, timeout=None):
+        return retry_on_eintr(Queue.get, self, block, timeout)
+
+def retry_on_eintr(function, *args, **kw):
+    from multiprocessing.queues import Queue
+    import errno
+
+    while True:
+        try:
+            return function(*args, **kw)
+        except IOError, e:
+            if e.errno == errno.EINTR:
+                continue
+            else:
+                raise
+
+def _my_queue_get(queue, block=True, timeout=None):
+    import errno
+    while True:
+        try:
+            return queue.get(block, timeout)
+        except IOError, e:
+            if e.errno != errno.EINTR:
+                raise
+
+class KeyboardInterruptError(Exception): pass
 
 def create_cloud_model(av, nhi_background, dgr_background,):
 
@@ -497,10 +527,10 @@ def create_filename_base(args):
         weights_filename = None
     if args['region'] is None:
         region_name = ''
-        region = args['cloud_name']
+        args['region_name'] = args['cloud_name']
     else:
         region_name = '_region' + args['region']
-        region = args['cloud_name'] + args['region']
+        args['region_name'] = args['cloud_name'] + args['region']
     if args['av_mask_threshold'] is not None:
         avthres_name = '_avthres'
     else:
@@ -528,7 +558,9 @@ def create_filename_base(args):
             'res' + region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name
 
-    return filename_extension
+    print args['region_name']
+
+    return filename_extension, args
 
 def mask_nans(arrays, return_mask=False):
 
@@ -664,10 +696,117 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
 
         return (dgr_cloud, dgr_background, intercept)
 
-def bootstrap_fits(av_data, nhi_image, av_error_data=None,
-        nhi_image_background=None, num_bootstraps=10, plot_kwargs=None):
+def bootstrap_worker(args,):
 
-    from astropy.stats import bootstrap
+    av = args['av']
+    av_error = args['av_error']
+    nhi = args['nhi']
+    nhi_back = args['nhi_back']
+    init_guesses = args['init_guesses']
+    plot_kwargs = args['plot_kwargs']
+    i = args['i']
+    queue = args['queue']
+
+    # get bootstrap indices and apply them to each dataset
+    boot_indices = np.random.choice(av.size, size=av.size)
+    av_boot = av[boot_indices]
+    av_error_boot = av_error[boot_indices]
+    nhi_boot = nhi[boot_indices]
+    if nhi_back is not None:
+        nhi_back_boot = nhi_back[boot_indices]
+    else:
+        nhi_back_boot = None
+
+    if 0:
+        av_boot = av
+        av_error_boot = av_error
+        nhi_boot = nhi
+        nhi_back_boot = nhi_back
+
+
+    # for plotting
+    plot_kwargs['bootstrap_num'] = i
+
+    # fit the bootstrapped data
+    boot_result = fit_model(av_boot,
+                            nhi_boot,
+                            av_error=av_error_boot,
+                            nhi_background=nhi_back_boot,
+                            init_guesses=init_guesses,
+                            plot_kwargs=plot_kwargs)
+
+
+    # Plot distribution and fit
+    #if plot_kwargs['plot_diagnostics']:
+    if 0:
+        dgr_cloud, dgr_background, intercept = boot_result
+        filename = plot_kwargs['figure_dir'] + \
+                   'diagnostics/av_nhi/' + plot_kwargs['filename_base'] + \
+                   '_av_vs_nhi_bootstrap' + \
+                   '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
+        av_cloud = create_cloud_model(av_boot,
+                                     nhi_back_boot,
+                                     dgr_background,)
+        av_background = create_background_model(av_boot,
+                                     nhi_boot,
+                                     dgr_cloud,)
+        if nhi_back_boot is not None:
+            #nhi_total = nhi_boot + nhi_back_boot
+            #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
+            #av_boot = np.hstack((av_cloud, av_background))
+            #av_images = (av_boot, av_cloud, av_background)
+            av_images = (av_cloud, av_background)
+            #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
+            nhi_images = (nhi_boot, nhi_back_boot)
+        else:
+            nhi_total = nhi_boot
+            av_images = (av_boot,)
+            nhi_images = (nhi_total,)
+
+        fit_params = {
+                      'dgr_cloud': dgr_cloud,
+                      'dgr_cloud_error': (0, 0),
+                      'dgr_background': dgr_background,
+                      'dgr_background_error': (0, 0),
+                      'intercept': intercept,
+                      'intercept_error': (0,0),
+                      }
+
+        #print('plotting')
+        plot_av_vs_nhi_grid(av_images,
+                       nhi_images,
+                       av_error=av_error_boot,
+                       fit_params=fit_params,
+                       contour_plot=plot_kwargs['av_nhi_contour'],
+                       limits=plot_kwargs['av_nhi_limits'],
+                       filename=filename,
+                       )
+        if 0:
+        #if nhi_back_boot is not None:
+            filename = plot_kwargs['figure_dir'] + \
+                       'diagnostics/av_nhi/' + \
+                       plot_kwargs['filename_base'] + \
+                       '_av_vs_nhibackground_bootstrap' + \
+                       '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
+            fit_params = {'dgr': dgr_background,
+                          'intercept': intercept}
+            av_plot = create_background_model(av_boot,
+                                         nhi_boot,
+                                         dgr_cloud,)
+            plot_av_vs_nhi(av_plot,
+                           nhi_back_boot,
+                           av_error=av_error_boot,
+                           fit_params=fit_params,
+                           contour_plot=plot_kwargs['av_nhi_contour'],
+                           filename=filename,
+                           )
+
+    queue.put([i, boot_result])
+
+def bootstrap_fits(av_data, nhi_image, av_error_data=None,
+        nhi_image_background=None, num_bootstraps=10000, plot_kwargs=None):
+
+    import multiprocessing as mp
 
     if av_error_data is None:
         av_error_data = np.ones(av_data.size)
@@ -683,100 +822,47 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
     boot_results = np.empty((3, num_bootstraps))
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
 
+
+    # Prep multiprocessing
+    queue = mp.Queue(10)
+    processes = []
+
+    args = {}
+    args['av'] = av
+    args['av_error'] = av_error
+    args['nhi'] = nhi
+    args['nhi_back'] = nhi_back
+    args['init_guesses'] = init_guesses
+    args['plot_kwargs'] = plot_kwargs
+    args['queue'] = queue
+
     # bootstrap
     for i in xrange(num_bootstraps):
-        # get bootstrap indices and apply them to each dataset
-        boot_indices = np.random.choice(av.size, size=av.size)
-        av_boot = av[boot_indices]
-        av_error_boot = av_error[boot_indices]
-        nhi_boot = nhi[boot_indices]
-        if nhi_back is not None:
-            nhi_back_boot = nhi_back[boot_indices]
-        else:
-            nhi_back_boot = None
+        args['i'] = i
 
-        if 0:
-            av_boot = av
-            av_error_boot = av_error
-            nhi_boot = nhi
-            nhi_back_boot = nhi_back
+        try:
+            process = (mp.Process(target=bootstrap_worker,
+                                        args=(args,)
+                                        )
+                             )
+            processes.append(process)
+        except KeyboardInterrupt():
+            process.terminate()
 
+    # Start the processes
+    for process in processes:
+        process.start()
+    # Join so that we wait until all processes are finished
+    for process in processes:
+        process.join()
 
-        # for plotting
-        plot_kwargs['bootstrap_num'] = i
+    # Get the results
+    for p in processes:
+        result = _my_queue_get(queue)
+        #result = queue.get()
+        boot_results[:, result[0]] = result[1]
 
-        # fit the bootstrapped data
-        boot_results[:, i] = fit_model(av_boot,
-                                       nhi_boot,
-                                       av_error=av_error_boot,
-                                       nhi_background=nhi_back_boot,
-                                       init_guesses=init_guesses,
-                                       plot_kwargs=plot_kwargs)
-
-        # Plot distribution and fit
-        if plot_kwargs['plot_diagnostics']:
-            dgr_cloud, dgr_background, intercept = boot_results[:, i]
-            filename = plot_kwargs['figure_dir'] + \
-                       'diagnostics/av_nhi/' + plot_kwargs['filename_base'] + \
-                       '_av_vs_nhi_bootstrap' + \
-                       '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
-            av_cloud = create_cloud_model(av_boot,
-                                         nhi_back_boot,
-                                         dgr_background,)
-            av_background = create_background_model(av_boot,
-                                         nhi_boot,
-                                         dgr_cloud,)
-            if nhi_back_boot is not None:
-                #nhi_total = nhi_boot + nhi_back_boot
-                #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
-                #av_boot = np.hstack((av_cloud, av_background))
-                #av_images = (av_boot, av_cloud, av_background)
-                av_images = (av_cloud, av_background)
-                #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
-                nhi_images = (nhi_boot, nhi_back_boot)
-            else:
-                nhi_total = nhi_boot
-                av_images = (av_boot,)
-                nhi_images = (nhi_total,)
-
-            fit_params = {
-                          'dgr_cloud': dgr_cloud,
-                          'dgr_cloud_error': (0, 0),
-                          'dgr_background': dgr_background,
-                          'dgr_background_error': (0, 0),
-                          'intercept': intercept,
-                          'intercept_error': (0,0),
-                          }
-
-            plot_av_vs_nhi_grid(av_images,
-                           nhi_images,
-                           av_error=av_error_boot,
-                           fit_params=fit_params,
-                           contour_plot=plot_kwargs['av_nhi_contour'],
-                           limits=plot_kwargs['av_nhi_limits'],
-                           filename=filename,
-                           )
-            if 0:
-            #if nhi_back_boot is not None:
-                filename = plot_kwargs['figure_dir'] + \
-                           'diagnostics/av_nhi/' + \
-                           plot_kwargs['filename_base'] + \
-                           '_av_vs_nhibackground_bootstrap' + \
-                           '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
-                fit_params = {'dgr': dgr_background,
-                              'intercept': intercept}
-                av_plot = create_background_model(av_boot,
-                                             nhi_boot,
-                                             dgr_cloud,)
-                plot_av_vs_nhi(av_plot,
-                               nhi_back_boot,
-                               av_error=av_error_boot,
-                               fit_params=fit_params,
-                               contour_plot=plot_kwargs['av_nhi_contour'],
-                               filename=filename,
-                               )
-
-        init_guesses = list(boot_results[:, i])
+    return boot_results
 
 def run_cloud_analysis(args,):
 
@@ -854,12 +940,13 @@ def run_cloud_analysis(args,):
         av_background = 0.0
 
     # Get the filename base to differentiate between different parameters
-    filename_base = create_filename_base(args)
+    filename_base, args = create_filename_base(args)
 
     # Load data
     if args['bin_image']:
         av_filename = av_filename.replace('.fits', '_bin.fits')
-        av_error_filename = av_error_filename.replace('.fits', '_bin.fits')
+        if av_error_filename is not None:
+            av_error_filename = av_error_filename.replace('.fits', '_bin.fits')
         hi_filename = hi_filename.replace('.fits', '_bin.fits')
         av_nhi_contour = False
     else:
@@ -877,7 +964,7 @@ def run_cloud_analysis(args,):
     region_mask = calc_region_mask(region_filename,
                                    av_data,
                                    av_header,
-                                   region_name=args['cloud_name'])
+                                   region_name=args['region_name'])
 
     av_data[region_mask] = np.nan
 
@@ -948,17 +1035,17 @@ def main():
               )
 
     data_types = (
-                  #'planck_lee12mask',
+                  'planck_lee12mask',
                   'planck',
-                  #'lee12',
-                  #'k09',
+                  'lee12',
+                  'k09',
                   )
     recalculate_likelihoods = (
                                #True,
                                False,
                                )
     bin_image = (
-                 True,
+                 #True,
                  False,
                  )
 
@@ -968,8 +1055,8 @@ def main():
                       )
     fixed_width = (
                    #20,
-                   'gaussfit',
-                   #None,
+                   #'gaussfit',
+                   None,
                    #50,
                    )
     use_intercept = (
@@ -987,8 +1074,8 @@ def main():
                          )
 
     regions = (None,
-               #'1',
-               #'2'
+               '1',
+               '2'
                )
 
     subtract_comps = (#True,
