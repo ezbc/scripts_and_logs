@@ -211,7 +211,6 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
     import matplotlib.pyplot as plt
     import matplotlib
     from matplotlib import cm
-    from astroML.plotting import scatter_contour
     from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
     import myplotting as myplt
 
@@ -221,15 +220,7 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
     #plt.rcdefaults()
 
     # color map
-    cmap = plt.cm.gnuplot
-
-    # color cycle, grabs colors from cmap
-    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
-    params = {'axes.color_cycle': color_cycle, # colors of different plots
-             }
-    #plt.rcparams.update(params)
-
-    myplt.set_color_cycle(num_colors=3)
+    myplt.set_color_cycle(num_colors=2, cmap_limits=[0.2, 0.8])
 
     ngrids = len(av_grid)
 
@@ -239,7 +230,6 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
     else:
         ysize = 7.5
     fig = plt.figure(figsize=(3.6, ysize))
-
 
     axes = AxesGrid(fig, (1,1,1),
                  nrows_ncols=(ngrids, 1,),
@@ -297,11 +287,12 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
 
             l1 = myplt.scatter_contour(nhi_nonans.ravel(),
                                  av_nonans.ravel(),
-                                 threshold=3,
+                                 threshold=2,
                                  log_counts=1,
                                  levels=levels,
                                  ax=ax,
-                                 histogram2d_args=dict(bins=30,
+                                 #errors=av_error_nonans.ravel(),
+                                 histogram2d_args=dict(bins=40,
                                                        range=contour_range),
                                  plot_args=dict(marker='o',
                                                 linestyle='none',
@@ -345,7 +336,7 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
             ax.plot(x_median,
                     y_median,
                     alpha=1,
-                    color='r',
+                    #color='r',
                     marker='s',
                     linestyle='None',
                     label=label,
@@ -427,6 +418,155 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
 
     if filename is not None:
         plt.savefig(filename)
+
+def plot_bootstrap_dist(dgrs, intercepts, limits=None, filename=None,
+        levels=4, axis_labels=['',''], contour_plot=True):
+
+    ''' Plots a heat map of likelihoodelation values as a function of velocity
+    width and velocity center.
+
+    Parameters
+    ----------
+    cloud : cloudpy.Cloud
+        If provided, properties taken from cloud.props.
+
+
+    '''
+
+    # Import external modules
+    import numpy as np
+    import math
+    from astropy.io import fits
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    import myplotting as myplt
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    font_scale = 9
+    params = {
+              'figure.figsize': (3.6, 3.6),
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    fig, ax = plt.subplots()
+
+    if contour_plot:
+        if limits is None:
+            xmin = np.min(dgrs)
+            ymin = np.min(intercepts)
+            xmax = np.max(dgrs)
+            ymax = np.max(intercepts)
+            xscalar = 0.15 * xmax
+            yscalar = 0.15 * ymax
+            limits = [xmin - xscalar, xmax + xscalar,
+                      ymin - yscalar, ymax + yscalar]
+
+        contour_range = ((limits[0], limits[1]),
+                         (limits[2], limits[3]))
+
+        cmap = myplt.truncate_colormap(plt.cm.binary, 0.2, 1, 1000)
+
+        l1 = myplt.scatter_contour(dgrs.ravel(),
+                             intercepts.ravel(),
+                             threshold=4,
+                             log_counts=1,
+                             levels=levels,
+                             ax=ax,
+                             #errors=av_error_nonans.ravel(),
+                             histogram2d_args=dict(bins=20,
+                                                   range=contour_range),
+                             plot_args=dict(marker='o',
+                                            linestyle='none',
+                                            color='black',
+                                            alpha=0.3,
+                                            markersize=2),
+                             contour_args=dict(
+                                               #cmap=plt.cm.binary,
+                                               cmap=cmap,
+                                               #cmap=cmap,
+                                               ),
+                             )
+    else:
+        image = ax.plot(dgrs.ravel(),
+                intercepts.ravel(),
+                alpha=0.2,
+                color='k',
+                marker='o',
+                linestyle='None',
+                markersize=3
+                )
+    #ax.set_xscale(scale[0], nonposx = 'clip')
+    #ax.set_yscale(scale[1], nonposy = 'clip')
+
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
+
+    # Adjust asthetics
+    ax.set_xlabel(axis_labels[0])
+    ax.set_ylabel(axis_labels[1])
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight')
+
+def plot_bootstrap_hist(dgrs, limits=None, filename=None,
+        axis_label='',):
+
+    ''' Plots a heat map of likelihoodelation values as a function of velocity
+    width and velocity center.
+
+    Parameters
+    ----------
+    cloud : cloudpy.Cloud
+        If provided, properties taken from cloud.props.
+
+
+    '''
+
+    # Import external modules
+    import numpy as np
+    import math
+    from astropy.io import fits
+    import matplotlib.pyplot as plt
+    import matplotlib
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    import myplotting as myplt
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    font_scale = 9
+    params = {
+              'figure.figsize': (3.6, 3.6),
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    fig, ax = plt.subplots()
+
+    counts, bins = np.histogram(dgrs,)
+
+    ax.plot(bins[:-1],
+            counts,
+            color='k',
+            drawstyle='steps-mid',
+            linewidth=2,
+            )
+
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
+
+    # Adjust asthetics
+    ax.set_xlabel(axis_label)
+    ax.set_ylabel('Counts')
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight')
 
 '''
 
@@ -554,8 +694,8 @@ def create_filename_base(args):
 
     filename_extension = args['cloud_name'] + '_' + args['data_type'] + \
             background_name + \
-            bin_name + weights_name + '_' + args['likelihood_resolution'] + \
-            'res' + region_name + width_name + avthres_name + \
+            bin_name + weights_name + \
+            region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name
 
     print args['region_name']
@@ -591,9 +731,11 @@ def mask_nans(arrays, return_mask=False):
         return masked_arrays
 
 def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
-        plot_kwargs=None, init_guesses=[0.05, 0.05, 0]):
+        plot_kwargs=None, init_guesses=[0.05, 0.05, 0], use_intercept=True,
+        return_fit=False, fit_method='lbfgsb'):
 
     from lmfit import minimize, Parameters
+    import lmfit
 
     if nhi_background is None:
         use_background = False
@@ -633,9 +775,9 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
                    )
         params.add('intercept',
                    value=init_guesses[2],
-                   min=0.0,
+                   min=-5,
                    max=5,
-                   vary=False,
+                   vary=use_intercept,
                    )
 
         #bin_edges = residuals_crop
@@ -652,9 +794,15 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
                     params['dgr_background'] * nhi_background + \
                     params['intercept']
 
+            #if fit_method == 'leastsq':
+                #norm = np.sum((av - model)**2 * (1.0/av_error**2)) / \
+                #       np.sum(1.0/av_error**2)
             norm = np.sum((av - model)**2 * (1.0/av_error**2)) / \
-                   np.sum(1.0/av_error**2)
+                    np.sum(1.0/av_error**2)
             #norm = np.sum((av - model)**2)
+            #else:
+            #    norm = (av - model)
+
             return norm
 
         #print('fitting')
@@ -662,15 +810,21 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
         result = minimize(norm,
                           params,
                           args=(av, nhi, av_error, nhi_background),
-                          #method='lbfgsb',
+                          #method='leastsq',
+                          #method=fit_method,
                           method='nelder',
                           )
+
+        #print lmfit.report_fit(params)
+        #print lmfit.printfuncs.report_ci(lmfit.conf_interval(result))
+        #print lmfit.conf_interval(result)
 
         dgr_cloud = params['dgr_cloud'].value
         dgr_background = params['dgr_background'].value
         intercept = params['intercept'].value
 
-        if debugging:
+        #if debugging:
+        if 0:
             print('dgr = ', dgr_cloud)
             print('dgr background = ', dgr_background)
             print('intercept = ', intercept)
@@ -694,9 +848,12 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
                         '_avnhi_bootsrap' + \
                         '{0:03d}.png'.format(plot_kwargs['bootstrap_num']))
 
-        return (dgr_cloud, dgr_background, intercept)
+        if return_fit:
+            return (result, params), (dgr_cloud, dgr_background, intercept)
+        else:
+            return (dgr_cloud, dgr_background, intercept)
 
-def bootstrap_worker(args,):
+def bootstrap_worker(args, i):
 
     av = args['av']
     av_error = args['av_error']
@@ -704,13 +861,27 @@ def bootstrap_worker(args,):
     nhi_back = args['nhi_back']
     init_guesses = args['init_guesses']
     plot_kwargs = args['plot_kwargs']
-    i = args['i']
-    queue = args['queue']
+    use_intercept = args['use_intercept']
+    probabilities = args['probabilities']
+    #i = args['i']
+
+    #queue = args['queue']
+    av_error = (av_error**2 + (0.07 * av * 6)**2)**0.5
 
     # get bootstrap indices and apply them to each dataset
-    boot_indices = np.random.choice(av.size, size=av.size)
-    av_boot = av[boot_indices]
-    av_error_boot = av_error[boot_indices]
+    np.random.seed()
+    av_noise_sim = np.random.normal(0, scale=av_error) + \
+                    np.random.normal(0, 0.003*3.1)
+    #probabilities = 1.0 / av_noise_sim**2
+    #probabilities /= np.nansum(probabilities)
+    boot_indices = np.random.choice(av.size, size=av.size, p=probabilities)
+    if 1:
+        av_boot = av[boot_indices] + av_noise_sim[boot_indices]
+        #av_error_boot = av_noise_sim[boot_indices]
+        av_error_boot = av_error[boot_indices]
+    else:
+        av_error_boot = av_error_sim[boot_indices]
+        av_boot = av[boot_indices]
     nhi_boot = nhi[boot_indices]
     if nhi_back is not None:
         nhi_back_boot = nhi_back[boot_indices]
@@ -733,12 +904,14 @@ def bootstrap_worker(args,):
                             av_error=av_error_boot,
                             nhi_background=nhi_back_boot,
                             init_guesses=init_guesses,
-                            plot_kwargs=plot_kwargs)
+                            plot_kwargs=plot_kwargs,
+                            use_intercept=use_intercept)
 
+    args['init_guesses'] = boot_result
 
     # Plot distribution and fit
-    #if plot_kwargs['plot_diagnostics']:
-    if 0:
+    if plot_kwargs['plot_diagnostics']:
+    #if 1:
         dgr_cloud, dgr_background, intercept = boot_result
         filename = plot_kwargs['figure_dir'] + \
                    'diagnostics/av_nhi/' + plot_kwargs['filename_base'] + \
@@ -800,13 +973,27 @@ def bootstrap_worker(args,):
                            contour_plot=plot_kwargs['av_nhi_contour'],
                            filename=filename,
                            )
+    result = [i, boot_result]
 
-    queue.put([i, boot_result])
+
+    #queue.put(result)
+    return result
+
+def bootstrap_worker_wrapper(args, i):
+
+    try:
+        output = bootstrap_worker(args, i)
+    except KeyboardInterrupt:
+        raise KeyboardInterruptError()
+
+    return output
 
 def bootstrap_fits(av_data, nhi_image, av_error_data=None,
-        nhi_image_background=None, num_bootstraps=10000, plot_kwargs=None):
+        nhi_image_background=None, num_bootstraps=100, plot_kwargs=None,
+        use_intercept=True):
 
     import multiprocessing as mp
+    import sys
 
     if av_error_data is None:
         av_error_data = np.ones(av_data.size)
@@ -814,6 +1001,9 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
     # mask for nans, arrays will be 1D
     av, av_error, nhi, nhi_back = \
             mask_nans((av_data, av_error_data, nhi_image, nhi_image_background))
+
+    probabilities = 1.0 / av_error**2
+    probabilities /= np.nansum(probabilities)
 
     # for plotting
     plot_kwargs['num_bootstraps'] = num_bootstraps
@@ -825,6 +1015,7 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
 
     # Prep multiprocessing
     queue = mp.Queue(10)
+    pool = mp.Pool()
     processes = []
 
     args = {}
@@ -834,33 +1025,51 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
     args['nhi_back'] = nhi_back
     args['init_guesses'] = init_guesses
     args['plot_kwargs'] = plot_kwargs
-    args['queue'] = queue
+    args['use_intercept'] = use_intercept
+    args['probabilities'] = probabilities
 
-    # bootstrap
+    #args['queue'] = queue
+    args_list = []
     for i in xrange(num_bootstraps):
         args['i'] = i
+        args_list.append(args.copy())
 
+    # bootstrap
+    if 1:
         try:
-            process = (mp.Process(target=bootstrap_worker,
-                                        args=(args,)
-                                        )
-                             )
-            processes.append(process)
-        except KeyboardInterrupt():
-            process.terminate()
+            for i in xrange(num_bootstraps):
+                processes.append(pool.apply_async(bootstrap_worker_wrapper,
+                                                  args=(args,i,)))
+        except KeyboardInterruptError:
+            pool.terminate()
+            pool.join()
+        pool.close()
+        pool.join()
+
+        # Get the results
+        for p in processes:
+            result = p.get()
+            #result = queue.get()
+            boot_results[:, result[0]] = result[1]
+    else:
+        for i in xrange(num_bootstraps):
+            processes.append(bootstrap_worker(args, i))
+
+        for result in processes:
+            #result = queue.get()
+            boot_results[:, result[0]] = result[1]
+
+    #for process in processes:
+    #    process.set()
 
     # Start the processes
-    for process in processes:
-        process.start()
+    #for process in processes:
     # Join so that we wait until all processes are finished
-    for process in processes:
-        process.join()
+    #for process in processes:
+    #    process.join()
+    #    process.terminate()
 
-    # Get the results
-    for p in processes:
-        result = _my_queue_get(queue)
-        #result = queue.get()
-        boot_results[:, result[0]] = result[1]
+    #if 1:
 
     return boot_results
 
@@ -869,6 +1078,8 @@ def run_cloud_analysis(args,):
     from astropy.io import fits
     from myimage_analysis import calculate_nhi, calc_region_mask
     from mycoords import make_velocity_axis
+    from mystats import calc_symmetric_error, calc_logL
+    import myio
 
     if 1:
         cloud_name = args['cloud_name']
@@ -1005,20 +1216,159 @@ def run_cloud_analysis(args,):
                    'plot_diagnostics': args['plot_diagnostics'],
                    #'av_nhi_contour': av_nhi_contour,
                    'av_nhi_contour': True,
-                   'av_nhi_limits': [5, 30, -1, 7],
+                   'av_nhi_limits': [0, 20, -1, 9],
+                   #'av_nhi_limits': None,
                     }
 
     print('Filename base = \n' + filename_base + '\n')
 
-    # Perform bootsrapping
-    boot_result = bootstrap_fits(av_data,
-                                 nhi_image,
-                                 av_error_data=av_error_data,
-                                 nhi_image_background=nhi_image_background,
-                                 plot_kwargs=plot_kwargs,
-                                 )
+    bootstrap_filename = results_dir + filename_base + '_bootresults.npy'
+    run_analysis = True
+    if args['load']:
+        exists = myio.check_file(bootstrap_filename)
+        if exists:
+            boot_result = np.load(bootstrap_filename)
+            run_analysis = False
+    if run_analysis:
+        # Perform bootsrapping
+        boot_result = bootstrap_fits(av_data,
+                                     nhi_image,
+                                     av_error_data=av_error_data,
+                                     nhi_image_background=nhi_image_background,
+                                     plot_kwargs=plot_kwargs,
+                                     use_intercept=args['use_intercept'],
+                                     num_bootstraps=args['num_bootstraps'],
+                                     )
+        np.save(results_dir + filename_base + '_bootresults.npy', boot_result)
 
-    np.save(results_dir + filename_base + '_bootresults.npy', boot_result)
+    if 0:
+        # fit model to data, get confidence intervals of fit
+        mask = (np.isnan(av_data) | np.isnan(nhi_image))
+        p, V = np.polyfit(av_data[~mask],
+                          nhi_image[~mask], cov=True, deg=1)
+
+        print(V[0,0], V[1,1])
+
+        from scipy.optimize import curve_fit
+
+        def func(x, dgr, intercept):
+            return dgr * x + intercept
+
+        popt, pcov = curve_fit(func, av_data[~mask], nhi_image[~mask])
+
+
+    if 1:
+        dgr_cloud, dgr_background, intercept = np.mean(boot_result, axis=1)
+        dgr_cloud_error, dgr_background_error, intercept_error = \
+                    np.std(boot_result, axis=1)
+
+        filename = plot_kwargs['figure_dir'] + \
+                   'av_nhi/' + plot_kwargs['filename_base'] + \
+                   '_av_vs_nhi.png'
+        av_cloud = create_cloud_model(av_data,
+                                     nhi_image_background,
+                                     dgr_background,)
+
+        # Calculate conf interval
+        from scipy import stats
+        dgrs = boot_result[0]
+        N = dgrs.size
+        mean, sigma = np.nanmean(dgrs), stats.nanstd(dgrs)
+        conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
+        dgr_cloud_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
+
+        if args['use_background']:
+            dgrs = boot_result[1]
+            N = dgrs.size
+            mean, sigma = np.nanmean(dgrs), stats.nanstd(dgrs)
+            conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
+            dgr_background_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
+        else:
+            dgr_background_error = (0.0, 0.0)
+
+        if args['use_intercept']:
+            intercepts = boot_result[2]
+            N = intercepts.size
+            mean, sigma = np.nanmean(intercepts), stats.nanstd(intercepts)
+            conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
+            intercept_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
+        else:
+            intercept_error = (0.0, 0.0)
+
+        if nhi_image_background is not None:
+            av_background = create_background_model(av_data,
+                                         nhi_image,
+                                         dgr_cloud,)
+            #nhi_total = nhi_boot + nhi_back_boot
+            #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
+            #av_boot = np.hstack((av_cloud, av_background))
+            #av_images = (av_boot, av_cloud, av_background)
+            av_images = (av_cloud, av_background)
+            #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
+            nhi_images = (nhi_image, nhi_image_background)
+        else:
+            nhi_total = nhi_image
+            av_images = (av_data,)
+            nhi_images = (nhi_total,)
+
+        fit_params = {
+                      'dgr_cloud': dgr_cloud,
+                      'dgr_cloud_error': dgr_cloud_error,#, dgr_cloud_error),
+                      'dgr_background': dgr_background,
+                      'dgr_background_error': dgr_background_error,
+                      'intercept': intercept,
+                      'intercept_error': intercept_error,
+                      }
+
+
+        print('plotting')
+        plot_av_vs_nhi_grid(av_images,
+                       nhi_images,
+                       av_error=av_error_data,
+                       fit_params=fit_params,
+                       contour_plot=plot_kwargs['av_nhi_contour'],
+                       limits=plot_kwargs['av_nhi_limits'],
+                       filename=filename,
+                       )
+
+        # Plot distribution
+        if args['use_intercept'] or args['use_background']:
+            filename = plot_kwargs['figure_dir'] + \
+                       'bootstrap_dists/' + plot_kwargs['filename_base'] + \
+                       '_backdgr_vs_clouddgr.png'
+            print('\nSaving bootstrap distributions to:\n' + filename)
+            plot_bootstrap_dist(boot_result[0], boot_result[1],
+                                filename=filename,
+                                axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                                        r'Background DGR [10$^{-20}$ cm$^2$ mag]'),
+                                levels=4)
+
+            filename = plot_kwargs['figure_dir'] + \
+                       'bootstrap_dists/' + plot_kwargs['filename_base'] + \
+                       '_int_vs_clouddgr.png'
+
+            try:
+                plot_bootstrap_dist(boot_result[0], boot_result[2],
+                                    filename=filename,
+                                    axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                                                 r'Intercept [mag]'),
+                                    levels=4)
+            except ValueError:
+                plot_bootstrap_dist(boot_result[0], boot_result[2],
+                                    filename=filename,
+                                    axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                                                 r'Intercept [mag]'),
+                                    contour_plot=False,
+                                    levels=4)
+        else:
+            filename = plot_kwargs['figure_dir'] + \
+                       'bootstrap_dists/' + plot_kwargs['filename_base'] + \
+                       '_clouddgr.png'
+            print('\nSaving bootstrap distributions to:\n' + filename)
+            plot_bootstrap_hist(boot_result[0],
+                            filename=filename,
+                            axis_label=r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                            )
 
     return boot_result
 
@@ -1029,16 +1379,16 @@ def main():
     results = {}
 
     clouds = (
-              'california',
               'taurus',
+              'california',
               'perseus',
               )
 
     data_types = (
-                  'planck_lee12mask',
                   'planck',
                   'lee12',
-                  'k09',
+                  'planck_lee12mask',
+                  #'k09',
                   )
     recalculate_likelihoods = (
                                #True,
@@ -1060,12 +1410,13 @@ def main():
                    #50,
                    )
     use_intercept = (
+                     False,
                      True,
-                     #False,
                      )
 
-    use_background = (True,
+    use_background = (
                       False,
+                      True,
                       )
     av_mask_threshold = (
                          None,
@@ -1074,8 +1425,8 @@ def main():
                          )
 
     regions = (None,
-               '1',
-               '2'
+               #'1',
+               #'2'
                )
 
     subtract_comps = (#True,
@@ -1093,7 +1444,7 @@ def main():
     #for cloud in clouds:
     for permutation in permutations:
         args = {'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 #'data_type': 'planck',
                 #'data_type': 'k09',
@@ -1117,6 +1468,7 @@ def main():
                 'subtract_comps': permutation[9],
                 'plot_diagnostics': True,
                 'use_background': permutation[10],
+                'num_bootstraps': 10000,
                 }
         run_analysis = False
         if args['data_type'] in ('planck_lee12mask', 'lee12'):
