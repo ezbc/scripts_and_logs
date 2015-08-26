@@ -17,19 +17,23 @@ R=10 * FINDGEN(8) + 10.
 
 incl=[49, 59]
 incl=indgen(11)*1 + 49
+;incl=53
 ;incl=[90]
 ;pa=[50, 60, 70]
 
 ;Vrot[R] = Vflat*[1 - EXP(-R/lflat)].  
-vflat=[20, 40]
+;vflat=[20, 40]
 vflat=indgen(11)*2 + 20
-lflat=[10, 30]
+;vflat=[40]
+;lflat=[10, 30]
 lflat=indgen(11)*2 + 10
+;lflat=[10]
 
 ;1 arcsec ~ 53 pc, 1.5 arcsec/pix
 ; so 50 pc to 500 pc --> 1.5 to 6 arcsec
 Z0=[1, 21]
 Z0=indgen(11)*2 + 1
+;Z0=[11]
 
 print, incl
 print, vflat
@@ -108,7 +112,7 @@ FOR o=0, N_ELEMENTS(Z0)-1 DO BEGIN
 
 	PRINTF, outunit, '"DELETE INSET=models/model_'+STRCOMPRESS(STRING(count), /REMOVE_ALL)+'.smooth; OK=y;"'
 
-	PRINTF, outunit, '"GALMOD BOX= CDENS= CMODE= DENS=file(' + ellint_filename $
+	PRINTF, outunit, '"GALMOD BOX= CDENS= CMODE=0 DENS=file(' + ellint_filename $
     + ', 4, :)*1.e20 '+ $
 	        'DRVAL3=1.419351555040E+9 EMPTY=N INCL='+$
                 STRCOMPRESS(STRING(incl[i]), /REMOVE_ALL)+$

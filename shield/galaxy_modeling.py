@@ -21,6 +21,7 @@ def make_model_dir(cubes):
 
 def main():
 
+    os.chdir('/usr/users/ezbc/research/scripts/shield/')
     cube_dir = '/d/bip3/ezbc/shield/749237_lowres/'
     cubes = (
              cube_dir + '749237_rebin_cube_regrid.fits',
