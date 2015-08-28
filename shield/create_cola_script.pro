@@ -12,21 +12,26 @@ beamsizes = '10 10'
 vsys = '377'
 center_pos = '* 12 26 23 * 27 44 44.50'
 
+; load nhi_image, calculate total column density in units of 1e20 cm^-2
+nhi_image = readfits(nhi_name + '.fits')
+CDENS = total(nhi_image)
+print, 'CDENS = ', CDENS, ' 10^20 cm^-2'
+
 ; set parameter ranges
 R=10 * FINDGEN(8) + 10.
 
 incl=[49, 59]
-incl=indgen(11)*1 + 49
+incl=indgen(20)*1 + 49
 ;incl=53
 ;incl=[90]
 ;pa=[50, 60, 70]
 
 ;Vrot[R] = Vflat*[1 - EXP(-R/lflat)].  
 ;vflat=[20, 40]
-vflat=indgen(11)*2 + 20
+vflat=indgen(15)*3 + 15
 ;vflat=[40]
 ;lflat=[10, 30]
-lflat=indgen(11)*2 + 10
+lflat=indgen(15)*2 + 2
 ;lflat=[10]
 
 ;1 arcsec ~ 53 pc, 1.5 arcsec/pix
@@ -112,7 +117,7 @@ FOR o=0, N_ELEMENTS(Z0)-1 DO BEGIN
 
 	PRINTF, outunit, '"DELETE INSET=models/model_'+STRCOMPRESS(STRING(count), /REMOVE_ALL)+'.smooth; OK=y;"'
 
-	PRINTF, outunit, '"GALMOD BOX= CDENS= CMODE=0 DENS=file(' + ellint_filename $
+	PRINTF, outunit, '"GALMOD BOX= CDENS= CMODE=2 DENS=file(' + ellint_filename $
     + ', 4, :)*1.e20 '+ $
 	        'DRVAL3=1.419351555040E+9 EMPTY=N INCL='+$
                 STRCOMPRESS(STRING(incl[i]), /REMOVE_ALL)+$

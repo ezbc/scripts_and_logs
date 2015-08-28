@@ -201,7 +201,7 @@ def plot_av_vs_nhi(av, nhi, fit_params=None, filename=None, av_error=None,
         plt.savefig(filename)
 
 def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
-        av_error=None, contour_plot=True, levels=10, plot_median=True,
+        av_error=None, contour_plot=True, levels=7, plot_median=True,
         limits=None, scale=('linear','linear'), title = '', gridsize=(100,100),
         std=None):
 
@@ -475,7 +475,7 @@ def plot_bootstrap_dist(dgrs, intercepts, limits=None, filename=None,
                              intercepts.ravel(),
                              threshold=4,
                              log_counts=1,
-                             levels=levels,
+                             levels=[0.99, 0.95, 0.68],
                              ax=ax,
                              #errors=av_error_nonans.ravel(),
                              histogram2d_args=dict(bins=20,
@@ -853,6 +853,49 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
         else:
             return (dgr_cloud, dgr_background, intercept)
 
+def simulate_noise(av, av_error):
+
+    ''' Simulates noise of Av data
+
+    Possible noise contributions:
+        + uncertainty in dust params, tau_353, Beta, T
+
+        + CIB background - section 4.2, Planck 2013
+
+        + background subtraction
+
+        + variation in dust temperature, e.g. difference between radiance and
+        tau_353
+
+    '''
+
+    #av_error = (av_error**2 + (0.07 * av)**2)**0.5
+
+    # get bootstrap indices and apply them to each dataset
+    np.random.seed()
+
+    # empirical uncertainty from comparison with Schlegel 98
+    #sigma_ = 0.003*3.1
+
+    av_noise_sim = np.random.normal(0, scale=av_error)
+
+    # empirical uncertainty from comparison with Schlegel 98
+    #av_noise_sim += np.random.normal(0, scale=0.003*3.1)
+
+    return av_noise_sim
+
+def simulate_rescaling(av, scalar=1.0):
+
+    av_rescale = av / np.random.uniform(low=1, high=scalar)
+
+    return av_rescale
+
+def simulate_background_error(av, scale=1.0):
+
+    av_background_sim = av + np.random.normal(0, scale=scale)
+
+    return av_background_sim
+
 def bootstrap_worker(args, i):
 
     av = args['av']
@@ -863,26 +906,32 @@ def bootstrap_worker(args, i):
     plot_kwargs = args['plot_kwargs']
     use_intercept = args['use_intercept']
     probabilities = args['probabilities']
+    av_scalar = args['av_scalar']
+    intercept_error = args['intercept_error']
     #i = args['i']
 
     #queue = args['queue']
-    av_error = (av_error**2 + (0.07 * av * 6)**2)**0.5
 
-    # get bootstrap indices and apply them to each dataset
-    np.random.seed()
-    av_noise_sim = np.random.normal(0, scale=av_error) + \
-                    np.random.normal(0, 0.003*3.1)
-    #probabilities = 1.0 / av_noise_sim**2
-    #probabilities /= np.nansum(probabilities)
+    # Create simulated data
+    # -------------------------------------------------------------------------
+    # add random noise
+    av_noise_sim = simulate_noise(av, av_error)
+
+    # rescale the data somewhere between Planck and 2MASS:
+    # rescaled Planck = Planck / beta where beta is between 1.0 and 1.4
+    av_sim = simulate_rescaling(av, scalar=av_scalar)
+
+    # remove background
+    av_sim = simulate_background_error(av_sim, scale=intercept_error)
+
+    # Bootstrap data
+    # -------------------------------------------------------------------------
     boot_indices = np.random.choice(av.size, size=av.size, p=probabilities)
-    if 1:
-        av_boot = av[boot_indices] + av_noise_sim[boot_indices]
-        #av_error_boot = av_noise_sim[boot_indices]
-        av_error_boot = av_error[boot_indices]
-    else:
-        av_error_boot = av_error_sim[boot_indices]
-        av_boot = av[boot_indices]
+
+    av_boot = av_sim[boot_indices] + av_noise_sim[boot_indices]
+    av_error_boot = av_error[boot_indices]
     nhi_boot = nhi[boot_indices]
+
     if nhi_back is not None:
         nhi_back_boot = nhi_back[boot_indices]
     else:
@@ -893,7 +942,6 @@ def bootstrap_worker(args, i):
         av_error_boot = av_error
         nhi_boot = nhi
         nhi_back_boot = nhi_back
-
 
     # for plotting
     plot_kwargs['bootstrap_num'] = i
@@ -988,7 +1036,7 @@ def bootstrap_worker_wrapper(args, i):
 
     return output
 
-def bootstrap_fits(av_data, nhi_image, av_error_data=None,
+def bootstrap_fits(av_data, nhi_image, av_error_data=None, av_reference=None,
         nhi_image_background=None, num_bootstraps=100, plot_kwargs=None,
         use_intercept=True):
 
@@ -1012,14 +1060,20 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
     boot_results = np.empty((3, num_bootstraps))
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
 
+    if av_reference is not None:
+        nan_mask = (np.isnan(av_reference) | \
+                    np.isnan(av_data) | \
+                    np.isnan(av_error_data))
+        p, V = np.polyfit(av_reference[~nan_mask], av_data[~nan_mask], deg=1,
+                       w=1.0/av_error_data[~nan_mask]**2,
+                       cov=True,
+                       )
+        av_scalar, intercept = p
+        intercept_error = V[1, 1]
 
-    # Prep multiprocessing
-    queue = mp.Queue(10)
-    pool = mp.Pool()
-    processes = []
-
+    # Prep arguments
     args = {}
-    args['av'] = av
+    args['av'] = av - intercept
     args['av_error'] = av_error
     args['nhi'] = nhi
     args['nhi_back'] = nhi_back
@@ -1027,12 +1081,20 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
     args['plot_kwargs'] = plot_kwargs
     args['use_intercept'] = use_intercept
     args['probabilities'] = probabilities
+    args['av_scalar'] = av_scalar
+    args['intercept'] = intercept
+    args['intercept_error'] = intercept_error
 
     #args['queue'] = queue
     args_list = []
     for i in xrange(num_bootstraps):
         args['i'] = i
         args_list.append(args.copy())
+
+    # Prep multiprocessing
+    queue = mp.Queue(10)
+    pool = mp.Pool()
+    processes = []
 
     # bootstrap
     if 1:
@@ -1134,6 +1196,8 @@ def run_cloud_analysis(args,):
             av_error_filename = None
             av_error = 1
         av_background = None
+        av_ref_filename = av_dir + \
+           cloud_name + '_av_k09_regrid_planckres.fits'
     if cloud_name == 'perseus' and data_type == 'planck_lee12mask':
         av_filename = av_dir + \
            cloud_name + '_av_planck_tau353_5arcmin_lee12mask.fits'
@@ -1164,6 +1228,7 @@ def run_cloud_analysis(args,):
         av_nhi_contour = True
 
     av_data, av_header = fits.getdata(av_filename, header=True)
+    av_data_ref, av_header = fits.getdata(av_ref_filename, header=True)
     if av_error_filename is not None:
         av_error_data, av_error_header = fits.getdata(av_error_filename,
                                                       header=True)
@@ -1178,6 +1243,7 @@ def run_cloud_analysis(args,):
                                    region_name=args['region_name'])
 
     av_data[region_mask] = np.nan
+    av_data_ref[region_mask] = np.nan
 
     #if debugging:
     if 1:
@@ -1236,6 +1302,7 @@ def run_cloud_analysis(args,):
                                      av_error_data=av_error_data,
                                      nhi_image_background=nhi_image_background,
                                      plot_kwargs=plot_kwargs,
+                                     av_reference=av_data_ref,
                                      use_intercept=args['use_intercept'],
                                      num_bootstraps=args['num_bootstraps'],
                                      )
@@ -1411,12 +1478,12 @@ def main():
                    )
     use_intercept = (
                      False,
-                     True,
+                     #True,
                      )
 
     use_background = (
                       False,
-                      True,
+                      #True,
                       )
     av_mask_threshold = (
                          None,
@@ -1466,9 +1533,9 @@ def main():
                 'likelihood_resolution': 'coarse',
                 'region': permutation[8],
                 'subtract_comps': permutation[9],
-                'plot_diagnostics': True,
+                'plot_diagnostics': 0,
                 'use_background': permutation[10],
-                'num_bootstraps': 10000,
+                'num_bootstraps': 100,
                 }
         run_analysis = False
         if args['data_type'] in ('planck_lee12mask', 'lee12'):
