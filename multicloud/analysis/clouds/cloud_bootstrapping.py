@@ -529,6 +529,7 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
 
     # Import external modules
     import numpy as np
+    import scipy
     import math
     from astropy.io import fits
     import matplotlib.pyplot as plt
@@ -549,11 +550,24 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
 
     fig, ax = plt.subplots()
 
-    counts, bins = np.histogram(dgrs,)
+    counts, bins = np.histogram(dgrs,bins=40)
+    counts = counts / float(np.max(counts))
 
-    ax.plot(bins[:-1],
-            counts,
-            color='k',
+    if 1:
+        ax.plot(bins[:-1],
+                counts,
+                #color='k',
+                drawstyle='steps-mid',
+                linewidth=2,
+                )
+
+    # Compute the CDF
+    dgrs_sorted = np.sort(dgrs)
+    cdf = np.cumsum(dgrs_sorted)
+    cdf = cdf / np.max(cdf)
+    ax.plot(dgrs_sorted,
+            cdf,
+            #color='k',
             drawstyle='steps-mid',
             linewidth=2,
             )
@@ -564,7 +578,8 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
 
     # Adjust asthetics
     ax.set_xlabel(axis_label)
-    ax.set_ylabel('Counts')
+    #ax.set_ylabel('Counts')
+    ax.set_ylabel('CDF')
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight')
 
@@ -892,6 +907,10 @@ def simulate_rescaling(av, scalar=1.0):
 
 def simulate_background_error(av, scale=1.0):
 
+    # bias from 2MASS image, see lombardi et al. (2009), end of section 2
+    av_bias = 0.1
+    scale = (scale**2 + (av_bias)**2)**0.5
+
     av_background_sim = av + np.random.normal(0, scale=scale)
 
     return av_background_sim
@@ -906,8 +925,8 @@ def bootstrap_worker(args, i):
     plot_kwargs = args['plot_kwargs']
     use_intercept = args['use_intercept']
     probabilities = args['probabilities']
-    av_scalar = args['av_scalar']
-    intercept_error = args['intercept_error']
+    av_scalar = args['scale_kwargs']['av_scalar']
+    intercept_error = args['scale_kwargs']['intercept_error']
     #i = args['i']
 
     #queue = args['queue']
@@ -915,11 +934,11 @@ def bootstrap_worker(args, i):
     # Create simulated data
     # -------------------------------------------------------------------------
     # add random noise
-    av_noise_sim = simulate_noise(av, av_error)
+    av_sim = av + simulate_noise(av, av_error)
 
     # rescale the data somewhere between Planck and 2MASS:
     # rescaled Planck = Planck / beta where beta is between 1.0 and 1.4
-    av_sim = simulate_rescaling(av, scalar=av_scalar)
+    av_sim = simulate_rescaling(av_sim, scalar=av_scalar)
 
     # remove background
     av_sim = simulate_background_error(av_sim, scale=intercept_error)
@@ -928,7 +947,7 @@ def bootstrap_worker(args, i):
     # -------------------------------------------------------------------------
     boot_indices = np.random.choice(av.size, size=av.size, p=probabilities)
 
-    av_boot = av_sim[boot_indices] + av_noise_sim[boot_indices]
+    av_boot = av_sim[boot_indices]
     av_error_boot = av_error[boot_indices]
     nhi_boot = nhi[boot_indices]
 
@@ -937,16 +956,11 @@ def bootstrap_worker(args, i):
     else:
         nhi_back_boot = None
 
-    if 0:
-        av_boot = av
-        av_error_boot = av_error
-        nhi_boot = nhi
-        nhi_back_boot = nhi_back
-
     # for plotting
     plot_kwargs['bootstrap_num'] = i
 
-    # fit the bootstrapped data
+    # Fit the bootstrapped data
+    # -------------------------------------------------------------------------
     boot_result = fit_model(av_boot,
                             nhi_boot,
                             av_error=av_error_boot,
@@ -1038,7 +1052,7 @@ def bootstrap_worker_wrapper(args, i):
 
 def bootstrap_fits(av_data, nhi_image, av_error_data=None, av_reference=None,
         nhi_image_background=None, num_bootstraps=100, plot_kwargs=None,
-        use_intercept=True):
+        scale_kwargs=None, use_intercept=True):
 
     import multiprocessing as mp
     import sys
@@ -1060,20 +1074,10 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None, av_reference=None,
     boot_results = np.empty((3, num_bootstraps))
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
 
-    if av_reference is not None:
-        nan_mask = (np.isnan(av_reference) | \
-                    np.isnan(av_data) | \
-                    np.isnan(av_error_data))
-        p, V = np.polyfit(av_reference[~nan_mask], av_data[~nan_mask], deg=1,
-                       w=1.0/av_error_data[~nan_mask]**2,
-                       cov=True,
-                       )
-        av_scalar, intercept = p
-        intercept_error = V[1, 1]
 
     # Prep arguments
     args = {}
-    args['av'] = av - intercept
+    args['av'] = av
     args['av_error'] = av_error
     args['nhi'] = nhi
     args['nhi_back'] = nhi_back
@@ -1081,9 +1085,7 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None, av_reference=None,
     args['plot_kwargs'] = plot_kwargs
     args['use_intercept'] = use_intercept
     args['probabilities'] = probabilities
-    args['av_scalar'] = av_scalar
-    args['intercept'] = intercept
-    args['intercept_error'] = intercept_error
+    args['scale_kwargs'] = scale_kwargs
 
     #args['queue'] = queue
     args_list = []
@@ -1134,6 +1136,61 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None, av_reference=None,
     #if 1:
 
     return boot_results
+
+def scale_av_with_refav(av_data, av_reference, av_error_data):
+
+    import scipy as sp
+    if av_reference is not None:
+        nan_mask = (np.isnan(av_reference) | \
+                    np.isnan(av_data) | \
+                    np.isnan(av_error_data))
+        p, V = np.polyfit(av_reference[~nan_mask], av_data[~nan_mask], deg=1,
+                       #w=1.0/av_error_data[~nan_mask]**2,
+                       cov=True,
+                       )
+        av_scalar, intercept = p
+        intercept_error = V[1, 1]
+
+        # Perform residual bootstrapping to get errors on intercept
+        bootindex = sp.random.random_integers
+        nboot = 1000
+        x_fit = av_reference[~nan_mask]
+        y_fit = p[0] * x_fit  + p[1]
+        residuals = av_data[~nan_mask] - y_fit
+        fits = np.empty((2, nboot))
+        for i in xrange(nboot): # loop over n bootstrap samples from the resids
+            if 0:
+                boot_indices = bootindex(0,
+                                         len(residuals)-1,
+                                         len(residuals))
+                residuals_bootstrapped = residuals[boot_indices]
+                fits[:, i] = sp.polyfit(av_reference[~nan_mask],
+                                        y_fit + residuals_bootstrapped,
+                                        deg=1)
+            else:
+                boot_indices = bootindex(0,
+                                         len(x_fit)-1,
+                                         len(x_fit))
+                x = x_fit[boot_indices] + np.random.normal(0, 0.4,
+                                                           size=x_fit.size)
+                y = av_data[~nan_mask][boot_indices] + \
+                        np.random.normal(0,
+                                av_error_data[~nan_mask][boot_indices])
+
+                fits[:, i] = sp.polyfit(x,
+                                        y,
+                                        deg=1)
+
+        intercept_error = np.std(fits[1])
+
+    print intercept_error
+
+    kwargs = {}
+    kwargs['av_scalar'] = av_scalar
+    kwargs['intercept'] = intercept
+    kwargs['intercept_error'] = intercept_error
+
+    return kwargs
 
 def run_cloud_analysis(args,):
 
@@ -1245,6 +1302,14 @@ def run_cloud_analysis(args,):
     av_data[region_mask] = np.nan
     av_data_ref[region_mask] = np.nan
 
+
+    # Scale the data to the 2MASS K+09 data
+    scale_kwargs = scale_av_with_refav(av_data, av_data_ref, av_error_data)
+    av_data -= scale_kwargs['intercept']
+
+    print('Subtracting background of ' + str(scale_kwargs['intercept']) + \
+          ' from ' + cloud_name)
+
     #if debugging:
     if 1:
         import matplotlib.pyplot as plt
@@ -1305,6 +1370,7 @@ def run_cloud_analysis(args,):
                                      av_reference=av_data_ref,
                                      use_intercept=args['use_intercept'],
                                      num_bootstraps=args['num_bootstraps'],
+                                     scale_kwargs=scale_kwargs,
                                      )
         np.save(results_dir + filename_base + '_bootresults.npy', boot_result)
 
@@ -1446,15 +1512,15 @@ def main():
     results = {}
 
     clouds = (
+              'perseus',
               'taurus',
               'california',
-              'perseus',
               )
 
     data_types = (
                   'planck',
-                  'lee12',
-                  'planck_lee12mask',
+                  #'lee12',
+                  #'planck_lee12mask',
                   #'k09',
                   )
     recalculate_likelihoods = (
@@ -1511,7 +1577,7 @@ def main():
     #for cloud in clouds:
     for permutation in permutations:
         args = {'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 #'data_type': 'planck',
                 #'data_type': 'k09',
@@ -1533,7 +1599,7 @@ def main():
                 'likelihood_resolution': 'coarse',
                 'region': permutation[8],
                 'subtract_comps': permutation[9],
-                'plot_diagnostics': 0,
+                'plot_diagnostics': 1,
                 'use_background': permutation[10],
                 'num_bootstraps': 100,
                 }
