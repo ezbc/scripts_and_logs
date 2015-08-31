@@ -723,7 +723,7 @@ def plot_results(results_dict):
     nhi_image_background = results_dict['nhi_image_background']
     boot_results = results_dict['boot_result']
     plot_kwargs = results_dict['plot_kwargs']
-    args = results_dict['args']
+    global_args = results_dict['global_args']
     boot_result = results_dict['boot_result']
 
     av_cloud = create_cloud_model(av_data,
@@ -759,7 +759,7 @@ def plot_results(results_dict):
                    )
 
     # Plot distribution
-    if args['use_intercept'] or args['use_background']:
+    if global_args['use_intercept'] or global_args['use_background']:
         filename = plot_kwargs['figure_dir'] + \
                    'bootstrap_dists/' + plot_kwargs['filename_base'] + \
                    '_backdgr_vs_clouddgr.png'
@@ -844,37 +844,37 @@ def create_background_model(av, nhi_cloud, dgr_cloud):
 
     return av - dgr_cloud * nhi_cloud
 
-def create_filename_base(args):
+def create_filename_base(global_args):
 
     # Name of diagnostic files
-    if args['background_subtract']:
+    if global_args['background_subtract']:
         background_name = '_backsub'
     else:
         background_name = ''
 
-    if args['bin_image']:
+    if global_args['bin_image']:
         bin_name = '_binned'
-        args['bin_procedure'] = 'all'
+        global_args['bin_procedure'] = 'all'
     else:
         bin_name = ''
-        args['bin_procedure'] = 'none'
-    if args['fixed_width'] is None:
+        global_args['bin_procedure'] = 'none'
+    if global_args['fixed_width'] is None:
         width_name = ''
-        init_vel_width = args['init_vel_width']
+        init_vel_width = global_args['init_vel_width']
         vel_center_gauss_fit_kwargs = None
     else:
-        if args['fixed_width'] == 'gaussfit':
-            if args['cloud_name'] == 'perseus':
+        if global_args['fixed_width'] == 'gaussfit':
+            if global_args['cloud_name'] == 'perseus':
                 guesses = (28, 3, 5,
                            2, -20, 20)
                 ncomps = 2
-            elif args['cloud_name'] == 'taurus':
+            elif global_args['cloud_name'] == 'taurus':
                 guesses = (28, 3, 5,
                            5, -30, 20,
                            3, -15, 5,
                            )
                 ncomps = 3
-            elif args['cloud_name'] == 'california':
+            elif global_args['cloud_name'] == 'california':
                 guesses = (50, 3, 5,
                            20, -10, 10,
                            3, -45, 10,
@@ -888,53 +888,53 @@ def create_filename_base(args):
         else:
             vel_center_gauss_fit_kwargs = None
         width_name = '_fixedwidth'
-        init_vel_width = args['fixed_width']
-    if args['use_weights']:
+        init_vel_width = global_args['fixed_width']
+    if global_args['use_weights']:
         weights_name = '_weights'
         weights_filename = av_dir + \
-           args['cloud_name'] + '_binweights.fits'
+           global_args['cloud_name'] + '_binweights.fits'
     else:
         weights_name = ''
         weights_filename = None
-    if args['region'] is None:
+    if global_args['region'] is None:
         region_name = ''
-        args['region_name'] = args['cloud_name']
+        global_args['region_name'] = global_args['cloud_name']
     else:
-        region_name = '_region' + args['region']
-        args['region_name'] = args['cloud_name'] + args['region']
-    if args['av_mask_threshold'] is not None:
+        region_name = '_region' + global_args['region']
+        global_args['region_name'] = global_args['cloud_name'] + global_args['region']
+    if global_args['av_mask_threshold'] is not None:
         avthres_name = '_avthres'
     else:
         avthres_name = ''
-    if not args['use_intercept']:
+    if not global_args['use_intercept']:
         intercept_name = '_noint'
     else:
         intercept_name = ''
-    if args['recalculate_likelihoods']:
+    if global_args['recalculate_likelihoods']:
         error_name = '_errorrecalc'
     else:
         error_name = ''
-    if args['subtract_comps']:
+    if global_args['subtract_comps']:
         compsub_name = '_compsub'
     else:
         compsub_name = ''
-    if args['use_background']:
+    if global_args['use_background']:
         backdgr_name = '_backdgr'
     else:
         backdgr_name = ''
-    if args['hi_range_calc'] == 'gaussian':
+    if global_args['hi_range_calc'] == 'gaussian':
         hi_range_name = 'gaussrange'
     else:
         hi_range_name = 'stdrange'
 
-    filename_extension = args['cloud_name'] + '_' + args['data_type'] + \
+    filename_extension = global_args['cloud_name'] + '_' + global_args['data_type'] + \
             background_name + \
             bin_name + weights_name + \
             region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name + \
             '_' + hi_range_name
 
-    return filename_extension, args
+    return filename_extension, global_args
 
 def mask_nans(arrays, return_mask=False):
 
@@ -1148,23 +1148,23 @@ def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error):
 
 def bootstrap_worker(args, i):
 
-    av = args['av']
-    av_error = args['av_error']
-    nhi = args['nhi']
-    nhi_back = args['nhi_back']
-    hi_data = args['hi_data']
-    vel_axis = args['vel_axis']
-    vel_range = args['vel_range']
-    vel_range_error = args['vel_range_error']
-    init_guesses = args['init_guesses']
-    plot_kwargs = args['plot_kwargs']
-    use_intercept = args['use_intercept']
-    probabilities = args['probabilities']
-    av_scalar = args['scale_kwargs']['av_scalar']
-    intercept_error = args['scale_kwargs']['intercept_error']
-    #i = args['i']
+    av = global_args['av']
+    av_error = global_args['av_error']
+    nhi = global_args['nhi']
+    nhi_back = global_args['nhi_back']
+    hi_data = global_args['hi_data']
+    vel_axis = global_args['vel_axis']
+    vel_range = global_args['vel_range']
+    vel_range_error = global_args['vel_range_error']
+    init_guesses = global_args['init_guesses']
+    plot_kwargs = global_args['plot_kwargs']
+    use_intercept = global_args['use_intercept']
+    probabilities = global_args['probabilities']
+    av_scalar = global_args['scale_kwargs']['av_scalar']
+    intercept_error = global_args['scale_kwargs']['intercept_error']
+    #i = global_args['i']
 
-    #queue = args['queue']
+    #queue = global_args['queue']
 
     # Create simulated data
     # -------------------------------------------------------------------------
@@ -1179,7 +1179,7 @@ def bootstrap_worker(args, i):
     av_sim = simulate_background_error(av_sim, scale=intercept_error)
 
     # calculate N(HI)
-    if args['sim_hi_error']:
+    if global_args['sim_hi_error']:
         nhi_sim = simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error)
     else:
         nhi_sim = nhi
@@ -1210,7 +1210,7 @@ def bootstrap_worker(args, i):
                             plot_kwargs=plot_kwargs,
                             use_intercept=use_intercept)
 
-    args['init_guesses'] = boot_result
+    global_args['init_guesses'] = boot_result
 
     # Plot distribution and fit
     if plot_kwargs['plot_diagnostics']:
@@ -1320,32 +1320,32 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
 
     # Prep arguments
-    args = {}
-    args['av'] = av
-    args['av_error'] = av_error
-    args['nhi'] = nhi
-    args['nhi_back'] = nhi_back
-    args['init_guesses'] = init_guesses
-    args['plot_kwargs'] = plot_kwargs
-    args['use_intercept'] = use_intercept
-    args['probabilities'] = probabilities
-    args['scale_kwargs'] = scale_kwargs
-    args['sim_hi_error'] = sim_hi_error
+    global_args = {}
+    global_args['av'] = av
+    global_args['av_error'] = av_error
+    global_args['nhi'] = nhi
+    global_args['nhi_back'] = nhi_back
+    global_args['init_guesses'] = init_guesses
+    global_args['plot_kwargs'] = plot_kwargs
+    global_args['use_intercept'] = use_intercept
+    global_args['probabilities'] = probabilities
+    global_args['scale_kwargs'] = scale_kwargs
+    global_args['sim_hi_error'] = sim_hi_error
     if sim_hi_error:
-        args['hi_data'] = hi_data
-        args['vel_axis'] = vel_axis
-        args['vel_range'] = vel_range
-        args['vel_range_error'] = vel_range_error
+        global_args['hi_data'] = hi_data
+        global_args['vel_axis'] = vel_axis
+        global_args['vel_range'] = vel_range
+        global_args['vel_range_error'] = vel_range_error
     else:
-        args['hi_data'] = None
-        args['vel_axis'] = None
-        args['vel_range'] = None
-        args['vel_range_error'] = None
+        global_args['hi_data'] = None
+        global_args['vel_axis'] = None
+        global_args['vel_range'] = None
+        global_args['vel_range_error'] = None
 
-    #args['queue'] = queue
+    #global_args['queue'] = queue
     args_list = []
     for i in xrange(num_bootstraps):
-        args['i'] = i
+        global_args['i'] = i
         args_list.append(args.copy())
 
     # Prep multiprocessing
@@ -1478,18 +1478,18 @@ def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
 
     return velocity_range, hi_fits, cloud_comp_num
 
-def get_gauss_fit_kwargs(args):
-    if args['cloud_name'] == 'perseus':
+def get_gauss_fit_kwargs(global_args):
+    if global_args['cloud_name'] == 'perseus':
         guesses = (28, 3, 5,
                    2, -20, 20)
         ncomps = 2
-    elif args['cloud_name'] == 'taurus':
+    elif global_args['cloud_name'] == 'taurus':
         guesses = (35, 3, 5,
                    5, -15, 20,
                    #3, -2, 2,
                    )
         ncomps = 2
-    elif args['cloud_name'] == 'california':
+    elif global_args['cloud_name'] == 'california':
         guesses = (50, 3, 5,
                    20, -10, 10,
                    3, -45, 10,
@@ -1508,7 +1508,7 @@ def calc_param_errors(results_dict):
     import mystats
 
     boot_result = results_dict['boot_result']
-    args = results_dict['args']
+    global_args = results_dict['global_args']
 
     dgr_cloud, dgr_background, intercept = np.mean(boot_result, axis=1)
     dgr_cloud_error, dgr_background_error, intercept_error = \
@@ -1519,14 +1519,14 @@ def calc_param_errors(results_dict):
     dgr_cloud, dgr_cloud_error = mystats.calc_cdf_error(dgrs,
                                                         alpha=0.32)
 
-    if args['use_background']:
+    if global_args['use_background']:
         dgrs = boot_result[1]
         dgr_background_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
     else:
         dgr_background_error = (0.0, 0.0)
         dgr_background = 0.0
 
-    if args['use_intercept']:
+    if global_args['use_intercept']:
         intercepts = boot_result[2]
         intercept, intercept_error = mystats.calc_cdf_error(intercepts,
                                                             alpha=0.32)
@@ -1543,40 +1543,49 @@ def calc_param_errors(results_dict):
                   'intercept_error': intercept_error,
                   }
 
-    results_dict['params_summary'] = fit_params
-
-    return results_dict
+    return fit_params
 
 def load_results(filename, load_fits=True):
 
     import pickle
-    import numpy as np
+    from astropy.io import fits
 
-    # Writ the likelihoods as a numpy binary array, much more efficient
-    if binary_likelihood_filename is not None:
-        likelihoods = cloud.props['likelihoods']
-        cloud.props['likelihoods'] = None
-        np.save(binary_likelihood_filename, likelihoods)
+    with open(filename, 'rb') as input:
+        results = pickle.load(input)
+    input.close()
 
-    if not write_fits:
-        av_data = cloud.av_data
-        av_error_data = cloud.av_error_data
-        hi_data = cloud.hi_data
-        hi_error_data = cloud.hi_error_data
-        cloud.av_data = None
-        cloud.av_error_data = None
-        cloud.hi_data = None
-        cloud.hi_error_data = None
+    if load_fits:
+        results['av_data'], results['av_header'] = \
+                fits.getdata(results['av_filename'], header=True)
+        results['av_error_data'], results['av_error_header'] = \
+                fits.getdata(results['av_error_filename'], header=True)
+        results['av_data_ref'] = \
+                fits.getdata(results['av_ref_filename'])
+        results['hi_data'], results['hi_header'] = \
+                fits.getdata(results['hi_filename'], header=True)
+        results['co_data'], results['co_header'] = \
+                fits.getdata(results['co_filename'], header=True)
 
-    with open(filename, 'wb') as output:
-        pickle.dump(cloud, output)
-
+    return results
 
 def save_results(results_dict, filename, write_fits=False):
 
+    import pickle
+    from astropy.io import fits
 
 
-def run_cloud_analysis(args,):
+    if write_fits:
+        results['av_data'] = None
+        results['av_error_data'] = None
+        results['av_data_ref'] = None
+        results['hi_data'] = None
+        results['co_data'] = None
+
+    with open(filename, 'wb') as output:
+        pickle.dump(results_dict, output)
+    output.close()
+
+def run_cloud_analysis(global_args,):
 
     from astropy.io import fits
     from myimage_analysis import calculate_nhi, calc_region_mask
@@ -1587,11 +1596,11 @@ def run_cloud_analysis(args,):
     import pickle
     import mystats
 
-    cloud_name = args['cloud_name']
-    region = args['region']
-    load = args['load']
-    data_type = args['data_type']
-    background_subtract = args['background_subtract']
+    cloud_name = global_args['cloud_name']
+    region = global_args['region']
+    load = global_args['load']
+    data_type = global_args['data_type']
+    background_subtract = global_args['background_subtract']
 
     print('\nPerforming analysis on ' + cloud_name)
     print('=======================' + '=' * len(cloud_name))
@@ -1661,17 +1670,15 @@ def run_cloud_analysis(args,):
         av_background = 0.0
 
     # Get the filename base to differentiate between different parameters
-    filename_base, args = create_filename_base(args)
+    filename_base, global_args = create_filename_base(global_args)
     print('\n\tFilename base = \n\t' + filename_base)
-
-
 
     # set up plotting variables
     plot_kwargs = {
                    'figure_dir': figure_dir,
                    'cloud_name': cloud_name,
                    'filename_base': filename_base,
-                   'plot_diagnostics': args['plot_diagnostics'],
+                   'plot_diagnostics': global_args['plot_diagnostics'],
                    #'av_nhi_contour': av_nhi_contour,
                    'av_nhi_contour': True,
                    'av_nhi_limits': [0, 20, -1, 9],
@@ -1679,7 +1686,7 @@ def run_cloud_analysis(args,):
                     }
 
     # Load data
-    if args['bin_image']:
+    if global_args['bin_image']:
         av_filename = av_filename.replace('.fits', '_bin.fits')
         if av_error_filename is not None:
             av_error_filename = av_error_filename.replace('.fits', '_bin.fits')
@@ -1701,28 +1708,17 @@ def run_cloud_analysis(args,):
     region_mask = calc_region_mask(region_filename,
                                    av_data,
                                    av_header,
-                                   region_name=args['region_name'])
+                                   region_name=global_args['region_name'])
 
     av_data[region_mask] = np.nan
     av_data_ref[region_mask] = np.nan
 
-
     # Scale the data to the 2MASS K+09 data
     scale_kwargs = scale_av_with_refav(av_data, av_data_ref, av_error_data)
-    av_data -= scale_kwargs['intercept']
+    av_data_backsub = scale_kwargs['intercept']
 
     print('\n\tSubtracting background of ' + str(scale_kwargs['intercept']) + \
           ' from ' + cloud_name)
-
-    #if debugging:
-    if 0:
-        import matplotlib.pyplot as plt
-        plt.close(); plt.clf()
-        plt.imshow(av_data, origin='lower')
-        plt.savefig('/usr/users/ezbc/Desktop/avmap.png')
-
-
-
 
     # Load HI and CO cubes
     hi_data, hi_header = fits.getdata(hi_filename, header=True)
@@ -1737,13 +1733,13 @@ def run_cloud_analysis(args,):
     # Derive N(HI)
     # -------------------------------------------------------------------------
     # get fit kwargs
-    gauss_fit_kwargs = get_gauss_fit_kwargs(args)
+    gauss_fit_kwargs = get_gauss_fit_kwargs(global_args)
 
     # derive spectra or load
-    spectra_filename = results_dir + 'spectra/' + args['cloud_name'] + \
+    spectra_filename = results_dir + 'spectra/' + global_args['cloud_name'] + \
             '_spectra.pickle'
     load_spectra = myio.check_file(spectra_filename,
-                                   clobber=args['clobber_spectra'])
+                                   clobber=global_args['clobber_spectra'])
     if load_spectra:
         hi_spectrum, hi_std_spectrum, co_spectrum = \
                 myio.load_pickle(spectra_filename)
@@ -1754,7 +1750,7 @@ def run_cloud_analysis(args,):
         myio.save_pickle(spectra_filename,
                          (hi_spectrum, hi_std_spectrum, co_spectrum))
 
-    if args['hi_range_calc'] == 'gaussian':
+    if global_args['hi_range_calc'] == 'gaussian':
         velocity_range, gauss_fits, comp_num = \
                 calc_hi_vel_range(hi_spectrum,
                                   hi_vel_axis,
@@ -1804,19 +1800,37 @@ def run_cloud_analysis(args,):
     nhi_image[nhi_image < 0] = np.nan
     nhi_image_background[nhi_image_background < 0] = np.nan
 
-    if not args['use_background']:
+    if not global_args['use_background']:
         nhi_image_background = None
 
 
     # Write filenames
     filenames = {
-                 'region_filename': region_filename
-                 'av_filename': av_filename
-                 'av_error_filename': av_error_filename
-                 'av_ref_filename': av_ref_filename
-                 'hi_filename': hi_filename
-                 'co_filename': co_filename
+                 'region_filename': region_filename,
+                 'av_filename': av_filename,
+                 'av_error_filename': av_error_filename,
+                 'av_ref_filename': av_ref_filename,
+                 'hi_filename': hi_filename,
+                 'co_filename': co_filename,
                  }
+
+    # Collect data
+    data = {
+            'av_data': av_data,
+            'av_error_data': av_error_data,
+            'av_data_ref': av_data_ref,
+            'hi_data': hi_data,
+            'co_data': co_data,
+            }
+
+    # Collect data products
+    data_products = {
+                     'av_data_backsub': av_data_backsub,
+                     'nhi_image': nhi_image,
+                     'nhi_image_background': nhi_image_background,
+                     'region_mask': region_mask,
+                     'scale_kwargs': scale_kwargs,
+                     }
 
     # Bootstrap data
     # -------------------------------------------------------------------------
@@ -1831,7 +1845,7 @@ def run_cloud_analysis(args,):
                'bootstrap_results/' + filename_base + \
                '_bootstrap_results.pickle'
     run_analysis = True
-    if args['load']:
+    if global_args['load']:
         print('\n\tLoading results...')
         exists = myio.check_file(bootstrap_filename)
         if exists:
@@ -1839,19 +1853,15 @@ def run_cloud_analysis(args,):
             run_analysis = False
 
         results_dict = {'boot_result': boot_result,
-                        'av_data': av_data,
-                        'av_error_data': av_error_data,
-                        #'hi_data': hi_data,
-                        #'co_data': co_data,
-                        'nhi_image': nhi_image,
-                        'nhi_image_background': nhi_image_background,
-                        'args': args,
+                        'data': data,
+                        'data_products': data_products,
+                        'global_args': global_args,
                         'plot_kwargs': plot_kwargs,
                         'filenames': filenames,
                         }
 
         # calculate errors on dgrs and intercept
-        results_dict = calc_param_errors(results_dict)
+        results_dict['params_summary'] = calc_param_errors(results_dict)
 
         with open(results_filename, 'wb') as f:
             pickle.dump(results_dict, f)
@@ -1862,7 +1872,7 @@ def run_cloud_analysis(args,):
         f.close()
     if run_analysis:
         # Perform bootsrapping
-        boot_result = bootstrap_fits(av_data,
+        boot_result = bootstrap_fits(av_data_backsub,
                                      nhi_image=nhi_image,
                                      av_error_data=av_error_data,
                                      nhi_image_background=nhi_image_background,
@@ -1872,10 +1882,10 @@ def run_cloud_analysis(args,):
                                      vel_range=velocity_range,
                                      vel_range_error=2,
                                      av_reference=av_data_ref,
-                                     use_intercept=args['use_intercept'],
-                                     num_bootstraps=args['num_bootstraps'],
+                                     use_intercept=global_args['use_intercept'],
+                                     num_bootstraps=global_args['num_bootstraps'],
                                      scale_kwargs=scale_kwargs,
-                                     sim_hi_error=args['sim_hi_error'],
+                                     sim_hi_error=global_args['sim_hi_error'],
                                      )
         np.save(results_dir + filename_base + '_bootresults.npy', boot_result)
 
@@ -1885,12 +1895,12 @@ def run_cloud_analysis(args,):
                         #'co_data': co_data,
                         'nhi_image': nhi_image,
                         'nhi_image_background': nhi_image_background,
-                        'args': args,
+                        'global_args': args,
                         'plot_kwargs': plot_kwargs,
                         }
 
         # calculate errors on dgrs and intercept
-        results_dict = calc_param_errors(results_dict)
+        results_dict['params_summary'] = calc_param_errors(results_dict)
 
         with open(results_filename, 'wb') as f:
             pickle.dump(results_dict, f)
@@ -1977,7 +1987,8 @@ def main():
 
     #for cloud in clouds:
     for permutation in permutations:
-        args = {'cloud_name':permutation[0],
+        global_args = {
+                'cloud_name':permutation[0],
                 'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
@@ -2001,18 +2012,19 @@ def main():
                 'sim_hi_error': True,
                 }
         run_analysis = False
-        if args['data_type'] in ('planck_lee12mask', 'lee12'):
-            if args['cloud_name'] == 'perseus':
+        if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
+            if global_args['cloud_name'] == 'perseus':
                 run_analysis = True
         else:
-            if args['cloud_name'] == 'california':
-                if args['region'] is None:
+            if global_args['cloud_name'] == 'california':
+                if global_args['region'] is None:
                     run_analysis = True
             else:
                 run_analysis = True
 
         if run_analysis:
-            results[args['cloud_name']] = run_cloud_analysis(args)
+            results[global_args['cloud_name']] = \
+                    run_cloud_analysis(global_args)
 
 if __name__ == '__main__':
     main()
