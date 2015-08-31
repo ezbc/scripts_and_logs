@@ -121,9 +121,6 @@ def plot_planck_vs_2mass(av_k09, av_pl, filename=None, av_error=None,
                            )
 
         y_poly_fit = p[0] * x_fit + p[1]
-
-        print V[1,1]
-
     if 1:
         ax.plot(x_fit,
                 y_poly_fit,

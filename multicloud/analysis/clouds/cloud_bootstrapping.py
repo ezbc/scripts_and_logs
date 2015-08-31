@@ -514,7 +514,7 @@ def plot_bootstrap_dist(dgrs, intercepts, limits=None, filename=None,
         plt.savefig(filename, bbox_inches='tight')
 
 def plot_bootstrap_hist(dgrs, limits=None, filename=None,
-        axis_label='',):
+        axis_label='', statistics=None):
 
     ''' Plots a heat map of likelihoodelation values as a function of velocity
     width and velocity center.
@@ -556,9 +556,10 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
     if 1:
         ax.plot(bins[:-1],
                 counts,
-                #color='k',
+                color='k',
                 drawstyle='steps-mid',
-                linewidth=2,
+                label='PDF',
+                linewidth=1.5,
                 )
 
     # Compute the CDF
@@ -567,14 +568,31 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
     cdf = cdf / np.max(cdf)
     ax.plot(dgrs_sorted,
             cdf,
-            #color='k',
+            color='k',
+            linestyle='--',
             drawstyle='steps-mid',
-            linewidth=2,
+            label='CDF',
+            linewidth=1.5,
             )
+
+    if statistics is not None:
+        ax.axvspan(statistics[0] - statistics[1][0],
+                   statistics[0] + statistics[1][1],
+                   color='k',
+                   linewidth=1,
+                   alpha=0.2)
+        ax.axvline(statistics[0],
+                   color='k',
+                   linestyle='--',
+                   linewidth=3,
+                   label='Median',
+                   alpha=1)
 
     if limits is not None:
         ax.set_xlim(limits[0],limits[1])
         ax.set_ylim(limits[2],limits[3])
+
+    ax.legend(loc='best')
 
     # Adjust asthetics
     ax.set_xlabel(axis_label)
@@ -590,8 +608,8 @@ from multiprocessing.queues import Queue
 
 class QueueGet(Queue):
     """Queue which will retry if interrupted with EINTR."""
-    def get(self, block=True, timeout=None):
-        return retry_on_eintr(Queue.get, self, block, timeout)
+    def get( block=True, timeout=None):
+        return retry_on_eintr(Queue.get,  block, timeout)
 
 def retry_on_eintr(function, *args, **kw):
     from multiprocessing.queues import Queue
@@ -706,14 +724,16 @@ def create_filename_base(args):
         backdgr_name = '_backdgr'
     else:
         backdgr_name = ''
+    if args['hi_range_calc'] == 'gaussian':
+        hi_range_name = 'gaussrange'
+    else:
+        hi_range_name = 'stdrange'
 
     filename_extension = args['cloud_name'] + '_' + args['data_type'] + \
             background_name + \
             bin_name + weights_name + \
             region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name
-
-    print args['region_name']
 
     return filename_extension, args
 
@@ -1192,6 +1212,79 @@ def scale_av_with_refav(av_data, av_reference, av_error_data):
 
     return kwargs
 
+def calc_gaussian_hi_range(hi_data, hi_vel_axis, gauss_fit_kwargs, mask=None,
+        width_scale=2, co_data=None, co_vel_axis=None):
+
+    from scipy.stats import nanmedian
+    from myfitting import fit_gaussians
+
+    if mask is None:
+        mask = np.zeros(hi_data.shape[1:], dtype=bool)
+
+    hi_spectrum = nanmedian(hi_data[:, ~mask], axis=1)
+
+    vel_center_fits = fit_gaussians(hi_vel_axis,
+            hi_spectrum, **gauss_fit_kwargs)
+
+    # use either the gaussian closest to the CO peak, or the tallest gaussian
+    if co_data is not None:
+        co_spectrum = nanmedian(co_data[:, ~mask], axis=1)
+        co_peak_vel = co_vel_axis[co_spectrum == np.nanmax(co_spectrum)]
+        vel_diff = np.Inf
+        for i, param in enumerate(vel_center_fits[2]):
+            print np.abs(param[1] - co_peak_vel)
+            if np.abs(param[1] - co_peak_vel) < vel_diff:
+                vel_center = param[1]
+                width = param[2]
+                vel_diff = np.abs(param[1] - co_peak_vel)
+                print('width', width)
+                print('center', param[1])
+    else:
+        amp_max = -np.Inf
+        for i, param in enumerate(vel_center_fits[2]):
+            if param[0] > amp_max:
+                amp_max = param[0]
+                vel_center = param[1]
+                width = param[2] * 4
+                cloud_comp_num = i
+
+    velocity_range = [vel_center - width * width_scale,
+                      vel_center + width * width_scale]
+    if 1:
+        import matplotlib.pyplot as plt
+        plt.close(); plt.clf()
+        plt.plot(co_vel_axis, co_spectrum * 100)
+        plt.plot(hi_vel_axis, hi_spectrum)
+        plt.axvline(co_peak_vel)
+        plt.savefig('/usr/users/ezbc/Desktop/spectrum.png')
+
+    return velocity_range
+
+def get_gauss_fit_kwargs(args):
+    if args['cloud_name'] == 'perseus':
+        guesses = (28, 3, 5,
+                   2, -20, 20)
+        ncomps = 2
+    elif args['cloud_name'] == 'taurus':
+        guesses = (28, 3, 5,
+                   5, -30, 20,
+                   3, -15, 5,
+                   )
+        ncomps = 3
+    elif args['cloud_name'] == 'california':
+        guesses = (50, 3, 5,
+                   20, -10, 10,
+                   3, -45, 10,
+                   #2, -20, 20,
+                   )
+        ncomps = 3
+    gauss_fit_kwargs = {'guesses': guesses,
+                                   'ncomps': ncomps,
+                                   #'width_scale': 2,
+                                   }
+
+    return gauss_fit_kwargs
+
 def run_cloud_analysis(args,):
 
     from astropy.io import fits
@@ -1199,6 +1292,7 @@ def run_cloud_analysis(args,):
     from mycoords import make_velocity_axis
     from mystats import calc_symmetric_error, calc_logL
     import myio
+    import mystats
 
     if 1:
         cloud_name = args['cloud_name']
@@ -1320,18 +1414,40 @@ def run_cloud_analysis(args,):
     hi_data, hi_header = fits.getdata(hi_filename, header=True)
     co_data, co_header = fits.getdata(co_filename, header=True)
 
+    hi_data[:, region_mask] = np.nan
+    co_data[:, region_mask] = np.nan
+
     hi_vel_axis = make_velocity_axis(hi_header)
+    co_vel_axis = make_velocity_axis(co_header)
+
+
+
+    # derive HI range
+    gauss_fit_kwargs = get_gauss_fit_kwargs(args)
+    if args['hi_range_calc'] == 'gaussian':
+        velocity_range = \
+                calc_gaussian_hi_range(hi_data,
+                                      hi_vel_axis,
+                                      gauss_fit_kwargs,
+                                      mask=region_mask,
+                                      co_data=co_data,
+                                      co_vel_axis=co_vel_axis)
+    else:
+        velocity_range = [-5, 15]
+
+    print('\nVelocity range = ', velocity_range)
+
     nhi_image = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
-                              velocity_range=(-5,15),
+                              velocity_range=velocity_range,
                               )
     nhi_image_background = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
-                              velocity_range=(-100,-5),
+                              velocity_range=(-100,velocity_range[0]),
                               )
     nhi_image_background += calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
-                              velocity_range=(15,100),
+                              velocity_range=(velocity_range[1],100),
                               )
     nhi_image[nhi_image < 0] = np.nan
     nhi_image_background[nhi_image_background < 0] = np.nan
@@ -1409,6 +1525,8 @@ def run_cloud_analysis(args,):
         mean, sigma = np.nanmean(dgrs), stats.nanstd(dgrs)
         conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
         dgr_cloud_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
+        dgr_cloud, dgr_cloud_error = mystats.calc_cdf_error(dgrs,
+                                                            alpha=0.32)
 
         if args['use_background']:
             dgrs = boot_result[1]
@@ -1425,6 +1543,8 @@ def run_cloud_analysis(args,):
             mean, sigma = np.nanmean(intercepts), stats.nanstd(intercepts)
             conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
             intercept_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
+            intercept, intercept_error = mystats.calc_cdf_error(intercepts,
+                                                                alpha=0.32)
         else:
             intercept_error = (0.0, 0.0)
 
@@ -1501,6 +1621,7 @@ def run_cloud_analysis(args,):
             plot_bootstrap_hist(boot_result[0],
                             filename=filename,
                             axis_label=r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                            statistics=(dgr_cloud, dgr_cloud_error)
                             )
 
     return boot_result
@@ -1542,6 +1663,11 @@ def main():
                    None,
                    #50,
                    )
+
+    hi_range_calc = ('gaussian',
+                     'std',
+                     )
+
     use_intercept = (
                      False,
                      #True,
@@ -1568,7 +1694,7 @@ def main():
 
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
-            regions, subtract_comps, use_background)
+            regions, subtract_comps, use_background, hi_range_calc)
 
     permutations = list(itertools.product(*elements))
 
@@ -1577,7 +1703,7 @@ def main():
     #for cloud in clouds:
     for permutation in permutations:
         args = {'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 #'data_type': 'planck',
                 #'data_type': 'k09',
@@ -1602,6 +1728,7 @@ def main():
                 'plot_diagnostics': 1,
                 'use_background': permutation[10],
                 'num_bootstraps': 100,
+                'hi_range_calc': permutation[11],
                 }
         run_analysis = False
         if args['data_type'] in ('planck_lee12mask', 'lee12'):

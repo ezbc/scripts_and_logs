@@ -115,7 +115,7 @@ def main():
     model_best_name = stats['model_names'][np.argmax(stats['likelihoods'])]
     print params[np.argmax(stats['likelihoods'])]
 
-    stats['model_best'] = fits.getdata(model_best_name)
+    stats['model_best'] = fits.getdata('models/' + model_best_name)
 
     cube_name = '749237_rebin_cube_regrid.fits'
     cube_error_name = '749237_rebin_cube_error_regrid.fits'
