@@ -1029,12 +1029,9 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
 
         # Plot 1 to 1 pline
         nhi_fit = np.linspace(-10, 100, 1000)
-        fit_params['dgr_cloud_error'] = list(fit_params['dgr_cloud_error'])
-        fit_params['dgr_cloud_error'][0] *= 100.0
-        fit_params['dgr_cloud_error'][1] *= 100.0
         dgr_error_text = \
-                r'$^{+%.2f}_{-%.2f}$ ' % (fit_params['dgr_cloud_error'][0],
-                                          fit_params['dgr_cloud_error'][1])
+            r'$^{+%.2f}_{-%.2f}$ ' % (fit_params['dgr_cloud_error'][0] * 100.,
+                                      fit_params['dgr_cloud_error'][1] * 100.)
         intercept_error_text = \
             r'$^{+%.2f}_{-%.2f}$ ' % fit_params['intercept_error']
         cloud_text = 'Bootstrap:\nDGR ' + \
@@ -1171,8 +1168,7 @@ def plot_results(results_dict):
         plot_bootstrap_hist(boot_result[0],
                         filename=filename,
                         axis_label=r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
-                        statistics=(dgr_cloud, dgr_cloud_error)
-                        )
+                        statistics=(dgr_cloud, dgr_cloud_error))
 
 def plot_multicloud_results(results):
 
@@ -1191,7 +1187,6 @@ def plot_multicloud_results(results):
         results_dir = results_dict['filenames']['results_dir']
         plot_kwargs = results_dict['plot_kwargs']
         data_products = results_dict['data_products']
-        print cloud_name, data_products['scale_kwargs']
         spectra_list.append((data_products['hi_spectrum'],
                              data_products['hi_std_spectrum'],
                              data_products['co_spectrum'],)
@@ -2336,6 +2331,7 @@ def run_cloud_analysis(global_args,):
 
     print('\n\tSaving results...')
     save_results(results_dict, global_args['results_filename'])
+    results_dict = load_results(global_args['results_filename'])
 
     return results_dict
 
