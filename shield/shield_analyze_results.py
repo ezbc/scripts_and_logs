@@ -133,6 +133,7 @@ def main():
 
     print('rescaled std = ', stats['rescaled_std'])
     print('chi^2 = ', stats['chisq'])
+    print('best fit model = ' + model_best_name)
 
     if 0:
         import matplotlib.pyplot as plt

@@ -12,7 +12,8 @@ debugging = True
 
 def plot_planck_vs_2mass(av_k09, av_pl, filename=None, av_error=None,
         contour_plot=True, levels=10, plot_median=True, limits=None,
-        scale=('linear','linear'), title = '', gridsize=(100,100),):
+        labels=['',''], scale=('linear','linear'), title = '',
+        fit_labels=['',''], gridsize=(100,100),):
 
     # import external modules
     import numpy as np
@@ -129,8 +130,8 @@ def plot_planck_vs_2mass(av_k09, av_pl, filename=None, av_error=None,
                 linewidth=2,
                 label=\
                     'Poly fit: \n' + \
-                    r'$A_{V,{\rm Planck}}$ = ' + '{0:.1f}'.format(p[0]) + \
-                    r'$\times A_{V,{\rm K+09}}$' + \
+                    fit_labels[0] + ' = ' + '{0:.1f}'.format(p[0]) + \
+                    r'$\times$ ' + fit_labels[1] + \
                     ' + {0:.1f} mag'.format(p[1]),
                 alpha=0.7,
                 )
@@ -165,8 +166,10 @@ def plot_planck_vs_2mass(av_k09, av_pl, filename=None, av_error=None,
     ax.set_ylim(limits[2],limits[3])
 
     # Adjust asthetics
-    ax.set_xlabel(r'$A_{V,{\rm K+09}}$ [mag]')
-    ax.set_ylabel(r'$A_{V,{\rm Planck}}$ [mag]')
+    #ax.set_xlabel(r'$A_{V,{\rm K+09}}$ [mag]')
+    #ax.set_ylabel(r'$A_{V,{\rm Planck}}$ [mag]')
+    ax.set_xlabel(labels[0])
+    ax.set_ylabel(labels[1])
     ax.set_title(title)
     ax.legend(loc='best')
 
@@ -214,6 +217,11 @@ def run_analysis(cloud_name):
        cloud_name + '_av_error_planck_tau353_5arcmin.fits'
     av_k09_filename = av_dir + \
        cloud_name + '_av_k09_regrid_planckres.fits'
+    if cloud_name == 'perseus':
+        av_lee12_filename = av_dir + \
+           cloud_name + '_av_lee12_2mass_regrid_planckres.fits'
+    else:
+        av_lee12_filename = None
 
     av_error = 0.4
 
@@ -222,6 +230,11 @@ def run_analysis(cloud_name):
     # Get data
     av_data_pl, av_header_pl = fits.getdata(av_planck_filename, header=True)
     av_data_k09, av_header_k09 = fits.getdata(av_k09_filename, header=True)
+    if cloud_name == 'perseus':
+        av_data_lee12, av_header_lee12 = fits.getdata(av_lee12_filename,
+                                                      header=True)
+    else:
+        av_data_lee12, av_header_lee12 = None, None
 
     # mask data
     region_filename = region_dir + 'multicloud_divisions.reg'
@@ -232,6 +245,8 @@ def run_analysis(cloud_name):
 
     av_data_pl[region_mask] = np.nan
     av_data_k09[region_mask] = np.nan
+    if cloud_name == 'perseus':
+        av_data_lee12[region_mask] = np.nan
 
     #if debugging:
     if 0:
@@ -248,8 +263,31 @@ def run_analysis(cloud_name):
     plot_planck_vs_2mass(av_data_k09, av_data_pl,
                          filename=filename,
                          title=cloud_name,
+                         fit_labels=[r'$A_{V,{\rm Planck}}$',
+                                     r'$A_{V,{\rm K+09}}$'],
+                         labels=[r'$A_{V,{\rm K+09\ 2MASS}}$ [mag]',
+                                 r'$A_{V,{\rm Planck}}$ [mag]'],
                          limits=[-1, 20, -1, 20])
+    if cloud_name == 'perseus':
+        filename = figure_dir + 'av/' + cloud_name + '_lee12_vs_k09.png'
+        plot_planck_vs_2mass(av_data_k09, av_data_lee12,
+                             filename=filename,
+                             title=cloud_name,
+                             fit_labels=[r'$A_{V,{\rm Lee+12}}$',
+                                         r'$A_{V,{\rm K+09}}$'],
+                             labels=[r'$A_{V,{\rm K+09\ 2MASS}}$ [mag]',
+                                     r'$A_{V,{\rm Lee+12\ 2MASS}}$ [mag]'],
+                             limits=[-1, 12, -1, 12])
 
+        filename = figure_dir + 'av/' + cloud_name + '_planck_vs_lee12.png'
+        plot_planck_vs_2mass(av_data_lee12, av_data_pl,
+                             filename=filename,
+                             title=cloud_name,
+                             fit_labels=[r'$A_{V,{\rm Lee+12}}$',
+                                 r'$A_{V,{\rm Planck}}$'][::-1],
+                             labels=[r'$A_{V,{\rm Planck}}$ [mag]',
+                                 r'$A_{V,{\rm Lee+12\ 2MASS}}$ [mag]'][::-1],
+                             limits=[-1, 12, -1, 12])
 def main():
 
     cloud_names = ('perseus',

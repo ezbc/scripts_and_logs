@@ -35,54 +35,13 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
 
     # Set up plot aesthetics
-    plt.clf()
-    plt.rcdefaults()
+    plt.clf(); plt.close()
 
     # Color map
     cmap = plt.cm.gnuplot
 
-    # Color cycle, grabs colors from cmap
-    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
-    #font_scale = 9
-    font_scale = 15
-    line_weight = 600
-    font_weight = 600
-
-    params = {
-              'axes.color_cycle': color_cycle, # colors of different plots
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              #'axes.weight': line_weight,
-              'axes.linewidth': 1.2,
-              'axes.labelweight': font_weight,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': font_weight,
-              'font.serif': 'computer modern roman',
-              'text.fontsize': font_scale,
-              'text.usetex': True,
-              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
-              #'font.family': 'sans-serif',
-              'figure.figsize': (7.3, 7.3),
-              'figure.dpi': 600,
-              'backend' : 'pdf',
-              #'figure.titlesize': font_scale,
-             }
-    plt.rcParams.update(params)
-
-    pgf_with_pdflatex = {
-        "pgf.texsystem": "pdflatex",
-        "pgf.preamble": [
-             r"\usepackage[utf8x]{inputenc}",
-             r"\usepackage[T1]{fontenc}",
-             r"\usepackage{cmbright}",
-             ]
-    }
-    plt.rcParams.update(pgf_with_pdflatex)
-
     # Create figure instance
-    fig = plt.figure()
+    fig = plt.figure(figsize=(7.5, 3.6*2))
 
     if av_image is not None:
         nrows_ncols=(2,1)
@@ -171,7 +130,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                         edgecolor=anno_color))
 
     if regions is not None:
-        for region in regions:
+        for region in props['region_name_pos']:
             vertices = np.copy(regions[region]['poly_verts']['pixel'])
             rect = ax.add_patch(Polygon(
                     vertices[:, ::-1],
@@ -234,7 +193,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                             edgecolor='w'))
 
         if regions is not None:
-            for region in regions:
+            for region in props['region_name_pos']:
                 vertices = np.copy(regions[region]['poly_verts']['pixel'])
                 rect = ax.add_patch(Polygon(
                         vertices[:, ::-1],
@@ -252,7 +211,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
                                 xytext=(0,0),
                                 textcoords='offset points',
                                 color='w',
-                                fontsize=font_scale*7.0/9.0,
+                                fontsize=10,
                                 zorder=10)
 
     if title is not None:
@@ -1167,19 +1126,19 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     elif av_data_type == 'planck_rad':
         print('\nLoading Planck data...')
         av_image, av_header = load_fits(av_dir + \
-                    'multicloud_av_planck_radiance_5arcmin.fits',
+                    'multicloud_av_planck_tau353_5arcmin.fits',
                 return_header=True)
         av_image_error, av_error_header = load_fits(av_dir + \
-                    'multicloud_av_error_planck_radiance_5arcmin.fits',
+                    'multicloud_av_error_planck_tau353_5arcmin.fits',
                 return_header=True)
     else:
         print('\nLoading Planck data...')
         av_image, av_header = load_fits(av_dir + \
-                    'multicloud_av_planck_5arcmin.fits',
+                    'multicloud_av_planck_tau353_5arcmin.fits',
                 return_header=True)
 
         av_image_error, av_error_header = load_fits(av_dir + \
-                    'multicloud_av_error_planck_5arcmin.fits',
+                    'multicloud_av_error_planck_tau353_5arcmin.fits',
                 return_header=True)
 
     hi_cube, hi_header = load_fits(hi_dir + \
@@ -1232,21 +1191,24 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                                   ((2, 30, 0), (37, 0, 0))
                                   )
     props['region_name_pos'] = {
-             'taurus 1' : {'wcs' : ((3, 50,  0),
-                                    (21.5, 0, 0)),
-                          },
-             'taurus 2' : {'wcs' : ((5, 10,  0),
-                                    (21.5, 0, 0)),
-                          },
-             #'perseus' : {'wcs' : ((3, 0,  0),
-             #                      (34, 0, 0)),
+             #'taurus 1' : {'wcs' : ((3, 50,  0),
+             #                       (21.5, 0, 0)),
              #             },
-             'perseus 1' : {'wcs' : ((3, 0,  0),
+             #'taurus 2' : {'wcs' : ((5, 10,  0),
+             #                       (21.5, 0, 0)),
+             #             },
+             'taurus' : {'wcs' : ((5, 10,  0),
+                                    (21.5, 0, 0)),
+                          },
+             'perseus' : {'wcs' : ((3, 0,  0),
                                    (34, 0, 0)),
                           },
-             'perseus 2' : {'wcs' : ((3, 10,  0),
-                                   (22.5, 0, 0)),
-                          },
+             #'perseus 1' : {'wcs' : ((3, 0,  0),
+             #                      (34, 0, 0)),
+             #             },
+             #'perseus 2' : {'wcs' : ((3, 10,  0),
+             #                      (22.5, 0, 0)),
+             #             },
              'california' : {'wcs' : ((5, 15,  0),
                                       (33.5, 0, 0)),
                              },
@@ -1290,7 +1252,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                                          vel_range[i, 1]))
 
     # Plot
-    figure_types = ['png',]# 'pdf']
+    figure_types = ['png', 'pdf']
     for figure_type in figure_types:
         if region is None:
             if vel_range_type == 'single':
@@ -1310,7 +1272,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             filename = 'multicloud_av_model_map_region{0:.0f}'.format(region) + \
                        '.{0:s}'.format(figure_type)
 
-        print('\nSaving Av model image to \n' + filename)
+        print('\nSaving Av model image to \n' + figure_dir + filename)
 
         plot_nhi_image(nhi_image=nhi_image,
                        header=av_header,
@@ -1319,7 +1281,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                        regions=props['regions'],
                        props=props,
                        hi_vlimits=(0,20),
-                       av_vlimits=(0,16),
+                       av_vlimits=(0,15.5),
                        #av_vlimits=(0.1,30),
                        savedir=figure_dir + 'maps/',
                        filename=filename,

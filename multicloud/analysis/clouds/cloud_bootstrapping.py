@@ -566,6 +566,7 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
     dgrs_sorted = np.sort(dgrs)
     cdf = np.cumsum(dgrs_sorted)
     cdf = cdf / np.max(cdf)
+    cdf = 1. * np.arange(len(dgrs_sorted)) / (len(dgrs_sorted) - 1)
     ax.plot(dgrs_sorted,
             cdf,
             color='k',
@@ -669,7 +670,7 @@ def plot_spectra(hi_spectrum, hi_vel_axis, hi_std_spectrum=None,
 
         label = 'Component'
         for i, comp in enumerate(gauss_fits[1]):
-            if comp_num is not None and i == comp_num:
+            if comp_num is not None and i in comp_num:
                 linewidth = 2
             else:
                 linewidth = 1
@@ -790,7 +791,7 @@ def plot_spectra_grid(spectra_list, hi_range_kwargs_list=None,
 
             label = 'Component'
             for j, comp in enumerate(gauss_fits[1]):
-                if comp_num is not None and j == comp_num:
+                if comp_num is not None and j in comp_num:
                     linewidth = 2
                 else:
                     linewidth = 1
@@ -849,7 +850,7 @@ def plot_spectra_grid(spectra_list, hi_range_kwargs_list=None,
 
 def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         av_error_list=None, fit_params_list=None, filename=None, levels=7,
-        limits=None, poly_fit=False, plot_median=True,):
+        limits=None, poly_fit=False, plot_median=True, contour=True,):
 
     ''' Plots a heat map of likelihoodelation values as a function of velocity
     width and velocity center.
@@ -874,7 +875,7 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
 
     font_scale = 9
     params = {
-              'figure.figsize': (3.5, 8),
+              'figure.figsize': (5, 10),
               #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
@@ -921,43 +922,54 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
 
         ax = axes[i]
 
-        if i == 0:
-            if limits is None:
-                xmin = np.min(nhi_nonans)
-                ymin = np.min(av_nonans)
-                xmax = np.max(nhi_nonans)
-                ymax = np.max(av_nonans)
-                xscalar = 0.15 * xmax
-                yscalar = 0.15 * ymax
-                limits = [xmin - xscalar, xmax + xscalar,
-                          ymin - yscalar, ymax + yscalar]
+        if contour:
+            if i == 0:
+                if limits is None:
+                    xmin = np.min(nhi_nonans)
+                    ymin = np.min(av_nonans)
+                    xmax = np.max(nhi_nonans)
+                    ymax = np.max(av_nonans)
+                    xscalar = 0.15 * xmax
+                    yscalar = 0.15 * ymax
+                    limits = [xmin - xscalar, xmax + xscalar,
+                              ymin - yscalar, ymax + yscalar]
 
-        contour_range = ((limits[0], limits[1]),
-                         (limits[2], limits[3]))
+            contour_range = ((limits[0], limits[1]),
+                             (limits[2], limits[3]))
 
-        cmap = myplt.truncate_colormap(plt.cm.binary, 0.2, 1, 1000)
+            cmap = myplt.truncate_colormap(plt.cm.binary, 0.2, 1, 1000)
 
-        l1 = myplt.scatter_contour(nhi_nonans.ravel(),
-                             av_nonans.ravel(),
-                             threshold=2,
-                             log_counts=1,
-                             levels=levels,
-                             ax=ax,
-                             #errors=av_error_nonans.ravel(),
-                             histogram2d_args=dict(bins=40,
-                                                   range=contour_range),
-                             plot_args=dict(marker='o',
-                                            linestyle='none',
-                                            color='black',
-                                            alpha=0.3,
-                                            markersize=2),
-                             contour_args=dict(
-                                               #cmap=plt.cm.binary,
-                                               cmap=cmap,
-                                               #cmap=cmap,
-                                               ),
-                             )
-
+            l1 = myplt.scatter_contour(nhi_nonans.ravel(),
+                                 av_nonans.ravel(),
+                                 threshold=2,
+                                 log_counts=1,
+                                 levels=levels,
+                                 ax=ax,
+                                 #errors=av_error_nonans.ravel(),
+                                 histogram2d_args=dict(bins=40,
+                                                       range=contour_range),
+                                 plot_args=dict(marker='o',
+                                                linestyle='none',
+                                                color='black',
+                                                alpha=0.3,
+                                                markersize=2),
+                                 contour_args=dict(
+                                                   #cmap=plt.cm.binary,
+                                                   cmap=cmap,
+                                                   #cmap=cmap,
+                                                   ),
+                                 )
+        else:
+            image = ax.errorbar(nhi_nonans.ravel()[::100],
+                                av_nonans.ravel()[::100],
+                                yerr=(av_error_nonans.ravel()[::100]),
+                                alpha=0.2,
+                                color='k',
+                                marker='^',
+                                ecolor='k',
+                                linestyle='None',
+                                markersize=3
+                                )
 
         if plot_median:
             from scipy.stats import nanmedian, binned_statistic
@@ -1224,11 +1236,24 @@ def plot_multicloud_results(results):
                             fit_params_list=fit_params_list,
                             names_list=cloud_name_list,
                             filename=filename,
-                            levels=7,
+                            levels=(0.99, 0.98, 0.95, 0.86, 0.59),
                             poly_fit=True,
                             limits=[2, 20, -13, 20]
                             )
 
+        filename = plot_kwargs['figure_dir'] + \
+                   'av_nhi/multicloud_av_vs_nhi_scatter.' + filetype
+        plot_av_vs_nhi_grid(av_list,
+                            nhi_list,
+                            av_error_list=av_error_list,
+                            fit_params_list=fit_params_list,
+                            names_list=cloud_name_list,
+                            filename=filename,
+                            levels=(0.99, 0.98, 0.95, 0.86, 0.59),
+                            poly_fit=True,
+                            contour=False,
+                            limits=[2, 20, -10, 10]
+                            )
 
 '''
 
@@ -1884,7 +1909,7 @@ def scale_av_with_refav(av_data, av_reference, av_error_data):
     return kwargs
 
 def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
-        width_scale=2, co_spectrum=None, co_vel_axis=None):
+        width_scale=2, co_spectrum=None, co_vel_axis=None, ncomps=1):
 
     from scipy.stats import nanmedian
     from myfitting import fit_gaussians
@@ -1894,14 +1919,34 @@ def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
 
     # use either the gaussian closest to the CO peak, or the tallest gaussian
     if co_spectrum is not None:
-        co_peak_vel = co_vel_axis[co_spectrum == np.nanmax(co_spectrum)]
-        vel_diff = np.Inf
+        co_peak_vel = co_vel_axis[co_spectrum == np.nanmax(co_spectrum)][0]
+        vel_diffs = []
         for i, param in enumerate(hi_fits[2]):
-            if np.abs(param[1] - co_peak_vel) < vel_diff:
-                vel_center = param[1]
-                width = param[2]
-                vel_diff = np.abs(param[1] - co_peak_vel)
-                cloud_comp_num = i
+            vel_center = param[1]
+            width = param[2]
+            vel_diffs.append(np.abs(param[1] - co_peak_vel))
+
+        # get the velocity range
+        vel_diffs = np.asarray(vel_diffs)
+        sort_indices = np.argsort(vel_diffs)
+        cloud_comp_num = np.asarray(sort_indices[:ncomps])
+        velocity_range = [np.inf, -np.inf]
+        for i in cloud_comp_num:
+            # get the component
+            param = hi_fits[2][i]
+            vel_center = param[1]
+            width = param[2]
+
+            # set absolute bounds if the component bounds extend beyond
+            upper_vel = vel_center + width * width_scale
+            lower_vel = vel_center - width * width_scale
+            if upper_vel > velocity_range[1]:
+                velocity_range[1] = upper_vel
+            if lower_vel < velocity_range[0]:
+                velocity_range[0] = lower_vel
+
+        # the offset between the co and fitted gaussians will be the HI error
+        hi_width_error = np.max(vel_diffs[cloud_comp_num])
     else:
         amp_max = -np.Inf
         for i, param in enumerate(hi_fits[2]):
@@ -1911,35 +1956,39 @@ def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
                 width = param[2] * 4
                 cloud_comp_num = i
 
-    velocity_range = [vel_center - width * width_scale,
-                      vel_center + width * width_scale]
+        velocity_range = [vel_center - width * width_scale,
+                          vel_center + width * width_scale]
 
-    return velocity_range, hi_fits, cloud_comp_num
+    return velocity_range, hi_fits, cloud_comp_num, hi_width_error
 
 def get_gauss_fit_kwargs(global_args):
     if global_args['cloud_name'] == 'perseus':
         guesses = (28, 3, 5,
                    2, -20, 20)
         ncomps = 2
+        ncomps_in_cloud = 1
     elif global_args['cloud_name'] == 'taurus':
         guesses = (35, 3, 5,
                    5, -15, 20,
                    #3, -2, 2,
                    )
         ncomps = 2
+        ncomps_in_cloud = 1
     elif global_args['cloud_name'] == 'california':
         guesses = (50, 3, 5,
-                   20, -10, 10,
-                   3, -45, 10,
+                   10, -3, 3,
+                   12, -10, 10,
+                   3, -30, 10,
                    #2, -20, 20,
                    )
-        ncomps = 3
+        ncomps = 4
+        ncomps_in_cloud = 2
     gauss_fit_kwargs = {'guesses': guesses,
-                                   'ncomps': ncomps,
-                                   #'width_scale': 2,
-                                   }
+                        'ncomps': ncomps,
+                        #'width_scale': 2,
+                        }
 
-    return gauss_fit_kwargs
+    return gauss_fit_kwargs, ncomps_in_cloud
 
 def calc_param_errors(results_dict):
 
@@ -2168,7 +2217,7 @@ def run_cloud_analysis(global_args,):
     # Derive N(HI)
     # -------------------------------------------------------------------------
     # get fit kwargs
-    gauss_fit_kwargs = get_gauss_fit_kwargs(global_args)
+    gauss_fit_kwargs, ncomps_in_cloud = get_gauss_fit_kwargs(global_args)
 
     # derive spectra or load
     spectra_filename = results_dir + 'spectra/' + global_args['cloud_name'] + \
@@ -2186,13 +2235,15 @@ def run_cloud_analysis(global_args,):
                          (hi_spectrum, hi_std_spectrum, co_spectrum))
 
     if global_args['hi_range_calc'] == 'gaussian':
-        velocity_range, gauss_fits, comp_num = \
+        velocity_range, gauss_fits, comp_num, hi_range_error = \
                 calc_hi_vel_range(hi_spectrum,
                                   hi_vel_axis,
                                   gauss_fit_kwargs,
                                   co_spectrum=co_spectrum,
                                   co_vel_axis=co_vel_axis,
+                                  ncomps=ncomps_in_cloud,
                                   )
+        global_args['vel_range_error'] = hi_range_error
     else:
         velocity_range = [-5, 15]
         gauss_fits = None
@@ -2359,6 +2410,9 @@ def get_results(global_args):
     else:
         results_dict = run_cloud_analysis(global_args)
 
+    # calculate errors on dgrs and intercept
+    results_dict['params_summary'] = calc_param_errors(results_dict)
+
     return results_dict
 
 def main():
@@ -2368,9 +2422,9 @@ def main():
     results = {}
 
     clouds = (
+              'california',
               'taurus',
               'perseus',
-              'california',
               )
 
     data_types = (
