@@ -850,7 +850,8 @@ def plot_spectra_grid(spectra_list, hi_range_kwargs_list=None,
 
 def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         av_error_list=None, fit_params_list=None, filename=None, levels=7,
-        limits=None, poly_fit=False, plot_median=True, contour=True,):
+        limits=None, poly_fit=False, plot_median=True, contour=True,
+        scale=['linear','linear']):
 
     ''' Plots a heat map of likelihoodelation values as a function of velocity
     width and velocity center.
@@ -875,11 +876,10 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
 
     font_scale = 9
     params = {
-              'figure.figsize': (5, 10),
+              'figure.figsize': (3.6, 8),
               #'figure.titlesize': font_scale,
              }
     plt.rcParams.update(params)
-
 
     # Create figure instance
     fig = plt.figure()
@@ -900,7 +900,8 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         fit_params = fit_params_list[i]
         ax = axes[i]
 
-        ax.locator_params(nbins = 6)
+        if 'log' not in scale:
+            ax.locator_params(nbins = 6)
 
         # Drop the NaNs from the images
         if type(av_error) is float or av_error is None:
@@ -986,17 +987,43 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
             else:
                 label = ''
 
-            ax.plot(x_median,
-                    y_median,
-                    color='r',
-                    marker='s',
-                    linestyle='None',
-                    label=label,
-                    alpha=0.5,
-                    markersize=4.5
-                    )
 
-        myplt.set_color_cycle(num_colors=2)
+            if 1:
+                ax.plot(x_median,
+                        y_median,
+                        color='r',
+                        marker='s',
+                        linestyle='None',
+                        label=label,
+                        alpha=0.5,
+                        markersize=4.5
+                        )
+            else:
+                # Calculate median absolute deviation
+                a = y_median
+                c = 0.6745
+                def statistic(a):
+                    center = nanmedian
+                    if callable(center):
+                        axis = 0
+                        center = np.apply_over_axes(center, a, axis)
+                    return np.median((np.fabs(a-center))/c, axis=axis)
+                y_median_error, _, = binned_statistic(nhi_nonans, av_nonans,
+                                            statistic=statistic,
+                                            bins=x_median)[:2]
+                ax.plot(x_median,
+                        y_median,
+                        color='r',
+                        ecolor='k',
+                        marker='s',
+                        linestyle='None',
+                        label=label,
+                        alpha=0.5,
+                        markersize=4.5,
+                        yerr=(y_median_error),
+                        )
+
+        myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
         if poly_fit:
             from scipy.optimize import curve_fit
 
@@ -1046,8 +1073,8 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
                                       fit_params['dgr_cloud_error'][1] * 100.)
         intercept_error_text = \
             r'$^{+%.2f}_{-%.2f}$ ' % fit_params['intercept_error']
-        cloud_text = 'Bootstrap:\nDGR ' + \
-                     '= {0:.2f}'.format(fit_params['dgr_cloud'] * 100.) + \
+        cloud_text = 'DGR:\n' + \
+                     '{0:.2f}'.format(fit_params['dgr_cloud'] * 100.) + \
                 dgr_error_text + \
                 r' $\times\,10^{-22}$ cm$^{2}$ mag'
 
@@ -1057,18 +1084,18 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
 
         ax.plot(nhi_fit,
                 av_fit,
-                #color='r',
+                color='#6B47B2',
                 linestyle='--',
                 linewidth=2,
-                alpha=0.7,
+                alpha=0.8,
                 label=label,
                 )
 
         # Annotations
         #anno_xpos = 0.95
 
-        #ax.set_xscale(scale[0], nonposx = 'clip')
-        #ax.set_yscale(scale[1], nonposy = 'clip')
+        ax.set_xscale(scale[0], nonposx = 'clip')
+        ax.set_yscale(scale[1], nonposy = 'clip')
 
         ax.set_xlim(limits[0],limits[1])
         ax.set_ylim(limits[2],limits[3])
@@ -1076,11 +1103,15 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         # Adjust asthetics
         ax.set_xlabel(r'$N($H$\textsc{i}) \times\,10^{20}$ cm$^{-2}$')
         ax.set_ylabel(r'$A_V$ [mag]')
-        ax.legend(loc='lower left')
+        if i == 0:
+            loc = 'upper left'
+        else:
+            loc = 'lower left'
+        ax.legend(loc=loc)
 
         ax.annotate(cloud_name.capitalize(),
-                    xytext=(0.96, 0.9),
-                    xy=(0.96, 0.9),
+                    #xytext=(0.96, 0.9),
+                    xy=(0.96, 0.96),
                     textcoords='axes fraction',
                     xycoords='axes fraction',
                     size=10,
@@ -1210,6 +1241,11 @@ def plot_multicloud_results(results):
         nhi_list.append(data_products['nhi_image'])
         fit_params_list.append(results_dict['params_summary'])
 
+        if 0:
+            print(cloud_name)
+            print('vel range', data_products['hi_range_kwargs']['vel_range'])
+            print(results_dict['global_args']['vel_range_error'])
+
     hi_vel_axis = results_dict['data']['hi_vel_axis']
     co_vel_axis = results_dict['data']['co_vel_axis']
 
@@ -1237,23 +1273,39 @@ def plot_multicloud_results(results):
                             names_list=cloud_name_list,
                             filename=filename,
                             levels=(0.99, 0.98, 0.95, 0.86, 0.59),
-                            poly_fit=True,
-                            limits=[2, 20, -13, 20]
+                            poly_fit=False,
+                            limits=[2, 20, -5, 19]
                             )
 
-        filename = plot_kwargs['figure_dir'] + \
-                   'av_nhi/multicloud_av_vs_nhi_scatter.' + filetype
-        plot_av_vs_nhi_grid(av_list,
-                            nhi_list,
-                            av_error_list=av_error_list,
-                            fit_params_list=fit_params_list,
-                            names_list=cloud_name_list,
-                            filename=filename,
-                            levels=(0.99, 0.98, 0.95, 0.86, 0.59),
-                            poly_fit=True,
-                            contour=False,
-                            limits=[2, 20, -10, 10]
-                            )
+        if 0:
+            filename = plot_kwargs['figure_dir'] + \
+                       'av_nhi/multicloud_av_vs_nhi_log.' + filetype
+            plot_av_vs_nhi_grid(av_list,
+                                nhi_list,
+                                av_error_list=av_error_list,
+                                fit_params_list=fit_params_list,
+                                names_list=cloud_name_list,
+                                filename=filename,
+                                levels=(0.99, 0.98, 0.95, 0.86, 0.59),
+                                poly_fit=True,
+                                scale=['log','log'],
+                                #limits=[2, 20, -13, 20]
+                                limits=[0.1, 100, 0.01, 100]
+                                )
+
+            filename = plot_kwargs['figure_dir'] + \
+                       'av_nhi/multicloud_av_vs_nhi_scatter.' + filetype
+            plot_av_vs_nhi_grid(av_list,
+                                nhi_list,
+                                av_error_list=av_error_list,
+                                fit_params_list=fit_params_list,
+                                names_list=cloud_name_list,
+                                filename=filename,
+                                levels=(0.99, 0.98, 0.95, 0.86, 0.59),
+                                poly_fit=True,
+                                contour=False,
+                                limits=[2, 20, -6, 10]
+                                )
 
 '''
 
@@ -1642,7 +1694,7 @@ def bootstrap_worker(global_args, i):
 
     # Bootstrap data
     # -------------------------------------------------------------------------
-    boot_indices = np.random.choice(av.size, size=av.size, p=probabilities)
+    boot_indices = np.random.choice(av.size, size=av.size,)# p=probabilities)
 
     av_boot = av_sim[boot_indices]
     av_error_boot = av_error[boot_indices]
@@ -2253,6 +2305,7 @@ def run_cloud_analysis(global_args,):
                        'velocity_range': velocity_range,
                        'gauss_fits': gauss_fits,
                        'comp_num': comp_num,
+                       'hi_range_error': hi_range_error,
                        'vel_range': velocity_range,
                        'gauss_fit_kwargs': gauss_fit_kwargs,
                        }
@@ -2493,7 +2546,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -2511,7 +2564,7 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 1000,
+                'num_bootstraps': 10000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 }
