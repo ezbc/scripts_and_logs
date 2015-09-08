@@ -31,7 +31,6 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
     # Set up plot aesthetics
     # ----------------------
     plt.close;plt.clf()
-    plt.rcdefaults()
 
     # Color map
     cmap = plt.cm.gnuplot
@@ -42,43 +41,8 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
     line_weight = 600
     font_weight = 600
 
-
-    params = {
-              'axes.color_cycle': color_cycle, # colors of different plots
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              #'axes.weight': line_weight,
-              'axes.linewidth': 1.2,
-              'axes.labelweight': font_weight,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': font_weight,
-              'font.serif': 'computer modern roman',
-              'text.fontsize': font_scale,
-              'text.usetex': True,
-              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
-              #'font.family': 'sans-serif',
-              'figure.figsize': (7.3, 4),
-              'figure.dpi': 600,
-              'backend' : 'pdf',
-              #'figure.titlesize': font_scale,
-             }
-    plt.rcParams.update(params)
-
-    pgf_with_pdflatex = {
-        "pgf.texsystem": "pdflatex",
-        "pgf.preamble": [
-             r"\usepackage[utf8x]{inputenc}",
-             r"\usepackage[T1]{fontenc}",
-             r"\usepackage{cmbright}",
-             ]
-    }
-    plt.rcParams.update(pgf_with_pdflatex)
-
-
     # Create figure instance
-    fig = plt.figure()
+    fig = plt.figure(figsize=(7.5, 5))
 
     if av_image is not None:
         nrows_ncols=(1,1)
@@ -222,7 +186,12 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
     #ax.legend(rects, core_labels, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
     #       ncol=5, mode="expand", borderaxespad=0.)
 
-    ax.legend(rects, core_labels, loc='lower right', ncol=2)
+    ax.legend(rects,
+              core_labels,
+              loc='lower right',
+              ncol=2,
+              columnspacing=0.01,
+              handlelength=0.1)
 
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
@@ -1239,13 +1208,13 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
                     'multicloud_av_lee12_iris_regrid_planckres.fits',
                 return_header=True)
         av_image_error = 0.1 * np.ones(av_image.shape)
-    elif av_data_type == 'planck_rad':
+    elif av_data_type == 'planck_tau353':
         print('\nLoading Planck data...')
         av_image, av_header = load_fits(av_dir + \
-                    'multicloud_av_planck_radiance_5arcmin.fits',
+                    'multicloud_av_planck_tau353_5arcmin.fits',
                 return_header=True)
         av_image_error, av_error_header = load_fits(av_dir + \
-                    'multicloud_av_error_planck_radiance_5arcmin.fits',
+                'multicloud_av_error_planck_tau353_5arcmin.fits',
                 return_header=True)
     else:
         print('\nLoading Planck data...')
@@ -1407,7 +1376,7 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
 
 if __name__ == '__main__':
 
-    main(av_data_type='planck')
+    main(av_data_type='planck_tau353')
 
 
 

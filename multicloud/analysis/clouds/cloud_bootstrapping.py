@@ -1057,7 +1057,7 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         #av_limit = np.median(av_errors[0])
         #ax.axvline(av_limit, color='k', linestyle='--')
         if 'dgr_error' in fit_params:
-            dgr_error_text = r'$^{+%.2f}_{-%.2f}$ ' % fit_params['dgr_error']
+            dgr_error_text = r'$^{+%.1f}_{-%.1f}$ ' % fit_params['dgr_error']
         else:
             dgr_error_text = ''
         if 'intercept_error' in fit_params:
@@ -1069,12 +1069,12 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         # Plot 1 to 1 pline
         nhi_fit = np.linspace(-10, 100, 1000)
         dgr_error_text = \
-            r'$^{+%.2f}_{-%.2f}$ ' % (fit_params['dgr_cloud_error'][0] * 100.,
+            r'$^{+%.1f}_{-%.1f}$ ' % (fit_params['dgr_cloud_error'][0] * 100.,
                                       fit_params['dgr_cloud_error'][1] * 100.)
         intercept_error_text = \
             r'$^{+%.2f}_{-%.2f}$ ' % fit_params['intercept_error']
         cloud_text = 'DGR:\n' + \
-                     '{0:.2f}'.format(fit_params['dgr_cloud'] * 100.) + \
+                     '{0:.1f}'.format(fit_params['dgr_cloud'] * 100.) + \
                 dgr_error_text + \
                 r' $\times\,10^{-22}$ cm$^{2}$ mag'
 
@@ -1213,6 +1213,15 @@ def plot_results(results_dict):
                         axis_label=r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
                         statistics=(dgr_cloud, dgr_cloud_error))
 
+def print_av_error_stats(av, av_error):
+
+    from scipy.stats import nanmedian
+
+    error_above = nanmedian(av_error[av > 5])
+    error_below = nanmedian(av_error[av <= 5])
+    print('\n\tMedian Av error below 5 mag = {0:.2f} mag'.format(error_below))
+    print('\n\tMedian Av error above 5 mag = {0:.2f} mag'.format(error_above))
+
 def plot_multicloud_results(results):
 
     print('\nPlotting multicloud results...')
@@ -1248,6 +1257,8 @@ def plot_multicloud_results(results):
 
     hi_vel_axis = results_dict['data']['hi_vel_axis']
     co_vel_axis = results_dict['data']['co_vel_axis']
+
+    print_av_error_stats(av_list[0], av_error_list[0])
 
     # plot the results
     filetypes = ['png', 'pdf']
@@ -2420,7 +2431,7 @@ def run_cloud_analysis(global_args,):
                                  scale_kwargs=scale_kwargs,
                                  sim_hi_error=global_args['sim_hi_error'],
                                  )
-    np.save(results_dir + filename_base + '_bootresults.npy', boot_result)
+    np.save(bootstrap_filename, boot_result)
 
     results_dict = {'boot_result': boot_result,
                     'data': data,
@@ -2448,6 +2459,7 @@ def get_results(global_args):
 
     # Get the results filename
     filename_base, global_args = create_filename_base(global_args)
+    print('\n\tFilename base = \n\t' + filename_base)
     results_dir =  '/d/bip3/ezbc/multicloud/data/python_output/'
     results_filename = results_dir + \
                'bootstrap_results/' + filename_base + \
@@ -2546,7 +2558,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
