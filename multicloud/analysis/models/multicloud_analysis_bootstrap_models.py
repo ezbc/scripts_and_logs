@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import numpy as np
+from myimage_analysis import calculate_nhi
 
 def read_ds9_region(filename):
 
@@ -72,9 +74,95 @@ def load_ds9_core_region(cores, filename='',
 
     return cores
 
+def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error):
+
+    vel_range_sim = [vel_range[0] + np.random.normal(0, scale=vel_range_error),
+                     vel_range[1] + np.random.normal(0, scale=vel_range_error)]
+
+    nhi_sim = myia.calculate_nhi(cube=hi_data,
+                              velocity_axis=vel_axis,
+                              velocity_range=vel_range_sim,
+                              )
+    return nhi_sim.ravel()
+
+def simulate_background_error(av, scale=0.04):
+
+    # bias from 2MASS image, see lombardi et al. (2009), end of section 2
+    av_bias = 0.2
+    scale = (scale**2 + (av_bias)**2)**0.5
+
+    av_background_sim = av + np.random.normal(0, scale=scale)
+
+    return av_background_sim
+
+def simulate_av_noise(av, av_error):
+
+    ''' Simulates noise of Av data
+
+    Possible noise contributions:
+        + uncertainty in dust params, tau_353, Beta, T
+
+        + CIB background - section 4.2, Planck 2013
+
+        + background subtraction
+
+        + variation in dust temperature, e.g. difference between radiance and
+        tau_353
+
+    '''
+
+    #av_error = (av_error**2 + (0.07 * av)**2)**0.5
+
+    # get bootstrap indices and apply them to each dataset
+    np.random.seed()
+
+    # empirical uncertainty from comparison with Schlegel 98
+    #sigma_ = 0.003*3.1
+
+    av_noise_sim = np.random.normal(0, scale=av_error)
+
+    # empirical uncertainty from comparison with Schlegel 98
+    #av_noise_sim += np.random.normal(0, scale=0.003*3.1)
+
+    return av_noise_sim
+
+def simulate_rescaling(av, scalar=1.0):
+
+    av_rescale = av / np.random.uniform(low=1, high=scalar)
+
+    return av_rescale
+
+def simulate_data(cloud_dict):
+
+
+    sim_data = {}
+
+    # simulate N(HI)
+    hi_cube = cloud_dict['data']['hi_data']
+    vel_range = cloud_dict['data_products']['hi_range_kwargs']['velocity_range']
+    vel_range_error = \
+        cloud_dict['data_products']['hi_range_kwargs']['hi_range_error']
+    vel_axis = cloud_dict['data']['hi_vel_axis']
+
+    nhi_sim = simulate_nhi(hi_cube, vel_axis, vel_range, vel_range_error)
+
+    # simulate Av
+    av_sim = np.copy(cloud_dict['data']['av_data'])
+    av_error = cloud_dict['data']['av_error']
+    av_scalar = cloud_dict['data_products']['scale_kwargs']['av_scalar']
+    av_sim = simulate_background_error(av_sim)
+    av_sim = simulate_av_noise(av_sim, av_error)
+    av_sim = simulate_av_rescaling(av_sim, scalar=av_scalar)
+
+    # calculate nh2 with simulated data
+
+
+
 def run_model_analysis(cloud_dict):
 
-
+    for i in xrange(nmontecarlo):
+        # Simulate data
+        sim_data = simulate_data(cloud_dict):
 
 '''
 
