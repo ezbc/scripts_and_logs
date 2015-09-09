@@ -1468,7 +1468,7 @@ def main():
                 'subtract_comps': permutation[9],
                 'plot_diagnostics': True,
                 'use_background': permutation[10],
-                'num_bootstraps': 10000,
+                'num_bootstraps': 10,
                 }
         run_analysis = False
         if args['data_type'] in ('planck_lee12mask', 'lee12'):
