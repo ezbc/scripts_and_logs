@@ -1318,9 +1318,13 @@ def plot_multicloud_results(results):
                                 limits=[2, 20, -6, 10]
                                 )
 
-'''
+
+
 
 '''
+Multiprocessing functions
+'''
+
 from multiprocessing.queues import Queue
 
 class QueueGet(Queue):
@@ -1351,6 +1355,712 @@ def _my_queue_get(queue, block=True, timeout=None):
                 raise
 
 class KeyboardInterruptError(Exception): pass
+
+'''
+Av core functions
+'''
+def read_ds9_region(filename):
+
+    ''' Converts DS9 region file into format for plotting region.
+
+    Need the following format:
+        angle : degrees
+        xy : pixels
+        width : pixels
+        height : pixels
+
+    Region file provides following format:
+        # Region file format: DS9 version 4.1
+        global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+        fk5
+        box(4:17:04.740,+29:20:31.32,5854.33",11972.7",130) # text={test}
+
+    pyregion module reads DS9 regions:
+    http://leejjoon.github.io/pyregion/users/overview.html
+
+
+    '''
+
+    # Import external modules
+    import pyregion as pyr
+
+    # Read region file
+    try:
+        region = pyr.open(filename)
+    except IOError:
+        return None
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    return region
+
+def load_ds9_core_region(cores, filename='',
+        header=None):
+
+    from myimage_analysis import get_pix_coords
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+    regions = read_ds9_region(filename)
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        core = tag[tag.find('{')+1:tag.find('}')]
+
+        if core in cores:
+
+            # Format vertices to be 2 x N array
+            poly_verts = []
+            for i in xrange(0, len(region.coord_list)/2):
+                poly_verts.append((region.coord_list[2*i],
+                                   region.coord_list[2*i+1]))
+
+            poly_verts_pix = []
+            for i in xrange(0, len(poly_verts)):
+                poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                          dec=poly_verts[i][1],
+                                          header=header)[:-1][::-1].tolist())
+
+            cores[core]['poly_verts'] = {}
+            cores[core]['poly_verts']['wcs'] = poly_verts
+            cores[core]['poly_verts']['pixel'] = poly_verts_pix
+
+    return cores
+
+def add_core_properties(cores, data, cloud_name):
+
+    from myimage_analysis import load_ds9_region, get_pix_coords
+    import json
+
+    box_method = 'ds9'
+    core_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
+
+    for cloud_name in results:
+        cloud_dict = results[cloud_name]
+
+        # define core properties
+        with open(core_dir + cloud_name + '_core_properties.txt', 'r') as f:
+            cores = json.load(f)
+
+        header = cloud_dict['data']['av_header']
+        #cores = convert_core_coordinates(cores, header)
+
+        # convert center WCS coordinate to pixel
+        for core in cores:
+            cores[core].update({'box_pixel': 0})
+            cores[core].update({'center_pixel': 0})
+
+            center_wcs = cores[core]['center_wcs']
+
+            # convert centers to pixel coords
+            center_pixel = get_pix_coords(ra=center_wcs[0],
+                                          dec=center_wcs[1],
+                                          header=header)[:2]
+            cores[core]['center_pixel'] = center_pixel.tolist()
+
+        # load the bounding regions
+        cores = load_ds9_core_region(cores,
+                                filename=region_dir + \
+                                         cloud_name + '_av_poly_cores.reg',
+                                header=header)
+
+        # Trim down cores to keep list to include only cores for cloud
+        cores_to_keep_old =\
+                list(cloud_dict['plot_kwargs']['cores_to_plot'][cloud_name])
+        for core in cores_to_keep_old:
+            if core not in cores:
+                clist = cloud_dict['plot_kwargs']['cores_to_plot'][cloud_name]
+                clist.remove(core)
+
+        cloud_dict['cores'] = cores
+
+def get_cores_to_plot():
+
+    '''
+
+    '''
+
+    # Which cores to include in analysis?
+    results = [# taur
+                     'L1495',
+                     'L1495A',
+                     'B213',
+                     'L1498',
+                     'B215',
+                     'B18',
+                     'B217',
+                     'B220-1',
+                     'B220-2',
+                     'L1521',
+                     'L1524',
+                     'L1527-1',
+                     'L1527-2',
+                     # Calif
+                     'L1536',
+                     'L1483',
+                     'L1478',
+                     'L1456',
+                     'NGC1579',
+                     'L1545',
+                     'L1517',
+                     'L1512',
+                     'L1523',
+                     'L1512',
+                     # Pers
+                     'B5',
+                     'IC348',
+                     'B1E',
+                     'B1',
+                     'NGC1333',
+                     'L1482'
+                     ]
+
+    return results
+
+def get_core_properties(data_dict, cloud_name):
+
+    from myimage_analysis import load_ds9_region, get_pix_coords
+    import json
+
+    box_method = 'ds9'
+    core_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
+
+    # define core properties
+    with open(core_dir + cloud_name + '_core_properties.txt', 'r') as f:
+        cores = json.load(f)
+
+    header = data_dict['av_header']
+    #cores = convert_core_coordinates(cores, header)
+
+    # convert center WCS coordinate to pixel
+    for core in cores:
+        cores[core].update({'box_pixel': 0})
+        cores[core].update({'center_pixel': 0})
+
+        center_wcs = cores[core]['center_wcs']
+
+        # convert centers to pixel coords
+        center_pixel = get_pix_coords(ra=center_wcs[0],
+                                      dec=center_wcs[1],
+                                      header=header)[:2]
+        cores[core]['center_pixel'] = center_pixel.tolist()
+
+    # load the bounding regions
+    cores = load_ds9_core_region(cores,
+                            filename=region_dir + \
+                                     cloud_name + '_av_poly_cores.reg',
+                            header=header)
+
+
+    return cores
+
+def trim_cores_to_plot(cores, cores_to_plot):
+
+    # Trim down cores to keep list to include only cores for cloud
+    cores_to_keep_old = list(cores_to_plot)
+    for core in cores_to_keep_old:
+        if core not in cores:
+            cores_to_plot.remove(core)
+
+    return cores_to_plot
+
+'''
+Modeling Functions
+'''
+
+def fit_av_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
+        plot_kwargs=None, init_guesses=[0.05, 0.05, 0], use_intercept=True,
+        return_fit=False, fit_method='lbfgsb'):
+
+    from lmfit import minimize, Parameters
+    import lmfit
+
+    if nhi_background is None:
+        use_background = False
+        init_guesses[1] = 0.0
+        nhi_background = 0.0
+    else:
+        use_background = True
+
+    # Use linear algebra?
+    if algebraic:
+        b = av
+        A = np.array([nhi, np.ones(nhi.shape)]).T
+
+        # weights
+        if av_error is not None:
+            W = 1.0 / av_error**2
+        else:
+            W = np.ones(av.shape)
+
+        A = np.array([nhi, np.ones(nhi.shape)]).T
+
+        params = np.dot(np.linalg.pinv(A), b)
+
+    else:
+        # Set parameter limits and initial guesses
+        params = Parameters()
+        params.add('dgr_cloud',
+                   value=init_guesses[0],
+                   min=-0.5,
+                   max=1,
+                   )
+        params.add('dgr_background',
+                   value=init_guesses[1],
+                   min=0.0,
+                   max=1,
+                   vary=use_background,
+                   )
+        params.add('intercept',
+                   value=init_guesses[2],
+                   min=-5,
+                   max=5,
+                   vary=use_intercept,
+                   )
+
+        #bin_edges = residuals_crop
+        #counts = np.ones(residuals_crop.size - 1)
+
+        def norm(params, av, nhi, av_error=None, nhi_background=None,):
+            if nhi_background is None:
+                nhi_background = 0.0
+            if av_error is None:
+                av_error = np.ones(av.shape)
+
+
+            model = params['dgr_cloud'] * nhi + \
+                    params['dgr_background'] * nhi_background + \
+                    params['intercept']
+
+            #if fit_method == 'leastsq':
+                #norm = np.sum((av - model)**2 * (1.0/av_error**2)) / \
+                #       np.sum(1.0/av_error**2)
+            norm = np.sum((av - model)**2 * (1.0/av_error**2)) / \
+                    np.sum(1.0/av_error**2)
+            #norm = np.sum((av - model)**2)
+            #else:
+            #    norm = (av - model)
+
+            return norm
+
+        #print('fitting')
+        # Perform the fit!
+        result = minimize(norm,
+                          params,
+                          args=(av, nhi, av_error, nhi_background),
+                          #method='leastsq',
+                          #method=fit_method,
+                          method='nelder',
+                          )
+
+        #print lmfit.report_fit(params)
+        #print lmfit.printfuncs.report_ci(lmfit.conf_interval(result))
+        #print lmfit.conf_interval(result)
+
+        dgr_cloud = params['dgr_cloud'].value
+        dgr_background = params['dgr_background'].value
+        intercept = params['intercept'].value
+
+        #if debugging:
+        if 0:
+            print('dgr = ', dgr_cloud)
+            print('dgr background = ', dgr_background)
+            print('intercept = ', intercept)
+        if 0:
+            plt.close(); plt.clf()
+            background = dgr_background * nhi_background
+            plt.errorbar(nhi, av - background,
+                     yerr=(av_error),
+                     linestyle='',
+                     marker='o',
+                     alpha=0.1,
+                     markersize=2)
+            xfit = np.linspace(0,50)
+            plt.plot(xfit, dgr_cloud * xfit + intercept)
+            plt.xlim(0, 22)
+            plt.ylim(0, 15)
+            plt.xlabel(r'N(HI)')
+            plt.ylabel(r'$A_V$')
+            plt.savefig(plot_kwargs['figure_dir'] + \
+                        'diagnostics/av_nhi/' + plot_kwargs['filename_base']+ \
+                        '_avnhi_bootsrap' + \
+                        '{0:03d}.png'.format(plot_kwargs['bootstrap_num']))
+
+        results = {'dgr_cloud': dgr_cloud,
+                  'dgr_background': dgr_background,
+                  'intercept': intercept}
+
+        if return_fit:
+            return (result, params), (dgr_cloud, dgr_background, intercept)
+        else:
+            return results
+
+def fit_steady_state_models():
+
+    # Fit R_H2
+    #---------
+    # Unravel images to single dimension
+    rh2_ravel = images['rh2'].ravel()
+    rh2_error_ravel = images['rh2_error'].ravel()
+    h_sd_ravel = images['h_sd'].ravel()
+    h_sd_error_ravel = images['h_sd_error'].ravel()
+
+    # write indices for only ratios > 0
+    indices = np.where((rh2_ravel > 1) & \
+                       (rh2_ravel == rh2_ravel) & \
+                       (rh2_error_ravel == rh2_error_ravel))
+    rh2_ravel = rh2_ravel[indices]
+    rh2_error_ravel = rh2_error_ravel[indices]
+    h_sd_ravel = h_sd_ravel[indices]
+    h_sd_error_ravel = h_sd_error_ravel[indices]
+
+    # Fit to sternberg model
+    alphaG, Z, phi_g = fit_sternberg(h_sd_ravel,
+                              rh2_ravel,
+                              guesses=sternberg_params['guesses'],
+                              vary=sternberg_params['param_vary'],
+                              rh2_error=rh2_error_ravel,
+                              verbose=verbose)
+
+    # keep results
+    sternberg_results['alphaG fits'][i] = alphaG
+    sternberg_results['phi_g fits'][i] = phi_g
+    sternberg_results['Z fits'][i] = Z
+
+    # Fit to krumholz model
+    phi_cnm, Z, phi_mol = fit_krumholz(h_sd_ravel,
+                              rh2_ravel,
+                              guesses=krumholz_params['guesses'],
+                              vary=krumholz_params['param_vary'],
+                              rh2_error=rh2_error_ravel,
+                              verbose=verbose)
+
+    # keep results
+    krumholz_results['phi_cnm fits'][i] = phi_cnm
+    krumholz_results['phi_mol fits'][i] = phi_mol
+    krumholz_results['Z fits'][i] = Z
+
+    # see eq 6 of sternberg+09
+    # alphaG is the number density of the CNM over the minimum number
+    # density required for pressure balance
+    # the lower alphaG values than for taurus mean that taurus
+    # has a more diffuse CNM
+
+    # By fitting the model to the observed R_H2 vs total H, you
+    # basically constrained psi in Equation (35) of sternberg+09.  This
+    # means that you can calculate f_H2 for a given total hydrogen
+    # surface density.  In this case, H2 surface density = f_H2 *
+    # total hydrogen surface density HI surface density = (1 - f_HI) *
+    # total hydrogen surface density
+
+
+def calc_krumholz(params=[10.0, 1.0, 10.0], h_sd_extent=(0.001, 500),
+        return_fractions=True):
+
+    '''
+    Parameters
+    ----------
+    phi_cnm, Z : float
+        Phi_cnm and Z parameters for Krumholz model.
+    h_sd_extent : tuple
+        Lower and upper bound of hydrogen surface densities with which to
+        build the output model array.
+    return_fractions : bool
+        Return f_H2 and f_HI?
+
+    Returns
+    -------
+    rh2_fit : array-like
+        Model ratio between molecular and atomic hydrogen masses.
+    h_sd_extended : list
+        Model hydrogen surface density in units of solar mass per parsec**2.
+    f_H2, f_HI : array-like, optional
+        f_H2 = mass fraction of molecular hydrogen
+        f_HI = mass fraction of atomic hydrogen
+
+    '''
+
+    from scipy import stats
+    from myscience import krumholz09 as k09
+
+    # Create large array of h_sd
+    h_sd_extent.append(1e4)
+    h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], h_sd_extent[2])
+
+    if not return_fractions:
+        rh2_fit = k09.calc_rh2(h_sd, params)
+    elif return_fractions:
+        rh2_fit, f_H2, f_HI = k09.calc_rh2(h_sd,
+                                           phi_cnm=params[0],
+                                           Z=params[1],
+                                           phi_mol=params[2],
+                                           return_fractions=True)
+
+    output = [rh2_fit, h_sd]
+
+    if return_fractions:
+        output.append(f_H2)
+        output.append(f_HI)
+
+    return output
+
+def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
+        verbose=False, vary=[True, True, True]):
+
+    '''
+    Parameters
+    ----------
+    h_sd : array-like
+        Hydrogen surface density in units of solar mass per parsec**2
+    rh2 : array-like
+        Ratio between molecular and atomic hydrogen masses.
+    guesses : None, scalar, or M-length sequence.
+        Initial guess for the parameters. See scipy.optimize.curve_fit.
+    rh2_error : bool
+        Error in rh2 parameter. Calculates a more accurate chi^2 statistic
+
+    Returns
+    -------
+    rh2_fit_params : array-like, optional
+        Model parameter fits.
+
+    '''
+
+    from scipy.optimize import curve_fit
+    from scipy import stats
+    from lmfit import minimize, Parameters, report_fit
+    from myscience import krumholz09 as k09
+
+    def chisq(params, h_sd, rh2, rh2_error):
+        phi_cnm = params['phi_cnm'].value
+        phi_mol = params['phi_mol'].value
+        Z = params['Z'].value
+
+        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
+
+        chisq = np.sum((rh2 - rh2_model)**2 / rh2_error**2)
+
+        return chisq
+
+    # Set parameter limits and initial guesses
+    params = Parameters()
+    params.add('phi_cnm',
+               value=guesses[0],
+               min=0.5,
+               max=100,
+               vary=vary[0])
+    params.add('phi_mol',
+               value=guesses[2],
+               min=1,
+               max=20,
+               vary=vary[2])
+    params.add('Z',
+               value=guesses[1],
+               min=0.1,
+               max=4,
+               vary=vary[1])
+
+    # Perform the fit!
+    result = minimize(chisq,
+                      params,
+                      args=(h_sd, rh2, rh2_error),
+                      method='lbfgsb')
+
+    rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
+            params['phi_mol'].value)
+
+    return rh2_fit_params
+
+def analyze_krumholz_model(krumholz_results):
+
+    ''' Calculates various properties of Krumholz model from fitted phi_cnm
+    values.
+
+    '''
+
+    from myscience.krumholz09 import calc_T_cnm
+
+    # Calculate T_cnm from Krumholz et al. (2009) Eq 19
+    phi_cnm, phi_cnm_error, Z = \
+        [krumholz_results[key] for key in ('phi_cnm', 'phi_cnm_error', 'Z')]
+    T_cnm = calc_T_cnm(phi_cnm, Z=Z)
+    T_cnm_error = []
+    T_cnm_error.append(\
+            T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
+    T_cnm_error.append(\
+            T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
+
+    krumholz_results.update({'T_cnm': T_cnm,
+                             'T_cnm_error': T_cnm_error})
+
+    # Get fitted surface density ratios...
+    params = [krumholz_results[param] for param in \
+              krumholz_results['parameters']]
+
+    rh2_fit, h_sd_fit, f_H2, f_HI = \
+           calc_krumholz(params=params,
+                          h_sd_extent=krumholz_results['h_sd_fit_range'],
+                          return_fractions=True)
+
+    krumholz_results.update({'rh2_fit': rh2_fit,
+                             'h_sd_fit' : h_sd_fit,
+                             'hi_sd_fit' : f_HI * h_sd_fit,
+                             'f_H2' : f_H2,
+                             'f_HI' : f_HI,})
+
+    return krumholz_results
+
+def calc_sternberg(params=[1.5, 1.0, 1.0], h_sd_extent=(0.001, 500),
+        return_fractions=True):
+
+    '''
+    Parameters
+    ----------
+    alphaG, Z : float
+        alphaG and Z parameters for sternberg model.
+    h_sd_extent : tuple
+        Lower and upper bound of hydrogen surface densities with which to
+        build the output model array.
+    return_fractions : bool
+        Return f_H2 and f_HI?
+
+    Returns
+    -------
+    rh2_fit : array-like
+        Model ratio between molecular and atomic hydrogen masses.
+    h_sd_extended : list
+        Model hydrogen surface density in units of solar mass per parsec**2.
+    f_H2, f_HI : array-like, optional
+        f_H2 = mass fraction of molecular hydrogen
+        f_HI = mass fraction of atomic hydrogen
+
+    '''
+
+    from scipy import stats
+    from myscience import sternberg14 as s14
+
+    # Create large array of h_sd
+    h_sd_extent.append(1e4)
+    h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], h_sd_extent[2])
+
+    if not return_fractions:
+        rh2_fit = s14.calc_rh2(h_sd, params)
+    elif return_fractions:
+        rh2_fit, f_H2, f_HI = s14.calc_rh2(h_sd,
+                                           alphaG=params[0],
+                                           Z=params[1],
+                                           phi_g=params[2],
+                                           return_fractions=True)
+
+    output = [rh2_fit, h_sd]
+
+    if return_fractions:
+        output.append(f_H2)
+        output.append(f_HI)
+
+    return output
+
+def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
+        verbose=False, vary=[True, True, True]):
+
+    '''
+    Parameters
+    ----------
+    h_sd : array-like
+        Hydrogen surface density in units of solar mass per parsec**2
+    rh2 : array-like
+        Ratio between molecular and atomic hydrogen masses.
+    guesses : None, scalar, or M-length sequence.
+        Initial guess for the parameters. See scipy.optimize.curve_fit.
+    rh2_error : bool
+        Error in rh2 parameter. Calculates a more accurate chi^2 statistic
+
+    Returns
+    -------
+    rh2_fit_params : array-like, optional
+        Model parameter fits.
+
+    '''
+
+    from scipy.optimize import curve_fit
+    from scipy import stats
+    from lmfit import minimize, Parameters, report_fit
+    from myscience import sternberg14 as s14
+
+    def chisq(params, h_sd, rh2, rh2_error):
+        alphaG = params['alphaG'].value
+        phi_g = params['phi_g'].value
+        Z = params['Z'].value
+
+        rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                 return_fractions=False)
+
+        chisq = np.sum((rh2 - rh2_model)**2 / rh2_error**2)
+
+        return chisq
+
+    # Set parameter limits and initial guesses
+    params = Parameters()
+    params.add('alphaG',
+               value=guesses[0],
+               min=0.1,
+               max=10,
+               vary=vary[0])
+    params.add('phi_g',
+               value=guesses[2],
+               min=0.5,
+               max=2,
+               vary=vary[2])
+    params.add('Z',
+               value=guesses[1],
+               min=0.1,
+               max=4,
+               vary=vary[1])
+
+    # Perform the fit!
+    result = minimize(chisq,
+                      params,
+                      args=(h_sd, rh2, rh2_error),
+                      method='nelder-mead')
+
+    rh2_fit_params = (params['alphaG'].value, params['Z'].value,
+            params['phi_g'].value)
+
+    return rh2_fit_params
+
+def analyze_sternberg_model(sternberg_results):
+
+    ''' Calculates various properties of Krumholz model from fitted phi_cnm
+    values.
+
+    '''
+
+    # Get fitted surface density ratios...
+    params = [sternberg_results[param] for param in \
+              sternberg_results['parameters']]
+
+    rh2_fit, h_sd_fit, f_H2, f_HI = \
+           calc_sternberg(params=params,
+                          h_sd_extent=sternberg_results['h_sd_fit_range'],
+                          return_fractions=True)
+
+    sternberg_results.update({'rh2_fit': rh2_fit,
+                              'h_sd_fit' : h_sd_fit,
+                              'hi_sd_fit' : (1 - f_H2) * h_sd_fit,
+                              'f_H2' : f_H2,
+                              'f_HI' : f_HI,})
+
+    return sternberg_results
+
+'''
+Bootstrapping functions
+'''
 
 def create_cloud_model(av, nhi_background, dgr_background,):
 
@@ -1484,128 +2194,6 @@ def mask_nans(arrays, return_mask=False):
     else:
         return masked_arrays
 
-def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
-        plot_kwargs=None, init_guesses=[0.05, 0.05, 0], use_intercept=True,
-        return_fit=False, fit_method='lbfgsb'):
-
-    from lmfit import minimize, Parameters
-    import lmfit
-
-    if nhi_background is None:
-        use_background = False
-        init_guesses[1] = 0.0
-        nhi_background = 0.0
-    else:
-        use_background = True
-
-    # Use linear algebra?
-    if algebraic:
-        b = av
-        A = np.array([nhi, np.ones(nhi.shape)]).T
-
-        # weights
-        if av_error is not None:
-            W = 1.0 / av_error**2
-        else:
-            W = np.ones(av.shape)
-
-        A = np.array([nhi, np.ones(nhi.shape)]).T
-
-        params = np.dot(np.linalg.pinv(A), b)
-
-    else:
-        # Set parameter limits and initial guesses
-        params = Parameters()
-        params.add('dgr_cloud',
-                   value=init_guesses[0],
-                   min=-0.5,
-                   max=1,
-                   )
-        params.add('dgr_background',
-                   value=init_guesses[1],
-                   min=0.0,
-                   max=1,
-                   vary=use_background,
-                   )
-        params.add('intercept',
-                   value=init_guesses[2],
-                   min=-5,
-                   max=5,
-                   vary=use_intercept,
-                   )
-
-        #bin_edges = residuals_crop
-        #counts = np.ones(residuals_crop.size - 1)
-
-        def norm(params, av, nhi, av_error=None, nhi_background=None,):
-            if nhi_background is None:
-                nhi_background = 0.0
-            if av_error is None:
-                av_error = np.ones(av.shape)
-
-
-            model = params['dgr_cloud'] * nhi + \
-                    params['dgr_background'] * nhi_background + \
-                    params['intercept']
-
-            #if fit_method == 'leastsq':
-                #norm = np.sum((av - model)**2 * (1.0/av_error**2)) / \
-                #       np.sum(1.0/av_error**2)
-            norm = np.sum((av - model)**2 * (1.0/av_error**2)) / \
-                    np.sum(1.0/av_error**2)
-            #norm = np.sum((av - model)**2)
-            #else:
-            #    norm = (av - model)
-
-            return norm
-
-        #print('fitting')
-        # Perform the fit!
-        result = minimize(norm,
-                          params,
-                          args=(av, nhi, av_error, nhi_background),
-                          #method='leastsq',
-                          #method=fit_method,
-                          method='nelder',
-                          )
-
-        #print lmfit.report_fit(params)
-        #print lmfit.printfuncs.report_ci(lmfit.conf_interval(result))
-        #print lmfit.conf_interval(result)
-
-        dgr_cloud = params['dgr_cloud'].value
-        dgr_background = params['dgr_background'].value
-        intercept = params['intercept'].value
-
-        #if debugging:
-        if 0:
-            print('dgr = ', dgr_cloud)
-            print('dgr background = ', dgr_background)
-            print('intercept = ', intercept)
-        if 0:
-            plt.close(); plt.clf()
-            background = dgr_background * nhi_background
-            plt.errorbar(nhi, av - background,
-                     yerr=(av_error),
-                     linestyle='',
-                     marker='o',
-                     alpha=0.1,
-                     markersize=2)
-            xfit = np.linspace(0,50)
-            plt.plot(xfit, dgr_cloud * xfit + intercept)
-            plt.xlim(0, 22)
-            plt.ylim(0, 15)
-            plt.xlabel(r'N(HI)')
-            plt.ylabel(r'$A_V$')
-            plt.savefig(plot_kwargs['figure_dir'] + \
-                        'diagnostics/av_nhi/' + plot_kwargs['filename_base']+ \
-                        '_avnhi_bootsrap' + \
-                        '{0:03d}.png'.format(plot_kwargs['bootstrap_num']))
-
-        if return_fit:
-            return (result, params), (dgr_cloud, dgr_background, intercept)
-        else:
-            return (dgr_cloud, dgr_background, intercept)
 
 def simulate_noise(av, av_error):
 
@@ -1640,9 +2228,10 @@ def simulate_noise(av, av_error):
 
 def simulate_rescaling(av, scalar=1.0):
 
-    av_rescale = av / np.random.uniform(low=1, high=scalar)
+    denominator = np.random.uniform(low=1, high=scalar)
+    av_rescale = av / denominator
 
-    return av_rescale
+    return av_rescale, denominator
 
 def simulate_background_error(av, scale=1.0):
 
@@ -1650,9 +2239,11 @@ def simulate_background_error(av, scale=1.0):
     av_bias = 0.2
     scale = (scale**2 + (av_bias)**2)**0.5
 
-    av_background_sim = av + np.random.normal(0, scale=scale)
+    background = np.random.normal(0, scale=scale)
 
-    return av_background_sim
+    av_background_sim = av + background
+
+    return av_background_sim, background
 
 def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error):
 
@@ -1663,9 +2254,14 @@ def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error):
                               velocity_axis=vel_axis,
                               velocity_range=vel_range_sim,
                               )
-    return nhi_sim.ravel()
+
+    return nhi_sim.ravel(), vel_range_sim
 
 def bootstrap_worker(global_args, i):
+
+    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
+        calculate_sd, calculate_nh2, calculate_nh2_error
+
 
     av = global_args['av']
     av_error = global_args['av_error']
@@ -1681,6 +2277,8 @@ def bootstrap_worker(global_args, i):
     probabilities = global_args['probabilities']
     av_scalar = global_args['scale_kwargs']['av_scalar']
     intercept_error = global_args['scale_kwargs']['intercept_error']
+    model_kwargs = global_args['ss_model_kwargs']
+
     #i = global_args['i']
 
     #queue = global_args['queue']
@@ -1692,14 +2290,19 @@ def bootstrap_worker(global_args, i):
 
     # rescale the data somewhere between Planck and 2MASS:
     # rescaled Planck = Planck / beta where beta is between 1.0 and 1.4
-    av_sim = simulate_rescaling(av_sim, scalar=av_scalar)
+    av_sim, av_scalar_sim = simulate_rescaling(av_sim, scalar=av_scalar)
 
     # remove background
-    av_sim = simulate_background_error(av_sim, scale=intercept_error)
+    av_sim, av_background_sim = \
+            simulate_background_error(av_sim,
+                                      scale=intercept_error)
 
     # calculate N(HI)
     if global_args['sim_hi_error']:
-        nhi_sim = simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error)
+        nhi_sim, vel_range_sim = simulate_nhi(hi_data,
+                                              vel_axis,
+                                              vel_range,
+                                              vel_range_error)
     else:
         nhi_sim = nhi
 
@@ -1721,7 +2324,7 @@ def bootstrap_worker(global_args, i):
 
     # Fit the bootstrapped data
     # -------------------------------------------------------------------------
-    boot_result = fit_model(av_boot,
+    av_model_result = fit_av_model(av_boot,
                             nhi_boot,
                             av_error=av_error_boot,
                             nhi_background=nhi_back_boot,
@@ -1729,12 +2332,83 @@ def bootstrap_worker(global_args, i):
                             plot_kwargs=plot_kwargs,
                             use_intercept=use_intercept)
 
-    global_args['init_guesses'] = boot_result
+    # Calculate N(H2), then HI + H2 surf dens, fit relationship
+    # -------------------------------------------------------------------------
+    # calculate N(H2) maps
+    nh2_image = calculate_nh2(nhi_image=nhi_boot,
+                              av_image=av_boot,
+                              dgr=av_model_results['dgr_cloud'])
+
+    # convert to column density to surface density
+    hi_sd_image = calculate_sd(nhi_boot,
+                               sd_factor=1/1.25)
+
+    h2_sd_image = calculate_sd(nh2_image,
+                               sd_factor=1/0.625)
+
+    h_sd_image = hi_sd_image + h2_sd_image
+
+    # Write ratio between H2 and HI
+    rh2_image = h2_sd_image / hi_sd_image
+    mask = rh2_indices > 0
+
+    rh2_image = rh2_image[~mask]
+    h_sd_image = h_sd_image[~mask]
+
+    ss_model_result = fit_steady_state_models(h_sd_image,
+                                              rh2_image,
+                                              )
+
+    sternberg_results = \
+            calc_MC_errors(sternberg_results)
+
+    sternberg_results = \
+            analyze_sternberg_model(sternberg_results)
+
+    krumholz_results = \
+            calc_MC_errors(krumholz_results)
+
+    krumholz_results = \
+            analyze_krumholz_model(krumholz_results)
+
+    # Update results dictionary to include fitted results
+    for key in sternberg_results:
+        if type(sternberg_results[key]) is np.ndarray:
+            sternberg_results[key] = sternberg_results[key].tolist()
+    for key in krumholz_results:
+        if type(krumholz_results[key]) is np.ndarray:
+                krumholz_results[key] = krumholz_results[key].tolist()
+
+    results_dict.update({'sternberg_results': sternberg_results,
+                         'krumholz_results': krumholz_results,
+                         'dgrs': dgr_list,
+                         'intercepts': intercept_list,
+                         'widths': width_list})
+
+    pass
+
+
+    # Write results
+    # -------------------------------------------------------------------------
+    #global_args['init_guesses'] = av_model_result
+    ss_model_result = {}
+
+    # Write results
+    mc_results = {}
+    mc_results['data_params'] = {'av_background_sim': av_background_sim,
+                                 'vel_range_sim': vel_range_sim,
+                                 'av_scalar_sim': av_scalar_sim}
+    mc_results['av_model_params'] = av_model_result
+    mc_results['ss_model_params'] = ss_model_result
+
 
     # Plot distribution and fit
     if plot_kwargs['plot_diagnostics']:
     #if 1:
-        dgr_cloud, dgr_background, intercept = boot_result
+        dgr_cloud = av_model_result['dgr_cloud']
+        dgr_background = av_model_result['dgr_background']
+        intercept = av_model_result['intercept']
+
         filename = plot_kwargs['figure_dir'] + \
                    'diagnostics/av_nhi/' + plot_kwargs['filename_base'] + \
                    '_av_vs_nhi_bootstrap' + \
@@ -1795,11 +2469,9 @@ def bootstrap_worker(global_args, i):
                            contour_plot=plot_kwargs['av_nhi_contour'],
                            filename=filename,
                            )
-    result = [i, boot_result]
-
 
     #queue.put(result)
-    return result
+    return mc_results
 
 def bootstrap_worker_wrapper(args, i):
 
@@ -1886,17 +2558,23 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         pool.join()
 
         # Get the results
-        for p in processes:
-            result = p.get()
+        if 0:
+            for p in processes:
+                result = p.get()
+                #result = queue.get()
+                boot_results[:, result[0]] = result[1]
+        for i in xrange(len(processes)):
             #result = queue.get()
-            boot_results[:, result[0]] = result[1]
+            result = processes[i].get()
+            boot_results[:, i] = result['av_model_params'].values()
     else:
         for i in xrange(num_bootstraps):
             processes.append(bootstrap_worker(args, i))
 
-        for result in processes:
+        for i in xrange(len(processes)):
             #result = queue.get()
-            boot_results[:, result[0]] = result[1]
+            result = processes[i]
+            boot_results[:, i] = result['av_model_params']
 
     #for process in processes:
     #    process.set()
@@ -2136,6 +2814,65 @@ def save_results(results_dict, filename, write_fits=False):
         pickle.dump(results_dict, output)
     output.close()
 
+def get_model_fit_kwargs(cloud_name):
+
+    '''
+
+    '''
+    vary_alphaG = True # Vary alphaG in S+14 fit?
+    vary_Z = False # Vary metallicity in S+14 fit?
+    vary_phi_g = False # Vary phi_g in S+14 fit?
+    # Error method:
+    # options are 'edges', 'bootstrap'
+    error_method = 'edges'
+    alpha = 0.32 # 1 - alpha = confidence
+    guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
+    h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
+
+    # Monte carlo results file bases
+    results_filename = '/d/bip3/ezbc/multicloud/' + \
+                       '/data/python_output/' + \
+                       'monte_carlo_results/' + \
+                       cloud_name + '_mc_results_' + \
+                       'planck' + '_'
+
+    sternberg_params = {}
+    sternberg_params['param_vary'] = [vary_alphaG, vary_Z, vary_phi_g]
+    sternberg_params['error_method'] = error_method
+    sternberg_params['alpha'] = alpha
+    sternberg_params['guesses'] = guesses
+    sternberg_params['h_sd_fit_range'] = h_sd_fit_range
+    sternberg_params['results_filename'] = results_filename
+    sternberg_params['parameters'] = ['alphaG', 'Z', 'phi_g']
+
+    # Krumholz Parameters
+    # --------------------
+    vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
+    vary_Z = False # Vary metallicity in K+09 fit?
+    vary_phi_mol = False # Vary phi_mol in K+09 fit?
+    # Error method:
+    # options are 'edges', 'bootstrap'
+    error_method = 'edges'
+    alpha = 0.32 # 1 - alpha = confidence
+    guesses=(10.0, 1.0, 10.0) # Guesses for (phi_cnm, Z, phi_mol)
+    h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
+
+    krumholz_params = {}
+    krumholz_params['param_vary'] = [vary_phi_cnm, vary_Z, vary_phi_mol]
+    krumholz_params['error_method'] = error_method
+    krumholz_params['alpha'] = alpha
+    krumholz_params['guesses'] = guesses
+    krumholz_params['h_sd_fit_range'] = h_sd_fit_range
+    krumholz_params['results_filename'] = results_filename
+    krumholz_params['parameters'] = ['phi_cnm', 'Z', 'phi_mol']
+
+    results = {}
+    results['results_filename'] = results_filename
+    results['krumholz_params'] = krumholz_params
+    results['sternberg_params'] = sternberg_params
+
+    return results
+
 def run_cloud_analysis(global_args,):
 
     from astropy.io import fits
@@ -2218,7 +2955,6 @@ def run_cloud_analysis(global_args,):
 
     # Get the filename base to differentiate between different parameters
     filename_base, global_args = create_filename_base(global_args)
-    print('\n\tFilename base = \n\t' + filename_base)
 
     # set up plotting variables
     plot_kwargs = {
@@ -2402,6 +3138,21 @@ def run_cloud_analysis(global_args,):
                      'hi_range_kwargs': hi_range_kwargs,
                      }
 
+    # Get model fitting params
+    model_fitting = get_model_fit_kwargs(cloud_name)
+
+    # Get cores params
+    cores = get_core_properties(data, cloud_name)
+
+    # get the cores in the cloud
+    cores_to_plot = get_cores_to_plot()
+    cores_to_plot = trim_cores_to_plot(cores, cores_to_plot)
+
+    global_args['ss_model_kwargs'] = {}
+    global_args['ss_model_kwargs']['cores'] = cores
+    global_args['ss_model_kwargs']['cores_to_plot'] = cores_to_plot
+    global_args['ss_model_kwargs']['model_kwargs'] = model_fitting
+
     # Bootstrap data
     # -------------------------------------------------------------------------
 
@@ -2558,7 +3309,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -2577,7 +3328,6 @@ def main():
                 'clobber_spectra': False,
                 'use_background': permutation[10],
                 'num_bootstraps': 10,
-                'num_bootstraps': 10000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 }

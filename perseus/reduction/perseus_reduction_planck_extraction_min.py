@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import numpy as np
 import planckpy as pl
 reload(pl)
 from astropy.io import fits as pf
@@ -291,7 +292,7 @@ def main():
     co_dir = '/d/bip3/ezbc/perseus/data/min/'
     planck_dir = '/d/bip3/ezbc/perseus/data/min/'
 
-    if 1:
+    if 0:
 
 
         (data, header) = extract_data(datatype = 'ebv')
@@ -302,7 +303,7 @@ def main():
         write_data(data, header, planck_dir + \
             'perseus_ebv_planck_radiance_error_min.fits')
 
-    if 1:
+    if 0:
         (data, header) = extract_data(datatype = 'temp_error')
         write_data(data, header, planck_dir + \
             'perseus_planck_temp_error_min.fits')
@@ -310,7 +311,7 @@ def main():
         (data, header) = extract_data(datatype = 'temp')
         write_data(data, header, planck_dir + \
             'perseus_planck_temp_min.fits')
-    if 1:
+    if 0:
         # Color excess maps
         # -----------------
         # tau_353
@@ -325,7 +326,7 @@ def main():
         (data_av_tau353, header) = ebv2av(data_ebv_tau353, header)
         write_data(data_av_tau353, header,
                    av_dir + 'perseus_av_planck_tau353_min.fits')
-    if 1:
+    if 0:
 
         # tau 353 error
         (data_tau353_error, header) = extract_data(datatype = 'tau353err')
@@ -347,42 +348,42 @@ def main():
         # -----------------
         # type 1
         (data, header) = extract_data(datatype = 'co_1to0_type1')
-        write_data(data, header, co_dir + 'taurus_co_type1_1-0_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type1_1-0_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_1to0_error_type1')
-        write_data(data, header, co_dir + 'taurus_co_type1_1-0_error_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type1_1-0_error_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_2to1_type1')
-        write_data(data, header, co_dir + 'taurus_co_type1_2-1_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type1_2-1_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_2to1_error_type1')
-        write_data(data, header, co_dir + 'taurus_co_type1_2-1_error_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type1_2-1_error_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_3to2_type1')
-        write_data(data, header, co_dir + 'taurus_co_type1_3-2_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type1_3-2_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_3to2_error_type1')
-        write_data(data, header, co_dir + 'taurus_co_type1_3-2_error_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type1_3-2_error_planck.fits')
         # type 2
         (data, header) = extract_data(datatype = 'co_1to0_type2')
-        write_data(data, header, co_dir + 'taurus_co_type2_1-0_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type2_1-0_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_1to0_error_type2')
-        write_data(data, header, co_dir + 'taurus_co_type2_1-0_error_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type2_1-0_error_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_2to1_type2')
-        write_data(data, header, co_dir + 'taurus_co_type2_2-1_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type2_2-1_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_2to1_error_type2')
-        write_data(data, header, co_dir + 'taurus_co_type2_2-1_error_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type2_2-1_error_planck.fits')
 
 
         # type 3
         (data, header) = extract_data(datatype = 'co_type3')
-        write_data(data, header, co_dir + 'taurus_co_type1_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type3_planck.fits')
 
         (data, header) = extract_data(datatype = 'co_error_type3')
-        write_data(data, header, co_dir + 'taurus_co_type1_error_planck.fits')
+        write_data(data, header, co_dir + 'perseus_co_type3_error_planck.fits')
 
 
 if __name__ == '__main__':

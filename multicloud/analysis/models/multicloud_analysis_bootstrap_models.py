@@ -156,8 +156,6 @@ def simulate_data(cloud_dict):
 
     # calculate nh2 with simulated data
 
-
-
 def run_model_analysis(cloud_dict):
 
     for i in xrange(nmontecarlo):
