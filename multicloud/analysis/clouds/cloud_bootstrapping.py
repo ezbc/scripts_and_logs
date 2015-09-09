@@ -3,8 +3,8 @@
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
-import cloudpy
 import matplotlib.pyplot as plt
+import myimage_analysis as myia
 
 global debugging
 debugging = True
@@ -200,8 +200,8 @@ def plot_av_vs_nhi(av, nhi, fit_params=None, filename=None, av_error=None,
     if filename is not None:
         plt.savefig(filename)
 
-def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
-        av_error=None, contour_plot=True, levels=10, plot_median=True,
+def plot_av_vs_nhi(av_grid, nhi_grid, fit_params=None, filename=None,
+        av_error=None, contour_plot=True, levels=7, plot_median=True,
         limits=None, scale=('linear','linear'), title = '', gridsize=(100,100),
         std=None):
 
@@ -364,8 +364,8 @@ def plot_av_vs_nhi_grid(av_grid, nhi_grid, fit_params=None, filename=None,
             r'$^{+%.2f}_{-%.2f}$ ' % fit_params['intercept_error']
         cloud_text = 'Cloud DGR = {0:.2f}'.format(fit_params['dgr_cloud']) + \
                 dgr_error_text + \
-                '\nIntercept = {0:.2f}'.format(fit_params['intercept']) + \
-                intercept_error_text
+                ''#+'\nIntercept = {0:.2f}'.format(fit_params['intercept']) + \
+                #intercept_error_text
         #if i == 0:
         #    ax.set_title('Full line-of-sight')
         #    av_fit = fit_params['dgr_cloud'] * nhi_fit + \
@@ -475,7 +475,7 @@ def plot_bootstrap_dist(dgrs, intercepts, limits=None, filename=None,
                              intercepts.ravel(),
                              threshold=4,
                              log_counts=1,
-                             levels=levels,
+                             levels=[0.99, 0.95, 0.68],
                              ax=ax,
                              #errors=av_error_nonans.ravel(),
                              histogram2d_args=dict(bins=20,
@@ -514,7 +514,7 @@ def plot_bootstrap_dist(dgrs, intercepts, limits=None, filename=None,
         plt.savefig(filename, bbox_inches='tight')
 
 def plot_bootstrap_hist(dgrs, limits=None, filename=None,
-        axis_label='',):
+        axis_label='', statistics=None):
 
     ''' Plots a heat map of likelihoodelation values as a function of velocity
     width and velocity center.
@@ -529,6 +529,7 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
 
     # Import external modules
     import numpy as np
+    import scipy
     import math
     from astropy.io import fits
     import matplotlib.pyplot as plt
@@ -549,24 +550,773 @@ def plot_bootstrap_hist(dgrs, limits=None, filename=None,
 
     fig, ax = plt.subplots()
 
-    counts, bins = np.histogram(dgrs,)
+    counts, bins = np.histogram(dgrs,bins=40)
+    counts = counts / float(np.max(counts))
 
-    ax.plot(bins[:-1],
-            counts,
+    if 1:
+        ax.plot(bins[:-1],
+                counts,
+                color='k',
+                drawstyle='steps-mid',
+                label='PDF',
+                linewidth=1.5,
+                )
+
+    # Compute the CDF
+    dgrs_sorted = np.sort(dgrs)
+    cdf = np.cumsum(dgrs_sorted)
+    cdf = cdf / np.max(cdf)
+    cdf = 1. * np.arange(len(dgrs_sorted)) / (len(dgrs_sorted) - 1)
+    ax.plot(dgrs_sorted,
+            cdf,
             color='k',
+            linestyle='--',
             drawstyle='steps-mid',
-            linewidth=2,
+            label='CDF',
+            linewidth=1.5,
             )
+
+    if statistics is not None:
+        ax.axvspan(statistics[0] - statistics[1][0],
+                   statistics[0] + statistics[1][1],
+                   color='k',
+                   linewidth=1,
+                   alpha=0.2)
+        ax.axvline(statistics[0],
+                   color='k',
+                   linestyle='--',
+                   linewidth=3,
+                   label='Median',
+                   alpha=1)
 
     if limits is not None:
         ax.set_xlim(limits[0],limits[1])
         ax.set_ylim(limits[2],limits[3])
 
+    ax.legend(loc='best')
+
     # Adjust asthetics
     ax.set_xlabel(axis_label)
-    ax.set_ylabel('Counts')
+    #ax.set_ylabel('Counts')
+    ax.set_ylabel('CDF')
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight')
+
+def plot_spectra(hi_spectrum, hi_vel_axis, hi_std_spectrum=None,
+        co_spectrum=None, co_vel_axis=None, gauss_fits=None, limits=None,
+        filename='', vel_range=None, comp_num=None):
+
+    ''' Plots a heat map of likelihoodelation values as a function of velocity
+    width and velocity center.
+
+    Parameters
+    ----------
+    cloud : cloudpy.Cloud
+        If provided, properties taken from cloud.props.
+
+
+    '''
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    font_scale = 9
+    params = {
+              'figure.figsize': (3.6, 3.6 / 1.618),
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    axes = AxesGrid(fig, (1,1,1),
+                    nrows_ncols=(1, 1),
+                    ngrids=1,
+                    axes_pad=0,
+                    aspect=False,
+                    label_mode='L',
+                    share_all=True)
+
+    ax = axes[0]
+
+    ax.plot(hi_vel_axis,
+            hi_spectrum,
+            linewidth=1.5,
+            label=r'Median H$\textsc{i}$',
+            drawstyle = 'steps-mid'
+            )
+
+    if hi_std_spectrum is not None:
+        ax.plot(hi_vel_axis,
+                hi_std_spectrum,
+                linewidth=1.5,
+                linestyle='-.',
+                label=r'$\sigma_{HI}$',
+                )
+
+    if gauss_fits is not None:
+        ax.plot(hi_vel_axis, gauss_fits[0],
+                alpha=0.4,
+                linewidth=3,
+                label='Fit',
+                )
+
+        label = 'Component'
+        for i, comp in enumerate(gauss_fits[1]):
+            if comp_num is not None and i in comp_num:
+                linewidth = 2
+            else:
+                linewidth = 1
+            ax.plot(hi_vel_axis, comp,
+                    linewidth=linewidth,
+                    linestyle='--',
+                    color='k',
+                    label=label,
+                    )
+            label = None
+
+    if co_spectrum is not None:
+        co_scalar = np.nanmax(hi_spectrum) / 2.0
+        co_spectrum = co_spectrum / np.nanmax(co_spectrum) * co_scalar
+        ax.plot(co_vel_axis,
+                co_spectrum,
+                #color='k',
+                label=r'Median $^{12}$CO $\times$' + \
+                       '{0:.0f}'.format(co_scalar),
+                drawstyle = 'steps-mid'
+                )
+
+    ax.axvspan(vel_range[0],
+               vel_range[1],
+               alpha=0.3,
+               color='k',
+               )
+
+    # plot limits
+    if limits is not None:
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
+
+    ax.legend(loc='upper left')
+    ax.set_xlabel('Velocity [km/s]')
+    ax.set_ylabel(r'T$_b$ [K]')
+
+    if filename is not None:
+        plt.draw()
+        plt.savefig(filename, bbox_inches='tight', dpi=100)
+
+def plot_spectra_grid(spectra_list, hi_range_kwargs_list=None,
+        names_list=None, hi_vel_axis=None, co_vel_axis=None, filename=None,
+        limits=None,):
+
+    ''' Plots a heat map of likelihoodelation values as a function of velocity
+    width and velocity center.
+
+    Parameters
+    ----------
+    cloud : cloudpy.Cloud
+        If provided, properties taken from cloud.props.
+
+
+    '''
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    font_scale = 9
+    params = {
+              'figure.figsize': (3.5, 6),
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    myplt.set_color_cycle(num_colors=4)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    axes = AxesGrid(fig, (1,1,1),
+                    nrows_ncols=(3, 1),
+                    ngrids=3,
+                    axes_pad=0.1,
+                    aspect=False,
+                    label_mode='L',
+                    share_all=True)
+
+    for i in xrange(0, len(names_list)):
+        hi_spectrum, hi_std_spectrum, co_spectrum = spectra_list[i]
+        cloud_name = names_list[i]
+        hi_range_kwargs = hi_range_kwargs_list[i]
+        gauss_fits = hi_range_kwargs['gauss_fits']
+        comp_num = hi_range_kwargs['comp_num']
+        vel_range = hi_range_kwargs['vel_range']
+        ax = axes[i]
+
+        ax.locator_params(nbins = 6)
+
+        ax.plot(hi_vel_axis,
+                hi_spectrum,
+                linewidth=1.5,
+                label=r'Median H$\textsc{i}$',
+                drawstyle = 'steps-mid'
+                )
+
+        ax.plot(hi_vel_axis,
+                hi_std_spectrum,
+                linewidth=1.5,
+                linestyle='-.',
+                label=r'$\sigma_{HI}$',
+                )
+
+        if gauss_fits is not None:
+            ax.plot(hi_vel_axis, gauss_fits[0],
+                    alpha=0.4,
+                    linewidth=3,
+                    label='Fit',
+                    )
+
+            label = 'Component'
+            for j, comp in enumerate(gauss_fits[1]):
+                if comp_num is not None and j in comp_num:
+                    linewidth = 2
+                else:
+                    linewidth = 1
+                ax.plot(hi_vel_axis, comp,
+                        linewidth=linewidth,
+                        linestyle='--',
+                        color='k',
+                        label=label,
+                        )
+                label = None
+
+        co_scalar = np.nanmax(hi_spectrum) / 2.0
+        co_spectrum = co_spectrum / np.nanmax(co_spectrum) * co_scalar
+        ax.plot(co_vel_axis,
+                co_spectrum,
+                #color='k',
+                label=r'Median $^{12}$CO $\times$' + \
+                       '{0:.0f}'.format(co_scalar),
+                drawstyle = 'steps-mid'
+                )
+
+        ax.axvspan(vel_range[0],
+                   vel_range[1],
+                   alpha=0.3,
+                   color='k',
+                   )
+
+        ax.annotate(cloud_name.capitalize(),
+                    xytext=(0.96, 0.9),
+                    xy=(0.96, 0.9),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    )
+        # legend!
+        if i == 2:
+            ax.legend(loc='upper left')
+
+        # plot limits
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        ax.set_xlabel('Velocity [km/s]')
+        ax.set_ylabel(r'T$_b$ [K]')
+
+    if filename is not None:
+        plt.draw()
+        plt.savefig(filename, bbox_inches='tight', dpi=100)
+
+def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
+        av_error_list=None, fit_params_list=None, filename=None, levels=7,
+        limits=None, poly_fit=False, plot_median=True, contour=True,
+        scale=['linear','linear']):
+
+    ''' Plots a heat map of likelihoodelation values as a function of velocity
+    width and velocity center.
+
+    Parameters
+    ----------
+    cloud : cloudpy.Cloud
+        If provided, properties taken from cloud.props.
+
+
+    '''
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    font_scale = 9
+    params = {
+              'figure.figsize': (3.6, 8),
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    axes = AxesGrid(fig, (1,1,1),
+                    nrows_ncols=(3, 1),
+                    ngrids=3,
+                    axes_pad=0.1,
+                    aspect=False,
+                    label_mode='L',
+                    share_all=True)
+
+    for i in xrange(0, len(names_list)):
+        cloud_name = names_list[i]
+        av = av_list[i]
+        av_error = av_error_list[i]
+        nhi = nhi_list[i]
+        fit_params = fit_params_list[i]
+        ax = axes[i]
+
+        if 'log' not in scale:
+            ax.locator_params(nbins = 6)
+
+        # Drop the NaNs from the images
+        if type(av_error) is float or av_error is None:
+            indices = np.where((av == av) &\
+                               (nhi == nhi)
+                               )
+            av_error_nonans = av_error
+        elif type(av_error) is np.ndarray or \
+                type(av_error) is np.ma.core.MaskedArray:
+            indices = np.where((av == av) &\
+                               (nhi == nhi) &\
+                               (av_error == av_error) &\
+                               (av_error > 0)
+                               )
+            av_error_nonans = av_error[indices]
+
+        av_nonans = av[indices]
+        nhi_nonans = nhi[indices]
+
+        ax = axes[i]
+
+        if contour:
+            if i == 0:
+                if limits is None:
+                    xmin = np.min(nhi_nonans)
+                    ymin = np.min(av_nonans)
+                    xmax = np.max(nhi_nonans)
+                    ymax = np.max(av_nonans)
+                    xscalar = 0.15 * xmax
+                    yscalar = 0.15 * ymax
+                    limits = [xmin - xscalar, xmax + xscalar,
+                              ymin - yscalar, ymax + yscalar]
+
+            contour_range = ((limits[0], limits[1]),
+                             (limits[2], limits[3]))
+
+            cmap = myplt.truncate_colormap(plt.cm.binary, 0.2, 1, 1000)
+
+            l1 = myplt.scatter_contour(nhi_nonans.ravel(),
+                                 av_nonans.ravel(),
+                                 threshold=2,
+                                 log_counts=1,
+                                 levels=levels,
+                                 ax=ax,
+                                 #errors=av_error_nonans.ravel(),
+                                 histogram2d_args=dict(bins=40,
+                                                       range=contour_range),
+                                 plot_args=dict(marker='o',
+                                                linestyle='none',
+                                                color='black',
+                                                alpha=0.3,
+                                                markersize=2),
+                                 contour_args=dict(
+                                                   #cmap=plt.cm.binary,
+                                                   cmap=cmap,
+                                                   #cmap=cmap,
+                                                   ),
+                                 )
+        else:
+            image = ax.errorbar(nhi_nonans.ravel()[::100],
+                                av_nonans.ravel()[::100],
+                                yerr=(av_error_nonans.ravel()[::100]),
+                                alpha=0.2,
+                                color='k',
+                                marker='^',
+                                ecolor='k',
+                                linestyle='None',
+                                markersize=3
+                                )
+
+        if plot_median:
+            from scipy.stats import nanmedian, binned_statistic
+            x_median = np.linspace(np.min(nhi_nonans), np.max(nhi_nonans), 6)
+            #x_median = np.arange(6.5, 9, 0.3)
+            y_median, x_median = binned_statistic(nhi_nonans, av_nonans,
+                                        statistic=nanmedian,
+                                        bins=x_median)[:2]
+            x_median = x_median[:-1]
+            x_median = x_median[~np.isnan(y_median)]
+            y_median = y_median[~np.isnan(y_median)]
+            if i == 0:
+                label = 'Median value'
+            else:
+                label = ''
+
+
+            if 1:
+                ax.plot(x_median,
+                        y_median,
+                        color='r',
+                        marker='s',
+                        linestyle='None',
+                        label=label,
+                        alpha=0.5,
+                        markersize=4.5
+                        )
+            else:
+                # Calculate median absolute deviation
+                a = y_median
+                c = 0.6745
+                def statistic(a):
+                    center = nanmedian
+                    if callable(center):
+                        axis = 0
+                        center = np.apply_over_axes(center, a, axis)
+                    return np.median((np.fabs(a-center))/c, axis=axis)
+                y_median_error, _, = binned_statistic(nhi_nonans, av_nonans,
+                                            statistic=statistic,
+                                            bins=x_median)[:2]
+                ax.plot(x_median,
+                        y_median,
+                        color='r',
+                        ecolor='k',
+                        marker='s',
+                        linestyle='None',
+                        label=label,
+                        alpha=0.5,
+                        markersize=4.5,
+                        yerr=(y_median_error),
+                        )
+
+        myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
+        if poly_fit:
+            from scipy.optimize import curve_fit
+
+            weights = np.abs(1.0 / av_error_nonans)
+            weights /= np.sum(weights)
+            def f(x, A): # this is your 'straight line' y=f(x)
+                return A*x / weights
+
+            b = av_nonans * weights
+            A = np.array([nhi_nonans * weights,]).T
+            p = [np.dot(np.linalg.pinv(A), b)[0], 0]
+
+            #p, V = curve_fit(f, av_nonans, nhi_nonans, p0=0.15,)
+            p = [p[0], 0]
+
+            x_fit = np.linspace(-10, 100, 100)
+            y_poly_fit = p[0] * x_fit + p[1]
+            ax.plot(x_fit,
+                    y_poly_fit,
+                    #color='r',
+                    linestyle='dotted',
+                    linewidth=2,
+                    label=\
+                        'Polynomial: \n' + \
+                        'DGR = {0:.2f}'.format(p[0] * 100.0) + \
+                        r' $\times\,10^{-22}$ cm$^{2}$ mag',
+                    alpha=0.7,
+                    )
+
+        # Plot sensitivies
+        #av_limit = np.median(av_errors[0])
+        #ax.axvline(av_limit, color='k', linestyle='--')
+        if 'dgr_error' in fit_params:
+            dgr_error_text = r'$^{+%.1f}_{-%.1f}$ ' % fit_params['dgr_error']
+        else:
+            dgr_error_text = ''
+        if 'intercept_error' in fit_params:
+            intercept_error_text = \
+                    r'$^{+%.2f}_{-%.2f}$' % fit_params['intercept_error'],
+        else:
+            intercept_error_text = ''
+
+        # Plot 1 to 1 pline
+        nhi_fit = np.linspace(-10, 100, 1000)
+        dgr_error_text = \
+            r'$^{+%.1f}_{-%.1f}$ ' % (fit_params['dgr_cloud_error'][0] * 100.,
+                                      fit_params['dgr_cloud_error'][1] * 100.)
+        intercept_error_text = \
+            r'$^{+%.2f}_{-%.2f}$ ' % fit_params['intercept_error']
+        cloud_text = 'DGR:\n' + \
+                     '{0:.1f}'.format(fit_params['dgr_cloud'] * 100.) + \
+                dgr_error_text + \
+                r' $\times\,10^{-22}$ cm$^{2}$ mag'
+
+        av_fit = fit_params['dgr_cloud'] * nhi_fit + \
+                 fit_params['intercept']
+        label = cloud_text
+
+        ax.plot(nhi_fit,
+                av_fit,
+                color='#6B47B2',
+                linestyle='--',
+                linewidth=2,
+                alpha=0.8,
+                label=label,
+                )
+
+        # Annotations
+        #anno_xpos = 0.95
+
+        ax.set_xscale(scale[0], nonposx = 'clip')
+        ax.set_yscale(scale[1], nonposy = 'clip')
+
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
+
+        # Adjust asthetics
+        ax.set_xlabel(r'$N($H$\textsc{i}) \times\,10^{20}$ cm$^{-2}$')
+        ax.set_ylabel(r'$A_V$ [mag]')
+        if i == 0:
+            loc = 'upper left'
+        else:
+            loc = 'lower left'
+        ax.legend(loc=loc)
+
+        ax.annotate(cloud_name.capitalize(),
+                    #xytext=(0.96, 0.9),
+                    xy=(0.96, 0.96),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    )
+
+    if filename is not None:
+        plt.draw()
+        plt.savefig(filename, bbox_inches='tight', dpi=100)
+
+def plot_results(results_dict):
+    # unpack results_dict
+    dgr_background = results_dict['params_summary']['dgr_background']
+    dgr_cloud = results_dict['params_summary']['dgr_cloud']
+    dgr_cloud_error = results_dict['params_summary']['dgr_cloud_error']
+    av_data = results_dict['data_products']['av_data_backsub']
+    av_error_data = results_dict['data']['av_error_data']
+    nhi_image = results_dict['data_products']['nhi_image']
+    nhi_image_background = \
+            results_dict['data_products']['nhi_image_background']
+    plot_kwargs = results_dict['plot_kwargs']
+    global_args = results_dict['global_args']
+    boot_result = results_dict['boot_result']
+
+    av_cloud = create_cloud_model(av_data,
+                                  nhi_image_background,
+                                  dgr_background,)
+
+    if nhi_image_background is not None:
+        av_background = create_background_model(av_data,
+                                     nhi_image,
+                                     dgr_cloud,)
+        #nhi_total = nhi_boot + nhi_back_boot
+        #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
+        #av_boot = np.hstack((av_cloud, av_background))
+        #av_images = (av_boot, av_cloud, av_background)
+        av_images = (av_cloud, av_background)
+        #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
+        nhi_images = (nhi_image, nhi_image_background)
+    else:
+        nhi_total = nhi_image
+        av_images = (av_data,)
+        nhi_images = (nhi_total,)
+
+    filename = plot_kwargs['figure_dir'] + \
+               'av_nhi/' + plot_kwargs['filename_base'] + \
+               '_av_vs_nhi.png'
+
+    plot_av_vs_nhi(av_images,
+                   nhi_images,
+                   av_error=av_error_data,
+                   fit_params=results_dict['params_summary'],
+                   contour_plot=plot_kwargs['av_nhi_contour'],
+                   limits=plot_kwargs['av_nhi_limits'],
+                   filename=filename,
+                   )
+
+    # Plot distribution
+    if global_args['use_intercept'] or global_args['use_background']:
+        filename = plot_kwargs['figure_dir'] + \
+                   'bootstrap_dists/' + plot_kwargs['filename_base'] + \
+                   '_backdgr_vs_clouddgr.png'
+        #print('\n\tSaving bootstrap distributions to:\n\t' + filename)
+        plot_bootstrap_dist(boot_result[0], boot_result[1],
+                            filename=filename,
+                            axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                                    r'Background DGR [10$^{-20}$ cm$^2$ mag]'),
+                            levels=4)
+
+        filename = plot_kwargs['figure_dir'] + \
+                   'bootstrap_dists/' + plot_kwargs['filename_base'] + \
+                   '_int_vs_clouddgr.png'
+
+        try:
+            plot_bootstrap_dist(boot_result[0], boot_result[2],
+                                filename=filename,
+                                axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                                             r'Intercept [mag]'),
+                                levels=4)
+        except ValueError:
+            plot_bootstrap_dist(boot_result[0], boot_result[2],
+                                filename=filename,
+                                axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                                             r'Intercept [mag]'),
+                                contour_plot=False,
+                                levels=4)
+    else:
+        filename = plot_kwargs['figure_dir'] + \
+                   'bootstrap_dists/' + plot_kwargs['filename_base'] + \
+                   '_clouddgr.png'
+        #print('\n\tSaving bootstrap distributions to:\n\t' + filename)
+        plot_bootstrap_hist(boot_result[0],
+                        filename=filename,
+                        axis_label=r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
+                        statistics=(dgr_cloud, dgr_cloud_error))
+
+def print_av_error_stats(av, av_error):
+
+    from scipy.stats import nanmedian
+
+    error_above = nanmedian(av_error[av > 5])
+    error_below = nanmedian(av_error[av <= 5])
+    print('\n\tMedian Av error below 5 mag = {0:.2f} mag'.format(error_below))
+    print('\n\tMedian Av error above 5 mag = {0:.2f} mag'.format(error_above))
+
+def plot_multicloud_results(results):
+
+    print('\nPlotting multicloud results...')
+
+    spectra_list = []
+    hi_range_kwargs_list = []
+    av_list = []
+    av_error_list = []
+    nhi_list = []
+    fit_params_list = []
+    cloud_name_list = []
+    for i, cloud_name in enumerate(results):
+        results_dict = results[cloud_name]
+        figure_dir = results_dict['filenames']['figure_dir']
+        results_dir = results_dict['filenames']['results_dir']
+        plot_kwargs = results_dict['plot_kwargs']
+        data_products = results_dict['data_products']
+        spectra_list.append((data_products['hi_spectrum'],
+                             data_products['hi_std_spectrum'],
+                             data_products['co_spectrum'],)
+                             )
+        cloud_name_list.append(cloud_name)
+        hi_range_kwargs_list.append(data_products['hi_range_kwargs'])
+        av_list.append(data_products['av_data_backsub'])
+        av_error_list.append(results_dict['data']['av_error_data'])
+        nhi_list.append(data_products['nhi_image'])
+        fit_params_list.append(results_dict['params_summary'])
+
+        if 0:
+            print(cloud_name)
+            print('vel range', data_products['hi_range_kwargs']['vel_range'])
+            print(results_dict['global_args']['vel_range_error'])
+
+    hi_vel_axis = results_dict['data']['hi_vel_axis']
+    co_vel_axis = results_dict['data']['co_vel_axis']
+
+    print_av_error_stats(av_list[0], av_error_list[0])
+
+    # plot the results
+    filetypes = ['png', 'pdf']
+    for filetype in filetypes:
+        filename = plot_kwargs['figure_dir'] + \
+                   'spectra/multicloud_spectra.' + filetype
+
+        plot_spectra_grid(spectra_list,
+                     hi_range_kwargs_list=hi_range_kwargs_list,
+                     names_list=cloud_name_list,
+                     hi_vel_axis=hi_vel_axis,
+                     co_vel_axis=co_vel_axis,
+                     filename=filename,
+                     limits=[-30, 30, -10, 59],
+                     )
+
+        filename = plot_kwargs['figure_dir'] + \
+                   'av_nhi/multicloud_av_vs_nhi.' + filetype
+        plot_av_vs_nhi_grid(av_list,
+                            nhi_list,
+                            av_error_list=av_error_list,
+                            fit_params_list=fit_params_list,
+                            names_list=cloud_name_list,
+                            filename=filename,
+                            levels=(0.99, 0.98, 0.95, 0.86, 0.59),
+                            poly_fit=False,
+                            limits=[2, 20, -5, 19]
+                            )
+
+        if 0:
+            filename = plot_kwargs['figure_dir'] + \
+                       'av_nhi/multicloud_av_vs_nhi_log.' + filetype
+            plot_av_vs_nhi_grid(av_list,
+                                nhi_list,
+                                av_error_list=av_error_list,
+                                fit_params_list=fit_params_list,
+                                names_list=cloud_name_list,
+                                filename=filename,
+                                levels=(0.99, 0.98, 0.95, 0.86, 0.59),
+                                poly_fit=True,
+                                scale=['log','log'],
+                                #limits=[2, 20, -13, 20]
+                                limits=[0.1, 100, 0.01, 100]
+                                )
+
+            filename = plot_kwargs['figure_dir'] + \
+                       'av_nhi/multicloud_av_vs_nhi_scatter.' + filetype
+            plot_av_vs_nhi_grid(av_list,
+                                nhi_list,
+                                av_error_list=av_error_list,
+                                fit_params_list=fit_params_list,
+                                names_list=cloud_name_list,
+                                filename=filename,
+                                levels=(0.99, 0.98, 0.95, 0.86, 0.59),
+                                poly_fit=True,
+                                contour=False,
+                                limits=[2, 20, -6, 10]
+                                )
 
 '''
 
@@ -575,8 +1325,8 @@ from multiprocessing.queues import Queue
 
 class QueueGet(Queue):
     """Queue which will retry if interrupted with EINTR."""
-    def get(self, block=True, timeout=None):
-        return retry_on_eintr(Queue.get, self, block, timeout)
+    def get( block=True, timeout=None):
+        return retry_on_eintr(Queue.get,  block, timeout)
 
 def retry_on_eintr(function, *args, **kw):
     from multiprocessing.queues import Queue
@@ -613,37 +1363,37 @@ def create_background_model(av, nhi_cloud, dgr_cloud):
 
     return av - dgr_cloud * nhi_cloud
 
-def create_filename_base(args):
+def create_filename_base(global_args):
 
     # Name of diagnostic files
-    if args['background_subtract']:
+    if global_args['background_subtract']:
         background_name = '_backsub'
     else:
         background_name = ''
 
-    if args['bin_image']:
+    if global_args['bin_image']:
         bin_name = '_binned'
-        args['bin_procedure'] = 'all'
+        global_args['bin_procedure'] = 'all'
     else:
         bin_name = ''
-        args['bin_procedure'] = 'none'
-    if args['fixed_width'] is None:
+        global_args['bin_procedure'] = 'none'
+    if global_args['fixed_width'] is None:
         width_name = ''
-        init_vel_width = args['init_vel_width']
+        init_vel_width = global_args['init_vel_width']
         vel_center_gauss_fit_kwargs = None
     else:
-        if args['fixed_width'] == 'gaussfit':
-            if args['cloud_name'] == 'perseus':
+        if global_args['fixed_width'] == 'gaussfit':
+            if global_args['cloud_name'] == 'perseus':
                 guesses = (28, 3, 5,
                            2, -20, 20)
                 ncomps = 2
-            elif args['cloud_name'] == 'taurus':
+            elif global_args['cloud_name'] == 'taurus':
                 guesses = (28, 3, 5,
                            5, -30, 20,
                            3, -15, 5,
                            )
                 ncomps = 3
-            elif args['cloud_name'] == 'california':
+            elif global_args['cloud_name'] == 'california':
                 guesses = (50, 3, 5,
                            20, -10, 10,
                            3, -45, 10,
@@ -657,50 +1407,53 @@ def create_filename_base(args):
         else:
             vel_center_gauss_fit_kwargs = None
         width_name = '_fixedwidth'
-        init_vel_width = args['fixed_width']
-    if args['use_weights']:
+        init_vel_width = global_args['fixed_width']
+    if global_args['use_weights']:
         weights_name = '_weights'
         weights_filename = av_dir + \
-           args['cloud_name'] + '_binweights.fits'
+           global_args['cloud_name'] + '_binweights.fits'
     else:
         weights_name = ''
         weights_filename = None
-    if args['region'] is None:
+    if global_args['region'] is None:
         region_name = ''
-        args['region_name'] = args['cloud_name']
+        global_args['region_name'] = global_args['cloud_name']
     else:
-        region_name = '_region' + args['region']
-        args['region_name'] = args['cloud_name'] + args['region']
-    if args['av_mask_threshold'] is not None:
+        region_name = '_region' + global_args['region']
+        global_args['region_name'] = global_args['cloud_name'] + global_args['region']
+    if global_args['av_mask_threshold'] is not None:
         avthres_name = '_avthres'
     else:
         avthres_name = ''
-    if not args['use_intercept']:
+    if not global_args['use_intercept']:
         intercept_name = '_noint'
     else:
         intercept_name = ''
-    if args['recalculate_likelihoods']:
+    if global_args['recalculate_likelihoods']:
         error_name = '_errorrecalc'
     else:
         error_name = ''
-    if args['subtract_comps']:
+    if global_args['subtract_comps']:
         compsub_name = '_compsub'
     else:
         compsub_name = ''
-    if args['use_background']:
+    if global_args['use_background']:
         backdgr_name = '_backdgr'
     else:
         backdgr_name = ''
+    if global_args['hi_range_calc'] == 'gaussian':
+        hi_range_name = 'gaussrange'
+    else:
+        hi_range_name = 'stdrange'
 
-    filename_extension = args['cloud_name'] + '_' + args['data_type'] + \
+    filename_extension = global_args['cloud_name'] + '_' + global_args['data_type'] + \
             background_name + \
             bin_name + weights_name + \
             region_name + width_name + avthres_name + \
-            intercept_name + error_name + compsub_name + backdgr_name
+            intercept_name + error_name + compsub_name + backdgr_name + \
+            '_' + hi_range_name
 
-    print args['region_name']
-
-    return filename_extension, args
+    return filename_extension, global_args
 
 def mask_nans(arrays, return_mask=False):
 
@@ -709,7 +1462,8 @@ def mask_nans(arrays, return_mask=False):
     Parameters
     ----------
     arrays : tuple
-        Tuple of arrays with same dimension.
+        Tuple of arrays. The mask will be the shape of the first array. The
+        last axes of the rest of the arrays will be masked.
 
     """
 
@@ -764,7 +1518,7 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
         params = Parameters()
         params.add('dgr_cloud',
                    value=init_guesses[0],
-                   min=0.0,
+                   min=-0.5,
                    max=1,
                    )
         params.add('dgr_background',
@@ -853,52 +1607,120 @@ def fit_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
         else:
             return (dgr_cloud, dgr_background, intercept)
 
-def bootstrap_worker(args, i):
+def simulate_noise(av, av_error):
 
-    av = args['av']
-    av_error = args['av_error']
-    nhi = args['nhi']
-    nhi_back = args['nhi_back']
-    init_guesses = args['init_guesses']
-    plot_kwargs = args['plot_kwargs']
-    use_intercept = args['use_intercept']
-    probabilities = args['probabilities']
-    #i = args['i']
+    ''' Simulates noise of Av data
 
-    #queue = args['queue']
-    av_error = (av_error**2 + (0.07 * av * 6)**2)**0.5
+    Possible noise contributions:
+        + uncertainty in dust params, tau_353, Beta, T
+
+        + CIB background - section 4.2, Planck 2013
+
+        + background subtraction
+
+        + variation in dust temperature, e.g. difference between radiance and
+        tau_353
+
+    '''
+
+    #av_error = (av_error**2 + (0.07 * av)**2)**0.5
 
     # get bootstrap indices and apply them to each dataset
     np.random.seed()
-    av_noise_sim = np.random.normal(0, scale=av_error) + \
-                    np.random.normal(0, 0.003*3.1)
-    #probabilities = 1.0 / av_noise_sim**2
-    #probabilities /= np.nansum(probabilities)
-    boot_indices = np.random.choice(av.size, size=av.size, p=probabilities)
-    if 1:
-        av_boot = av[boot_indices] + av_noise_sim[boot_indices]
-        #av_error_boot = av_noise_sim[boot_indices]
-        av_error_boot = av_error[boot_indices]
+
+    # empirical uncertainty from comparison with Schlegel 98
+    #sigma_ = 0.003*3.1
+
+    av_noise_sim = np.random.normal(0, scale=av_error)
+
+    # empirical uncertainty from comparison with Schlegel 98
+    #av_noise_sim += np.random.normal(0, scale=0.003*3.1)
+
+    return av_noise_sim
+
+def simulate_rescaling(av, scalar=1.0):
+
+    av_rescale = av / np.random.uniform(low=1, high=scalar)
+
+    return av_rescale
+
+def simulate_background_error(av, scale=1.0):
+
+    # bias from 2MASS image, see lombardi et al. (2009), end of section 2
+    av_bias = 0.2
+    scale = (scale**2 + (av_bias)**2)**0.5
+
+    av_background_sim = av + np.random.normal(0, scale=scale)
+
+    return av_background_sim
+
+def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error):
+
+    vel_range_sim = [vel_range[0] + np.random.normal(0, scale=vel_range_error),
+                     vel_range[1] + np.random.normal(0, scale=vel_range_error)]
+
+    nhi_sim = myia.calculate_nhi(cube=hi_data,
+                              velocity_axis=vel_axis,
+                              velocity_range=vel_range_sim,
+                              )
+    return nhi_sim.ravel()
+
+def bootstrap_worker(global_args, i):
+
+    av = global_args['av']
+    av_error = global_args['av_error']
+    nhi = global_args['nhi']
+    nhi_back = global_args['nhi_back']
+    hi_data = global_args['hi_data']
+    vel_axis = global_args['vel_axis']
+    vel_range = global_args['vel_range']
+    vel_range_error = global_args['vel_range_error']
+    init_guesses = global_args['init_guesses']
+    plot_kwargs = global_args['plot_kwargs']
+    use_intercept = global_args['use_intercept']
+    probabilities = global_args['probabilities']
+    av_scalar = global_args['scale_kwargs']['av_scalar']
+    intercept_error = global_args['scale_kwargs']['intercept_error']
+    #i = global_args['i']
+
+    #queue = global_args['queue']
+
+    # Create simulated data
+    # -------------------------------------------------------------------------
+    # add random noise
+    av_sim = av + simulate_noise(av, av_error)
+
+    # rescale the data somewhere between Planck and 2MASS:
+    # rescaled Planck = Planck / beta where beta is between 1.0 and 1.4
+    av_sim = simulate_rescaling(av_sim, scalar=av_scalar)
+
+    # remove background
+    av_sim = simulate_background_error(av_sim, scale=intercept_error)
+
+    # calculate N(HI)
+    if global_args['sim_hi_error']:
+        nhi_sim = simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error)
     else:
-        av_error_boot = av_error_sim[boot_indices]
-        av_boot = av[boot_indices]
-    nhi_boot = nhi[boot_indices]
+        nhi_sim = nhi
+
+    # Bootstrap data
+    # -------------------------------------------------------------------------
+    boot_indices = np.random.choice(av.size, size=av.size,)# p=probabilities)
+
+    av_boot = av_sim[boot_indices]
+    av_error_boot = av_error[boot_indices]
+    nhi_boot = nhi_sim[boot_indices]
+
     if nhi_back is not None:
         nhi_back_boot = nhi_back[boot_indices]
     else:
         nhi_back_boot = None
 
-    if 0:
-        av_boot = av
-        av_error_boot = av_error
-        nhi_boot = nhi
-        nhi_back_boot = nhi_back
-
-
     # for plotting
     plot_kwargs['bootstrap_num'] = i
 
-    # fit the bootstrapped data
+    # Fit the bootstrapped data
+    # -------------------------------------------------------------------------
     boot_result = fit_model(av_boot,
                             nhi_boot,
                             av_error=av_error_boot,
@@ -907,7 +1729,7 @@ def bootstrap_worker(args, i):
                             plot_kwargs=plot_kwargs,
                             use_intercept=use_intercept)
 
-    args['init_guesses'] = boot_result
+    global_args['init_guesses'] = boot_result
 
     # Plot distribution and fit
     if plot_kwargs['plot_diagnostics']:
@@ -946,7 +1768,7 @@ def bootstrap_worker(args, i):
                       }
 
         #print('plotting')
-        plot_av_vs_nhi_grid(av_images,
+        plot_av_vs_nhi(av_images,
                        nhi_images,
                        av_error=av_error_boot,
                        fit_params=fit_params,
@@ -988,9 +1810,11 @@ def bootstrap_worker_wrapper(args, i):
 
     return output
 
-def bootstrap_fits(av_data, nhi_image, av_error_data=None,
-        nhi_image_background=None, num_bootstraps=100, plot_kwargs=None,
-        use_intercept=True):
+def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
+        vel_range=None, vel_range_error=1, av_error_data=None,
+        av_reference=None, nhi_image_background=None, num_bootstraps=100,
+        plot_kwargs=None, scale_kwargs=None, use_intercept=True,
+        sim_hi_error=False,):
 
     import multiprocessing as mp
     import sys
@@ -999,8 +1823,10 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
         av_error_data = np.ones(av_data.size)
 
     # mask for nans, arrays will be 1D
-    av, av_error, nhi, nhi_back = \
-            mask_nans((av_data, av_error_data, nhi_image, nhi_image_background))
+    (av, av_error, nhi, nhi_back), mask = \
+        mask_nans((av_data, av_error_data, nhi_image, nhi_image_background),
+                  return_mask=True)
+    hi_data = hi_data[:, ~mask]
 
     probabilities = 1.0 / av_error**2
     probabilities /= np.nansum(probabilities)
@@ -1012,34 +1838,47 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
     boot_results = np.empty((3, num_bootstraps))
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
 
+    # Prep arguments
+    global_args = {}
+    global_args['av'] = av
+    global_args['av_error'] = av_error
+    global_args['nhi'] = nhi
+    global_args['nhi_back'] = nhi_back
+    global_args['init_guesses'] = init_guesses
+    global_args['plot_kwargs'] = plot_kwargs
+    global_args['use_intercept'] = use_intercept
+    global_args['probabilities'] = probabilities
+    global_args['scale_kwargs'] = scale_kwargs
+    global_args['sim_hi_error'] = sim_hi_error
+    if sim_hi_error:
+        global_args['hi_data'] = hi_data
+        global_args['vel_axis'] = vel_axis
+        global_args['vel_range'] = vel_range
+        global_args['vel_range_error'] = vel_range_error
+    else:
+        global_args['hi_data'] = None
+        global_args['vel_axis'] = None
+        global_args['vel_range'] = None
+        global_args['vel_range_error'] = None
+
+    #global_args['queue'] = queue
+    if 0:
+        args_list = []
+        for i in xrange(num_bootstraps):
+            global_args['i'] = i
+            args_list.append(global_args.copy())
 
     # Prep multiprocessing
     queue = mp.Queue(10)
     pool = mp.Pool()
     processes = []
 
-    args = {}
-    args['av'] = av
-    args['av_error'] = av_error
-    args['nhi'] = nhi
-    args['nhi_back'] = nhi_back
-    args['init_guesses'] = init_guesses
-    args['plot_kwargs'] = plot_kwargs
-    args['use_intercept'] = use_intercept
-    args['probabilities'] = probabilities
-
-    #args['queue'] = queue
-    args_list = []
-    for i in xrange(num_bootstraps):
-        args['i'] = i
-        args_list.append(args.copy())
-
     # bootstrap
     if 1:
         try:
             for i in xrange(num_bootstraps):
                 processes.append(pool.apply_async(bootstrap_worker_wrapper,
-                                                  args=(args,i,)))
+                                                  args=(global_args,i,)))
         except KeyboardInterruptError:
             pool.terminate()
             pool.join()
@@ -1073,20 +1912,247 @@ def bootstrap_fits(av_data, nhi_image, av_error_data=None,
 
     return boot_results
 
-def run_cloud_analysis(args,):
+def scale_av_with_refav(av_data, av_reference, av_error_data):
+
+    import scipy as sp
+    if av_reference is not None:
+        nan_mask = (np.isnan(av_reference) | \
+                    np.isnan(av_data) | \
+                    np.isnan(av_error_data))
+        p, V = np.polyfit(av_reference[~nan_mask], av_data[~nan_mask], deg=1,
+                       #w=1.0/av_error_data[~nan_mask]**2,
+                       cov=True,
+                       )
+        av_scalar, intercept = p
+        intercept_error = V[1, 1]
+
+        # Perform residual bootstrapping to get errors on intercept
+        bootindex = sp.random.random_integers
+        nboot = 1000
+        x_fit = av_reference[~nan_mask]
+        y_fit = p[0] * x_fit  + p[1]
+        residuals = av_data[~nan_mask] - y_fit
+        fits = np.empty((2, nboot))
+
+        weights = np.abs(1.0 / av_error_data[~nan_mask])
+        weights /= np.nansum(weights)
+
+        for i in xrange(nboot): # loop over n bootstrap samples from the resids
+            if 0:
+                boot_indices = bootindex(0,
+                                         len(residuals)-1,
+                                         len(residuals))
+                residuals_bootstrapped = residuals[boot_indices]
+                fits[:, i] = sp.polyfit(av_reference[~nan_mask],
+                                        y_fit + residuals_bootstrapped,
+                                        deg=1)
+            else:
+                boot_indices = bootindex(0,
+                                         len(x_fit)-1,
+                                         len(x_fit))
+                x = x_fit[boot_indices] + np.random.normal(0, 0.4,
+                                                           size=x_fit.size)
+                y = av_data[~nan_mask][boot_indices] + \
+                        np.random.normal(0,
+                                av_error_data[~nan_mask][boot_indices])
+
+                fits[:, i] = np.polyfit(x,
+                                        y,
+                                        deg=1,)
+
+        intercept_error = np.std(fits[1])
+        av_scalar_error = np.std(fits[0])
+
+    kwargs = {}
+    kwargs['av_scalar'] = av_scalar
+    kwargs['av_scalar_error'] = av_scalar_error
+    kwargs['intercept'] = intercept
+    kwargs['intercept_error'] = intercept_error
+
+    return kwargs
+
+def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
+        width_scale=2, co_spectrum=None, co_vel_axis=None, ncomps=1):
+
+    from scipy.stats import nanmedian
+    from myfitting import fit_gaussians
+
+    hi_fits = fit_gaussians(hi_vel_axis,
+            hi_spectrum, **gauss_fit_kwargs)
+
+    # use either the gaussian closest to the CO peak, or the tallest gaussian
+    if co_spectrum is not None:
+        co_peak_vel = co_vel_axis[co_spectrum == np.nanmax(co_spectrum)][0]
+        vel_diffs = []
+        for i, param in enumerate(hi_fits[2]):
+            vel_center = param[1]
+            width = param[2]
+            vel_diffs.append(np.abs(param[1] - co_peak_vel))
+
+        # get the velocity range
+        vel_diffs = np.asarray(vel_diffs)
+        sort_indices = np.argsort(vel_diffs)
+        cloud_comp_num = np.asarray(sort_indices[:ncomps])
+        velocity_range = [np.inf, -np.inf]
+        for i in cloud_comp_num:
+            # get the component
+            param = hi_fits[2][i]
+            vel_center = param[1]
+            width = param[2]
+
+            # set absolute bounds if the component bounds extend beyond
+            upper_vel = vel_center + width * width_scale
+            lower_vel = vel_center - width * width_scale
+            if upper_vel > velocity_range[1]:
+                velocity_range[1] = upper_vel
+            if lower_vel < velocity_range[0]:
+                velocity_range[0] = lower_vel
+
+        # the offset between the co and fitted gaussians will be the HI error
+        hi_width_error = np.max(vel_diffs[cloud_comp_num])
+    else:
+        amp_max = -np.Inf
+        for i, param in enumerate(hi_fits[2]):
+            if param[0] > amp_max:
+                amp_max = param[0]
+                vel_center = param[1]
+                width = param[2] * 4
+                cloud_comp_num = i
+
+        velocity_range = [vel_center - width * width_scale,
+                          vel_center + width * width_scale]
+
+    return velocity_range, hi_fits, cloud_comp_num, hi_width_error
+
+def get_gauss_fit_kwargs(global_args):
+    if global_args['cloud_name'] == 'perseus':
+        guesses = (28, 3, 5,
+                   2, -20, 20)
+        ncomps = 2
+        ncomps_in_cloud = 1
+    elif global_args['cloud_name'] == 'taurus':
+        guesses = (35, 3, 5,
+                   5, -15, 20,
+                   #3, -2, 2,
+                   )
+        ncomps = 2
+        ncomps_in_cloud = 1
+    elif global_args['cloud_name'] == 'california':
+        guesses = (50, 3, 5,
+                   10, -3, 3,
+                   12, -10, 10,
+                   3, -30, 10,
+                   #2, -20, 20,
+                   )
+        ncomps = 4
+        ncomps_in_cloud = 2
+    gauss_fit_kwargs = {'guesses': guesses,
+                        'ncomps': ncomps,
+                        #'width_scale': 2,
+                        }
+
+    return gauss_fit_kwargs, ncomps_in_cloud
+
+def calc_param_errors(results_dict):
+
+    import mystats
+
+    boot_result = results_dict['boot_result']
+    global_args = results_dict['global_args']
+
+    dgr_cloud, dgr_background, intercept = np.mean(boot_result, axis=1)
+    dgr_cloud_error, dgr_background_error, intercept_error = \
+                np.std(boot_result, axis=1)
+
+    # Calculate conf interval
+    dgrs = boot_result[0]
+    dgr_cloud, dgr_cloud_error = mystats.calc_cdf_error(dgrs,
+                                                        alpha=0.32)
+
+    if global_args['use_background']:
+        dgrs = boot_result[1]
+        dgr_background_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
+    else:
+        dgr_background_error = (0.0, 0.0)
+        dgr_background = 0.0
+
+    if global_args['use_intercept']:
+        intercepts = boot_result[2]
+        intercept, intercept_error = mystats.calc_cdf_error(intercepts,
+                                                            alpha=0.32)
+    else:
+        intercept_error = (0.0, 0.0)
+        intercept = 0.0
+
+    fit_params = {
+                  'dgr_cloud': dgr_cloud,
+                  'dgr_cloud_error': dgr_cloud_error,#, dgr_cloud_error),
+                  'dgr_background': dgr_background,
+                  'dgr_background_error': dgr_background_error,
+                  'intercept': intercept,
+                  'intercept_error': intercept_error,
+                  }
+
+    return fit_params
+
+def load_results(filename, load_fits=True):
+
+    import pickle
+    from astropy.io import fits
+
+    with open(filename, 'rb') as input:
+        results = pickle.load(input)
+    input.close()
+
+    if load_fits:
+        results['data']['av_data'], results['data']['av_header'] = \
+                fits.getdata(results['filenames']['av_filename'],
+                             header=True)
+        results['data']['av_error_data'], results['data']['av_error_header'] = \
+                fits.getdata(results['filenames']['av_error_filename'],
+                             header=True)
+        results['data']['av_data_ref'] = \
+                fits.getdata(results['filenames']['av_ref_filename'])
+        results['data']['hi_data'], results['data']['hi_header'] = \
+                fits.getdata(results['filenames']['hi_filename'], header=True)
+        results['data']['co_data'], results['data']['co_header'] = \
+                fits.getdata(results['filenames']['co_filename'], header=True)
+
+    return results
+
+def save_results(results_dict, filename, write_fits=False):
+
+    import pickle
+    from astropy.io import fits
+
+    if not write_fits:
+        results_dict['data']['av_data'] = None
+        results_dict['data']['av_error_data'] = None
+        results_dict['data']['av_data_ref'] = None
+        results_dict['data']['hi_data'] = None
+        results_dict['data']['co_data'] = None
+
+    with open(filename, 'wb') as output:
+        pickle.dump(results_dict, output)
+    output.close()
+
+def run_cloud_analysis(global_args,):
 
     from astropy.io import fits
     from myimage_analysis import calculate_nhi, calc_region_mask
+    import myimage_analysis as myia
     from mycoords import make_velocity_axis
     from mystats import calc_symmetric_error, calc_logL
     import myio
+    import pickle
+    import mystats
 
-    if 1:
-        cloud_name = args['cloud_name']
-        region = args['region']
-        load = args['load']
-        data_type = args['data_type']
-        background_subtract = args['background_subtract']
+    cloud_name = global_args['cloud_name']
+    region = global_args['region']
+    load = global_args['load']
+    data_type = global_args['data_type']
+    background_subtract = global_args['background_subtract']
+
 
     # define directory locations
     # --------------------------
@@ -1101,8 +2167,6 @@ def run_cloud_analysis(args,):
     region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
     background_region_dir = '/d/bip3/ezbc/' + cloud_name + \
                             '/data/python_output/ds9_regions/'
-    likelihood_dir = \
-            '/d/bip3/ezbc/' + cloud_name + '/data/python_output/nhi_av/'
     results_dir =  '/d/bip3/ezbc/multicloud/data/python_output/'
 
     # define filenames
@@ -1134,6 +2198,8 @@ def run_cloud_analysis(args,):
             av_error_filename = None
             av_error = 1
         av_background = None
+        av_ref_filename = av_dir + \
+           cloud_name + '_av_k09_regrid_planckres.fits'
     if cloud_name == 'perseus' and data_type == 'planck_lee12mask':
         av_filename = av_dir + \
            cloud_name + '_av_planck_tau353_5arcmin_lee12mask.fits'
@@ -1151,10 +2217,23 @@ def run_cloud_analysis(args,):
         av_background = 0.0
 
     # Get the filename base to differentiate between different parameters
-    filename_base, args = create_filename_base(args)
+    filename_base, global_args = create_filename_base(global_args)
+    print('\n\tFilename base = \n\t' + filename_base)
+
+    # set up plotting variables
+    plot_kwargs = {
+                   'figure_dir': figure_dir,
+                   'cloud_name': cloud_name,
+                   'filename_base': filename_base,
+                   'plot_diagnostics': global_args['plot_diagnostics'],
+                   #'av_nhi_contour': av_nhi_contour,
+                   'av_nhi_contour': True,
+                   'av_nhi_limits': [0, 20, -1, 9],
+                   #'av_nhi_limits': None,
+                    }
 
     # Load data
-    if args['bin_image']:
+    if global_args['bin_image']:
         av_filename = av_filename.replace('.fits', '_bin.fits')
         if av_error_filename is not None:
             av_error_filename = av_error_filename.replace('.fits', '_bin.fits')
@@ -1164,6 +2243,7 @@ def run_cloud_analysis(args,):
         av_nhi_contour = True
 
     av_data, av_header = fits.getdata(av_filename, header=True)
+    av_data_ref, av_header = fits.getdata(av_ref_filename, header=True)
     if av_error_filename is not None:
         av_error_data, av_error_header = fits.getdata(av_error_filename,
                                                       header=True)
@@ -1175,202 +2255,230 @@ def run_cloud_analysis(args,):
     region_mask = calc_region_mask(region_filename,
                                    av_data,
                                    av_header,
-                                   region_name=args['region_name'])
+                                   region_name=global_args['region_name'])
 
     av_data[region_mask] = np.nan
+    av_data_ref[region_mask] = np.nan
 
-    #if debugging:
-    if 1:
-        import matplotlib.pyplot as plt
-        plt.close(); plt.clf()
-        plt.imshow(av_data, origin='lower')
-        plt.savefig('/usr/users/ezbc/Desktop/avmap.png')
+    # Scale the data to the 2MASS K+09 data
+    scale_kwargs = scale_av_with_refav(av_data, av_data_ref, av_error_data)
+    av_data_backsub = av_data - scale_kwargs['intercept']
 
+    print('\n\tSubtracting background of ' + str(scale_kwargs['intercept']) + \
+          ' from ' + cloud_name)
+
+    # Load HI and CO cubes
     hi_data, hi_header = fits.getdata(hi_filename, header=True)
     co_data, co_header = fits.getdata(co_filename, header=True)
 
+    hi_data[:, region_mask] = np.nan
+    co_data[:, region_mask] = np.nan
+
     hi_vel_axis = make_velocity_axis(hi_header)
+    co_vel_axis = make_velocity_axis(co_header)
+
+    # Derive N(HI)
+    # -------------------------------------------------------------------------
+    # get fit kwargs
+    gauss_fit_kwargs, ncomps_in_cloud = get_gauss_fit_kwargs(global_args)
+
+    # derive spectra or load
+    spectra_filename = results_dir + 'spectra/' + global_args['cloud_name'] + \
+            '_spectra.pickle'
+    load_spectra = myio.check_file(spectra_filename,
+                                   clobber=global_args['clobber_spectra'])
+    if load_spectra:
+        hi_spectrum, hi_std_spectrum, co_spectrum = \
+                myio.load_pickle(spectra_filename)
+    else:
+        hi_spectrum = myia.calc_spectrum(hi_data)
+        hi_std_spectrum = myia.calc_spectrum(hi_data, statistic=np.nanstd)
+        co_spectrum = myia.calc_spectrum(co_data)
+        myio.save_pickle(spectra_filename,
+                         (hi_spectrum, hi_std_spectrum, co_spectrum))
+
+    if global_args['hi_range_calc'] == 'gaussian':
+        velocity_range, gauss_fits, comp_num, hi_range_error = \
+                calc_hi_vel_range(hi_spectrum,
+                                  hi_vel_axis,
+                                  gauss_fit_kwargs,
+                                  co_spectrum=co_spectrum,
+                                  co_vel_axis=co_vel_axis,
+                                  ncomps=ncomps_in_cloud,
+                                  )
+        global_args['vel_range_error'] = hi_range_error
+    else:
+        velocity_range = [-5, 15]
+        gauss_fits = None
+        comp_num = None
+
+    hi_range_kwargs = {
+                       'velocity_range': velocity_range,
+                       'gauss_fits': gauss_fits,
+                       'comp_num': comp_num,
+                       'hi_range_error': hi_range_error,
+                       'vel_range': velocity_range,
+                       'gauss_fit_kwargs': gauss_fit_kwargs,
+                       }
+
+    # plot the results
+    filename = plot_kwargs['figure_dir'] + \
+               'spectra/' + plot_kwargs['filename_base'] + \
+               '_spectra.png'
+    plot_spectra(hi_spectrum,
+                 hi_vel_axis,
+                 hi_std_spectrum=hi_std_spectrum,
+                 gauss_fits=gauss_fits,
+                 comp_num=comp_num,
+                 co_spectrum=co_spectrum,
+                 co_vel_axis=co_vel_axis,
+                 vel_range=velocity_range,
+                 filename=filename,
+                 limits=[-50, 30, -10, 70],
+                 )
+
+    print('\n\tVelocity range = ' + \
+          '{0:.1f} to {1:.1f}'.format(*velocity_range))
+
+    # use the vel range to derive N(HI)
     nhi_image = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
-                              velocity_range=(-5,15),
+                              velocity_range=velocity_range,
                               )
     nhi_image_background = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
-                              velocity_range=(-100,-5),
+                              velocity_range=(-100,velocity_range[0]),
                               )
     nhi_image_background += calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
-                              velocity_range=(15,100),
+                              velocity_range=(velocity_range[1],100),
                               )
+
+    # mask for erroneous pixels
     nhi_image[nhi_image < 0] = np.nan
     nhi_image_background[nhi_image_background < 0] = np.nan
 
-    if not args['use_background']:
+    if not global_args['use_background']:
         nhi_image_background = None
 
-    # set up plotting variables
-    plot_kwargs = {
-                   'figure_dir': figure_dir,
-                   'cloud_name': cloud_name,
-                   'filename_base': filename_base,
-                   'plot_diagnostics': args['plot_diagnostics'],
-                   #'av_nhi_contour': av_nhi_contour,
-                   'av_nhi_contour': True,
-                   'av_nhi_limits': [0, 20, -1, 9],
-                   #'av_nhi_limits': None,
-                    }
 
-    print('Filename base = \n' + filename_base + '\n')
+    # Write filenames
+    filenames = {
+                 'region_filename': region_filename,
+                 'av_filename': av_filename,
+                 'av_error_filename': av_error_filename,
+                 'av_ref_filename': av_ref_filename,
+                 'hi_filename': hi_filename,
+                 'co_filename': co_filename,
+                 'results_dir': results_dir,
+                 'figure_dir': figure_dir,
+                 }
+
+    # Collect data
+    data = {
+            'av_data': av_data,
+            'av_error_data': av_error_data,
+            'av_data_ref': av_data_ref,
+            'hi_data': hi_data,
+            'hi_vel_axis': hi_vel_axis,
+            'co_data': co_data,
+            'co_vel_axis': co_vel_axis,
+            'av_header': av_header,
+            'av_error_header': av_error_header,
+            'hi_header': hi_header,
+            'co_header': co_header,
+            }
+
+    # Collect data products
+    data_products = {
+                     'av_data_backsub': av_data_backsub,
+                     'nhi_image': nhi_image,
+                     'nhi_image_background': nhi_image_background,
+                     'region_mask': region_mask,
+                     'scale_kwargs': scale_kwargs,
+                     'hi_spectrum': hi_spectrum,
+                     'hi_std_spectrum': hi_std_spectrum,
+                     'co_spectrum': co_spectrum,
+                     'hi_range_kwargs': hi_range_kwargs,
+                     }
+
+    # Bootstrap data
+    # -------------------------------------------------------------------------
+
+    # crop hi_data to be a reasonable size
+    hi_data_crop, hi_vel_axis_crop = myia.crop_cube(hi_data,
+                                                    hi_vel_axis,
+                                                    [-20, 30])
 
     bootstrap_filename = results_dir + filename_base + '_bootresults.npy'
-    run_analysis = True
-    if args['load']:
-        exists = myio.check_file(bootstrap_filename)
-        if exists:
-            boot_result = np.load(bootstrap_filename)
-            run_analysis = False
-    if run_analysis:
-        # Perform bootsrapping
-        boot_result = bootstrap_fits(av_data,
-                                     nhi_image,
-                                     av_error_data=av_error_data,
-                                     nhi_image_background=nhi_image_background,
-                                     plot_kwargs=plot_kwargs,
-                                     use_intercept=args['use_intercept'],
-                                     num_bootstraps=args['num_bootstraps'],
-                                     )
-        np.save(results_dir + filename_base + '_bootresults.npy', boot_result)
+    results_filename = results_dir + \
+               'bootstrap_results/' + filename_base + \
+               '_bootstrap_results.pickle'
 
-    if 0:
-        # fit model to data, get confidence intervals of fit
-        mask = (np.isnan(av_data) | np.isnan(nhi_image))
-        p, V = np.polyfit(av_data[~mask],
-                          nhi_image[~mask], cov=True, deg=1)
+    # Perform bootsrapping
+    boot_result = bootstrap_fits(av_data_backsub,
+                                 nhi_image=nhi_image,
+                                 av_error_data=av_error_data,
+                                 nhi_image_background=nhi_image_background,
+                                 plot_kwargs=plot_kwargs,
+                                 hi_data=hi_data_crop,
+                                 vel_axis=hi_vel_axis_crop,
+                                 vel_range=velocity_range,
+                                 vel_range_error=2,
+                                 av_reference=av_data_ref,
+                                 use_intercept=global_args['use_intercept'],
+                                 num_bootstraps=global_args['num_bootstraps'],
+                                 scale_kwargs=scale_kwargs,
+                                 sim_hi_error=global_args['sim_hi_error'],
+                                 )
+    np.save(bootstrap_filename, boot_result)
 
-        print(V[0,0], V[1,1])
+    results_dict = {'boot_result': boot_result,
+                    'data': data,
+                    'data_products': data_products,
+                    'global_args': global_args,
+                    'plot_kwargs': plot_kwargs,
+                    'filenames': filenames,
+                    }
 
-        from scipy.optimize import curve_fit
+    # calculate errors on dgrs and intercept
+    results_dict['params_summary'] = calc_param_errors(results_dict)
 
-        def func(x, dgr, intercept):
-            return dgr * x + intercept
+    print('\n\tSaving results...')
+    save_results(results_dict, global_args['results_filename'])
+    results_dict = load_results(global_args['results_filename'])
 
-        popt, pcov = curve_fit(func, av_data[~mask], nhi_image[~mask])
+    return results_dict
 
+def get_results(global_args):
 
-    if 1:
-        dgr_cloud, dgr_background, intercept = np.mean(boot_result, axis=1)
-        dgr_cloud_error, dgr_background_error, intercept_error = \
-                    np.std(boot_result, axis=1)
+    import myio
 
-        filename = plot_kwargs['figure_dir'] + \
-                   'av_nhi/' + plot_kwargs['filename_base'] + \
-                   '_av_vs_nhi.png'
-        av_cloud = create_cloud_model(av_data,
-                                     nhi_image_background,
-                                     dgr_background,)
+    print('\nPerforming analysis on ' + global_args['cloud_name'])
+    print('=======================' + '=' * len(global_args['cloud_name']))
 
-        # Calculate conf interval
-        from scipy import stats
-        dgrs = boot_result[0]
-        N = dgrs.size
-        mean, sigma = np.nanmean(dgrs), stats.nanstd(dgrs)
-        conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
-        dgr_cloud_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
+    # Get the results filename
+    filename_base, global_args = create_filename_base(global_args)
+    print('\n\tFilename base = \n\t' + filename_base)
+    results_dir =  '/d/bip3/ezbc/multicloud/data/python_output/'
+    results_filename = results_dir + \
+               'bootstrap_results/' + filename_base + \
+               '_bootstrap_results.pickle'
+    global_args['results_filename'] = results_filename
 
-        if args['use_background']:
-            dgrs = boot_result[1]
-            N = dgrs.size
-            mean, sigma = np.nanmean(dgrs), stats.nanstd(dgrs)
-            conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
-            dgr_background_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
-        else:
-            dgr_background_error = (0.0, 0.0)
+    exists = myio.check_file(results_filename)
 
-        if args['use_intercept']:
-            intercepts = boot_result[2]
-            N = intercepts.size
-            mean, sigma = np.nanmean(intercepts), stats.nanstd(intercepts)
-            conf_int_a = stats.norm.interval(0.68, loc=mean, scale=sigma)
-            intercept_error = (mean - conf_int_a[0], conf_int_a[1] - mean)
-        else:
-            intercept_error = (0.0, 0.0)
+    # either load or perform analysis
+    if global_args['load'] and exists:
+        print('\n\tLoading results...')
+        results_dict = load_results(global_args['results_filename'])
+    else:
+        results_dict = run_cloud_analysis(global_args)
 
-        if nhi_image_background is not None:
-            av_background = create_background_model(av_data,
-                                         nhi_image,
-                                         dgr_cloud,)
-            #nhi_total = nhi_boot + nhi_back_boot
-            #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
-            #av_boot = np.hstack((av_cloud, av_background))
-            #av_images = (av_boot, av_cloud, av_background)
-            av_images = (av_cloud, av_background)
-            #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
-            nhi_images = (nhi_image, nhi_image_background)
-        else:
-            nhi_total = nhi_image
-            av_images = (av_data,)
-            nhi_images = (nhi_total,)
+    # calculate errors on dgrs and intercept
+    results_dict['params_summary'] = calc_param_errors(results_dict)
 
-        fit_params = {
-                      'dgr_cloud': dgr_cloud,
-                      'dgr_cloud_error': dgr_cloud_error,#, dgr_cloud_error),
-                      'dgr_background': dgr_background,
-                      'dgr_background_error': dgr_background_error,
-                      'intercept': intercept,
-                      'intercept_error': intercept_error,
-                      }
-
-
-        print('plotting')
-        plot_av_vs_nhi_grid(av_images,
-                       nhi_images,
-                       av_error=av_error_data,
-                       fit_params=fit_params,
-                       contour_plot=plot_kwargs['av_nhi_contour'],
-                       limits=plot_kwargs['av_nhi_limits'],
-                       filename=filename,
-                       )
-
-        # Plot distribution
-        if args['use_intercept'] or args['use_background']:
-            filename = plot_kwargs['figure_dir'] + \
-                       'bootstrap_dists/' + plot_kwargs['filename_base'] + \
-                       '_backdgr_vs_clouddgr.png'
-            print('\nSaving bootstrap distributions to:\n' + filename)
-            plot_bootstrap_dist(boot_result[0], boot_result[1],
-                                filename=filename,
-                                axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
-                                        r'Background DGR [10$^{-20}$ cm$^2$ mag]'),
-                                levels=4)
-
-            filename = plot_kwargs['figure_dir'] + \
-                       'bootstrap_dists/' + plot_kwargs['filename_base'] + \
-                       '_int_vs_clouddgr.png'
-
-            try:
-                plot_bootstrap_dist(boot_result[0], boot_result[2],
-                                    filename=filename,
-                                    axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
-                                                 r'Intercept [mag]'),
-                                    levels=4)
-            except ValueError:
-                plot_bootstrap_dist(boot_result[0], boot_result[2],
-                                    filename=filename,
-                                    axis_labels=(r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
-                                                 r'Intercept [mag]'),
-                                    contour_plot=False,
-                                    levels=4)
-        else:
-            filename = plot_kwargs['figure_dir'] + \
-                       'bootstrap_dists/' + plot_kwargs['filename_base'] + \
-                       '_clouddgr.png'
-            print('\nSaving bootstrap distributions to:\n' + filename)
-            plot_bootstrap_hist(boot_result[0],
-                            filename=filename,
-                            axis_label=r'Cloud DGR [10$^{-20}$ cm$^2$ mag]',
-                            )
-
-    return boot_result
+    return results_dict
 
 def main():
 
@@ -1379,15 +2487,15 @@ def main():
     results = {}
 
     clouds = (
-              'taurus',
               'california',
+              'taurus',
               'perseus',
               )
 
     data_types = (
                   'planck',
-                  'lee12',
-                  'planck_lee12mask',
+                  #'lee12',
+                  #'planck_lee12mask',
                   #'k09',
                   )
     recalculate_likelihoods = (
@@ -1409,14 +2517,19 @@ def main():
                    None,
                    #50,
                    )
+
+    hi_range_calc = ('gaussian',
+                     #'std',
+                     )
+
     use_intercept = (
                      False,
-                     True,
+                     #True,
                      )
 
     use_background = (
                       False,
-                      True,
+                      #True,
                       )
     av_mask_threshold = (
                          None,
@@ -1435,7 +2548,7 @@ def main():
 
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
-            regions, subtract_comps, use_background)
+            regions, subtract_comps, use_background, hi_range_calc)
 
     permutations = list(itertools.product(*elements))
 
@@ -1443,46 +2556,50 @@ def main():
 
     #for cloud in clouds:
     for permutation in permutations:
-        args = {'cloud_name':permutation[0],
-                'load': 0,
+        global_args = {
+                'cloud_name':permutation[0],
+                'load': 1,
                 'load_props': 0,
-                #'data_type': 'planck',
-                #'data_type': 'k09',
-                #'data_type': 'planck_lee12mask',
-                #'data_type': 'lee12',
                 'data_type' : permutation[1],
                 'background_subtract': 0,
                 'recalculate_likelihoods': permutation[2],
                 'bin_image': permutation[3],
                 'use_weights': 0,
                 'init_vel_width': permutation[4],
-                #'fixed_width': 20,
                 'fixed_width': permutation[5],
                 'use_intercept': permutation[6],
                 'av_mask_threshold': permutation[7],
-                #'av_mask_threshold': 1.2,
                 'binned_data_filename_ext': '_bin',
-                #'likelihood_resolution': 'fine',
                 'likelihood_resolution': 'coarse',
                 'region': permutation[8],
                 'subtract_comps': permutation[9],
-                'plot_diagnostics': True,
+                'plot_diagnostics': 0,
+                'clobber_spectra': False,
                 'use_background': permutation[10],
                 'num_bootstraps': 10,
+                'num_bootstraps': 10000,
+                'hi_range_calc': permutation[11],
+                'sim_hi_error': True,
                 }
         run_analysis = False
-        if args['data_type'] in ('planck_lee12mask', 'lee12'):
-            if args['cloud_name'] == 'perseus':
+        if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
+            if global_args['cloud_name'] == 'perseus':
                 run_analysis = True
         else:
-            if args['cloud_name'] == 'california':
-                if args['region'] is None:
+            if global_args['cloud_name'] == 'california':
+                if global_args['region'] is None:
                     run_analysis = True
             else:
                 run_analysis = True
 
         if run_analysis:
-            results[args['cloud_name']] = run_cloud_analysis(args)
+            results[global_args['cloud_name']] = \
+                    get_results(global_args)
+
+            print('\n\tPlotting')
+            plot_results(results[global_args['cloud_name']])
+
+    plot_multicloud_results(results)
 
 if __name__ == '__main__':
     main()

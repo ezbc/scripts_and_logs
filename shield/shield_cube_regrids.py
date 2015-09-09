@@ -44,11 +44,13 @@ def main():
 
         print('\tBinsize = ' + str(binsize))
 
-        # cube measurement error = 700 uJy/Beam = 0.7 mJy/Beam
-        # cube flux calibration error = 10%
-        # add errors quadratically
-        cube_std = np.nanstd(cube[0, :, :])
-        cube_error = ((0.1 * cube)**2 + cube_std**2)**0.5
+
+        if 1:
+            # cube measurement error = 700 uJy/Beam = 0.7 mJy/Beam
+            # cube flux calibration error = 10%
+            # add errors quadratically
+            cube_std = np.nanstd(cube[0, :, :])
+            cube_error = ((0.1 * cube)**2 + cube_std**2)**0.5
 
         cube_bin, header_bin = bin_image(cube,
                                          binsize=(1, binsize, binsize),
@@ -56,11 +58,18 @@ def main():
                                          statistic=np.nanmean,
                                          )
 
-        noise_func = lambda x: (1 / np.nansum(x**-2))**0.5
-        cube_error_bin = bin_image(cube_error,
-                                   binsize=(1, binsize, binsize),
-                                   statistic=noise_func,
-                                   )
+        # cube measurement error = 700 uJy/Beam = 0.7 mJy/Beam
+        # cube flux calibration error = 10%
+        # add errors quadratically
+        cube_bin_std = np.nanstd(cube_bin[0, :, :])
+        cube_error_bin = ((0.1 * cube_bin)**2 + cube_bin_std**2)**0.5
+
+        if 0:
+            noise_func = lambda x: (1 / np.nansum(x**-2))**0.5
+            cube_error_bin = bin_image(cube_error,
+                                       binsize=(1, binsize, binsize),
+                                       statistic=noise_func,
+                                       )
 
         fits.writeto(in_image,
                      cube,
@@ -90,13 +99,37 @@ def main():
         velocity_axis = make_velocity_axis(header_bin)
 
         # convert to T_B
-        cube_bin_tb = 1.36 * 21 * cube_bin * 1000.0 / \
+        cube_bin_tb = 1.36 * 21**2 * cube_bin * 1000.0 / \
                       (header_bin['BMAJ'] * 3600.) / \
                       (3600. * header_bin['BMIN'])
 
-        cube_tb = 1.36 * 21 * cube * 1000.0 / \
+        cube_tb = 1.36 * 21**2 * cube * 1000.0 / \
                       (header['BMAJ'] * 3600.) / \
                       (3600. * header['BMIN'])
+
+        # convert moment zero images to column density units.
+        #	Recall:  1 K = (7.354E-8)*[Bmaj(")*Bmin(")/lamda^2(m)] Jy/Bm
+
+        #	Here, units of images are Jy/Bm m/s; cellsize = 2";
+        #	    lambda = 0.211061140507 m
+
+        #	Thus, for the 21 cm line of Hydrogen, we have:
+
+        #	    1 K = Bmaj(")*Bmin(")/(6.057493205E5) Jy/Bm
+        #			---- OR ----
+        #	    1 Jy/Bm = (6.057493205E5)/[Bmaj(")*Bmin(")]
+
+        #	Now, recall that: N_HI = (1.8224E18 cm^-2)*[T_b (K)]*int(dv)
+        #		-- For moment maps in K km/sec, just input the values
+        #		& multiply by coefficient.
+        #	   -- Assure that units are Jy/Bm km/sec (i.e., divide by 1000)
+        #	   Leave in units of 1E20 cm^-2 by dividing by 1E20:
+
+        #	   For a x beam:
+        #               N_HI (cm^-2) = (image) *
+        #		[(6.057493205E5)/(*)] * (1/1000) * (1.8224E18 cm^-2) *
+        #		(1/1E20)
+        #		N_HI (cm^-2) = (image)*
 
         nhi_image = calculate_nhi(cube_bin_tb,
                                   velocity_axis=velocity_axis,

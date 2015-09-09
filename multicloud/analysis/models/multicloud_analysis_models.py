@@ -5,7 +5,6 @@
 import matplotlib
 matplotlib.use('Agg')
 
-
 import pyfits as pf
 import numpy as np
 import warnings
@@ -925,7 +924,6 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
     # Set up plot aesthetics
     # ----------------------
     plt.close;plt.clf()
-    plt.rcdefaults()
 
     # Color map
     cmap = plt.cm.gnuplot
@@ -933,44 +931,11 @@ def plot_hi_vs_h_grid(cores, limits=None, fit=True, savedir='./',
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
     font_scale = 9
-    line_weight = 600
-    font_weight = 600
 
-    params = {
-              'axes.color_cycle': color_cycle, # colors of different plots
-              'axes.labelsize': font_scale,
-              'axes.titlesize': font_scale,
-              #'axes.weight': line_weight,
-              'axes.linewidth': 1.2,
-              'axes.labelweight': font_weight,
-              'legend.fontsize': font_scale*3/4,
-              'xtick.labelsize': font_scale,
-              'ytick.labelsize': font_scale,
-              'font.weight': font_weight,
-              'font.serif': 'computer modern roman',
-              'text.fontsize': font_scale,
-              'text.usetex': True,
-              'text.latex.preamble': r'\usepackage[T1]{fontenc}',
-              #'font.family': 'sans-serif',
-              'figure.figsize': (3.6, 3.6*y_scaling),
-              'figure.dpi': 600,
-              'backend' : 'pdf',
-              #'figure.titlesize': font_scale,
-             }
-    plt.rcParams.update(params)
-
-    pgf_with_pdflatex = {
-        "pgf.texsystem": "pdflatex",
-        "pgf.preamble": [
-             r"\usepackage[utf8x]{inputenc}",
-             r"\usepackage[T1]{fontenc}",
-             r"\usepackage{cmbright}",
-             ]
-    }
-    plt.rcParams.update(pgf_with_pdflatex)
+    figsize = (3.6, 3.6*y_scaling)
 
     # Create figure instance
-    fig = plt.figure()
+    fig = plt.figure(figsize=figsize)
 
     imagegrid = ImageGrid(fig, (1,1,1),
                  nrows_ncols=(nrows, ncols),
