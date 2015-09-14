@@ -2008,6 +2008,17 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
         return chisq
 
+    def residual(params, h_sd, rh2):
+        phi_cnm = params['phi_cnm'].value
+        phi_mol = params['phi_mol'].value
+        Z = params['Z'].value
+
+        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
+
+        residual = rh2 - rh2_model
+
+        return residual
+
     # Set parameter limits and initial guesses
     params = Parameters()
     params.add('phi_cnm',
@@ -2027,10 +2038,10 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
                vary=vary[1])
 
     # Perform the fit!
-    result = minimize(chisq,
+    result = minimize(residual,
                       params,
                       args=(h_sd, rh2),
-                      method='lbfgsb')
+                      method='leastsq')
 
     rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
             params['phi_mol'].value)
@@ -2163,6 +2174,18 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
         return chisq
 
+    def residual(params, h_sd, rh2):
+        alphaG = params['alphaG'].value
+        phi_g = params['phi_g'].value
+        Z = params['Z'].value
+
+        rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                 return_fractions=False)
+
+        residual = rh2 - rh2_model
+
+        return residual
+
     # Set parameter limits and initial guesses
     params = Parameters()
     params.add('alphaG',
@@ -2182,10 +2205,10 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
                vary=vary[1])
 
     # Perform the fit!
-    result = minimize(chisq,
+    result = minimize(residual,
                       params,
                       args=(h_sd, rh2),
-                      method='nelder-mead')
+                      method='leastsq')
 
     rh2_fit_params = (params['alphaG'].value, params['Z'].value,
             params['phi_g'].value)
@@ -2436,6 +2459,7 @@ def bootstrap_worker(global_args, i):
     model_kwargs = global_args['ss_model_kwargs']
 
     #i = global_args['i']
+    #np.random.seed()
 
     #queue = global_args['queue']
 
@@ -2488,6 +2512,8 @@ def bootstrap_worker(global_args, i):
                             plot_kwargs=plot_kwargs,
                             use_intercept=use_intercept)
 
+    print 'dgr =' , av_model_results['dgr_cloud']
+
     # Calculate N(H2), then HI + H2 surf dens, fit relationship
     # -------------------------------------------------------------------------
     # calculate N(H2) maps
@@ -2507,11 +2533,6 @@ def bootstrap_worker(global_args, i):
     # Write ratio between H2 and HI
     rh2_image = h2_sd_image / hi_sd_image
 
-    # mask negative ratios
-    if 0:
-        mask = rh2_image < 0
-        rh2_image = rh2_image[~mask]
-        h_sd_image = h_sd_image[~mask]
 
     model_kwargs = global_args['ss_model_kwargs']['model_kwargs']
     cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
@@ -2524,17 +2545,26 @@ def bootstrap_worker(global_args, i):
         # grab the indices of the core in the unraveled array
         core_indices = cores[core]['indices']
 
+
         if 0:
             assert av[core_indices] == cores[core]['test_pix']
 
         # Bootstrap core indices
         #core_boot_indices = core_indices[index_ints]
+        np.random.seed()
         core_boot_indices = np.random.choice(core_indices.size,
                                              size=core_indices.size,)
         # get bootstrapped pixels
-        h_sd_core = h_sd_image[core_boot_indices]
-        rh2_core = rh2_image[core_boot_indices]
+        #h_sd_core = h_sd_image[core_boot_indices]
+        #rh2_core = rh2_image[core_boot_indices]
+        h_sd_core = h_sd_image[core_indices]
+        rh2_core = rh2_image[core_indices]
 
+        # mask negative ratios
+        if 1:
+            mask = rh2_core < 0
+            rh2_core = rh2_core[~mask]
+            h_sd_core = h_sd_core[~mask]
 
         ss_model_result = \
             fit_steady_state_models(h_sd_core,
@@ -2544,18 +2574,18 @@ def bootstrap_worker(global_args, i):
         ss_model_results[core] = ss_model_result
 
         if 0:
-            print ss_model_result['krumholz_results']['phi_cnm']
+            print core, 'phi_cnm', ss_model_result['krumholz_results']['phi_cnm']
             import matplotlib.pyplot as plt
             plt.close(); plt.clf();
-            rh2_fit, hsd_fit = \
-                calc_krumholz(ss_model_result['krumholz_results'],
-                              h_sd_extent=[1, 100],
-                              return_fractions=False)
-            print ss_model_result['sternberg_results']['alphaG']
             rh2_fit, hsd_fit = \
                 calc_sternberg(ss_model_result['sternberg_results'],
                               h_sd_extent=[1, 100],
                               return_fractions=False)
+            rh2_fit, hsd_fit = \
+                calc_krumholz(ss_model_result['krumholz_results'],
+                              h_sd_extent=[1, 100],
+                              return_fractions=False)
+            #print ss_model_result['sternberg_results']['alphaG']
 
             plt.scatter(h_sd_core, rh2_core, color='k', alpha=0.1)
             plt.plot(hsd_fit, rh2_fit, color='r', alpha=1)
@@ -2646,7 +2676,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         vel_range=None, vel_range_error=1, av_error_data=None,
         av_reference=None, nhi_image_background=None, num_bootstraps=100,
         plot_kwargs=None, scale_kwargs=None, use_intercept=True,
-        sim_hi_error=False, ss_model_kwargs=None):
+        sim_hi_error=False, ss_model_kwargs=None, multiprocess=True):
 
     import multiprocessing as mp
     import sys
@@ -2728,7 +2758,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     processes = []
 
     # bootstrap
-    if 1:
+    if multiprocess:
         try:
             for i in xrange(num_bootstraps):
                 processes.append(pool.apply_async(bootstrap_worker_wrapper,
@@ -2757,10 +2787,12 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         for i in xrange(num_bootstraps):
             processes.append(bootstrap_worker(global_args, i))
 
+        mc_results = collect_bootstrap_results(processes, ss_model_kwargs)
+
         for i in xrange(len(processes)):
             #result = queue.get()
-            result = processes[i]
-            boot_results[:, i] = result['av_model_result']
+            result = processes[i].get()
+            boot_results[:, i] = result['av_model_results'].values()
 
     #for process in processes:
     #    process.set()
@@ -3089,7 +3121,7 @@ def get_model_fit_kwargs(cloud_name):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=(10.0, 1.0, 10.0) # Guesses for (phi_cnm, Z, phi_mol)
+    guesses=(8.0, 1.0, 10.0) # Guesses for (phi_cnm, Z, phi_mol)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
@@ -3143,14 +3175,43 @@ def calc_mc_analysis(mc_results):
     import mystats
 
     mc_analysis = {}
+    core_analysis = {}
 
-    # Calculate conf interval
+    # Calculate conf intervals on parameters
+    # -------------------------------------------------------------------------
+    # DGR
     dgrs = mc_results['av_model_results']['dgr']
     dgr, dgr_error = mystats.calc_cdf_error(dgrs,
                                             alpha=0.32)
 
+    # Model params fit for each core:
+    for core in mc_results['ss_model_results']['cores']:
+        for model in mc_results['ss_model_results']['cores'][core]:
+            for param in mc_results['ss_model_results']['cores'][core][model]:
+                param_results = \
+                    mc_results['ss_model_results']['cores'][core][model][param]
+                param_value, param_error = \
+                    mystats.calc_cdf_error(param_results,
+                                           alpha=0.32)
+
+                core_analysis[core] = {}
+                core_analysis[core][param] = param_value
+                core_analysis[core][param + '_error'] = param_error
+
+                if param == 'phi_cnm':
+                    import matplotlib.pyplot as plt
+                    plt.close(); plt.clf()
+                    plt.hist(param_results, bins=50)
+                    plt.savefig('/usr/users/ezbc/scratch/'+core+'_hist.png')
+
+
+                print('core ' + core + ': ' + param  + \
+                      ' = {0:.2f}'.format(param_value) + \
+                      '+{0:.2f} / -{1:.2f}'.format(*param_error))
+
     mc_analysis = {'dgr': dgr,
                    'dgr_error': dgr_error,
+                   'cores': core_analysis,
                    }
 
     return mc_analysis
@@ -3476,7 +3537,8 @@ def run_cloud_analysis(global_args,):
                        num_bootstraps=global_args['num_bootstraps'],
                        scale_kwargs=scale_kwargs,
                        sim_hi_error=global_args['sim_hi_error'],
-                       ss_model_kwargs=global_args['ss_model_kwargs']
+                       ss_model_kwargs=global_args['ss_model_kwargs'],
+                       multiprocess=global_args['multiprocess'],
                        )
     np.save(bootstrap_filename, boot_result)
 
@@ -3488,12 +3550,6 @@ def run_cloud_analysis(global_args,):
                     'filenames': filenames,
                     'mc_results': mc_results,
                     }
-
-    # derive col dens images and statistics on MC sim
-    add_results_analysis(results_dict)
-
-    # calculate errors on dgrs and intercept
-    results_dict['params_summary'] = calc_param_errors(results_dict)
 
     print('\n\tSaving results...')
     save_results(results_dict, global_args['results_filename'])
@@ -3523,8 +3579,12 @@ def get_results(global_args):
     if global_args['load'] and exists:
         print('\n\tLoading results...')
         results_dict = load_results(global_args['results_filename'])
+
     else:
         results_dict = run_cloud_analysis(global_args)
+
+    # derive col dens images and statistics on MC sim
+    add_results_analysis(results_dict)
 
     # calculate errors on dgrs and intercept
     results_dict['params_summary'] = calc_param_errors(results_dict)
@@ -3627,9 +3687,10 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 10000,
+                'num_bootstraps': 2000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
+                'multiprocess': 1,
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
