@@ -1516,19 +1516,6 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                                                    ),
                                  )
 
-        if 0:
-            l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
-                    label='S+14',
-                    color=c_cycle[1],
-                    alpha=0.75,
-                    )
-
-        l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
-                linestyle='--',
-                label='K+09',
-                color=c_cycle[2],
-                alpha=0.75
-                )
 
 
         if 1:
@@ -1538,6 +1525,8 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
 
             params = {}
             nfits = len(core_results['krumholz_results']['phi_cnm'])
+            if nfits > 500:
+                nfits = 500
             alpha = 1 / float(nfits) * 10.0
             for j in xrange(nfits):
                 params['phi_cnm'] = \
@@ -1559,8 +1548,22 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                 ax.plot(model_fits[1], model_fits[2],
                         linestyle='-',
                         color=c_cycle[2],
-                        alpha=0.05,
+                        alpha=alpha,
                         )
+        else:
+            if 0:
+                l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
+                        label='S+14',
+                        color=c_cycle[1],
+                        alpha=0.75,
+                        )
+
+            l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
+                    linestyle='--',
+                    label='K+09',
+                    color=c_cycle[2],
+                    alpha=0.75
+                    )
 
         if i == 0:
             ax.legend(loc='lower right')
@@ -1642,6 +1645,9 @@ def plot_multicloud_results(results):
 
     print('\nPlotting multicloud results...')
 
+    # Collect Data
+    # =========================================================================
+
     spectra_list = []
     hi_range_kwargs_list = []
     av_list = []
@@ -1655,6 +1661,7 @@ def plot_multicloud_results(results):
     hsd_cores_list = []
     model_results_list = []
     model_analysis_list = []
+    model_analysis_dict = {}
     dgr_list = []
     fit_params_list = []
     cloud_name_list = []
@@ -1683,6 +1690,7 @@ def plot_multicloud_results(results):
         #fit_params_list.append(results_dict['params_summary'])
         model_results_list.append(results_dict['mc_results']['ss_model_results'])
         model_analysis_list.append(results_dict['mc_analysis'])
+        model_analysis_dict[cloud_name] = results_dict['mc_analysis']
 
         # Modeling and cores
         global_args = results_dict['global_args']
@@ -1695,7 +1703,8 @@ def plot_multicloud_results(results):
         for core in cores_to_plot:
             core_indices = cores[core]['indices_orig']
             #print core_indices.shape
-            if core_indices is not None:
+            #if core_indices is not None:
+            if 0:
                 core_names.append(core)
                 hisd_core_list.append(hisd_list[i][core_indices])
                 hsd_core_list.append(hsd_list[i][core_indices])
@@ -1717,12 +1726,26 @@ def plot_multicloud_results(results):
             print(results_dict['global_args']['vel_range_error'])
 
 
+
+    # Print results
+    # =========================================================================
+    # Write results to a
+    print_av_error_stats(av_list[0], av_error_list[0])
+
+    filename = results_dir + 'tables/multicloud_model_params.tex'
+    write_model_params_table(model_analysis_dict,
+                             filename,
+                             models=('krumholz',))
+
+    # Plot the results
+    # =========================================================================
+
+    # Plot HI spectra
+    # -------------------------------------------------------------------------
     hi_vel_axis = results_dict['data']['hi_vel_axis']
     co_vel_axis = results_dict['data']['co_vel_axis']
 
-    print_av_error_stats(av_list[0], av_error_list[0])
 
-    # plot the results
     filetypes = ['png', 'pdf']
     for filetype in filetypes:
         filename = plot_kwargs['figure_dir'] + \
@@ -1769,8 +1792,10 @@ def plot_multicloud_results(results):
 
         # Plot HI vs H
         # ---------------------------------------------------------------------
+        levels = (0.9, 0.8, 0.6)
         for i, cloud in enumerate(cloud_name_list):
             core_names = core_names_list[i]
+            print('\n\tPlotting Models')
             if len(core_names) > 10:
                 filename = plot_kwargs['figure_dir'] + \
                            'models/' + cloud + '_hisd_vs_hsd_1.' + filetype
@@ -1782,6 +1807,7 @@ def plot_multicloud_results(results):
                                           model_analysis_list[i]['cores'],
                                   limits=[-9, 159, -1.5, 15],
                                   scale=('linear', 'linear'),
+                                  levels=levels,
                                   filename=filename,
                                   )
                 filename = plot_kwargs['figure_dir'] + \
@@ -1793,6 +1819,7 @@ def plot_multicloud_results(results):
                                   model_analysis=\
                                       model_analysis_list[i]['cores'],
                                   limits=[-9, 159, -1.5, 15],
+                                  levels=levels,
                                   scale=('linear', 'linear'),
                                   filename=filename,
                                   )
@@ -1806,6 +1833,7 @@ def plot_multicloud_results(results):
                                   model_analysis=\
                                       model_analysis_list[i]['cores'],
                                   limits=[-9, 159, -1.5, 15],
+                                  levels=levels,
                                   scale=('linear', 'linear'),
                                   filename=filename,
                                   )
@@ -1838,6 +1866,85 @@ def plot_multicloud_results(results):
                                 contour=False,
                                 limits=[2, 20, -6, 10]
                                 )
+
+
+
+'''
+Data Prep functions
+'''
+def print_dict_keys(d):
+
+    for key in d:
+        print key
+        if type(d[key]) is dict:
+            print '--'
+            print_dict_keys(d[key])
+
+def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
+
+    # Open file to be appended
+    f = open(filename, 'wb')
+
+    text_param_format ='{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$'
+
+    #print_dict_keys(mc_analysis_dict)
+    params_to_write = ['phi_mol', 'phi_cnm', 'Z', 'alphaG', 'phi_g']
+
+    # Collect parameter names for each model for each core
+    for cloud in mc_analysis_dict:
+        mc_analysis = mc_analysis_dict[cloud]
+        for model in models:
+            # each core correspond to a row
+            for cloud_row, core_name in enumerate(mc_analysis['cores']):
+                core = mc_analysis['cores'][core_name]
+                row_text = ''
+                if cloud_row == 0:
+                    row_text = add_row_element(row_text,
+                                               cloud)
+                else:
+                    row_text = add_row_element(row_text,
+                                               '')
+                row_text = add_row_element(row_text,
+                                           core)
+                for i, param_name in enumerate(core[model + '_results']):
+
+                    param_name = param_name.replace('_error', '')
+                    if  param_name in params_to_write:
+                        param = \
+                            core[model + '_results'][param_name]
+                        param_error = \
+                            core[model + '_results'][param_name + '_error']
+
+                        param_info = (param, param_error[0], param_error[1])
+
+                        row_text = \
+                            add_row_element(row_text,
+                                            param_info,
+                                            text_format=text_param_format)
+
+                row_text += ' \\ \n'
+
+                if cloud_row == len(mc_analysis['cores']) - 1:
+                    row_text += '\hrule\n'
+
+                f.write(row_text)
+
+    f.close()
+
+def add_row_element(row_text, element, text_format='{0:s}'):
+
+    if type(element) is list or type(element) is tuple:
+        return row_text + ' & ' + text_format.format(*element)
+    else:
+        return row_text + ' & ' + text_format.format(element)
+
+def write_table_line(param, param_error, f):
+
+        f.write(cloud.capitalize() + ' & ' + width_text + ' & ' + \
+                #intercept_text + ' & ' + \
+                dgr_text + \
+                ' \\\\ \n')
+
 
 
 '''
@@ -2218,25 +2325,29 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs):
     krumholz_results = {}
 
     # Fit to sternberg model
-    alphaG, Z, phi_g = \
-        fit_sternberg(h_sd,
-                      rh2,
-                      guesses=sternberg_params['guesses'],
-                      vary=sternberg_params['param_vary'],
-                      )
+    if rh2.size > 3:
+        alphaG, Z, phi_g = \
+            fit_sternberg(h_sd,
+                          rh2,
+                          guesses=sternberg_params['guesses'],
+                          vary=sternberg_params['param_vary'],
+                          )
+
+        # Fit to krumholz model
+        phi_cnm, Z, phi_mol = \
+            fit_krumholz(h_sd,
+                         rh2,
+                         guesses=krumholz_params['guesses'],
+                         vary=krumholz_params['param_vary'],
+                         )
+    else:
+        alphaG, Z, phi_g, phi_cnm, Z, phi_mol = 6 * [np.nan]
 
     # keep results
     sternberg_results['alphaG'] = alphaG
     sternberg_results['Z'] = Z
     sternberg_results['phi_g'] = phi_g
 
-    # Fit to krumholz model
-    phi_cnm, Z, phi_mol = \
-        fit_krumholz(h_sd,
-                     rh2,
-                     guesses=krumholz_params['guesses'],
-                     vary=krumholz_params['param_vary'],
-                     )
 
     # keep results
     krumholz_results['phi_cnm'] = phi_cnm
@@ -2295,14 +2406,14 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
     h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
 
     params = [params['phi_cnm'], params['Z'], params['phi_mol']]
-    if params[0] <= 0:
-        params[0] = 1
-
-    rh2_fit, f_H2, f_HI = k09.calc_rh2(h_sd,
-                                       phi_cnm=params[0],
-                                       Z=params[1],
-                                       phi_mol=params[2],
-                                       return_fractions=True)
+    if params[0] <= 0 or np.isnan(params[0]):
+        rh2_fit, f_H2, f_HI = np.empty(1), np.empty(1), np.empty(1)
+    else:
+        rh2_fit, f_H2, f_HI = k09.calc_rh2(h_sd,
+                                           phi_cnm=params[0],
+                                           Z=params[1],
+                                           phi_mol=params[2],
+                                           return_fractions=True)
 
     output = [rh2_fit, h_sd]
 
@@ -2466,12 +2577,14 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500),
     h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
 
     params = [params['alphaG'], params['Z'], params['phi_g']]
-
-    rh2_fit, f_H2, f_HI = s14.calc_rh2(h_sd,
-                                       alphaG=params[0],
-                                       Z=params[1],
-                                       phi_g=params[2],
-                                       return_fractions=True)
+    if params[0] <= 0 or np.isnan(params[0]):
+        rh2_fit, f_H2, f_HI = np.empty(1), np.empty(1), np.empty(1)
+    else:
+        rh2_fit, f_H2, f_HI = s14.calc_rh2(h_sd,
+                                           alphaG=params[0],
+                                           Z=params[1],
+                                           phi_g=params[2],
+                                           return_fractions=True)
 
     output = [rh2_fit, h_sd]
 
@@ -2479,7 +2592,7 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500),
         output.append(f_H2)
         output.append(f_HI)
     if return_hisd:
-        hi_sd = (1 - f_H2) * h_sd
+        hi_sd = f_HI * h_sd
         output.append(hi_sd)
 
     return output
@@ -2909,7 +3022,8 @@ def bootstrap_worker(global_args, i):
 
         # mask negative ratios
         if 1:
-            mask = rh2_core < 0
+            mask = (rh2_core < 0) | (np.isnan(rh2_core))
+            #mask = (rh2_core < 0)
             rh2_core = rh2_core[~mask]
             h_sd_core = h_sd_core[~mask]
 
@@ -2922,6 +3036,7 @@ def bootstrap_worker(global_args, i):
 
         if 0:
             print core, 'phi_cnm', ss_model_result['krumholz_results']['phi_cnm']
+        if 0:
             import matplotlib.pyplot as plt
             plt.close(); plt.clf();
             rh2_fit, hsd_fit = \
@@ -3977,8 +4092,8 @@ def main():
     results = {}
 
     clouds = (
-              'california',
               'taurus',
+              'california',
               'perseus',
               )
 
@@ -4048,7 +4163,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4069,7 +4184,7 @@ def main():
                 'num_bootstraps': 10000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
-                'multiprocess': 1,
+                'multiprocess': True,
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
