@@ -1408,7 +1408,7 @@ def print_av_error_stats(av, av_error):
 
 def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
         model_analysis=None, limits=None, scale=('linear', 'linear'),
-        filename=None, show_params=False):
+        filename=None, show_params=False, levels=5):
 
     # Import external modules
     import numpy as np
@@ -1702,19 +1702,16 @@ def plot_multicloud_results(results):
         core_names = []
         for core in cores_to_plot:
             core_indices = cores[core]['indices_orig']
-            #print core_indices.shape
-            #if core_indices is not None:
-            if 0:
-                core_names.append(core)
-                hisd_core_list.append(hisd_list[i][core_indices])
-                hsd_core_list.append(hsd_list[i][core_indices])
-                rh2_core_list.append(rh2_list[i][core_indices])
+            core_names.append(core)
+            hisd_core_list.append(hisd_list[i][core_indices])
+            hsd_core_list.append(hsd_list[i][core_indices])
+            rh2_core_list.append(rh2_list[i][core_indices])
 
+            if 0:
                 rh2_copy = rh2_list[i].copy()
                 rh2_copy[core_indices] = 1000
                 plt.imshow(rh2_copy, origin='lower')
                 plt.savefig('/usr/users/ezbc/scratch/core_' + core + '.png')
-
 
         core_names_list.append(core_names)
         hisd_cores_list.append(hisd_core_list)
@@ -1792,7 +1789,7 @@ def plot_multicloud_results(results):
 
         # Plot HI vs H
         # ---------------------------------------------------------------------
-        levels = (0.9, 0.8, 0.6)
+        levels = (0.9, 0.8, 0.6, 0.3)
         for i, cloud in enumerate(cloud_name_list):
             core_names = core_names_list[i]
             print('\n\tPlotting Models')
@@ -1888,41 +1885,39 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
     text_param_format ='{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$'
 
     #print_dict_keys(mc_analysis_dict)
-    params_to_write = ['phi_mol', 'phi_cnm', 'Z', 'alphaG', 'phi_g']
+    params_to_write = ['phi_cnm', 'alphaG']
 
     # Collect parameter names for each model for each core
-    for cloud in mc_analysis_dict:
+    for cloud in ('california', 'perseus', 'taurus'):
         mc_analysis = mc_analysis_dict[cloud]
         for model in models:
             # each core correspond to a row
             for cloud_row, core_name in enumerate(mc_analysis['cores']):
                 core = mc_analysis['cores'][core_name]
-                row_text = ''
                 if cloud_row == 0:
-                    row_text = add_row_element(row_text,
-                                               cloud)
+                    row_text = cloud.capitalize() + ' & '
                 else:
-                    row_text = add_row_element(row_text,
-                                               '')
+                    row_text = ' & '
                 row_text = add_row_element(row_text,
-                                           core)
-                for i, param_name in enumerate(core[model + '_results']):
+                                           core_name)
+                if model == 'krumholz':
+                    params_to_write = ['phi_cnm',]
+                else:
+                    params_to_write = ['alphaG',]
+                for i, param_name in enumerate(params_to_write):
+                    param = \
+                        core[model + '_results'][param_name]
+                    param_error = \
+                        core[model + '_results'][param_name + '_error']
 
-                    param_name = param_name.replace('_error', '')
-                    if  param_name in params_to_write:
-                        param = \
-                            core[model + '_results'][param_name]
-                        param_error = \
-                            core[model + '_results'][param_name + '_error']
+                    param_info = (param, param_error[0], param_error[1])
 
-                        param_info = (param, param_error[0], param_error[1])
+                    row_text = \
+                        add_row_element(row_text,
+                                        param_info,
+                                        text_format=text_param_format)
 
-                        row_text = \
-                            add_row_element(row_text,
-                                            param_info,
-                                            text_format=text_param_format)
-
-                row_text += ' \\ \n'
+                row_text += ' \\\\ \n'
 
                 if cloud_row == len(mc_analysis['cores']) - 1:
                     row_text += '\hrule\n'
@@ -1937,14 +1932,6 @@ def add_row_element(row_text, element, text_format='{0:s}'):
         return row_text + ' & ' + text_format.format(*element)
     else:
         return row_text + ' & ' + text_format.format(element)
-
-def write_table_line(param, param_error, f):
-
-        f.write(cloud.capitalize() + ' & ' + width_text + ' & ' + \
-                #intercept_text + ' & ' + \
-                dgr_text + \
-                ' \\\\ \n')
-
 
 
 '''
