@@ -1408,7 +1408,7 @@ def print_av_error_stats(av, av_error):
 
 def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
         model_analysis=None, limits=None, scale=('linear', 'linear'),
-        filename=None, show_params=False, levels=5):
+        filename=None, show_params=False, levels=5, ncols=2):
 
     # Import external modules
     import numpy as np
@@ -1418,19 +1418,23 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
 
     # Determine size of figure and number of grids
     # --------------------------------------------
-    n = int(np.ceil(len(core_names)**0.5))
-    if n**2 - n > len(core_names):
-        nrows = n - 1
-        ncols = 2
-        y_scaling = 1.0 - 1.0 / n
-    else:
-        nrows, ncols = n, n
-        y_scaling = 1.0
+    if 0:
+        n = int(np.ceil(len(core_names)**0.5))
+        if n**2 - n > len(core_names):
+            nrows = n - 1
+            ncols = ncols
+            y_scaling = 1.0 - 1.0 / n
+        else:
+            nrows, ncols = n, n
+            y_scaling = 1.0
 
-    n = len(core_names)
-    ncols = 2
-    nrows = (n + 1) / ncols
-    y_scaling = nrows / float(ncols)
+    if 1:
+        n = len(core_names)
+        nrows = (n + 1) / ncols
+        if n > nrows * ncols:
+            nrows += 1
+        y_scaling = nrows / 2.0
+        x_scaling = ncols / 2.0
 
     # Set up plot aesthetics
     # ----------------------
@@ -1443,7 +1447,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
     font_scale = 9
 
-    figsize = (3.6, 3.6*y_scaling)
+    figsize = (3.6*x_scaling, 3.6*y_scaling)
 
     # Create figure instance
     fig = plt.figure(figsize=figsize)
@@ -1452,6 +1456,11 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
         n = 2
 
     c_cycle = myplt.set_color_cycle(num_colors=3, cmap_limits=[0, 0.8])
+
+    if limits is not None:
+        aspect = (limits[1] - limits[0]) / (limits[3] - limits[2])
+    else:
+        aspect = False
 
     axes = AxesGrid(fig, (1,1,1),
                     nrows_ncols=(nrows, ncols),
@@ -1496,27 +1505,29 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
         #ax.set_xticks([0, 40, 80, 120])
 
         if 1:
+            cmap = myplt.truncate_colormap(plt.cm.gray_r,
+                                           minval=0.2,
+                                           maxval=1)
+
             l1 = myplt.scatter_contour(h_sd_nonans.ravel(),
                                  hi_sd_nonans.ravel(),
                                  threshold=2,
                                  log_counts=0,
-                                 levels=3,
+                                 levels=levels,
                                  ax=ax,
                                  histogram2d_args=dict(bins=20,
                                         range=((limits[0], limits[1]),
                                                (limits[2], limits[3]))),
                                  plot_args=dict(marker='o',
                                                 linestyle='none',
+                                                markeredgewidth=0,
                                                 color='black',
-                                                alpha=0.7,
+                                                alpha=0.3,
                                                 markersize=2),
                                  contour_args=dict(
-                                                   cmap=plt.cm.gray_r,
-                                                   #cmap=cmap,
+                                                   cmap=cmap,
                                                    ),
                                  )
-
-
 
         if 1:
             # get bootstrap results
@@ -1536,12 +1547,12 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                     core_results['krumholz_results']['phi_mol'][j]
                 if 'sternberg' in model:
                     model_fits = calc_sternberg(params,
-                                              h_sd_extent=(0.001, 1000),
+                                              h_sd_extent=(0, limits[1]),
                                               return_fractions=False,
                                               return_hisd=True)
                 elif 'krumholz' in model:
                     model_fits = calc_krumholz(params,
-                                              h_sd_extent=(0.001, 1000),
+                                              h_sd_extent=(0, limits[1]),
                                               return_fractions=False,
                                               return_hisd=True)
 
@@ -1596,8 +1607,8 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                     )
 
         ax.annotate(core,
-                    xytext=(0.95, 0.95),
-                    xy=(0.95, 0.95),
+                    xytext=(0.9, 0.1),
+                    xy=(0, 0),
                     textcoords='axes fraction',
                     xycoords='axes fraction',
                     size=10,
@@ -1605,8 +1616,8 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                     bbox=dict(boxstyle='square',
                               facecolor='w',
                               alpha=1),
+                    verticalalignment='bottom',
                     horizontalalignment='right',
-                    verticalalignment='top',
                     )
 
         ax.set_xscale(scale[0])
@@ -1622,7 +1633,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
         ax.set_ylabel(r'$\Sigma_{\rm H\,I}$ [M$_\odot$ pc$^{-2}$]',)
 
         if 'log' not in scale:
-            ax.locator_params(nbins=6)
+            ax.locator_params(nbins=5)
 
     if 0:
         fig.legend(l2 + l3,
@@ -1639,7 +1650,11 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                    borderaxespad=0.0)
 
     if filename is not None:
-        plt.savefig(filename, bbox_inches='tight')
+        if filename[-3:] == 'pdf':
+            dpi = 600
+        else:
+            dpi = 100
+        plt.savefig(filename, bbox_inches='tight', dpi=dpi)
 
 def plot_multicloud_results(results):
 
@@ -1732,7 +1747,12 @@ def plot_multicloud_results(results):
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
                              filename,
-                             models=('krumholz',))
+                             models=('krumholz','sternberg'))
+
+    # Write param summary to dataframe for ease of use
+    filename = results_dir + 'tables/multicloud_model_params.csv'
+    write_param_csv(model_analysis_dict,
+                    filename,)
 
     # Plot the results
     # =========================================================================
@@ -1794,46 +1814,52 @@ def plot_multicloud_results(results):
             core_names = core_names_list[i]
             print('\n\tPlotting Models')
             if len(core_names) > 10:
-                filename = plot_kwargs['figure_dir'] + \
-                           'models/' + cloud + '_hisd_vs_hsd_1.' + filetype
-                plot_hi_vs_h_grid(hsd_cores_list[i][:10],
-                                  hisd_cores_list[i][:10],
-                                  core_names=core_names[:10],
-                                  model_results=model_results_list[i],
-                                  model_analysis=\
+                ncols = 5
+                if 0:
+                    filename = plot_kwargs['figure_dir'] + \
+                               'models/' + cloud + '_hisd_vs_hsd_1.' + filetype
+                    plot_hi_vs_h_grid(hsd_cores_list[i][:10],
+                                      hisd_cores_list[i][:10],
+                                      core_names=core_names[:10],
+                                      model_results=model_results_list[i],
+                                      model_analysis=\
+                                              model_analysis_list[i]['cores'],
+                                      limits=[-9, 159, -1.5, 15],
+                                      scale=('linear', 'linear'),
+                                      levels=levels,
+                                      filename=filename,
+                                      )
+                    filename = plot_kwargs['figure_dir'] + \
+                               'models/' + cloud + '_hisd_vs_hsd_2.' + filetype
+                    plot_hi_vs_h_grid(hsd_cores_list[i][10:],
+                                      hisd_cores_list[i][10:],
+                                      core_names=core_names[10:],
+                                      model_results=model_results_list[i],
+                                      model_analysis=\
                                           model_analysis_list[i]['cores'],
-                                  limits=[-9, 159, -1.5, 15],
-                                  scale=('linear', 'linear'),
-                                  levels=levels,
-                                  filename=filename,
-                                  )
-                filename = plot_kwargs['figure_dir'] + \
-                           'models/' + cloud + '_hisd_vs_hsd_2.' + filetype
-                plot_hi_vs_h_grid(hsd_cores_list[i][10:],
-                                  hisd_cores_list[i][10:],
-                                  core_names=core_names[10:],
-                                  model_results=model_results_list[i],
-                                  model_analysis=\
-                                      model_analysis_list[i]['cores'],
-                                  limits=[-9, 159, -1.5, 15],
-                                  levels=levels,
-                                  scale=('linear', 'linear'),
-                                  filename=filename,
-                                  )
+                                      limits=[-9, 159, -1.5, 15],
+                                      levels=levels,
+                                      scale=('linear', 'linear'),
+                                      filename=filename,
+                                      )
             else:
-                filename = plot_kwargs['figure_dir'] + \
-                           'models/' + cloud + '_hisd_vs_hsd.' + filetype
-                plot_hi_vs_h_grid(hsd_cores_list[i],
-                                  hisd_cores_list[i],
-                                  core_names=core_names,
-                                  model_results=model_results_list[i],
-                                  model_analysis=\
-                                      model_analysis_list[i]['cores'],
-                                  limits=[-9, 159, -1.5, 15],
-                                  levels=levels,
-                                  scale=('linear', 'linear'),
-                                  filename=filename,
-                                  )
+                ncols = 2
+            filename = plot_kwargs['figure_dir'] + \
+                       'models/' + cloud + '_hisd_vs_hsd.' + filetype
+            plot_hi_vs_h_grid(hsd_cores_list[i],
+                              hisd_cores_list[i],
+                              core_names=core_names,
+                              model_results=model_results_list[i],
+                              model_analysis=\
+                                  model_analysis_list[i]['cores'],
+                              limits=[-9, 100, 2, 14],
+                              #limits=[-9, 159, 3, 14],
+                              levels=levels,
+                              #scale=('log', 'linear'),
+                              scale=('linear', 'linear'),
+                              filename=filename,
+                              ncols=ncols
+                              )
         if 0:
             filename = plot_kwargs['figure_dir'] + \
                        'av_nhi/multicloud_av_vs_nhi_log.' + filetype
@@ -1877,6 +1903,66 @@ def print_dict_keys(d):
             print '--'
             print_dict_keys(d[key])
 
+def write_param_csv(mc_analysis_dict, filename):
+
+    import pandas as pd
+
+    d = {}
+
+    #print_dict_keys(mc_analysis_dict)
+    params_to_write = ['phi_cnm', 'alphaG']
+
+    d['cloud'] = []
+    d['core'] = []
+    for param in params_to_write:
+        d[param] = []
+        d[param + '_error_low'] = []
+        d[param + '_error_high'] = []
+
+    # Collect parameter names for each model for each core
+    for cloud in ('california', 'perseus', 'taurus'):
+        mc_analysis = mc_analysis_dict[cloud]
+        core_names = np.sort(mc_analysis['cores'].keys())
+
+        # each core correspond to a row
+        for cloud_row, core_name in enumerate(core_names):
+            core = mc_analysis['cores'][core_name]
+
+            d['cloud'].append(cloud)
+            d['core'].append(core_name)
+
+            # append model params and errors to row
+            for model in ('krumholz', 'sternberg'):
+                if model == 'krumholz':
+                    params_to_write = ['phi_cnm',]
+                else:
+                    params_to_write = ['alphaG',]
+                for i, param_name in enumerate(params_to_write):
+                    param = \
+                        core[model + '_results'][param_name]
+                    param_error = \
+                        core[model + '_results'][param_name + '_error']
+
+                    d[param_name].append(param)
+                    d[param_name + '_error_low'].append(param_error[0])
+                    d[param_name + '_error_high'].append(param_error[1])
+
+    # Create dataframe and write it!
+    df = pd.DataFrame(data=d,)
+    df.to_csv(filename,
+              sep=',',
+              columns=('cloud',
+                       'core',
+                       'phi_cnm',
+                       'phi_cnm_error_low',
+                       'phi_cnm_error_high',
+                       'alphaG',
+                       'alphaG_error_low',
+                       'alphaG_error_high',
+                       ),
+              index=False,
+              )
+
 def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
 
     # Open file to be appended
@@ -1890,16 +1976,19 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
     # Collect parameter names for each model for each core
     for cloud in ('california', 'perseus', 'taurus'):
         mc_analysis = mc_analysis_dict[cloud]
-        for model in models:
-            # each core correspond to a row
-            for cloud_row, core_name in enumerate(mc_analysis['cores']):
-                core = mc_analysis['cores'][core_name]
-                if cloud_row == 0:
-                    row_text = cloud.capitalize() + ' & '
-                else:
-                    row_text = ' & '
-                row_text = add_row_element(row_text,
-                                           core_name)
+        core_names = np.sort(mc_analysis['cores'].keys())
+        # each core correspond to a row
+        for cloud_row, core_name in enumerate(core_names):
+            core = mc_analysis['cores'][core_name]
+            if cloud_row == 0:
+                row_text = cloud.capitalize()
+            else:
+                row_text = ''
+            row_text = add_row_element(row_text,
+                                       core_name)
+
+            # append model params and errors to row
+            for model in models:
                 if model == 'krumholz':
                     params_to_write = ['phi_cnm',]
                 else:
@@ -1917,12 +2006,16 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
                                         param_info,
                                         text_format=text_param_format)
 
-                row_text += ' \\\\ \n'
 
-                if cloud_row == len(mc_analysis['cores']) - 1:
-                    row_text += '\hrule\n'
+            row_text += ' \\\\[0.1cm] \n'
+            if cloud_row == len(mc_analysis['cores']) - 1 \
+                and cloud != 'taurus':
+                row_text += '\hline  \\\\[-0.2cm] \n'
+            elif cloud_row == len(mc_analysis['cores']) - 1 and \
+                    cloud == 'taurus':
+                row_text.replace(r'\\[0.1cm] \n', '')
 
-                f.write(row_text)
+            f.write(row_text)
 
     f.close()
 
