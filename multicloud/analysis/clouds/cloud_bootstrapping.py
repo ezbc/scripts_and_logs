@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import myimage_analysis as myia
 from multiprocessing.queues import Queue
 import mygeometry as myg
+import scipy
 
 
 global debugging
@@ -1129,7 +1130,7 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
 def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
         names_list=None, limits=None, savedir='./', filename=None, show=True,
         scale=(0,0), n_bins=200, fit_gaussian=False, returnimage=False,
-        title='', base=10.0, normalize=False):
+        title='', base=10.0, normalize=False, hi_trans_dict=None):
 
     ''' Plots a probability distribution function of an image.
 
@@ -1164,7 +1165,14 @@ def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
                     share_all=True)
 
 
-    c_cycle = myplt.set_color_cycle(num_colors=3, cmap_limits=[0, 0.8])
+    # create color cycle
+    if hi_trans_dict is None:
+        num_colors = 3
+    else:
+        num_colors = 3
+
+    c_cycle = myplt.set_color_cycle(num_colors=num_colors,
+                                    cmap_limits=[0, 0.8])
 
     for i in xrange(0, len(names_list)):
         cloud_name = names_list[i]
@@ -1211,12 +1219,18 @@ def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
         n_av_nhi, bin_centers = hist(av_nhi_nonans)
         n_av_nh2, bin_centers = hist(av_nh2_nonans)
 
+        norm = np.sum(n_av)
+        n_av /= norm
+        n_av_nhi /= norm
+        n_av_nh2 /= norm
+
         ax.errorbar(
             bin_centers,
             n_av,
             #yerr = n**0.5,
             marker = '',
             label=r'A$_V$',
+            linewidth=1.5,
             color=c_cycle[0],
             drawstyle = 'steps-mid'
         )
@@ -1227,6 +1241,7 @@ def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
             marker = '',
             label=r'$N($H$\textsc{i}) \times$ DGR',
             #color = 'k',
+            linewidth=1.5,
             color=c_cycle[1],
             drawstyle = 'steps-mid'
         )
@@ -1236,6 +1251,7 @@ def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
             #yerr = n**0.5,
             label=r'$2\,N($H$_2) \times$ DGR',
             marker = '',
+            linewidth=1.4,
             #color = 'k',
             color=c_cycle[2],
             drawstyle = 'steps-mid'
@@ -1259,6 +1275,39 @@ def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
             ax.plot(bin_centers,
                     gauss(bin_centers, *popt),
                     color = 'r')
+
+        if hi_trans_dict is not None:
+            count = 0
+            hi_trans_list = []
+            hi_trans_error_list = []
+            for core in hi_trans_dict:
+                if hi_trans_dict[core]['cloud'] == cloud_name:
+                    hi_trans = hi_trans_dict[core]['k09_transition']
+                    hi_trans_error = \
+                        np.array(hi_trans_dict[core]['k09_transition_error'])
+                    nhi_trans = hi_trans * 1.25 * dgr
+                    nhi_trans_error = hi_trans_error * 1.25 * dgr
+                    #if count == 0:
+                    #    label = r'H\,$\textsc{i}$-to-H$_2$ transition'
+                    #else:
+                    #    label = None
+                    #count += 1
+
+                    hi_trans_list.append(nhi_trans)
+                    hi_trans_error_list.append(nhi_trans_error)
+
+            label = r'H\,$\textsc{i}$-to-H$_2$ transition'
+
+            ax.axvspan(np.min(hi_trans_list) - np.mean(hi_trans_error_list),
+                       np.max(hi_trans_list) + np.mean(hi_trans_error_list),
+                       alpha=0.2,
+                       linewidth=0,
+                       #color=c_cycle[3],
+                       color='k',
+                       edgecolor='none',
+                       label=label,
+                       )
+
 
         try:
             if scale[0] == 0:
@@ -1561,6 +1610,11 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                         color=c_cycle[2],
                         alpha=alpha,
                         )
+                hi_trans = core_results['krumholz_results']['hi_transition'][j]
+                ax.axvline(hi_trans,
+                           alpha=0.5,
+                           color='r')
+
         else:
             if 0:
                 l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
@@ -1754,6 +1808,12 @@ def plot_multicloud_results(results):
     write_param_csv(model_analysis_dict,
                     filename,)
 
+    # Write table for
+    filename = results_dir + 'tables/multicloud_hi_transitions.csv'
+    hi_trans_dict = collect_hi_transition_results(model_analysis_list,
+                                                  cloud_name_list,
+                                                  filename=filename,)
+
     # Plot the results
     # =========================================================================
 
@@ -1799,9 +1859,11 @@ def plot_multicloud_results(results):
                   nhi_list=nhi_list,
                   nh2_list=nh2_list,
                   dgr_list=dgr_list,
+                  hi_trans_dict=hi_trans_dict,
                   #limits = [-4,3,1,10000],
                   names_list=cloud_name_list,
-                  limits = [0.07,14,7,6000],
+                  #limits = [0.07,14,7,6000],
+                  limits=[10**-2, 3 * 10**1, 5 * 10**-4, 3 * 10**-1],
                   scale=(1,1),
                   filename=filename,
                   #core_names=core_name_list,
@@ -1895,6 +1957,36 @@ def plot_multicloud_results(results):
 '''
 Data Prep functions
 '''
+
+def collect_hi_transition_results(model_analysis_list, cloud_list,
+        filename=None):
+
+    import pandas as pd
+
+    hi_trans_dict = {}
+
+    for i, cloud in enumerate(cloud_list):
+        for core_name in model_analysis_list[i]['cores']:
+            core = model_analysis_list[i]['cores'][core_name]
+            hi_trans_k09 = \
+                core['krumholz_results']['hi_transition']
+            hi_trans_k09_error = \
+                core['krumholz_results']['hi_transition_error']
+            hi_trans_s14 = \
+                core['sternberg_results']['hi_transition']
+            hi_trans_s14_error = \
+                core['sternberg_results']['hi_transition_error']
+
+            hi_trans_dict[core_name] = \
+                {'cloud': cloud,
+                 'k09_transition': hi_trans_k09,
+                 'k09_transition_error': hi_trans_k09_error,
+                 's14_transition': hi_trans_s14,
+                 's14_transition_error': hi_trans_s14_error,
+                 }
+
+    return hi_trans_dict
+
 def print_dict_keys(d):
 
     for key in d:
@@ -1988,9 +2080,9 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
                                        core_name)
 
             # append model params and errors to row
-            for model in models:
+            for model in ('sternberg', 'krumholz',):
                 if model == 'krumholz':
-                    params_to_write = ['phi_cnm',]
+                    params_to_write = ['phi_cnm', 'hi_transition']
                 else:
                     params_to_write = ['alphaG',]
                 for i, param_name in enumerate(params_to_write):
@@ -1998,6 +2090,8 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
                         core[model + '_results'][param_name]
                     param_error = \
                         core[model + '_results'][param_name + '_error']
+
+                    print param_name, param, param_error
 
                     param_info = (param, param_error[0], param_error[1])
 
@@ -2406,33 +2500,38 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs):
 
     # Fit to sternberg model
     if rh2.size > 3:
-        alphaG, Z, phi_g = \
+        alphaG, Z_s14, phi_g = \
             fit_sternberg(h_sd,
                           rh2,
                           guesses=sternberg_params['guesses'],
                           vary=sternberg_params['param_vary'],
+                          radiation_type=sternberg_params['radiation_type']
                           )
 
         # Fit to krumholz model
-        phi_cnm, Z, phi_mol = \
+        phi_cnm, Z_k09, phi_mol = \
             fit_krumholz(h_sd,
                          rh2,
                          guesses=krumholz_params['guesses'],
                          vary=krumholz_params['param_vary'],
                          )
     else:
-        alphaG, Z, phi_g, phi_cnm, Z, phi_mol = 6 * [np.nan]
+        alphaG, Z_s14, phi_g, phi_cnm, Z_k09, phi_mol = 6 * [np.nan]
 
     # keep results
     sternberg_results['alphaG'] = alphaG
-    sternberg_results['Z'] = Z
+    sternberg_results['Z'] = Z_s14
     sternberg_results['phi_g'] = phi_g
 
+    print 'alphaG', alphaG
 
     # keep results
     krumholz_results['phi_cnm'] = phi_cnm
-    krumholz_results['Z'] = Z
+    krumholz_results['Z'] = Z_k09
     krumholz_results['phi_mol'] = phi_mol
+
+    if 0:
+        print 'Z_s+14 =', Z_s14, ' Z_k+09 = ', Z_k09
 
     # see eq 6 of sternberg+09
     # alphaG is the number density of the CNM over the minimum number
@@ -2453,8 +2552,45 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs):
 
     return results
 
+
+def add_hi_transition_calc(ss_model_result):
+
+    h_sd_fit = np.linspace(0, 100, 1000)
+
+    # To get HI transition, calculate model fits, then find where RH2 = 1
+    for model_name in ss_model_result:
+        model = ss_model_result[model_name]
+
+        params = {}
+
+        if 'sternberg' in model_name:
+            params['phi_g'] = model['phi_g']
+            params['Z'] = model['Z']
+            params['alphaG'] = model['alphaG']
+            model_fits = calc_sternberg(params,
+                                      h_sd=h_sd_fit,
+                                      return_fractions=False,
+                                      return_hisd=False,
+                                      )
+        elif 'krumholz' in model_name:
+            params['phi_cnm'] = model['phi_cnm']
+            params['Z'] = model['Z']
+            params['phi_mol'] = model['phi_mol']
+            model_fits = calc_krumholz(params,
+                                      h_sd=h_sd_fit,
+                                      return_fractions=False,
+                                      return_hisd=False,
+                                      )
+
+        rh2_fit = model_fits[0]
+
+        # when R_H2 = 1, HI-to-H2 transition
+        hi_transition = np.interp(1, rh2_fit, h_sd_fit) / 2.0
+
+        model['hi_transition'] = hi_transition
+
 def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
-        return_hisd=False):
+        return_hisd=False, h_sd=None):
 
     '''
     Parameters
@@ -2482,8 +2618,9 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
     from scipy import stats
     from myscience import krumholz09 as k09
 
-    # Create large array of h_sd
-    h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
+    # Get large array of h_sd
+    if h_sd is None:
+        h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
 
     params = [params['phi_cnm'], params['Z'], params['phi_mol']]
     if params[0] <= 0 or np.isnan(params[0]):
@@ -2624,8 +2761,8 @@ def analyze_krumholz_model(krumholz_results):
 
     return krumholz_results
 
-def calc_sternberg(params, h_sd_extent=(0.001, 500),
-        return_fractions=True, return_hisd=False):
+def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
+        return_hisd=False, h_sd=None):
 
     '''
     Parameters
@@ -2654,7 +2791,8 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500),
     from myscience import sternberg14 as s14
 
     # Create large array of h_sd
-    h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
+    if h_sd is None:
+        h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
 
     params = [params['alphaG'], params['Z'], params['phi_g']]
     if params[0] <= 0 or np.isnan(params[0]):
@@ -2678,7 +2816,7 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500),
     return output
 
 def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
-        verbose=False, vary=[True, True, True]):
+        verbose=False, vary=[True, True, True], radiation_type='isotropic'):
 
     '''
     Parameters
@@ -2710,7 +2848,8 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         Z = params['Z'].value
 
         rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                 return_fractions=False)
+                                 return_fractions=False,
+                                 radiation_type=radiation_type)
 
         chisq = np.sum(np.abs(rh2 - rh2_model))
 
@@ -2884,7 +3023,8 @@ def create_filename_base(global_args):
             bin_name + weights_name + \
             region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name + \
-            '_' + hi_range_name
+            '_' + hi_range_name + '_' + global_args['radiation_type']
+
 
     return filename_extension, global_args
 
@@ -3112,6 +3252,9 @@ def bootstrap_worker(global_args, i):
                                     rh2_core,
                                     model_kwargs=model_kwargs,
                                     )
+
+        # get HI transition result
+        add_hi_transition_calc(ss_model_result)
         ss_model_results[core] = ss_model_result
 
         if 0:
@@ -3119,18 +3262,38 @@ def bootstrap_worker(global_args, i):
         if 0:
             import matplotlib.pyplot as plt
             plt.close(); plt.clf();
+            hi_sd_core = hi_sd_image[core_indices][~mask]
             rh2_fit, hsd_fit = \
                 calc_sternberg(ss_model_result['sternberg_results'],
-                              h_sd_extent=[1, 100],
+                              h_sd_extent=[1e-3, 100],
                               return_fractions=False)
             rh2_fit, hsd_fit = \
                 calc_krumholz(ss_model_result['krumholz_results'],
-                              h_sd_extent=[1, 100],
+                              h_sd_extent=[1e-3, 100],
                               return_fractions=False)
             #print ss_model_result['sternberg_results']['alphaG']
 
+            # fit spline to R_H2 as a function of HI surf dense
+            sort_indices = np.argsort(hi_sd_core)
+            hi_sd_core_sorted = hi_sd_core[sort_indices]
+            rh2_core_sorted = rh2_core[sort_indices]
+            rh2_spline = \
+                scipy.interpolate.UnivariateSpline(
+                                                   hi_sd_core_sorted,
+                                                   rh2_core_sorted,
+                                                   )
+            hi_sd_fit = np.arange(0, 100, 1)
+            rh2_spline_fit = rh2_spline(hi_sd_fit)
+
+            # when R_H2 = 1, HI-to-H2 transition
+            hi_transition = np.interp(1, rh2_fit, hsd_fit) / 2.0
+
+            print 'hi trans =', hi_transition
+
             plt.scatter(h_sd_core, rh2_core, color='k', alpha=0.1)
             plt.plot(hsd_fit, rh2_fit, color='r', alpha=1)
+            plt.plot(hi_sd_fit, rh2_spline_fit, color='c', alpha=1)
+            plt.axvline(hi_transition)
             plt.yscale('log')
             plt.xlim([0,80]); plt.ylim([0.001, 10])
             plt.savefig('/usr/users/ezbc/scratch/rh2_vs_hsd' + \
@@ -3365,11 +3528,13 @@ def collect_bootstrap_results(processes, ss_model_kwargs):
                 {'phi_cnm': empty(),
                  'Z': empty(),
                  'phi_mol': empty(),
+                 'hi_transition': empty(),
                  }
         core_dict['sternberg_results'] = \
                 {'alphaG': empty(),
                  'Z': empty(),
                  'phi_g': empty(),
+                 'hi_transition': empty(),
                  }
     mc_results['data_params'] = \
             {'av_background_sim': empty(),
@@ -3629,7 +3794,7 @@ def get_model_fit_kwargs(cloud_name):
 
     '''
     vary_alphaG = True # Vary alphaG in S+14 fit?
-    vary_Z = False # Vary metallicity in S+14 fit?
+    vary_Z = True # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
@@ -3657,7 +3822,7 @@ def get_model_fit_kwargs(cloud_name):
     # Krumholz Parameters
     # --------------------
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
-    vary_Z = False # Vary metallicity in K+09 fit?
+    vary_Z = True # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
@@ -4067,6 +4232,8 @@ def run_cloud_analysis(global_args,):
 
     # Get model fitting params
     model_fitting = get_model_fit_kwargs(cloud_name)
+    model_fitting['sternberg_params']['radiation_type'] = \
+            global_args['radiation_type']
 
     # Get cores params
     cores = get_core_properties(data, cloud_name)
@@ -4227,13 +4394,19 @@ def main():
                #'2'
                )
 
+
     subtract_comps = (#True,
                       False,
                       )
 
+    radiation_type = (#'beamed',
+                      'isotropic',
+                      )
+
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
-            regions, subtract_comps, use_background, hi_range_calc)
+            regions, subtract_comps, use_background, hi_range_calc,
+            radiation_type)
 
     permutations = list(itertools.product(*elements))
 
@@ -4243,7 +4416,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4261,10 +4434,11 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 10000,
+                'num_bootstraps': 10,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 'multiprocess': True,
+                'radiation_type': permutation[12],
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
