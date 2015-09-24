@@ -2091,8 +2091,6 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
                     param_error = \
                         core[model + '_results'][param_name + '_error']
 
-                    print param_name, param, param_error
-
                     param_info = (param, param_error[0], param_error[1])
 
                     row_text = \
@@ -2523,8 +2521,6 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs):
     sternberg_results['Z'] = Z_s14
     sternberg_results['phi_g'] = phi_g
 
-    print 'alphaG', alphaG
-
     # keep results
     krumholz_results['phi_cnm'] = phi_cnm
     krumholz_results['Z'] = Z_k09
@@ -2551,7 +2547,6 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs):
     results['krumholz_results'] = krumholz_results
 
     return results
-
 
 def add_hi_transition_calc(ss_model_result):
 
@@ -3794,7 +3789,7 @@ def get_model_fit_kwargs(cloud_name):
 
     '''
     vary_alphaG = True # Vary alphaG in S+14 fit?
-    vary_Z = True # Vary metallicity in S+14 fit?
+    vary_Z = False # Vary metallicity in S+14 fit?
     vary_phi_g = False # Vary phi_g in S+14 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
@@ -3822,7 +3817,7 @@ def get_model_fit_kwargs(cloud_name):
     # Krumholz Parameters
     # --------------------
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
-    vary_Z = True # Vary metallicity in K+09 fit?
+    vary_Z = False # Vary metallicity in K+09 fit?
     vary_phi_mol = False # Vary phi_mol in K+09 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
@@ -4434,7 +4429,7 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 10,
+                'num_bootstraps': 1000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 'multiprocess': True,
