@@ -1300,7 +1300,7 @@ def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
 
             ax.axvspan(np.min(hi_trans_list) - np.mean(hi_trans_error_list),
                        np.max(hi_trans_list) + np.mean(hi_trans_error_list),
-                       alpha=0.2,
+                       alpha=0.4,
                        linewidth=0,
                        #color=c_cycle[3],
                        color='k',
@@ -4411,7 +4411,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
