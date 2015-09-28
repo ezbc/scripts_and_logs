@@ -1578,7 +1578,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                                                    ),
                                  )
 
-        if 1:
+        if 0:
             # get bootstrap results
             model = 'krumholz'
             core_results = model_results['cores'][core]
@@ -1622,13 +1622,24 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                         color=c_cycle[1],
                         alpha=0.75,
                         )
+            for model in ('krumholz',):
+                analysis = model_analysis[core][model + '_results']
+                plot_fits = calc_model_plot_fit(analysis,
+                                                model=model)
 
-            l3 = ax.plot(h_sd_fit, hi_sd_fit_krumholz,
-                    linestyle='--',
-                    label='K+09',
-                    color=c_cycle[2],
-                    alpha=0.75
-                    )
+                l3 = ax.plot(plot_fits[0], plot_fits[1],
+                        linestyle='--',
+                        label='K+09',
+                        color=c_cycle[2],
+                        alpha=0.8
+                        )
+
+                ax.fill_between(plot_fits[0], plot_fits[2], plot_fits[3],
+                                where=plot_fits[3] < plot_fits[2],
+                                facecolor=c_cycle[2],
+                                alpha=0.3,
+                                interpolate=True,
+                                )
 
         if i == 0:
             ax.legend(loc='lower right')
@@ -1710,6 +1721,73 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
             dpi = 100
         plt.savefig(filename, bbox_inches='tight', dpi=dpi)
 
+def calc_model_plot_fit(analysis, model='krumholz'):
+
+    if 'sternberg' in model:
+        alphaG = analysis['alphaG']
+        alphaG_low = alphaG - analysis['alphaG_error'][0]
+        alphaG_high = alphaG + analysis['alphaG_error'][1]
+
+        params = {'alphaG': alphaG,
+                  'phi_g': analysis['phi_g'],
+                  'Z': analysis['Z'],
+                  }
+        h_sd, hi_sd = calc_krumholz(params,
+                                  h_sd_extent=(0, 200),
+                                  return_fractions=False,
+                                  return_hisd=True)[1:3]
+
+        params = {'alphaG': alphaG_low,
+                  'phi_g': analysis['phi_g'],
+                  'Z': analysis['Z'],
+                  }
+        hi_sd_low = calc_krumholz(params,
+                                  h_sd_extent=(0, 200),
+                                  return_fractions=False,
+                                  return_hisd=True)[2]
+
+        params = {'alphaG': alphaG_high,
+                  'phi_g': analysis['phi_g'],
+                  'Z': analysis['Z'],
+                  }
+        hi_sd_high = calc_krumholz(params,
+                                  h_sd_extent=(0, 200),
+                                  return_fractions=False,
+                                  return_hisd=True)[2]
+    elif 'krumholz' in model:
+        phi_cnm = analysis['phi_cnm']
+        phi_cnm_low = phi_cnm - analysis['phi_cnm_error'][0]
+        phi_cnm_high = phi_cnm + analysis['phi_cnm_error'][1]
+
+        params = {'phi_cnm': phi_cnm,
+                  'phi_mol': analysis['phi_mol'],
+                  'Z': analysis['Z'],
+                  }
+        h_sd, hi_sd = calc_krumholz(params,
+                                  h_sd_extent=(0, 200),
+                                  return_fractions=False,
+                                  return_hisd=True)[1:3]
+
+        params = {'phi_cnm': phi_cnm_high,
+                  'phi_mol': analysis['phi_mol'],
+                  'Z': analysis['Z'],
+                  }
+        hi_sd_low = calc_krumholz(params,
+                                  h_sd_extent=(0, 200),
+                                  return_fractions=False,
+                                  return_hisd=True)[2]
+
+        params = {'phi_cnm': phi_cnm_low,
+                  'phi_mol': analysis['phi_mol'],
+                  'Z': analysis['Z'],
+                  }
+        hi_sd_high = calc_krumholz(params,
+                                  h_sd_extent=(0, 200),
+                                  return_fractions=False,
+                                  return_hisd=True)[2]
+
+    return h_sd, hi_sd, hi_sd_low, hi_sd_high
+
 def plot_multicloud_results(results):
 
     print('\nPlotting multicloud results...')
@@ -1735,6 +1813,7 @@ def plot_multicloud_results(results):
     fit_params_list = []
     cloud_name_list = []
     core_names_list = []
+    core_list = []
     for i, cloud_name in enumerate(results):
         results_dict = results[cloud_name]
         figure_dir = results_dict['filenames']['figure_dir']
@@ -1769,6 +1848,7 @@ def plot_multicloud_results(results):
         hsd_core_list = []
         hisd_core_list = []
         core_names = []
+        core_list.append(cores)
         for core in cores_to_plot:
             core_indices = cores[core]['indices_orig']
             core_names.append(core)
@@ -1806,7 +1886,10 @@ def plot_multicloud_results(results):
     # Write param summary to dataframe for ease of use
     filename = results_dir + 'tables/multicloud_model_params.csv'
     write_param_csv(model_analysis_dict,
-                    filename,)
+                    core_list,
+                    cloud_name_list,
+                    filename,
+                    )
 
     # Write table for
     filename = results_dir + 'tables/multicloud_hi_transitions.csv'
@@ -1995,7 +2078,7 @@ def print_dict_keys(d):
             print '--'
             print_dict_keys(d[key])
 
-def write_param_csv(mc_analysis_dict, filename):
+def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
 
     import pandas as pd
 
@@ -2006,22 +2089,36 @@ def write_param_csv(mc_analysis_dict, filename):
 
     d['cloud'] = []
     d['core'] = []
+    d['ra'] = []
+    d['dec'] = []
+    d['region_vertices'] = []
     for param in params_to_write:
         d[param] = []
         d[param + '_error_low'] = []
         d[param + '_error_high'] = []
 
     # Collect parameter names for each model for each core
-    for cloud in ('california', 'perseus', 'taurus'):
+    for i, cloud in enumerate(cloud_name_list):
         mc_analysis = mc_analysis_dict[cloud]
         core_names = np.sort(mc_analysis['cores'].keys())
+
+        cores = core_list[i]
 
         # each core correspond to a row
         for cloud_row, core_name in enumerate(core_names):
             core = mc_analysis['cores'][core_name]
 
+            core_props = cores[core_name]
+
             d['cloud'].append(cloud)
             d['core'].append(core_name)
+            ra = core_props['center_wcs'][0]
+            dec = core_props['center_wcs'][1]
+            ra_deg = 15*(ra[0] + ra[1] / 60. + ra[2] / 3600.)
+            dec_deg = dec[0] + dec[1] / 60. + dec[2] / 3600.
+            d['ra'].append(ra_deg)
+            d['dec'].append(dec_deg)
+            d['region_vertices'].append(core_props['poly_verts']['wcs'])
 
             # append model params and errors to row
             for model in ('krumholz', 'sternberg'):
@@ -2045,6 +2142,8 @@ def write_param_csv(mc_analysis_dict, filename):
               sep=',',
               columns=('cloud',
                        'core',
+                       'ra',
+                       'dec',
                        'phi_cnm',
                        'phi_cnm_error_low',
                        'phi_cnm_error_high',
@@ -2054,6 +2153,8 @@ def write_param_csv(mc_analysis_dict, filename):
                        ),
               index=False,
               )
+
+    df.save(filename.replace('csv', 'pickle'))
 
 def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
 
