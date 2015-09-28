@@ -2593,6 +2593,7 @@ def run_analysis(verbose=True, av_data_type='planck', region=None, clobber=0):
     # global properties written from script
     # 'av/taurus_analysis_global_properties.txt'
     global_properties_list = []
+    regions = ('taurus', 'california', 'perseus')
     for region_name in regions:
         filename = \
                 global_property_filename.replace(cloud_name, region)
@@ -2633,6 +2634,8 @@ def run_analysis(verbose=True, av_data_type='planck', region=None, clobber=0):
                             header=av_header)
 
     region_vertices = properties['regions'][cloud_name]['poly_verts']['pixel']
+
+    print region_vertices
 
     # block off region
     region_mask = np.logical_not(myg.get_polygon_mask(av_data_planck,

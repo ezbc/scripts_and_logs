@@ -7,6 +7,7 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.io import fits
 from astropy.wcs import WCS
+import mygeometry as myg
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -19,6 +20,7 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
     import pywcsgrid2 as wcs
     from matplotlib.patches import Polygon
     import matplotlib.patheffects as PathEffects
+    import myplotting as myplt
 
     # Set up plot aesthetics
     # ----------------------
@@ -82,8 +84,9 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
 
     # plot limits
     if limits is not None:
-        ax.set_xlim(limits[0],limits[2])
-        ax.set_ylim(limits[1],limits[3])
+        limits = myplt.convert_wcs_limits(limits, header)
+        ax.set_xlim(limits[0],limits[1])
+        ax.set_ylim(limits[2],limits[3])
 
     # Plot cores for each cloud
     # -------------------------
@@ -98,9 +101,9 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
             if 1:
                 ax.scatter(xpix,ypix,
                         color='w',
-                        s=100,
+                        s=40,
                         marker='+',
-                        linewidths=1.5)
+                        linewidths=0.75)
 
 
     if filename is not None:
@@ -120,30 +123,114 @@ def load_table():
                      )
     return df
 
-def load_cold_cores():
+def check_region(pos, regions):
 
+    selected_region = None
+    if pos[1] > 0:
+        for region in regions:
+            within_region = myg.point_in_polygon(pos,
+                                                 regions[region]['vertices']['wcs'])
+            if within_region:
+                selected_region = region
+
+            within_region = False
+
+
+
+    result = selected_region
+
+    return result
+
+def load_regions():
+
+    import pyregion as pyr
+
+    data_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
+
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    filename = region_dir + 'multicloud_divisions_coldcore_selection.reg'
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    regions = pyr.open(filename)
+
+    region_dict = {}
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        region_name = tag[tag.find('{')+1:tag.find('}')].lower()
+
+        if region_name in ('taurus', 'california', 'perseus'):
+            # Format vertices to be 2 x N array
+            poly_verts = []
+            for i in xrange(0, len(region.coord_list)/2):
+                poly_verts.append((region.coord_list[2*i],
+                                   region.coord_list[2*i+1]))
+
+            if 0:
+                poly_verts_pix = []
+                for i in xrange(0, len(poly_verts)):
+                    poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                        dec=poly_verts[i][1],
+                                        header=header)[:-1][::-1].tolist())
+
+            region_dict[region_name] = {}
+            region_dict[region_name]['vertices'] = {}
+            region_dict[region_name]['vertices']['wcs'] = np.array(poly_verts)
+            #region_dict['regions'][region_name]['poly_verts']['pixel'] = \
+            #    poly_verts_pix
+
+    return region_dict
+
+def load_cold_cores():
 
     # summary of cold clump data
     # http://wiki.cosmos.esa.int/planckpla2015/index.php/Catalogues#Individual_catalogues
 
-    data_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
-    filename = data_dir + 'HFI_PCCS_GCC_R2.02.fits'
+    table_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
+    df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
+    filename = table_dir + 'HFI_PCCS_GCC_R2.02.fits'
 
-    cc_hdu = fits.open(filename)
+    if 0:
+        print('\nAnalyzing table...')
+        cc_hdu = fits.open(filename)
 
-    cc_data = cc_hdu[1].data
+        cc_data = cc_hdu[1].data
 
-    df = pd.DataFrame()
-    df['Glon'] = np.empty(len(cc_data))
-    df['Glat'] = np.empty(len(cc_data))
-    df['ra'] = np.empty(len(cc_data))
-    df['dec'] = np.empty(len(cc_data))
-    for i in xrange(len(cc_data)):
-        #if myg.point_in_polygon(ra, region_vertices):
-        df['Glon'][i] = cc_data[i][1]
-        df['Glat'][i] = cc_data[i][2]
-        df['ra'][i] = cc_data[i][3]
-        df['dec'][i] = cc_data[i][4]
+        # get the region vertices
+        regions = load_regions()
+
+        df = dict()
+        df['Glon'] = []
+        df['Glat'] = []
+        df['ra'] = []
+        df['dec'] = []
+        df['Region'] = []
+        df['SNR'] = []
+        for i in xrange(len(cc_data)):
+            #if myg.point_in_polygon(ra, region_vertices):
+            ra = cc_data[i][3]
+            dec = cc_data[i][4]
+            #if ra < 80 and ra > 40 and dec < 45 and dec > 15:
+            region_check = check_region((ra, dec), regions)
+            if region_check is not None:
+                df['Glon'].append(cc_data.field('GLON')[i])
+                df['Glat'].append(cc_data.field('GLAT')[i])
+                df['ra'].append(cc_data.field('RA')[i])
+                df['dec'].append(cc_data.field('DEC')[i])
+                df['SNR'].append(cc_data.field('SNR')[i])
+                df['Region'].append(region_check)
+
+        df = pd.DataFrame(df)
+
+        df.save(df_dir + 'multicloud_cold_clumps.pickle')
+    else:
+        df = pd.load(df_dir + 'multicloud_cold_clumps.pickle')
+
+    print('\nFinished loading...')
 
     return df
 
@@ -183,15 +270,23 @@ def crop_to_random_cores(df):
 
     core_sample = {}
 
-    for region in ('TMC', 'PMC', 'CMC'):
+    if 0:
+        df.sort(['SNR'], ascending=[True])
+        df = df._slice(slice(0, 40))
+    #for region in ('TMC', 'PMC', 'CMC'):
+    for region in ('taurus', 'california', 'perseus'):
         row_indices = np.where((df.Region == region))[0]
-        row_indices = np.random.choice(row_indices,
-                                       replace=False,
-                                       #size=10,
-                                       size=len(row_indices)
-                                       )
-
-        core_sample[region] = df._slice(row_indices)
+        if 0:
+            row_indices = np.random.choice(row_indices,
+                                           replace=False,
+                                           size=15,
+                                           #size=len(row_indices)
+                                           )
+            core_sample[region] = df._slice(row_indices)
+        else:
+            core_sample[region] = df._slice(row_indices)
+            core_sample[region].sort(['SNR'], ascending=[True])
+            core_sample[region] = core_sample[region]._slice(slice(0, 15))
 
     return core_sample
 
@@ -200,14 +295,14 @@ def main():
     # get core data
     df = load_table()
 
+    # crop cores based on regions and data
+    df = load_cold_cores()
+
     # get av data
     av_data, av_header = load_av_data()
 
     # get core pixel locations
     df = calc_core_pixel_locations(df, av_header)
-
-    # crop cores based on regions and data
-    load_cold_cores()
 
     # crop dataset to random cores
     core_sample = crop_to_random_cores(df)
@@ -218,9 +313,9 @@ def main():
     plot_cores_map(header=av_header,
                    av_image=av_data,
                    core_sample=core_sample,
-                   #limits=[20, 36, 75, 45],
+                   limits=[75, 50, 20, 37,],
                    filename=filename,
-                   vlimits=[0,20]
+                   vlimits=[-0.1,18]
                    )
 
 
