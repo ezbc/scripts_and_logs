@@ -1455,10 +1455,9 @@ def print_av_error_stats(av, av_error):
     print('\n\tMedian Av error below 5 mag = {0:.2f} mag'.format(error_below))
     print('\n\tMedian Av error above 5 mag = {0:.2f} mag'.format(error_above))
 
-def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
-        model_results=None, model_analysis=None, xlimits=None, ylimits=None,
-        scale=('linear', 'linear'), filename=None, show_params=False,
-        levels=5, ncols=2):
+def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
+        model_analysis=None, xlimits=None, ylimits=None, scale=('linear', 'linear'),
+        filename=None, show_params=False, levels=5, ncols=2):
 
     # Import external modules
     import numpy as np
@@ -1505,14 +1504,14 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
     if n == 1:
         n = 2
 
-    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.2, 0.6])
+    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.2, 0.8])
 
-    if xlimits is not None and ylimits is not None:
-        aspect = (xlimits[1] - xlimits[0]) / (ylimits[1] - ylimits[0])
+    if limits is not None:
+        aspect = (limits[1] - limits[0]) / (limits[3] - limits[2])
     else:
         aspect = False
 
-    if 1:
+    if 0:
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
         axes = np.ravel(axes)
     else:
@@ -1522,7 +1521,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                         #axes_pad=0.1,
                         axes_pad=0.3,
                         aspect=False,
-                        label_mode='all',
+                        label_mode='L',
                         share_all=False,
                         )
 
@@ -1588,9 +1587,8 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                                                 linestyle='none',
                                                 markeredgewidth=0,
                                                 color='black',
-                                                alpha=0.4,
-                                                markersize=2.5,
-                                                ),
+                                                alpha=0.3,
+                                                markersize=2),
                                  contour_args=dict(
                                                    cmap=cmap,
                                                    ),
@@ -1654,22 +1652,18 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                 if 'krumholz' in model:
                     label = 'K+09'
                     color = c_cycle[0]
-                    alpha = 0.3
                 else:
                     label = 'S+14'
                     color = c_cycle[1]
-                    alpha = 0.8
 
 
                 fill_between = 1
                 if fill_between:
                     l3 = ax.plot(plot_fits[0], plot_fits[1],
-                            linestyle='-',
+                            linestyle='--',
                             label=label,
                             color=color,
-                            linewidth=1,
-                            zorder=1000,
-                            alpha=1
+                            alpha=0.8
                             )
                     if sum(plot_fits[2] > plot_fits[3]) > 0:
                         where = plot_fits[2] > plot_fits[3]
@@ -1695,16 +1689,16 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                     ax.plot(plot_fits[0], plot_fits[2],
                             linestyle='-',
                             color=color,
-                            alpha=alpha
+                            alpha=0.8
                             )
                     ax.plot(plot_fits[0], plot_fits[3],
                             linestyle='-',
                             color=color,
-                            alpha=alpha,
+                            alpha=0.8
                             )
 
         if i == 0:
-            ax.legend(loc='upper right')
+            ax.legend(loc='lower right')
 
         # Annotations
         anno_xpos = 0.95
@@ -1750,28 +1744,11 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
         ax.set_xscale(scale[0])
         ax.set_yscale(scale[1])
 
-        # turn labels on or off
-        if i % ncols == 0:
-            ylabel = True
-        else:
-            #ax.yaxis.set_ticklabels([])
-            ylabel = False
-
-        if i >= len(core_names) - ncols:
-            #ax.set_xlabel(labels[x_i])
-            xlabel = True
-        else:
-            xlabel = False
-
-        if len(core_names) % ncols > 0 and i == len(core_names) - 1:
-            axes[i + 1].axis('off')
 
         # Adjust asthetics
-        if xlabel:
-            ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
-                           '[M$_\odot$ pc$^{-2}$]',)
-        if ylabel:
-            ax.set_ylabel(r'$\Sigma_{\rm H\,I}$ [M$_\odot$ pc$^{-2}$]',)
+        ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
+                       '[M$_\odot$ pc$^{-2}$]',)
+        ax.set_ylabel(r'$\Sigma_{\rm H\,I}$ [M$_\odot$ pc$^{-2}$]',)
 
         if 'log' not in scale:
             ax.locator_params(nbins=5)
