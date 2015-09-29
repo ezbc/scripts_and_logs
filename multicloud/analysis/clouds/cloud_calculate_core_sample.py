@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.io import fits
@@ -69,11 +70,17 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
             )
 
     # Asthetics
-    ax.set_display_coord_system("fk5")
-    ax.set_ticklabel_type("hms", "dms")
+    ax.set_display_coord_system("gal")
+    #ax.set_ticklabel_type("hms", "dms")
+    ax.set_ticklabel_type("dms", "dms")
 
-    ax.set_xlabel('Right Ascension [J2000]',)
-    ax.set_ylabel('Declination [J2000]',)
+    #ax.set_xlabel('Right Ascension [J2000]',)
+    #ax.set_ylabel('Declination [J2000]',)
+    ax.set_xlabel('Galactic Longitude [J2000]',)
+    ax.set_ylabel('Galactic Latitude [J2000]',)
+    ax.axis["top",].toggle(ticklabels=True)
+    ax.grid(color='w', linewidth=0.5)
+    ax.axis[:].major_ticks.set_color("w")
 
     ax.locator_params(nbins=6)
 
@@ -84,7 +91,7 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
 
     # plot limits
     if limits is not None:
-        limits = myplt.convert_wcs_limits(limits, header)
+        limits = myplt.convert_wcs_limits(limits, header, frame='fk5')
         ax.set_xlim(limits[0],limits[1])
         ax.set_ylim(limits[2],limits[3])
 
@@ -104,6 +111,17 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
                         s=40,
                         marker='+',
                         linewidths=0.75)
+                ax.annotate(df['Name'][index].replace('PGCC ', ''),
+                            xy=(xpix, ypix),
+                            xytext=(5, 5),
+                            textcoords='offset points',
+                            color='w',
+                            fontsize=5,
+                            zorder=10)
+
+            print(df['Name'][index].replace('PGCC ','') + \
+                  ': {0:.2f} deg'.format(df['ra'][index]) + \
+                  ': {0:.2f} deg'.format(df['dec'][index]))
 
 
     if filename is not None:
@@ -185,7 +203,7 @@ def load_regions():
 
     return region_dict
 
-def load_cold_cores():
+def load_cold_cores(load_raw_data=True):
 
     # summary of cold clump data
     # http://wiki.cosmos.esa.int/planckpla2015/index.php/Catalogues#Individual_catalogues
@@ -194,7 +212,7 @@ def load_cold_cores():
     df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
     filename = table_dir + 'HFI_PCCS_GCC_R2.02.fits'
 
-    if 0:
+    if not load_raw_data:
         print('\nAnalyzing table...')
         cc_hdu = fits.open(filename)
 
@@ -204,6 +222,7 @@ def load_cold_cores():
         regions = load_regions()
 
         df = dict()
+        df['Name'] = []
         df['Glon'] = []
         df['Glat'] = []
         df['ra'] = []
@@ -217,6 +236,7 @@ def load_cold_cores():
             #if ra < 80 and ra > 40 and dec < 45 and dec > 15:
             region_check = check_region((ra, dec), regions)
             if region_check is not None:
+                df['Name'].append(cc_data.field('NAME')[i])
                 df['Glon'].append(cc_data.field('GLON')[i])
                 df['Glat'].append(cc_data.field('GLAT')[i])
                 df['ra'].append(cc_data.field('RA')[i])
@@ -266,37 +286,97 @@ def calc_core_pixel_locations(df, header):
 
     return df
 
-def crop_to_random_cores(df):
+def is_core_near_another(df, df_row, dist_thres=25./60.):
 
-    core_sample = {}
+    ra_1 = df_row.get('ra').values
+    dec_1 = df_row.get('dec').values
+    core_near_another = False
 
-    if 0:
-        df.sort(['SNR'], ascending=[True])
-        df = df._slice(slice(0, 40))
-    #for region in ('TMC', 'PMC', 'CMC'):
-    for region in ('taurus', 'california', 'perseus'):
-        row_indices = np.where((df.Region == region))[0]
+    for row in df.index:
+        if not np.isnan(df.loc[row].get('ra')):
+            ra_0 = df.loc[row].get('ra')
+            dec_0 = df.loc[row].get('dec')
+
+            distance = ((ra_0 - ra_1)**2 + (dec_0 - dec_1)**2)**0.5
+
+            if distance < dist_thres:
+                core_near_another = True
+
+    return core_near_another
+
+def crop_to_random_cores(df, N_cores=15, load=False):
+
+    table_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
+    df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
+    filename = table_dir + 'planck11_coldclumps.txt'
+
+    if not load:
+        core_sample = {}
+
         if 0:
-            row_indices = np.random.choice(row_indices,
-                                           replace=False,
-                                           size=15,
-                                           #size=len(row_indices)
-                                           )
-            core_sample[region] = df._slice(row_indices)
-        else:
-            core_sample[region] = df._slice(row_indices)
-            core_sample[region].sort(['SNR'], ascending=[True])
-            core_sample[region] = core_sample[region]._slice(slice(0, 15))
+            df.sort(['SNR'], ascending=[True])
+            df = df._slice(slice(0, 40))
+        for region in ('taurus', 'california', 'perseus'):
+            cloud_indices = np.where((df.Region == region))[0]
+            row_indices = []
+            df_new = pd.DataFrame(index=xrange(N_cores), columns=list(df.keys()))
+
+            done = False
+            row = 0
+            while not done:
+                # get a random core
+                random_core_index = np.random.choice(cloud_indices,
+                                               replace=False,
+                                               size=1,
+                                               #size=len(row_indices)
+                                               )
+                random_core_df = df.iloc[random_core_index]
+
+                # check if core near another one, if not add it to the list
+                if row > 0:
+                    core_near_another = is_core_near_another(df_new,
+                                                             random_core_df)
+                    if not core_near_another:
+                        df_new.loc[row] = random_core_df.values
+                        row += 1
+                else:
+                    df_new.loc[row] = random_core_df.values
+                    row += 1
+
+                if row >= N_cores:
+                    done = True
+
+            # convert df to data frame
+            core_sample[region] = df_new
+
+            if 0:
+                core_sample[region] = df._slice(cloud_indices)
+                core_sample[region].sort(['SNR'], ascending=[True])
+                core_sample[region] = core_sample[region]._slice(slice(0, 15))
+
+        with open(filename, 'wb') as f:
+            pickle.dump(core_sample, f)
+        #df = pd.DataFrame(core_sample)
+        #df.save(filename)
+    else:
+        with open(filename, 'rb') as f:
+            core_sample = pickle.load(f)
+
+        #df = pd.load(filename)
 
     return core_sample
 
 def main():
 
+    load_gcc_data = True
+    load_coresample_data = True
+    N_cores = 10
+
     # get core data
     df = load_table()
 
     # crop cores based on regions and data
-    df = load_cold_cores()
+    df = load_cold_cores(load_raw_data=load_gcc_data)
 
     # get av data
     av_data, av_header = load_av_data()
@@ -305,7 +385,9 @@ def main():
     df = calc_core_pixel_locations(df, av_header)
 
     # crop dataset to random cores
-    core_sample = crop_to_random_cores(df)
+    core_sample = crop_to_random_cores(df,
+                                       N_cores=N_cores,
+                                       load=load_coresample_data)
 
     # plot the cores
     figure_dir = '/d/bip3/ezbc/multicloud/figures/'
@@ -313,7 +395,7 @@ def main():
     plot_cores_map(header=av_header,
                    av_image=av_data,
                    core_sample=core_sample,
-                   limits=[75, 50, 20, 37,],
+                   limits=[75, 45, 20, 38,],
                    filename=filename,
                    vlimits=[-0.1,18]
                    )
