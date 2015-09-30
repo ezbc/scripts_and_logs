@@ -236,7 +236,7 @@ def load_cold_cores(load_raw_data=True):
             #if ra < 80 and ra > 40 and dec < 45 and dec > 15:
             region_check = check_region((ra, dec), regions)
             if region_check is not None:
-                df['Name'].append(cc_data.field('NAME')[i])
+                df['Name'].append(cc_data.field('NAME')[i].replace('PGCC ', ''))
                 df['Glon'].append(cc_data.field('GLON')[i])
                 df['Glat'].append(cc_data.field('GLAT')[i])
                 df['ra'].append(cc_data.field('RA')[i])
@@ -304,7 +304,7 @@ def is_core_near_another(df, df_row, dist_thres=25./60.):
 
     return core_near_another
 
-def crop_to_random_cores(df, N_cores=15, load=False):
+def crop_to_random_cores(df, N_cores=15, load=False, previous_cores=None):
 
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
     df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
@@ -324,13 +324,16 @@ def crop_to_random_cores(df, N_cores=15, load=False):
             done = False
             row = 0
             while not done:
-                # get a random core
-                random_core_index = np.random.choice(cloud_indices,
-                                               replace=False,
-                                               size=1,
-                                               #size=len(row_indices)
-                                               )
-                random_core_df = df.iloc[random_core_index]
+                if previous_cores is not None:
+                    random_core_df = df.loc[df['Name'] == previous_cores.pop()]
+                else:
+                    # get a random core
+                    random_core_index = np.random.choice(cloud_indices,
+                                                   replace=False,
+                                                   size=1,
+                                                   #size=len(row_indices)
+                                                   )
+                    random_core_df = df.iloc[random_core_index]
 
                 # check if core near another one, if not add it to the list
                 if row > 0:
@@ -366,11 +369,55 @@ def crop_to_random_cores(df, N_cores=15, load=False):
 
     return core_sample
 
+
+def load_core_regions(core_sample):
+
+
+
+
+
+    # convert regions to pixel coords
+    core_sample = convert_region_wcs2pix(core_sample, av_header)
+
+    return core_sample
+
 def main():
 
-    load_gcc_data = True
-    load_coresample_data = True
+    load_gcc_data = 1
+    load_coresample_data = 1
     N_cores = 10
+
+    cores = ['G166.83-8.68',
+             'G168.82-6.37',
+             'G168.05-7.01',
+             'G164.16-8.46',
+             'G165.23-8.78',
+             'G167.06-7.77',
+             'G168.12-6.42',
+             'G167.58-6.64',
+             'G164.70-7.63',
+             'G166.35-8.77',
+             'G166.73-15.06',
+             'G173.08-16.50',
+             'G172.74-14.53',
+             'G169.44-16.18',
+             'G173.86-17.65',
+             'G173.71-13.91',
+             'G171.75-14.18',
+             'G173.70-15.21',
+             'G170.28-19.48',
+             'G171.00-15.80',
+             'G158.23-20.15',
+             'G159.01-22.19',
+             'G159.19-20.11',
+             'G157.12-23.49',
+             'G160.10-19.90',
+             'G160.34-18.42',
+             'G158.40-21.86',
+             'G159.79-21.32',
+             'G158.89-21.60',
+             'G159.51-18.41',
+            ]
 
     # get core data
     df = load_table()
@@ -387,7 +434,12 @@ def main():
     # crop dataset to random cores
     core_sample = crop_to_random_cores(df,
                                        N_cores=N_cores,
-                                       load=load_coresample_data)
+                                       load=load_coresample_data,
+                                       previous_cores=cores,
+                                       )
+
+    # load core regions
+    #core_sample = load_core_regions(core_sample)
 
     # plot the cores
     figure_dir = '/d/bip3/ezbc/multicloud/figures/'
