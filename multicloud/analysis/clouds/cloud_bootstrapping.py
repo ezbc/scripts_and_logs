@@ -2151,9 +2151,9 @@ def collect_hi_transition_results(model_analysis_list, cloud_list,
 def print_dict_keys(d):
 
     for key in d:
-        print key
+        print(key)
         if type(d[key]) is dict:
-            print '--'
+            print('--')
             print_dict_keys(d[key])
 
 def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
@@ -2190,10 +2190,10 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
 
             d['cloud'].append(cloud)
             d['core'].append(core_name)
-            ra = core_props['center_wcs'][0]
-            dec = core_props['center_wcs'][1]
-            ra_deg = 15*(ra[0] + ra[1] / 60. + ra[2] / 3600.)
-            dec_deg = dec[0] + dec[1] / 60. + dec[2] / 3600.
+            ra_deg = core_props['center_wcs'][0]
+            dec_deg = core_props['center_wcs'][1]
+            #ra_deg = 15*(ra[0] + ra[1] / 60. + ra[2] / 3600.)
+            #dec_deg = dec[0] + dec[1] / 60. + dec[2] / 3600.
             d['ra'].append(ra_deg)
             d['dec'].append(dec_deg)
             d['region_vertices'].append(core_props['poly_verts']['wcs'])
@@ -2388,7 +2388,6 @@ def load_ds9_core_region(cores, filename='',
         core = tag[tag.find('{')+1:tag.find('}')]
 
         if core in cores:
-
             # Format vertices to be 2 x N array
             poly_verts = []
             for i in xrange(0, len(region.coord_list)/2):
@@ -2414,46 +2413,81 @@ def get_cores_to_plot():
     '''
 
     # Which cores to include in analysis?
-    cores_to_keep = [# taur
-                     'L1495',
-                     'L1495A',
-                     'B213',
-                     'L1498',
-                     'B215',
-                     'B18',
-                     'B217',
-                     'B220-1',
-                     'B220-2',
-                     'L1521',
-                     'L1524',
-                     'L1527-1',
-                     'L1527-2',
-                     # Calif
-                     'L1536',
-                     'L1483-1',
-                     'L1483-2',
-                     'L1482-1',
-                     'L1482-2',
-                     'L1478-1',
-                     'L1478-2',
-                     'L1456',
-                     'NGC1579',
-                     #'L1545',
-                     #'L1517',
-                     #'L1512',
-                     #'L1523',
-                     #'L1512',
-                     # Pers
-                     'B5',
-                     'IC348',
-                     'B1E',
-                     'B1',
-                     'NGC1333',
-                     'B4',
-                     'B3',
-                     'L1455',
-                     'L1448',
-                     ]
+    cores_to_keep = [
+             'G166.83-8.68',
+             'G168.82-6.37',
+             'G168.05-7.01',
+             'G164.16-8.46',
+             'G165.23-8.78',
+             'G167.06-7.77',
+             'G168.12-6.42',
+             'G167.58-6.64',
+             'G164.70-7.63',
+             'G166.35-8.77',
+             'G166.73-15.06',
+             'G173.08-16.50',
+             'G172.74-14.53',
+             'G169.44-16.18',
+             'G173.86-17.65',
+             'G173.71-13.91',
+             'G171.75-14.18',
+             'G173.70-15.21',
+             'G170.28-19.48',
+             'G171.00-15.80',
+             'G158.23-20.15',
+             'G159.01-22.19',
+             'G159.19-20.11',
+             'G157.12-23.49',
+             'G160.10-19.90',
+             'G160.34-18.42',
+             'G158.40-21.86',
+             'G159.79-21.32',
+             'G158.89-21.60',
+             'G159.51-18.41',
+            ]
+
+    if 0:
+        cores_to_keep = [# taur
+                         'L1495',
+                         'L1495A',
+                         'B213',
+                         'L1498',
+                         'B215',
+                         'B18',
+                         'B217',
+                         'B220-1',
+                         'B220-2',
+                         'L1521',
+                         'L1524',
+                         'L1527-1',
+                         'L1527-2',
+                         # Calif
+                         'L1536',
+                         'L1483-1',
+                         'L1483-2',
+                         'L1482-1',
+                         'L1482-2',
+                         'L1478-1',
+                         'L1478-2',
+                         'L1456',
+                         'NGC1579',
+                         #'L1545',
+                         #'L1517',
+                         #'L1512',
+                         #'L1523',
+                         #'L1512',
+                         # Pers
+                         'B5',
+                         'IC348',
+                         'B1E',
+                         'B1',
+                         'NGC1333',
+                         'B4',
+                         'B3',
+                         'L1455',
+                         'L1448',
+                         ]
+
     return cores_to_keep
 
 def get_core_properties(data_dict, cloud_name):
@@ -2463,32 +2497,50 @@ def get_core_properties(data_dict, cloud_name):
 
     box_method = 'ds9'
     core_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
-    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
-
-    # define core properties
-    with open(core_dir + cloud_name + '_core_properties.txt', 'r') as f:
-        cores = json.load(f)
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
 
     header = data_dict['av_header']
-    #cores = convert_core_coordinates(cores, header)
+    if 0:
+        # define core properties
+        with open(core_dir + cloud_name + '_core_properties.txt', 'r') as f:
+            cores = json.load(f)
 
-    # convert center WCS coordinate to pixel
-    for core in cores:
-        cores[core].update({'box_pixel': 0})
-        cores[core].update({'center_pixel': 0})
+        #cores = convert_core_coordinates(cores, header)
 
-        center_wcs = cores[core]['center_wcs']
+        # convert center WCS coordinate to pixel
+        for core in cores:
+            cores[core].update({'box_pixel': 0})
+            cores[core].update({'center_pixel': 0})
 
-        # convert centers to pixel coords
-        center_pixel = get_pix_coords(ra=center_wcs[0],
-                                      dec=center_wcs[1],
-                                      header=header)[:2]
-        cores[core]['center_pixel'] = center_pixel
+            center_wcs = cores[core]['center_wcs']
+
+            # convert centers to pixel coords
+            center_pixel = get_pix_coords(ra=center_wcs[0],
+                                          dec=center_wcs[1],
+                                          header=header)[:2]
+            cores[core]['center_pixel'] = center_pixel
+
+    else:
+        filename = \
+            '/d/bip3/ezbc/multicloud/data/python_output/tables/' + \
+            'planck11_coldclumps.pickle'
+
+        import pickle
+        with open(filename, 'rb') as f:
+            core_sample = pickle.load(f)
+        #core_sample = pd.load(filename)
+        cores = {}
+        df_cores = core_sample[cloud_name]
+        for name in df_cores['Name'].values:
+            cores[name] = {}
+            ra = df_cores[df_cores['Name'] == name]['ra'].values
+            dec = df_cores[df_cores['Name'] == name]['dec'].values
+            cores[name]['center_wcs'] = (ra, dec)
 
     # load the bounding regions
+    region_filename = region_dir + 'multicloud_coldclump_divisions.reg'
     cores = load_ds9_core_region(cores,
-                            filename=region_dir + \
-                                     cloud_name + '_av_poly_cores.reg',
+                            filename=region_filename,
                             header=header)
 
     # add indices of core in data
@@ -4161,7 +4213,7 @@ def run_cloud_analysis(global_args,):
     core_dir = \
        '/d/bip3/ezbc/' + cloud_name + '/data/python_output/core_properties/'
     property_dir = '/d/bip3/ezbc/' + cloud_name + '/data/python_output/'
-    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
     background_region_dir = '/d/bip3/ezbc/' + cloud_name + \
                             '/data/python_output/ds9_regions/'
     results_dir =  '/d/bip3/ezbc/multicloud/data/python_output/'
@@ -4416,6 +4468,10 @@ def run_cloud_analysis(global_args,):
     cores_to_plot = get_cores_to_plot()
     cores_to_plot = trim_cores_to_plot(cores, cores_to_plot)
 
+    if 0:
+        import sys
+        sys.exit()
+
     global_args['ss_model_kwargs'] = {}
     global_args['ss_model_kwargs']['cores'] = cores
     global_args['ss_model_kwargs']['cores_to_plot'] = cores_to_plot
@@ -4590,7 +4646,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4608,7 +4664,7 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 1000,
+                'num_bootstraps': 10,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 'multiprocess': True,

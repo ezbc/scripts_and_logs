@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
-        filename=None, vlimits=(None,None)):
+        filename=None, vlimits=(None,None), region_dict=None):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
     plt.close;plt.clf()
 
     # Color map
-    cmap = plt.cm.gnuplot2
+    cmap = plt.cm.gnuplot
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
@@ -76,8 +76,8 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
 
     #ax.set_xlabel('Right Ascension [J2000]',)
     #ax.set_ylabel('Declination [J2000]',)
-    ax.set_xlabel('Galactic Longitude [J2000]',)
-    ax.set_ylabel('Galactic Latitude [J2000]',)
+    ax.set_xlabel('Galactic Longitude [deg]',)
+    ax.set_ylabel('Galactic Latitude [deg]',)
     ax.axis["top",].toggle(ticklabels=True)
     ax.grid(color='w', linewidth=0.5)
     ax.axis[:].major_ticks.set_color("w")
@@ -97,35 +97,76 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
 
     # Plot cores for each cloud
     # -------------------------
-    for region in core_sample:
-        for i, index in enumerate(core_sample[region].index):
-            df = core_sample[region]
-            xpix = df['xpix'][index]
-            ypix = df['ypix'][index]
-
-            anno_color = (0.3, 0.5, 1)
-
-            if 1:
-                ax.scatter(xpix,ypix,
-                        color='w',
-                        s=40,
-                        marker='+',
-                        linewidths=0.75)
-                ax.annotate(df['Name'][index].replace('PGCC ', ''),
-                            xy=(xpix, ypix),
-                            xytext=(5, 5),
-                            textcoords='offset points',
-                            color='w',
-                            fontsize=5,
-                            zorder=10)
-
-            print(df['Name'][index].replace('PGCC ','') + \
-                  ': {0:.2f} deg'.format(df['ra'][index]) + \
-                  ': {0:.2f} deg'.format(df['dec'][index]))
-
+    plot_core_regions(ax, region_dict, core_sample)
 
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=300)
+
+def plot_core_regions(ax, region_dict, core_sample):
+
+    import matplotlib.patheffects as PathEffects
+    from matplotlib.patches import Polygon
+
+    count = 0
+    rects = []
+    core_labels = []
+    for cloud in core_sample:
+        for i, index in enumerate(core_sample[cloud].index):
+            df = core_sample[cloud]
+            region_name = df['Name'][index]
+
+            if 0:
+                df = core_sample[region]
+                xpix = df['xpix'][index]
+                ypix = df['ypix'][index]
+                print(df['Name'][index].replace('PGCC ','') + \
+                      ': {0:.2f} deg'.format(df['ra'][index]) + \
+                      ': {0:.2f} deg'.format(df['dec'][index]))
+
+            region = region_dict[region_name]
+            vertices = np.array((region['xpix'], region['ypix'])).T
+
+            #[:, ::-1]
+            rects.append(ax.add_patch(Polygon(
+                            vertices,
+                            facecolor='none',
+                            edgecolor='w')
+                            )
+                        )
+            core_labels.append(str(count) + ' - ' + region_name)
+
+            n = float(vertices.shape[0])
+            center_xy = (np.sum(vertices[:, 0]) / n,
+                         np.sum(vertices[:, 1]) / n)
+
+            ax.annotate(str(count),
+                    #xy=[pix_coords[0], pix_coords[1]],
+                    xy=center_xy,
+                    xytext=(-4,-4),
+                    label=region_name,
+                    textcoords='offset points',
+                    fontsize=9,
+                    color='k',
+                    path_effects=[PathEffects.withStroke(linewidth=2,
+                                             foreground="w")])
+
+            count += 1
+
+    if 0:
+        ax.scatter(xpix,ypix,
+                color='w',
+                s=40,
+                marker='+',
+                linewidths=0.75)
+        ax.annotate(df['Name'][index].replace('PGCC ', ''),
+                    xy=(xpix, ypix),
+                    xytext=(5, 5),
+                    textcoords='offset points',
+                    color='w',
+                    fontsize=5,
+                    zorder=10)
+
+
 
 def load_table():
 
@@ -165,7 +206,7 @@ def load_regions():
 
     data_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
 
-    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
     filename = region_dir + 'multicloud_divisions_coldcore_selection.reg'
 
     # region[0] in following format:
@@ -304,11 +345,11 @@ def is_core_near_another(df, df_row, dist_thres=25./60.):
 
     return core_near_another
 
-def crop_to_random_cores(df, N_cores=15, load=False, previous_cores=None):
+def crop_to_random_cores(df, N_cores=10, load=False, previous_cores=None):
 
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
     df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
-    filename = table_dir + 'planck11_coldclumps.txt'
+    filename = table_dir + 'planck11_coldclumps.pickle'
 
     if not load:
         core_sample = {}
@@ -321,11 +362,19 @@ def crop_to_random_cores(df, N_cores=15, load=False, previous_cores=None):
             row_indices = []
             df_new = pd.DataFrame(index=xrange(N_cores), columns=list(df.keys()))
 
+            # crop data to be within region
+            df_region = df.iloc[cloud_indices]
+            previous_cores_region = []
+            for previous_core in previous_cores:
+                if previous_core in df_region['Name'].values:
+                    previous_cores_region.append(previous_core)
+
             done = False
             row = 0
             while not done:
                 if previous_cores is not None:
-                    random_core_df = df.loc[df['Name'] == previous_cores.pop()]
+                    random_core_df = \
+                        df.loc[df['Name'] == previous_cores_region.pop()]
                 else:
                     # get a random core
                     random_core_index = np.random.choice(cloud_indices,
@@ -369,22 +418,75 @@ def crop_to_random_cores(df, N_cores=15, load=False, previous_cores=None):
 
     return core_sample
 
+def convert_region_wcs2pix(region_dict, header):
 
-def load_core_regions(core_sample):
+    for region in region_dict:
+        df = region_dict[region]
 
+        # Make a galactic coords object and convert to Ra/dec
+        coords_fk5 = SkyCoord(df['ra'] * u.deg,
+                              df['dec'] * u.deg,
+                              frame='fk5',
+                              )
+        # Create WCS object
+        wcs_header = WCS(header)
 
+        # convert to pixel
+        coords_pixel = coords_fk5.to_pixel(wcs_header)
 
+        # write data to dataframe
+        df['xpix'], df['ypix'] = coords_pixel[0], coords_pixel[1]
 
+    return region_dict
+
+def load_core_regions(core_sample, header):
+
+    import pyregion as pyr
+
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
+    filename = region_dir + 'multicloud_coldclump_divisions.reg'
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    regions = pyr.open(filename)
+
+    region_dict = {}
+    for cloud in core_sample:
+        df = core_sample[cloud]
+        #df['region'] = []
+
+        df = dict(df)
+
+        for region in regions:
+            # Cores defined in following format: 'tag={L1495A}'
+            tag = region.comment
+            region_name = tag[tag.find('text={')+6:tag.find('}')]
+
+            #if region_name in df['Name'].values:
+            if region_name in df['Name'].values:
+                # Format vertices to be 2 x N array
+                poly_verts = []
+                for i in xrange(0, len(region.coord_list)/2):
+                    poly_verts.append((region.coord_list[2*i],
+                                       region.coord_list[2*i+1]))
+
+                poly_verts = np.array(poly_verts)
+
+                verts_dict = {'ra': poly_verts[:, 0], 'dec': poly_verts[:, 1]}
+
+                region_dict[region_name] = verts_dict
 
     # convert regions to pixel coords
-    core_sample = convert_region_wcs2pix(core_sample, av_header)
+    region_dict = convert_region_wcs2pix(region_dict, header)
 
-    return core_sample
+    return region_dict
 
 def main():
 
     load_gcc_data = 1
-    load_coresample_data = 1
+    load_coresample_data = 0
     N_cores = 10
 
     cores = ['G166.83-8.68',
@@ -439,18 +541,23 @@ def main():
                                        )
 
     # load core regions
-    #core_sample = load_core_regions(core_sample)
+    region_dict = load_core_regions(core_sample, av_header)
 
     # plot the cores
+    print('\nPlotting...')
     figure_dir = '/d/bip3/ezbc/multicloud/figures/'
-    filename = figure_dir + 'maps/multicloud_av_cores_meng13.png'
-    plot_cores_map(header=av_header,
-                   av_image=av_data,
-                   core_sample=core_sample,
-                   limits=[75, 45, 20, 38,],
-                   filename=filename,
-                   vlimits=[-0.1,18]
-                   )
+    filetypes = ['png', 'pdf']
+    for filetype in filetypes:
+        filename = figure_dir + 'maps/multicloud_av_cores_meng13.' + \
+                   filetype
+        plot_cores_map(header=av_header,
+                       av_image=av_data,
+                       core_sample=core_sample,
+                       region_dict=region_dict,
+                       limits=[75, 45, 20, 38,],
+                       filename=filename,
+                       vlimits=[0,15.5]
+                       )
 
 
 if __name__ == '__main__':
