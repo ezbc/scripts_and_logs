@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore')
 
 def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         av_image=None, cores=None, props=None, regions=None, title=None,
-        limits=None, contours=None, boxes=False, savedir='./', filename=None,
+        limits=None, contours=None, boxes=False, filename=None,
         show=True, hi_vlimits=None, av_vlimits=None,):
 
     # Import external modules
@@ -40,6 +40,8 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
 
     # Color map
     cmap = plt.cm.gnuplot
+    #cmap = myplt.reverse_colormap(plt.cm.copper)
+    cmap = plt.cm.copper
 
     # Create figure instance
     fig = plt.figure(figsize=(7.5, 3.6*2))
@@ -222,7 +224,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     if title is not None:
         fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
-        plt.savefig(savedir + filename, bbox_inches='tight')
+        plt.savefig(filename, bbox_inches='tight')
     if show:
         fig.show()
 
@@ -1202,11 +1204,11 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
              #'taurus 2' : {'wcs' : ((5, 10,  0),
              #                       (21.5, 0, 0)),
              #             },
-             'taurus' : {'wcs' : ((5, 10,  0),
-                                    (21.5, 0, 0)),
+             'taurus' : {'wcs' : ((4, 40,  0),
+                                  (21, 0, 0)),
                           },
-             'perseus' : {'wcs' : ((3, 0,  0),
-                                   (34, 0, 0)),
+             'perseus' : {'wcs' : ((3, 30,  0),
+                                   (26, 0, 0)),
                           },
              #'perseus 1' : {'wcs' : ((3, 0,  0),
              #                      (34, 0, 0)),
@@ -1214,8 +1216,8 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
              #'perseus 2' : {'wcs' : ((3, 10,  0),
              #                      (22.5, 0, 0)),
              #             },
-             'california' : {'wcs' : ((5, 15,  0),
-                                      (33.5, 0, 0)),
+             'california' : {'wcs' : ((4, 28,  0),
+                                      (34, 0, 0)),
                              },
              }
 
@@ -1261,13 +1263,14 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     for figure_type in figure_types:
         if region is None:
             if vel_range_type == 'single':
-                filename = 'multicloud_av_nhi_map_' + \
-                    av_data_type + '.%s' % figure_type
+                filename = 'multicloud_av_nhi_map' + \
+                    '.%s' % figure_type
+                    #av_data_type + \
                     #'dgr{0:.3f}_'.format(dgr) + \
                     #'{0:.1f}to{1:.1f}kms'.format(vel_range[0], vel_range[1]) + \
                     #'_' + \
             elif vel_range_type == 'multiple':
-                filename = 'multiple_vel_range/multicloud_av_model_map_' + \
+                filename = 'multiple_vel_range/multicloud_av_model_map' + \
                            'dgr{0:.3f}'.format(dgr)
                 for i in xrange(0, vel_range.shape[0]):
                     filename += '_{0:.1f}to{1:.1f}kms'.format(vel_range[i, 0],
@@ -1277,19 +1280,19 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             filename = 'multicloud_av_model_map_region{0:.0f}'.format(region) + \
                        '.{0:s}'.format(figure_type)
 
-        print('\nSaving Av model image to \n' + figure_dir + filename)
+        filename = figure_dir + 'maps/' + filename
+        print('\nSaving Av model image to \n' + filename)
 
         plot_nhi_image(nhi_image=nhi_image,
                        header=av_header,
                        av_image=av_image,
                        #limits=props['plot_limit']['pixel'],
-                       limits=[75, 45, 20, 38,],
+                       limits=[76, 43.5, 19.5, 38,],
                        regions=props['regions'],
                        props=props,
                        hi_vlimits=(0,20),
                        av_vlimits=(0,15.5),
                        #av_vlimits=(0.1,30),
-                       savedir=figure_dir + 'maps/',
                        filename=filename,
                        show=False)
 

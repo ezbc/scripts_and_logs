@@ -34,6 +34,7 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
 
     # Color map
     cmap = plt.cm.gnuplot
+    cmap = plt.cm.copper
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]

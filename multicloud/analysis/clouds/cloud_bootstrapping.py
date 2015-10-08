@@ -748,7 +748,7 @@ def plot_spectra_grid(spectra_list, hi_range_kwargs_list=None,
              }
     plt.rcParams.update(params)
 
-    myplt.set_color_cycle(num_colors=4)
+    myplt.set_color_cycle(num_colors=4, cmap_limits=[0, 0.6])
 
     # Create figure instance
     fig = plt.figure()
@@ -977,6 +977,7 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
                                 markersize=3
                                 )
 
+        c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.7])
         if plot_median:
             from scipy.stats import nanmedian, binned_statistic
             y_median = np.linspace(np.min(y_nonans), np.max(y_nonans), 6)
@@ -996,11 +997,13 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
             if 1:
                 ax.plot(x_median,
                         y_median,
-                        color='r',
+                        #color='r',
+                        color=c_cycle[0],
                         marker='s',
                         linestyle='None',
                         label=label,
-                        alpha=0.5,
+                        zorder=1000,
+                        #alpha=0.5,
                         markersize=4.5
                         )
             else:
@@ -1028,7 +1031,6 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
                         yerr=(y_median_error),
                         )
 
-        myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
         if poly_fit:
             from scipy.optimize import curve_fit
 
@@ -1048,7 +1050,7 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
             y_poly_fit = p[0] * x_fit + p[1]
             ax.plot(x_fit,
                     y_poly_fit,
-                    #color='r',
+                    color=c_cycle[1],
                     linestyle='dotted',
                     linewidth=2,
                     label=\
@@ -1082,10 +1084,11 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         ax.plot(
                 x_fit,
                 y_fit,
-                color='#6B47B2',
+                #color='#6B47B2',
+                color=c_cycle[1],
                 linestyle='--',
                 linewidth=2,
-                alpha=0.8,
+                #alpha=0.8,
                 label=label,
                 )
 
@@ -1491,7 +1494,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
     plt.close;plt.clf()
 
     # Color map
-    cmap = plt.cm.gnuplot
+    cmap = plt.cm.copper
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
@@ -1505,7 +1508,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
     if n == 1:
         n = 2
 
-    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.2, 0.6])
+    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
 
     if xlimits is not None and ylimits is not None:
         aspect = (xlimits[1] - xlimits[0]) / (ylimits[1] - ylimits[0])
@@ -3539,6 +3542,7 @@ def bootstrap_worker(global_args, i):
 
     ss_model_results = {}
 
+
     # cycle through each core, bootstrapping the pixels
     for core in cores_to_plot:
         # grab the indices of the core in the unraveled array
@@ -3569,6 +3573,8 @@ def bootstrap_worker(global_args, i):
             h_sd_core = h_sd_core[~mask]
 
             #print '\t rh2 core post-mask shape', rh2_core.shape
+
+        print core, rh2_core.size
 
         ss_model_result = \
             fit_steady_state_models(h_sd_core,
@@ -3693,12 +3699,16 @@ def bootstrap_worker(global_args, i):
 
 def bootstrap_worker_wrapper(args, i):
 
+    import sys
+    import traceback
+
     try:
         output = bootstrap_worker(args, i)
-    except KeyboardInterrupt:
-        raise KeyboardInterruptError()
-
-    return output
+        return output
+    except Exception as error:
+        # capture the exception and bundle the traceback
+        # in a string, then raise new exception with the string traceback
+        raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
 def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         vel_range=None, vel_range_error=1, av_error_data=None,
@@ -3708,6 +3718,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
 
     import multiprocessing as mp
     import sys
+    import traceback
 
     if av_error_data is None:
         av_error_data = np.ones(av_data.size)
@@ -3773,13 +3784,6 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         global_args['vel_range'] = None
         global_args['vel_range_error'] = None
 
-    #global_args['queue'] = queue
-    if 0:
-        args_list = []
-        for i in xrange(num_bootstraps):
-            global_args['i'] = i
-            args_list.append(global_args.copy())
-
     # Prep multiprocessing
     queue = mp.Queue(10)
     pool = mp.Pool()
@@ -3787,56 +3791,32 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
 
     # bootstrap
     if multiprocess:
-        try:
-            for i in xrange(num_bootstraps):
-                processes.append(pool.apply_async(bootstrap_worker_wrapper,
-                                                  args=(global_args,i,)))
-        except KeyboardInterruptError:
-            pool.terminate()
-            pool.join()
+        for i in xrange(num_bootstraps):
+            processes.append(pool.apply_async(bootstrap_worker_wrapper,
+                                              args=(global_args,i,)))
         pool.close()
         pool.join()
 
         # Get the results
-        if 0:
-            for p in processes:
-                result = p.get()
-                #result = queue.get()
-                boot_results[:, result[0]] = result[1]
-
         mc_results = collect_bootstrap_results(processes, ss_model_kwargs)
 
         for i in xrange(len(processes)):
-            #result = queue.get()
             result = processes[i].get()
             boot_results[:, i] = result['av_model_results'].values()
-
     else:
         for i in xrange(num_bootstraps):
             processes.append(bootstrap_worker(global_args, i))
 
-        mc_results = collect_bootstrap_results(processes, ss_model_kwargs)
+        mc_results = collect_bootstrap_results(processes, ss_model_kwargs,
+                                               multiprocess=False)
 
         for i in xrange(len(processes)):
-            #result = queue.get()
-            result = processes[i].get()
+            result = processes[i]
             boot_results[:, i] = result['av_model_results'].values()
-
-    #for process in processes:
-    #    process.set()
-
-    # Start the processes
-    #for process in processes:
-    # Join so that we wait until all processes are finished
-    #for process in processes:
-    #    process.join()
-    #    process.terminate()
-
-    #if 1:
 
     return boot_results, mc_results
 
-def collect_bootstrap_results(processes, ss_model_kwargs):
+def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
 
     empty = lambda: np.empty(len(processes))
     mc_results = {}
@@ -3865,8 +3845,12 @@ def collect_bootstrap_results(processes, ss_model_kwargs):
              'av_scalar_sim': empty()}
 
     for i in xrange(len(processes)):
-        #result = queue.get()
-        result = processes[i].get()
+        #result = queue.get())
+
+        if multiprocess:
+            result = processes[i].get()
+        else:
+            result = processes[i]
 
         for data_param in mc_results['data_params']:
             mc_results['data_params'][data_param][i] = \
@@ -4764,7 +4748,7 @@ def main():
                 'num_bootstraps': 10000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
-                'multiprocess': True,
+                'multiprocess': 1,
                 'radiation_type': permutation[12],
                 }
         run_analysis = False

@@ -844,13 +844,13 @@ def main():
     figure_dir = '/d/bip3/ezbc/multicloud/figures/'
     filetypes = ['png', 'pdf']
     for filetype in filetypes:
-        filename = figure_dir + 'maps/multicloud_av_cores_meng13.' + \
+        filename = figure_dir + 'maps/multicloud_av_cores_map.' + \
                    filetype
         plot_cores_map(header=av_header,
                        av_image=av_data,
                        core_sample=core_sample,
                        region_dict=region_dict,
-                       limits=[80, 45, 20, 38,],
+                       limits=[76, 43.5, 19.5, 38,],
                        filename=filename,
                        plot_regions=load_regions,
                        plot_names=True,
