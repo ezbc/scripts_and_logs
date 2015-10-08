@@ -28,6 +28,7 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     import numpy as np
     import pyfits as fits
     import matplotlib.pyplot as plt
+    import myplotting as myplt
     import pywcsgrid2 as wcs
     import pywcs
     from pylab import cm # colormaps
@@ -91,10 +92,12 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # colorbar
     cb = ax.cax.colorbar(im)
     cmap.set_bad(color='w')
+
     # plot limits
     if limits is not None:
-        ax.set_xlim(limits[0],limits[2])
-        ax.set_ylim(limits[1],limits[3])
+        limits_pix = myplt.convert_wcs_limits(limits, header, frame='fk5')
+        ax.set_xlim(limits_pix[0],limits_pix[1])
+        ax.set_ylim(limits_pix[2],limits_pix[3])
 
     # Plot Av contours
     if contour_image is not None:
@@ -164,10 +167,12 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         # colorbar
         cb = ax.cax.colorbar(im)
         cmap.set_bad(color='w')
+
         # plot limits
         if limits is not None:
-            ax.set_xlim(limits[0],limits[2])
-            ax.set_ylim(limits[1],limits[3])
+            limits_pix = myplt.convert_wcs_limits(limits, header, frame='fk5')
+            ax.set_xlim(limits_pix[0],limits_pix[1])
+            ax.set_ylim(limits_pix[2],limits_pix[3])
 
         ax.tick_params(axis='xy', which='major', colors='w')
 
@@ -1108,7 +1113,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     co_dir = '/d/bip3/ezbc/multicloud/data/co/'
     core_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
     property_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
-    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     if av_data_type == 'lee12_2mass':
@@ -1277,7 +1282,8 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
         plot_nhi_image(nhi_image=nhi_image,
                        header=av_header,
                        av_image=av_image,
-                       limits=props['plot_limit']['pixel'],
+                       #limits=props['plot_limit']['pixel'],
+                       limits=[75, 45, 20, 38,],
                        regions=props['regions'],
                        props=props,
                        hi_vlimits=(0,20),

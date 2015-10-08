@@ -13,7 +13,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
-        filename=None, vlimits=(None,None), region_dict=None):
+        filename=None, vlimits=(None,None), region_dict=None,
+        plot_regions=True, plot_names=True):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -29,6 +30,7 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
 
     # Color map
     cmap = plt.cm.gnuplot
+    cmap = plt.cm.copper
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
@@ -97,7 +99,10 @@ def plot_cores_map(header=None, av_image=None, core_sample=None, limits=None,
 
     # Plot cores for each cloud
     # -------------------------
-    plot_core_regions(ax, region_dict, core_sample)
+    if plot_regions:
+        plot_core_regions(ax, region_dict, core_sample)
+    else:
+        plot_core_locs(ax, region_dict, core_sample, plot_names=plot_names)
 
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=300)
@@ -111,17 +116,17 @@ def plot_core_regions(ax, region_dict, core_sample):
     rects = []
     core_labels = []
     for cloud in core_sample:
-        for i, index in enumerate(core_sample[cloud].index):
-            df = core_sample[cloud]
+        df = core_sample[cloud]
+        df = df.sort(['ra'], ascending=False)
+        for i, index in enumerate(df.index):
             region_name = df['Name'][index]
 
-            if 0:
-                df = core_sample[region]
+            if 1:
                 xpix = df['xpix'][index]
                 ypix = df['ypix'][index]
-                print(df['Name'][index].replace('PGCC ','') + \
-                      ': {0:.2f} deg'.format(df['ra'][index]) + \
-                      ': {0:.2f} deg'.format(df['dec'][index]))
+                print(df['Name'][index].replace('PGCC ',''))# + \
+                      #': {0:.2f} deg'.format(df['ra'][index]) + \
+                      #': {0:.2f} deg'.format(df['dec'][index]))
 
             region = region_dict[region_name]
             vertices = np.array((region['xpix'], region['ypix'])).T
@@ -152,21 +157,42 @@ def plot_core_regions(ax, region_dict, core_sample):
 
             count += 1
 
-    if 0:
-        ax.scatter(xpix,ypix,
-                color='w',
-                s=40,
-                marker='+',
-                linewidths=0.75)
-        ax.annotate(df['Name'][index].replace('PGCC ', ''),
-                    xy=(xpix, ypix),
-                    xytext=(5, 5),
-                    textcoords='offset points',
+    ax.legend(rects,
+              core_labels,
+              loc='lower right',
+              ncol=3,
+              columnspacing=0.01,
+              handlelength=0.1)
+
+def plot_core_locs(ax, region_dict, core_sample, plot_names=True):
+
+    count = 0
+    rects = []
+    core_labels = []
+    for cloud in core_sample:
+        for i, index in enumerate(core_sample[cloud].index):
+            df = core_sample[cloud]
+            region_name = df['Name'][index]
+
+            xpix = df['xpix'][index]
+            ypix = df['ypix'][index]
+            print(df['Name'][index].replace('PGCC ','') + \
+                  ': {0:.2f} deg'.format(df['ra'][index]) + \
+                  ': {0:.2f} deg'.format(df['dec'][index]))
+
+            ax.scatter(xpix,ypix,
                     color='w',
-                    fontsize=5,
-                    zorder=10)
-
-
+                    s=40,
+                    marker='+',
+                    linewidths=0.75)
+            if plot_names:
+                ax.annotate(df['Name'][index].replace('PGCC ', ''),
+                            xy=(xpix, ypix),
+                            xytext=(5, 5),
+                            textcoords='offset points',
+                            color='w',
+                            fontsize=5,
+                            zorder=10)
 
 def load_table():
 
@@ -270,6 +296,8 @@ def load_cold_cores(load_raw_data=True):
         df['dec'] = []
         df['Region'] = []
         df['SNR'] = []
+        df['nh2'] = []
+        df['temp'] = []
         for i in xrange(len(cc_data)):
             #if myg.point_in_polygon(ra, region_vertices):
             ra = cc_data[i][3]
@@ -283,6 +311,8 @@ def load_cold_cores(load_raw_data=True):
                 df['ra'].append(cc_data.field('RA')[i])
                 df['dec'].append(cc_data.field('DEC')[i])
                 df['SNR'].append(cc_data.field('SNR')[i])
+                df['nh2'].append(cc_data.field('NH2')[i])
+                df['temp'].append(cc_data.field('TEMP_CLUMP')[i])
                 df['Region'].append(region_check)
 
         df = pd.DataFrame(df)
@@ -345,7 +375,8 @@ def is_core_near_another(df, df_row, dist_thres=25./60.):
 
     return core_near_another
 
-def crop_to_random_cores(df, N_cores=10, load=False, previous_cores=None):
+def crop_to_core_sample(df, N_cores=10, load=False, previous_cores=None,
+        sampling_type='cold_cores'):
 
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
     df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
@@ -354,49 +385,70 @@ def crop_to_random_cores(df, N_cores=10, load=False, previous_cores=None):
     if not load:
         core_sample = {}
 
-        if 0:
-            df.sort(['SNR'], ascending=[True])
-            df = df._slice(slice(0, 40))
         for region in ('taurus', 'california', 'perseus'):
             cloud_indices = np.where((df.Region == region))[0]
             row_indices = []
-            df_new = pd.DataFrame(index=xrange(N_cores), columns=list(df.keys()))
+            df_new = pd.DataFrame(index=xrange(N_cores),
+                                  columns=list(df.keys()))
 
             # crop data to be within region
             df_region = df.iloc[cloud_indices]
-            previous_cores_region = []
-            for previous_core in previous_cores:
-                if previous_core in df_region['Name'].values:
-                    previous_cores_region.append(previous_core)
+
+            # organize previous core sample
+            if previous_cores is not None:
+                previous_cores_region = []
+                for previous_core in previous_cores:
+                    if previous_core in df_region['Name'].values:
+                        previous_cores_region.append(previous_core)
+
+            # Sort by temp
+            if sampling_type == 'cold_cores':
+                df_region = df_region.sort(['temp'], ascending=True)
+                df_region = df_region[df_region['temp'] > 0]
+            elif sampling_type == 'nh2_cores':
+                df_region = df_region.sort(['nh2'], ascending=False)
+                df_region = df_region[df_region['nh2'] > 0]
+
+
+            print df_region['nh2']
 
             done = False
             row = 0
+            i = 0
             while not done:
                 if previous_cores is not None:
-                    random_core_df = \
+                    core_df = \
                         df.loc[df['Name'] == previous_cores_region.pop()]
+                elif sampling_type == 'cold_cores' or \
+                     sampling_type == 'nh2_cores':
+                    # get next coldest core
+                    core_df = df_region.iloc[[i]]
                 else:
                     # get a random core
-                    random_core_index = np.random.choice(cloud_indices,
-                                                   replace=False,
-                                                   size=1,
-                                                   #size=len(row_indices)
-                                                   )
-                    random_core_df = df.iloc[random_core_index]
+                    random_core_index = \
+                        np.random.choice(cloud_indices,
+                                         replace=False,
+                                         size=1,
+                                         )
+                    core_df = df.iloc[random_core_index]
+
+                    print core_df['nh2']
 
                 # check if core near another one, if not add it to the list
                 if row > 0:
                     core_near_another = is_core_near_another(df_new,
-                                                             random_core_df)
+                                                             core_df)
                     if not core_near_another:
-                        df_new.loc[row] = random_core_df.values
+                        df_new.loc[row] = core_df.values
                         row += 1
                 else:
-                    df_new.loc[row] = random_core_df.values
+                    df_new.loc[row] = core_df.values
                     row += 1
 
                 if row >= N_cores:
                     done = True
+
+                i += 1
 
             # convert df to data frame
             core_sample[region] = df_new
@@ -436,6 +488,24 @@ def convert_region_wcs2pix(region_dict, header):
 
         # write data to dataframe
         df['xpix'], df['ypix'] = coords_pixel[0], coords_pixel[1]
+
+    return region_dict
+
+def convert_region_pix2wcs(region_dict, header):
+
+    for region in region_dict:
+        df = region_dict[region]
+
+        # Create WCS object
+        wcs_header = WCS(header)
+
+        coords_pix = np.array([df['xpix'], df['ypix']]).T
+
+        # convert to pixel
+        coords_wcs = wcs_header.all_pix2world(coords_pix, 0)
+
+        # write data to dataframe
+        df['ra'], df['dec'] = coords_wcs[:,0], coords_wcs[:,1]
 
     return region_dict
 
@@ -483,11 +553,7 @@ def load_core_regions(core_sample, header):
 
     return region_dict
 
-def main():
-
-    load_gcc_data = 1
-    load_coresample_data = 0
-    N_cores = 10
+def get_old_core_sample(use_old_sample=True):
 
     cores = ['G166.83-8.68',
              'G168.82-6.37',
@@ -521,6 +587,227 @@ def main():
              'G159.51-18.41',
             ]
 
+    if use_old_sample:
+        return cores
+    else:
+        return None
+
+def derive_ideal_wedge(av_image, core_sample, wedge_angle=40, wedge_radius=10,
+        av_image_error=None, core_rel_pos=0.1, angle_res=1.0):
+
+    import mygeometry as myg
+    import myimage_analysis as myim
+
+    """
+    Parameters
+    ----------
+    angle_res : float
+        Resolution with which to rotate each new box in degrees. 1.0 degree
+        gives 360 different box orientations.
+
+
+    """
+
+    angle_grid = np.arange(0, 360, angle_res)
+    region_dict = {}
+
+    for cloud_name in core_sample:
+    #for cloud_name in ('perseus',):
+        cloud_df = core_sample[cloud_name]
+        gradient_sums_list = []
+        for core_name in cloud_df['Name']:
+        #for core_name in ('G158.26-21.81',):
+
+            core = cloud_df[cloud_df['Name'] == core_name]
+
+            print('Calculating optimal angle for core {:s}'.format(core_name))
+
+            # Get center position in pixels
+            core_pos = [core['xpix'].values[0], core['ypix'].values[0]][::-1]
+
+            wedge_vertices = myg.create_wedge(core_pos,
+                                              wedge_radius,
+                                              wedge_angle,
+                                              center_rel_pos=core_rel_pos)
+
+            gradient_sums = np.zeros((len(angle_grid)))
+
+            for i, angle in enumerate(angle_grid):
+                wedge_vertices_rotated = myg.rotate_wedge(wedge_vertices,
+                                                          core_pos,
+                                                          angle)
+
+                try:
+                    mask = \
+                        myg.get_polygon_mask(av_image,
+                                             wedge_vertices_rotated)
+                    av_image_masked = np.copy(av_image)
+
+                    # extract radial profile weighted by SNR
+                    radii, profile = \
+                        myim.get_radial_profile(av_image,
+                                                binsize=1,
+                                                center=core_pos, #[::-1],
+                                                #weights=av_image_error,
+                                                mask=mask
+                                                )
+
+                    if angle == 90:
+                        av_image_masked = np.copy(av_image)
+                        mask = myg.get_polygon_mask(av_image_masked,
+                                                    wedge_vertices)
+                        av_image_masked[mask==0] = np.NaN
+
+                    indices = np.where((radii == radii) & \
+                                       (profile == profile))
+                    profile, radii = profile[indices], radii[indices]
+
+                    # steeper gradients will have smaller sums
+                    gradient_sum = np.sum(np.gradient(profile, radii))
+                    gradient_sums[i] = gradient_sum
+                except IndexError:
+                    gradient_sums[i] = 0.
+
+                gradient_sums_list.append(gradient_sums)
+
+                #print wedge_vertices_rotated
+
+            # find steepest profile and recreate the box mask
+            angle_ideal = angle_grid[gradient_sums == np.min(gradient_sums)][0]
+
+            wedge_vertices_rotated = myg.rotate_wedge(wedge_vertices,
+                                                      core_pos,
+                                                      angle_ideal)
+
+            region_dict[core_name] = {}
+            region_dict[core_name]['xpix'] = wedge_vertices_rotated[:,1]
+            region_dict[core_name]['ypix'] = wedge_vertices_rotated[:,0]
+
+    return region_dict
+
+def load_wedges(av_image, core_sample, wedge_angle=40, wedge_radius=10,
+        av_image_error=None, core_rel_pos=0.1, angle_res=1.0):
+
+    region_dict = {}
+    core_wedge_angles = {}
+    # angles are counter-clockwise from north
+    core_wedge_angles = {
+                         # Taurus
+                         'G174.40-13.45': 45,
+                         'G174.70-15.47': 100,
+                         'G174.05-15.82': 20,
+                         'G172.93-16.73': 160,
+                         'G172.12-16.94': 190,
+                         'G171.14-17.57': 200,
+                         'G171.49-14.91': 0,
+                         'G171.00-15.80': 195,
+                         'G169.32-16.17': 210,
+                         'G168.10-16.38': 230,
+                         # Perseus
+                         'G160.49-16.81': 20,
+                         'G160.46-17.99': 90,
+                         'G159.80-18.49': 0,
+                         'G160.14-19.08': 120,
+                         'G160.53-19.73': 170,
+                         'G159.19-20.11': 10,
+                         'G158.39-20.72': 0,
+                         'G159.17-21.09': 100,
+                         'G158.89-21.60': 170,
+                         'G158.26-21.81': 270,
+                         # California
+                         'G168.54-6.22': 100,
+                         'G168.12-6.42': 0,
+                         'G166.91-7.76': 60,
+                         'G165.71-9.15': 180,
+                         'G165.36-7.51': 90,
+                         'G164.99-8.60': 250,
+                         'G164.70-7.63': 40,
+                         'G164.18-8.84': 290,
+                         'G164.26-8.39': 0,
+                         'G164.65-8.12': 140,
+                         }
+
+    for cloud_name in core_sample:
+    #for cloud_name in ('perseus',):
+        cloud_df = core_sample[cloud_name]
+        gradient_sums_list = []
+        for core_name in cloud_df['Name']:
+        #for core_name in ('G158.26-21.81',):
+
+            core = cloud_df[cloud_df['Name'] == core_name]
+
+            #print('Calculating optimal angle for core {:s}'.format(core_name))
+
+            # Get center position in pixels
+            core_pos = [core['xpix'].values[0], core['ypix'].values[0]][::-1]
+
+            wedge_vertices = myg.create_wedge(core_pos,
+                                              wedge_radius,
+                                              wedge_angle,
+                                              center_rel_pos=core_rel_pos)
+
+            # angle of wedge
+            if core_name not in core_wedge_angles:
+                core_wedge_angles[core_name] = 0
+            angle_ideal = core_wedge_angles[core_name]
+
+            wedge_vertices_rotated = myg.rotate_wedge(wedge_vertices,
+                                                      core_pos,
+                                                      angle_ideal)
+
+            region_dict[core_name] = {}
+            region_dict[core_name]['xpix'] = wedge_vertices_rotated[:,1]
+            region_dict[core_name]['ypix'] = wedge_vertices_rotated[:,0]
+
+    return region_dict
+
+def calc_wedge_regions(core_sample, av_data, header):
+
+    wedge_angle = 50.0 # degrees
+    wedge_radius = 8.0 / 0.43 # pixels,
+    core_rel_pos = 0.20 # fraction of radius core is within wedge
+
+    if 0:
+        region_dict = derive_ideal_wedge(av_data,
+                                         core_sample,
+                                         wedge_angle=wedge_angle,
+                                         wedge_radius=wedge_radius,
+                                         core_rel_pos=core_rel_pos,
+                                         angle_res=10.,
+                                         )
+    else:
+        region_dict = load_wedges(av_data,
+                                  core_sample,
+                                  wedge_angle=wedge_angle,
+                                  wedge_radius=wedge_radius,
+                                  core_rel_pos=core_rel_pos,
+                                  angle_res=10.,
+                                  )
+
+    region_dict = convert_region_pix2wcs(region_dict, header)
+
+
+    return region_dict
+
+def save_region_dict(region_dict):
+
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
+    filename = region_dir + 'multicloud_divisions_coldcore_wedges.pickle'
+
+    with open(filename, 'wb') as f:
+        pickle.dump(region_dict, f)
+
+def main():
+
+    load_gcc_data = 1
+    load_coresample_data = 1
+    N_cores = 10
+    use_old_sample = 0
+    load_regions = 1
+    region_type = 'wedges' # ds9 or wedges
+
+    cores = get_old_core_sample(use_old_sample=use_old_sample)
+
     # get core data
     df = load_table()
 
@@ -534,14 +821,23 @@ def main():
     df = calc_core_pixel_locations(df, av_header)
 
     # crop dataset to random cores
-    core_sample = crop_to_random_cores(df,
-                                       N_cores=N_cores,
-                                       load=load_coresample_data,
-                                       previous_cores=cores,
-                                       )
+    core_sample = crop_to_core_sample(df,
+                                      N_cores=N_cores,
+                                      load=load_coresample_data,
+                                      previous_cores=cores,
+                                      sampling_type='nh2_cores',
+                                      )
 
     # load core regions
-    region_dict = load_core_regions(core_sample, av_header)
+    if load_regions:
+        if region_type == 'ds9':
+            region_dict = load_core_regions(core_sample, av_header)
+        else:
+            region_dict = calc_wedge_regions(core_sample, av_data, av_header)
+
+        save_region_dict(region_dict)
+    else:
+        region_dict = None
 
     # plot the cores
     print('\nPlotting...')
@@ -554,9 +850,11 @@ def main():
                        av_image=av_data,
                        core_sample=core_sample,
                        region_dict=region_dict,
-                       limits=[75, 45, 20, 38,],
+                       limits=[80, 45, 20, 38,],
                        filename=filename,
-                       vlimits=[0,15.5]
+                       plot_regions=load_regions,
+                       plot_names=True,
+                       vlimits=[0,15.5],
                        )
 
 

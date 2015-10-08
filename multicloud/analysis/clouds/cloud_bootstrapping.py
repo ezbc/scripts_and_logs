@@ -2113,8 +2113,6 @@ def plot_multicloud_results(results):
                                 limits=[2, 20, -6, 10]
                                 )
 
-
-
 '''
 Data Prep functions
 '''
@@ -2406,6 +2404,51 @@ def load_ds9_core_region(cores, filename='',
 
     return cores
 
+def load_wedge_core_region(cores, filename='', header=None):
+
+    from myimage_analysis import get_pix_coords
+    import pickle
+    from astropy.coordinates import SkyCoord
+    from astropy import units as u
+    from astropy.io import fits
+    from astropy.wcs import WCS
+
+    # Create WCS object
+    wcs_header = WCS(header)
+
+    with open(filename, 'rb') as f:
+        region_dict = pickle.load(f)
+
+    for core_name in region_dict:
+        if core_name in cores:
+            core = region_dict[core_name]
+            # Format vertices to be 2 x N array
+            poly_verts = np.array((core['ra'], core['dec']))
+
+            # Make a galactic coords object and convert to Ra/dec
+            coords_fk5 = SkyCoord(core['ra'] * u.deg,
+                                  core['dec'] * u.deg,
+                                  frame='fk5',
+                                  )
+            # convert to pixel
+            coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+
+            #print coords_pixel
+            #print coords_pixel.shape
+
+            # write data to dataframe
+            poly_verts_pix = np.array((coords_pixel[1], coords_pixel[0])).T
+
+            #print poly_verts_pix.shape
+
+            #poly_verts_pix = np.array((core['ypix'], core['xpix'])).T
+
+            cores[core_name]['poly_verts'] = {}
+            cores[core_name]['poly_verts']['wcs'] = poly_verts
+            cores[core_name]['poly_verts']['pixel'] = poly_verts_pix
+
+    return cores
+
 def get_cores_to_plot():
 
     '''
@@ -2413,38 +2456,72 @@ def get_cores_to_plot():
     '''
 
     # Which cores to include in analysis?
-    cores_to_keep = [
-             'G166.83-8.68',
-             'G168.82-6.37',
-             'G168.05-7.01',
-             'G164.16-8.46',
-             'G165.23-8.78',
-             'G167.06-7.77',
-             'G168.12-6.42',
-             'G167.58-6.64',
-             'G164.70-7.63',
-             'G166.35-8.77',
-             'G166.73-15.06',
-             'G173.08-16.50',
-             'G172.74-14.53',
-             'G169.44-16.18',
-             'G173.86-17.65',
-             'G173.71-13.91',
-             'G171.75-14.18',
-             'G173.70-15.21',
-             'G170.28-19.48',
-             'G171.00-15.80',
-             'G158.23-20.15',
-             'G159.01-22.19',
-             'G159.19-20.11',
-             'G157.12-23.49',
-             'G160.10-19.90',
-             'G160.34-18.42',
-             'G158.40-21.86',
-             'G159.79-21.32',
-             'G158.89-21.60',
-             'G159.51-18.41',
-            ]
+    cores_to_keep = [ # N(H2) cores
+                     'G168.54-6.22',
+                     'G168.12-6.42',
+                     'G166.91-7.76',
+                     'G165.36-7.51',
+                     'G164.70-7.63',
+                     'G164.65-8.12',
+                     'G165.71-9.15',
+                     'G164.99-8.60',
+                     'G164.26-8.39',
+                     'G164.18-8.84',
+                     'G174.40-13.45',
+                     'G174.70-15.47',
+                     'G174.05-15.82',
+                     'G171.49-14.91',
+                     'G172.93-16.73',
+                     'G171.00-15.80',
+                     'G172.12-16.94',
+                     'G171.14-17.57',
+                     'G169.32-16.17',
+                     'G168.10-16.38',
+                     'G160.49-16.81',
+                     'G160.46-17.99',
+                     'G159.80-18.49',
+                     'G160.14-19.08',
+                     'G160.53-19.73',
+                     'G159.19-20.11',
+                     'G159.17-21.09',
+                     'G158.39-20.72',
+                     'G158.89-21.60',
+                     'G158.26-21.81',
+                     ]
+
+    if 0: # Random cores
+        cores_to_keep = [
+                 'G166.83-8.68',
+                 'G168.82-6.37',
+                 'G168.05-7.01',
+                 'G164.16-8.46',
+                 'G165.23-8.78',
+                 'G167.06-7.77',
+                 'G168.12-6.42',
+                 'G167.58-6.64',
+                 'G164.70-7.63',
+                 'G166.35-8.77',
+                 'G166.73-15.06',
+                 'G173.08-16.50',
+                 'G172.74-14.53',
+                 'G169.44-16.18',
+                 'G173.86-17.65',
+                 'G173.71-13.91',
+                 'G171.75-14.18',
+                 'G173.70-15.21',
+                 'G170.28-19.48',
+                 'G171.00-15.80',
+                 'G158.23-20.15',
+                 'G159.01-22.19',
+                 'G159.19-20.11',
+                 'G157.12-23.49',
+                 'G160.10-19.90',
+                 'G160.34-18.42',
+                 'G158.40-21.86',
+                 'G159.79-21.32',
+                 'G158.89-21.60',
+                 'G159.51-18.41',
+                ]
 
     if 0:
         cores_to_keep = [# taur
@@ -2538,10 +2615,16 @@ def get_core_properties(data_dict, cloud_name):
             cores[name]['center_wcs'] = (ra, dec)
 
     # load the bounding regions
-    region_filename = region_dir + 'multicloud_coldclump_divisions.reg'
-    cores = load_ds9_core_region(cores,
-                            filename=region_filename,
-                            header=header)
+    if 0:
+        region_filename = region_dir + 'multicloud_coldclump_divisions.reg'
+        cores = load_ds9_core_region(cores,
+                                filename=region_filename,
+                                header=header)
+    else:
+        filename = region_dir + 'multicloud_divisions_coldcore_wedges.pickle'
+        cores = load_wedge_core_region(cores,
+                                       filename=filename,
+                                       header=header)
 
     # add indices of core in data
     add_core_mask(cores, data_dict['av_data'])
@@ -2564,8 +2647,19 @@ def add_core_mask(cores, data):
         try:
             vertices = cores[core]['poly_verts']['pixel']
 
+            if 0:
+                print core
+                print np.array(vertices).shape
+                print vertices
+                print data.shape
+                plt.clf(); plt.close()
+                rh2_copy = data.copy()
+                plt.imshow(rh2_copy, origin='lower')
+                plt.title(core)
+                plt.savefig('/usr/users/ezbc/scratch/core_' + core + '.png')
+
             mask = np.logical_not(myg.get_polygon_mask(data,
-                                                    vertices))
+                                                       vertices))
 
             cores[core]['indices_orig'] = np.where(mask == 0)
 
@@ -2585,7 +2679,6 @@ def add_core_mask(cores, data):
         except KeyError:
             cores[core]['mask'] = None
             cores[core]['indices_orig'] = None
-
 
 '''
 Modeling Functions
@@ -3468,10 +3561,14 @@ def bootstrap_worker(global_args, i):
 
         # mask negative ratios
         if 1:
+            #print core
+            #print '\t rh2 core shape', rh2_core.shape
             mask = (rh2_core < 0) | (np.isnan(rh2_core))
             #mask = (rh2_core < 0)
             rh2_core = rh2_core[~mask]
             h_sd_core = h_sd_core[~mask]
+
+            #print '\t rh2 core post-mask shape', rh2_core.shape
 
         ss_model_result = \
             fit_steady_state_models(h_sd_core,
@@ -4569,8 +4666,8 @@ def main():
     results = {}
 
     clouds = (
-              'taurus',
               'california',
+              'taurus',
               'perseus',
               )
 
@@ -4664,7 +4761,7 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 10,
+                'num_bootstraps': 10000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 'multiprocess': True,
