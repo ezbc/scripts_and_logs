@@ -2906,8 +2906,14 @@ def add_hi_transition_calc(ss_model_result):
 
         rh2_fit = model_fits[0]
 
-        # when R_H2 = 1, HI-to-H2 transition
-        hi_transition = np.interp(1, rh2_fit, h_sd_fit) / 2.0
+        try:
+            if np.isnan(rh2_fit):
+                hi_transition = np.nan
+            else:
+                # when R_H2 = 1, HI-to-H2 transition
+                hi_transition = np.interp(1, rh2_fit, h_sd_fit) / 2.0
+        except ValueError:
+            hi_transition = np.nan
 
         model['hi_transition'] = hi_transition
 
@@ -3451,6 +3457,7 @@ def bootstrap_worker(global_args, i):
     nhi = global_args['nhi']
     nhi_back = global_args['nhi_back']
     hi_data = global_args['hi_data']
+    mask = global_args['mask']
     vel_axis = global_args['vel_axis']
     vel_range = global_args['vel_range']
     vel_range_error = global_args['vel_range_error']
@@ -3548,6 +3555,13 @@ def bootstrap_worker(global_args, i):
         # grab the indices of the core in the unraveled array
         core_indices = cores[core]['indices']
 
+        if 0:
+            if cores[core]['mask'] is not None:
+                cores[core]['mask'] = cores[core]['mask'][~mask]
+                cores[core]['indices'] = np.where(cores[core]['mask'] == 0)[0]
+            else:
+                cores[core]['indices'] = None
+
 
         if 0:
             assert av[core_indices] == cores[core]['test_pix']
@@ -3573,8 +3587,6 @@ def bootstrap_worker(global_args, i):
             h_sd_core = h_sd_core[~mask]
 
             #print '\t rh2 core post-mask shape', rh2_core.shape
-
-        print core, rh2_core.size
 
         ss_model_result = \
             fit_steady_state_models(h_sd_core,
@@ -3730,20 +3742,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     hi_data = hi_data[:, ~mask]
     cores = ss_model_kwargs['cores']
     for core in cores:
-        if 0:
-            import matplotlib.pyplot as plt
-            plt.close(); plt.clf()
-            nh2_copy = np.copy(av_data)
-            nh2_copy[cores[core]['mask']] = np.nan
-            plt.imshow(nh2_copy, origin='lower', interpolation='nearest')
-            plt.savefig('/usr/users/ezbc/scratch/core.png')
         if cores[core]['mask'] is not None:
-            if 0:
-                av_copy = np.copy(av_data)
-                av_copy[cores[core]['mask']] = np.nan
-                av_copy[mask] = np.nan
-                cores[core]['test_pix'] = av_copy[~np.isnan(av_copy)]
-
             cores[core]['mask'] = cores[core]['mask'][~mask]
             cores[core]['indices'] = np.where(cores[core]['mask'] == 0)[0]
         else:
@@ -3765,6 +3764,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     global_args['av_unmasked'] = av_data
     global_args['av_error'] = av_error
     global_args['nhi'] = nhi
+    global_args['mask'] = mask
     global_args['nhi_back'] = nhi_back
     global_args['init_guesses'] = init_guesses
     global_args['plot_kwargs'] = plot_kwargs
@@ -4745,7 +4745,7 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 10000,
+                'num_bootstraps': 100,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 'multiprocess': 1,
