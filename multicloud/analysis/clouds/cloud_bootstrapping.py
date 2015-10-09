@@ -2613,9 +2613,14 @@ def get_core_properties(data_dict, cloud_name):
         df_cores = core_sample[cloud_name]
         for name in df_cores['Name'].values:
             cores[name] = {}
-            ra = df_cores[df_cores['Name'] == name]['ra'].values
-            dec = df_cores[df_cores['Name'] == name]['dec'].values
+            ra = df_cores[df_cores['Name'] == name]['ra'].values[0]
+            dec = df_cores[df_cores['Name'] == name]['dec'].values[0]
             cores[name]['center_wcs'] = (ra, dec)
+            # convert centers to pixel coords
+            center_pixel = get_pix_coords(ra=ra,
+                                          dec=dec,
+                                          header=header)[:2]
+            cores[name]['center_pixel'] = center_pixel[::-1]
 
     # load the bounding regions
     if 0:
@@ -2650,33 +2655,10 @@ def add_core_mask(cores, data):
         try:
             vertices = cores[core]['poly_verts']['pixel']
 
-            if 0:
-                print core
-                print np.array(vertices).shape
-                print vertices
-                print data.shape
-                plt.clf(); plt.close()
-                rh2_copy = data.copy()
-                plt.imshow(rh2_copy, origin='lower')
-                plt.title(core)
-                plt.savefig('/usr/users/ezbc/scratch/core_' + core + '.png')
-
             mask = np.logical_not(myg.get_polygon_mask(data,
                                                        vertices))
 
             cores[core]['indices_orig'] = np.where(mask == 0)
-
-            if 0:
-                print np.array(cores[core]['indices_orig']).shape
-                print mask.shape
-                print data.shape
-
-                plt.clf(); plt.close()
-                rh2_copy = data.copy()
-                rh2_copy[cores[core]['indices_orig']] = 1000
-                plt.imshow(rh2_copy, origin='lower')
-                plt.title(core)
-                plt.savefig('/usr/users/ezbc/scratch/core_' + core + '.png')
 
             cores[core]['mask'] = mask
         except KeyError:
@@ -3345,14 +3327,18 @@ def create_filename_base(global_args):
         hi_range_name = 'gaussrange'
     else:
         hi_range_name = 'stdrange'
+    if global_args['rotate_cores']:
+        rotate_cores_name = '_rotatedcores'
+    else:
+        rotate_cores_name = ''
 
     filename_extension = global_args['cloud_name'] + '_' + global_args['data_type'] + \
             background_name + \
             bin_name + weights_name + \
             region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name + \
-            '_' + hi_range_name + '_' + global_args['radiation_type']
-
+            '_' + hi_range_name + '_' + global_args['radiation_type'] + \
+            rotate_cores_name
 
     return filename_extension, global_args
 
@@ -3447,6 +3433,39 @@ def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error):
 
     return nhi_sim.ravel(), vel_range_sim
 
+def get_rotated_core_indices(core, mask, corename=None, iteration=None):
+
+    import mygeometry as myg
+
+    # Get random angle
+    angle = np.random.uniform() * 360.0 # deg
+
+    # rotate vertices
+    # ---------------
+    vertices = np.array(core['poly_verts']['pixel'])
+    center = core['center_pixel']
+    vertices_rotated = myg.rotate_wedge(vertices,
+                                        center,
+                                        angle)
+
+    # Get mask
+    # --------
+    core_mask = np.logical_not(myg.get_polygon_mask(mask,
+                                                    vertices_rotated))
+
+    if 0:
+        import matplotlib.pyplot as plt
+        plt.close(); plt.clf()
+        plt.imshow(core_mask, origin='lower')
+        plt.savefig('/usr/users/ezbc/scratch/' + corename + '_mask' + \
+                    str(iteration) + '.png')
+
+    # Map the mask to the unraveled mask and get the indices
+    # ------------------------------------------------------
+    core_indices = np.where(core_mask == 0)[0]
+
+    return core_indices
+
 def bootstrap_worker(global_args, i):
 
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
@@ -3468,6 +3487,7 @@ def bootstrap_worker(global_args, i):
     av_scalar = global_args['scale_kwargs']['av_scalar']
     intercept_error = global_args['scale_kwargs']['intercept_error']
     model_kwargs = global_args['ss_model_kwargs']
+    rotate_cores = global_args['rotate_cores']
 
     #i = global_args['i']
     #np.random.seed()
@@ -3552,16 +3572,17 @@ def bootstrap_worker(global_args, i):
 
     # cycle through each core, bootstrapping the pixels
     for core in cores_to_plot:
-        # grab the indices of the core in the unraveled array
-        core_indices = cores[core]['indices']
-
-        if 0:
-            if cores[core]['mask'] is not None:
-                cores[core]['mask'] = cores[core]['mask'][~mask]
-                cores[core]['indices'] = np.where(cores[core]['mask'] == 0)[0]
-            else:
-                cores[core]['indices'] = None
-
+        if rotate_cores:
+            core_indices = get_rotated_core_indices(cores[core],
+                                                    mask,
+                                                    corename=core,
+                                                    iteration=i,
+                                                    )
+            #if core == 'G168.54-6.22':
+            #    print np.sum(core_indices)
+        else:
+            # grab the indices of the core in the unraveled array
+            core_indices = cores[core]['indices']
 
         if 0:
             assert av[core_indices] == cores[core]['test_pix']
@@ -3581,10 +3602,10 @@ def bootstrap_worker(global_args, i):
         if 1:
             #print core
             #print '\t rh2 core shape', rh2_core.shape
-            mask = (rh2_core < 0) | (np.isnan(rh2_core))
+            mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
             #mask = (rh2_core < 0)
-            rh2_core = rh2_core[~mask]
-            h_sd_core = h_sd_core[~mask]
+            rh2_core = rh2_core[~mask_rh2]
+            h_sd_core = h_sd_core[~mask_rh2]
 
             #print '\t rh2 core post-mask shape', rh2_core.shape
 
@@ -3628,8 +3649,6 @@ def bootstrap_worker(global_args, i):
 
             # when R_H2 = 1, HI-to-H2 transition
             hi_transition = np.interp(1, rh2_fit, hsd_fit) / 2.0
-
-            print 'hi trans =', hi_transition
 
             plt.scatter(h_sd_core, rh2_core, color='k', alpha=0.1)
             plt.plot(hsd_fit, rh2_fit, color='r', alpha=1)
@@ -3726,7 +3745,8 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         vel_range=None, vel_range_error=1, av_error_data=None,
         av_reference=None, nhi_image_background=None, num_bootstraps=100,
         plot_kwargs=None, scale_kwargs=None, use_intercept=True,
-        sim_hi_error=False, ss_model_kwargs=None, multiprocess=True):
+        sim_hi_error=False, ss_model_kwargs=None, multiprocess=True,
+        rotate_cores=False,):
 
     import multiprocessing as mp
     import sys
@@ -3743,8 +3763,9 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     cores = ss_model_kwargs['cores']
     for core in cores:
         if cores[core]['mask'] is not None:
-            cores[core]['mask'] = cores[core]['mask'][~mask]
-            cores[core]['indices'] = np.where(cores[core]['mask'] == 0)[0]
+            cores[core]['mask_raveled'] = cores[core]['mask'][~mask]
+            cores[core]['indices'] = \
+                np.where(cores[core]['mask_raveled'] == 0)[0]
         else:
             cores[core]['indices'] = None
 
@@ -3764,6 +3785,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     global_args['av_unmasked'] = av_data
     global_args['av_error'] = av_error
     global_args['nhi'] = nhi
+    global_args['rotate_cores'] = rotate_cores
     global_args['mask'] = mask
     global_args['nhi_back'] = nhi_back
     global_args['init_guesses'] = init_guesses
@@ -4591,6 +4613,7 @@ def run_cloud_analysis(global_args,):
                        sim_hi_error=global_args['sim_hi_error'],
                        ss_model_kwargs=global_args['ss_model_kwargs'],
                        multiprocess=global_args['multiprocess'],
+                       rotate_cores=global_args['rotate_cores'],
                        )
     np.save(bootstrap_filename, boot_result)
 
@@ -4714,10 +4737,15 @@ def main():
                       'isotropic',
                       )
 
+    rotate_cores = (
+                    True,
+                    #False,
+                    )
+
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
             regions, subtract_comps, use_background, hi_range_calc,
-            radiation_type)
+            radiation_type, rotate_cores)
 
     permutations = list(itertools.product(*elements))
 
@@ -4750,6 +4778,7 @@ def main():
                 'sim_hi_error': True,
                 'multiprocess': 1,
                 'radiation_type': permutation[12],
+                'rotate_cores': permutation[13],
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
