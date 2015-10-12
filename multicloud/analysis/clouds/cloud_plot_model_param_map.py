@@ -27,18 +27,17 @@ def plot_params_map(header=None, av_image=None, df=None, limits=None,
     plt.close;plt.clf()
 
     # Color map
-    cmap = plt.cm.gnuplot2
+    cmap = plt.cm.copper
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
     font_scale = 9
 
     # Create figure instance
-    fig = plt.figure(figsize=(7.5, 5))
+    fig = plt.figure(figsize=(3.6, 5))
 
-    nrows_ncols=(1,1)
-    ngrids=1
-
+    nrows_ncols=(3,1)
+    ngrids=3
     axesgrid = AxesGrid(fig, (1,1,1),
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
@@ -51,90 +50,72 @@ def plot_params_map(header=None, av_image=None, df=None, limits=None,
                              dict(header=header)),
                  aspect=True,
                  label_mode='L',
-                 share_all=True)
+                 share_all=False)
 
     # ------------------
     # Av image
     # ------------------
-    # create axes
-    ax = axesgrid[0]
-    # show the image
-    X, Y = np.meshgrid(np.arange(av_image.shape[1]),
-                       np.arange(av_image.shape[0]))
+    parameters = ['phi_cnm', 'alphaG', 'hi_transition']
+    for i in xrange(ngrids):
+        # create axes
+        ax = axesgrid[i]
+        # show the image
+        X, Y = np.meshgrid(np.arange(av_image.shape[1]),
+                           np.arange(av_image.shape[0]))
 
-    im = ax.contour(X, Y, av_image,
-            origin='lower',
-            levels=contours,
-            cmap=myplt.truncate_colormap(plt.cm.binary, minval=0.3,)
-            #vmin=vlimits[0],
-            #vmax=vlimits[1],
-            #norm=matplotlib.colors.LogNorm()
-            )
+        im = ax.contour(X, Y, av_image,
+                origin='lower',
+                levels=contours,
+                cmap=myplt.truncate_colormap(plt.cm.binary, minval=0.3,)
+                #vmin=vlimits[0],
+                #vmax=vlimits[1],
+                #norm=matplotlib.colors.LogNorm()
+                )
 
-    # Asthetics
-    ax.set_display_coord_system("fk5")
-    ax.set_ticklabel_type("hms", "dms")
+        # Asthetics
+        ax.set_display_coord_system("fk5")
+        ax.set_ticklabel_type("hms", "dms")
 
-    ax.set_xlabel('Right Ascension [J2000]',)
-    ax.set_ylabel('Declination [J2000]',)
+        ax.set_xlabel('Right Ascension [J2000]',)
+        ax.set_ylabel('Declination [J2000]',)
 
-    ax.locator_params(nbins=6)
+        ax.locator_params(nbins=4)
 
+        # plot limits
+        if limits is not None:
+            limits_pix = myplt.convert_wcs_limits(limits, header)
+            ax.set_xlim(limits_pix[0],limits_pix[1])
+            ax.set_ylim(limits_pix[2],limits_pix[3])
 
-    # plot limits
-    if limits is not None:
-        limits = myplt.convert_wcs_limits(limits, header)
-        ax.set_xlim(limits[0],limits[1])
-        ax.set_ylim(limits[2],limits[3])
-
-    # Plot cores for each cloud
-    # -------------------------
-    if 0:
-        for region in core_sample:
-            for i, index in enumerate(core_sample[region].index):
-                df = core_sample[region]
-                xpix = df['xpix'][index]
-                ypix = df['ypix'][index]
-
-                anno_color = (0.3, 0.5, 1)
-
-                if 1:
-                    ax.scatter(xpix,ypix,
-                            color='w',
-                            s=40,
-                            marker='+',
-                            linewidths=0.75)
-    if 1:
+        # Plot cores for each cloud
+        # -------------------------
         from matplotlib.patches import Circle
         from matplotlib.collections import PatchCollection
 
+        parameter = parameters[i]
         patches = get_patches(df, header)
-        cmap = myplt.truncate_colormap(plt.cm.copper, minval=0.1)
-        cmap = plt.cm.gnuplot
+        cmap = myplt.truncate_colormap(plt.cm.copper, minval=0.1, maxval=1.0)
         collection = PatchCollection(patches,
                                      cmap=cmap,
                                      edgecolors='none',
                                      zorder=1000,
                                      )
 
+        print df[parameter]
         collection.set_array(df[parameter])
         ax.add_collection(collection,
                           )
 
         # colorbar
+        #cbar = axesgrid.cbar_axes[i].colorbar(collection)
         cbar = ax.cax.colorbar(collection)
         if parameter == 'phi_cnm':
             cbar.set_label_text(r'$\phi_{\rm CNM}$',)
-        else:
+        elif parameter == 'alphaG':
             cbar.set_label_text(r'$\alpha G$',)
-
-        if 0:
-            ax.scatter(df['ra_pix'], df['dec_pix'],
-                    color=model_color_cycles,
-                    s=10,
-                    marker='^',
-                    linewidths=0.75,
-                    )
+        elif parameter == 'hi_transition':
+            cbar.set_label_text(r'$\Sigma_{\rm H\textsc{i},trans}$ ' + \
+                                r'$[M_\cdot\,{\rm pc}^{-2}]$',)
 
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=100)
@@ -147,7 +128,7 @@ def get_patches(df, header):
 
     patches = []
     for i in xrange(len(df['ra_pix'])):
-        patches.append(Circle((df['ra_pix'][i], df['dec_pix'][i]), radius=2))
+        patches.append(Circle((df['ra_pix'][i], df['dec_pix'][i]), radius=4))
 
     return patches
 
@@ -369,7 +350,8 @@ def main():
     plot_params_map(header=av_header,
                    av_image=av_data,
                    df=df,
-                   limits=[75, 50, 20, 37,],
+                   #limits=[75, 50, 20, 37,],
+                   limits=[76, 43.5, 19.5, 38,],
                    filename=filename,
                    contours=[2, 4, 8, 16],
                    parameter='phi_cnm',
@@ -379,7 +361,8 @@ def main():
     plot_params_map(header=av_header,
                    av_image=av_data,
                    df=df,
-                   limits=[75, 50, 20, 37,],
+                   #limits=[75, 50, 20, 37,],
+                   limits=[76, 43.5, 19.5, 38,],
                    filename=filename,
                    contours=[2, 4, 8, 16],
                    parameter='alphaG'

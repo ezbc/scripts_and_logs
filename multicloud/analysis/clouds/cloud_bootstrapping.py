@@ -2132,6 +2132,7 @@ def collect_hi_transition_results(model_analysis_list, cloud_list,
             core = model_analysis_list[i]['cores'][core_name]
             hi_trans_k09 = \
                 core['krumholz_results']['hi_transition']
+            print hi_trans_k09
             hi_trans_k09_error = \
                 core['krumholz_results']['hi_transition_error']
             hi_trans_s14 = \
@@ -2164,7 +2165,7 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
     d = {}
 
     #print_dict_keys(mc_analysis_dict)
-    params_to_write = ['phi_cnm', 'alphaG']
+    params_to_write = ['phi_cnm', 'alphaG', 'hi_transition']
 
     d['cloud'] = []
     d['core'] = []
@@ -2202,7 +2203,7 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
             # append model params and errors to row
             for model in ('krumholz', 'sternberg'):
                 if model == 'krumholz':
-                    params_to_write = ['phi_cnm',]
+                    params_to_write = ['phi_cnm', 'hi_transition']
                 else:
                     params_to_write = ['alphaG',]
                 for i, param_name in enumerate(params_to_write):
@@ -2214,6 +2215,8 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
                     d[param_name].append(param)
                     d[param_name + '_error_low'].append(param_error[0])
                     d[param_name + '_error_high'].append(param_error[1])
+
+            print d[param_name]
 
     # Create dataframe and write it!
     df = pd.DataFrame(data=d,)
@@ -2229,6 +2232,9 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
                        'alphaG',
                        'alphaG_error_low',
                        'alphaG_error_high',
+                       'hi_trans',
+                       'hi_trans_error_low',
+                       'hi_trans_error_high',
                        ),
               index=False,
               )
@@ -2889,11 +2895,12 @@ def add_hi_transition_calc(ss_model_result):
         rh2_fit = model_fits[0]
 
         try:
-            if np.isnan(rh2_fit):
+            if np.isnan(np.sum(rh2_fit)):
                 hi_transition = np.nan
             else:
                 # when R_H2 = 1, HI-to-H2 transition
                 hi_transition = np.interp(1, rh2_fit, h_sd_fit) / 2.0
+
         except ValueError:
             hi_transition = np.nan
 
@@ -4728,7 +4735,6 @@ def main():
                #'2'
                )
 
-
     subtract_comps = (#True,
                       False,
                       )
@@ -4738,8 +4744,8 @@ def main():
                       )
 
     rotate_cores = (
-                    True,
-                    #False,
+                    #True,
+                    False,
                     )
 
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
