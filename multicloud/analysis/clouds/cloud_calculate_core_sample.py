@@ -593,7 +593,7 @@ def get_old_core_sample(use_old_sample=True):
         return None
 
 def derive_ideal_wedge(av_image, core_sample, wedge_angle=40, wedge_radius=10,
-        av_image_error=None, core_rel_pos=0.1, angle_res=1.0):
+        av_image_error=None, core_rel_pos=0.1, angle_res=1.0, width=3):
 
     import mygeometry as myg
     import myimage_analysis as myim
@@ -628,7 +628,9 @@ def derive_ideal_wedge(av_image, core_sample, wedge_angle=40, wedge_radius=10,
             wedge_vertices = myg.create_wedge(core_pos,
                                               wedge_radius,
                                               wedge_angle,
-                                              center_rel_pos=core_rel_pos)
+                                              center_rel_pos=core_rel_pos,
+                                              width=wedge_width,
+                                              )
 
             gradient_sums = np.zeros((len(angle_grid)))
 
@@ -686,7 +688,7 @@ def derive_ideal_wedge(av_image, core_sample, wedge_angle=40, wedge_radius=10,
     return region_dict
 
 def load_wedges(av_image, core_sample, wedge_angle=40, wedge_radius=10,
-        av_image_error=None, core_rel_pos=0.1, angle_res=1.0):
+        av_image_error=None, core_rel_pos=0.1, angle_res=1.0, wedge_width=3,):
 
     region_dict = {}
     core_wedge_angles = {}
@@ -744,7 +746,9 @@ def load_wedges(av_image, core_sample, wedge_angle=40, wedge_radius=10,
             wedge_vertices = myg.create_wedge(core_pos,
                                               wedge_radius,
                                               wedge_angle,
-                                              center_rel_pos=core_rel_pos)
+                                              center_rel_pos=core_rel_pos,
+                                              width=wedge_width,
+                                              )
 
             # angle of wedge
             if core_name not in core_wedge_angles:
@@ -763,15 +767,17 @@ def load_wedges(av_image, core_sample, wedge_angle=40, wedge_radius=10,
 
 def calc_wedge_regions(core_sample, av_data, header):
 
-    wedge_angle = 50.0 # degrees
-    wedge_radius = 8.0 / 0.43 # pixels,
-    core_rel_pos = 0.20 # fraction of radius core is within wedge
+    wedge_angle = 40.0 # degrees
+    wedge_radius = 10.0 / 0.43 # pixels,
+    wedge_width = 0.8 * wedge_radius # fraction of radius core is within wedge
+    core_rel_pos = 0.30 # fraction of radius core is within wedge
 
     if 0:
         region_dict = derive_ideal_wedge(av_data,
                                          core_sample,
                                          wedge_angle=wedge_angle,
                                          wedge_radius=wedge_radius,
+                                         wedge_width=wedge_width,
                                          core_rel_pos=core_rel_pos,
                                          angle_res=10.,
                                          )
@@ -780,6 +786,7 @@ def calc_wedge_regions(core_sample, av_data, header):
                                   core_sample,
                                   wedge_angle=wedge_angle,
                                   wedge_radius=wedge_radius,
+                                  wedge_width=wedge_width,
                                   core_rel_pos=core_rel_pos,
                                   angle_res=10.,
                                   )

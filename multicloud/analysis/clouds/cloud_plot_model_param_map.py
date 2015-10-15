@@ -101,7 +101,6 @@ def plot_params_map(header=None, av_image=None, df=None, limits=None,
                                      zorder=1000,
                                      )
 
-        print df[parameter]
         collection.set_array(df[parameter])
         ax.add_collection(collection,
                           )
@@ -114,8 +113,8 @@ def plot_params_map(header=None, av_image=None, df=None, limits=None,
         elif parameter == 'alphaG':
             cbar.set_label_text(r'$\alpha G$',)
         elif parameter == 'hi_transition':
-            cbar.set_label_text(r'$\Sigma_{\rm H\textsc{i},trans}$ ' + \
-                                r'$[M_\cdot\,{\rm pc}^{-2}]$',)
+            cbar.set_label_text(r'$\Sigma_{\rm HI,trans}$ ' + \
+                                r'$[M_\odot\,{\rm pc}^{-2}]$',)
 
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=100)
@@ -346,29 +345,19 @@ def main():
 
     # plot the cores
     figure_dir = '/d/bip3/ezbc/multicloud/figures/'
-    filename = figure_dir + 'maps/multicloud_av_modelparams_phicnm_map.png'
-    plot_params_map(header=av_header,
-                   av_image=av_data,
-                   df=df,
-                   #limits=[75, 50, 20, 37,],
-                   limits=[76, 43.5, 19.5, 38,],
-                   filename=filename,
-                   contours=[2, 4, 8, 16],
-                   parameter='phi_cnm',
-                   #vlimits=[-0.1,18]
-                   )
-    filename = figure_dir + 'maps/multicloud_av_modelparams_alphaG_map.png'
-    plot_params_map(header=av_header,
-                   av_image=av_data,
-                   df=df,
-                   #limits=[75, 50, 20, 37,],
-                   limits=[76, 43.5, 19.5, 38,],
-                   filename=filename,
-                   contours=[2, 4, 8, 16],
-                   parameter='alphaG'
-                   #vlimits=[-0.1,18]
-                   )
-
+    filetypes = ['png', 'pdf']
+    for filetype in filetypes:
+        filename = figure_dir + 'maps/multicloud_av_modelparams_map.' + \
+                   filetype
+        plot_params_map(header=av_header,
+                       av_image=av_data,
+                       df=df,
+                       #limits=[75, 50, 20, 37,],
+                       limits=[76, 43.5, 19.5, 38,],
+                       filename=filename,
+                       contours=[2, 4, 8, 16],
+                       #vlimits=[-0.1,18]
+                       )
 
 if __name__ == '__main__':
     main()

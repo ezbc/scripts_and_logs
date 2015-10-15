@@ -1939,7 +1939,7 @@ def plot_multicloud_results(results):
                 rh2_copy = rh2_list[i].copy()
                 rh2_copy[core_indices] = 1000
                 plt.imshow(rh2_copy, origin='lower')
-                plt.savefig('/usr/users/ezbc/scratch/core_' + core + '.png')
+                plt.savefig('/d/bip3/ezbc/scratch/core_' + core + '.png')
 
         core_names_list.append(core_names)
         hisd_cores_list.append(hisd_core_list)
@@ -2132,7 +2132,7 @@ def collect_hi_transition_results(model_analysis_list, cloud_list,
             core = model_analysis_list[i]['cores'][core_name]
             hi_trans_k09 = \
                 core['krumholz_results']['hi_transition']
-            print hi_trans_k09
+            #print hi_trans_k09
             hi_trans_k09_error = \
                 core['krumholz_results']['hi_transition_error']
             hi_trans_s14 = \
@@ -2216,7 +2216,7 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
                     d[param_name + '_error_low'].append(param_error[0])
                     d[param_name + '_error_high'].append(param_error[1])
 
-            print d[param_name]
+            #print d[param_name]
 
     # Create dataframe and write it!
     df = pd.DataFrame(data=d,)
@@ -2277,7 +2277,10 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
                     param_error = \
                         core[model + '_results'][param_name + '_error']
 
-                    param_info = (param, param_error[0], param_error[1])
+                    param_info = (param, param_error[1], param_error[0])
+
+                    #if param_name == 'alphaG':
+                        #print core_name, param_info
 
                     row_text = \
                         add_row_element(row_text,
@@ -2821,6 +2824,9 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs):
                           radiation_type=sternberg_params['radiation_type']
                           )
 
+        #print('phi_g =', phi_g)
+        #print('alphaG =', alphaG)
+
         # Fit to krumholz model
         phi_cnm, Z_k09, phi_mol = \
             fit_krumholz(h_sd,
@@ -3188,13 +3194,13 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params = Parameters()
     params.add('alphaG',
                value=guesses[0],
-               min=0.001,
-               max=1000,
+               min=0.1,
+               max=100,
                vary=vary[0])
     params.add('phi_g',
                value=guesses[2],
                min=0.5,
-               max=2,
+               max=3,
                vary=vary[2])
     params.add('Z',
                value=guesses[1],
@@ -3445,7 +3451,7 @@ def get_rotated_core_indices(core, mask, corename=None, iteration=None):
     import mygeometry as myg
 
     # Get random angle
-    angle = np.random.uniform() * 360.0 # deg
+    angle = np.random.uniform(low=-1, high=1) * 90.0 # deg
 
     # rotate vertices
     # ---------------
@@ -3464,7 +3470,7 @@ def get_rotated_core_indices(core, mask, corename=None, iteration=None):
         import matplotlib.pyplot as plt
         plt.close(); plt.clf()
         plt.imshow(core_mask, origin='lower')
-        plt.savefig('/usr/users/ezbc/scratch/' + corename + '_mask' + \
+        plt.savefig('/d/bip3/ezbc/scratch/' + corename + '_mask' + \
                     str(iteration) + '.png')
 
     # Map the mask to the unraveled mask and get the indices
@@ -3663,7 +3669,7 @@ def bootstrap_worker(global_args, i):
             plt.axvline(hi_transition)
             plt.yscale('log')
             plt.xlim([0,80]); plt.ylim([0.001, 10])
-            plt.savefig('/usr/users/ezbc/scratch/rh2_vs_hsd' + \
+            plt.savefig('/d/bip3/ezbc/scratch/rh2_vs_hsd' + \
                         core + '_' + str(i) + '.png')
 
 
@@ -4131,7 +4137,7 @@ def get_model_fit_kwargs(cloud_name):
     '''
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
-    vary_phi_g = False # Vary phi_g in S+14 fit?
+    vary_phi_g = 1 # Vary phi_g in S+14 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
@@ -4241,6 +4247,29 @@ def calc_mc_analysis(mc_results):
                     mystats.calc_cdf_error(param_results,
                                            alpha=0.32)
 
+                if param == 'alphaG':
+                    y = param_results
+                    y = np.array(y[~np.isnan(y)])
+                    y = np.sort(y)
+                    cdf = 1. * np.arange(len(y)) / (len(y) - 1)
+
+                    alpha = 0.32
+                    median = np.interp(0.5, cdf, y)
+                    low_error = np.interp(alpha / 2.0, cdf, y)
+                    high_error = np.interp(1 - alpha / 2.0, cdf, y)
+
+                    if 0:
+                        import matplotlib.pyplot as plt
+                        plt.close(); plt.clf()
+                        plt.plot(y, cdf)
+                        print(core, median, low_error, high_error)
+                        plt.axvline(median)
+                        plt.axvline(low_error)
+                        plt.axvline(high_error)
+
+                        plt.savefig('/d/bip3/ezbc/scratch/' + core + \
+                                    '_alphag_cdf.png')
+
                 core_analysis[core][model][param] = param_value
                 core_analysis[core][model][param + '_error'] = param_error
 
@@ -4252,7 +4281,7 @@ def calc_mc_analysis(mc_results):
                         import matplotlib.pyplot as plt
                         plt.close(); plt.clf()
                         plt.hist(param_results, bins=50)
-                        plt.savefig('/usr/users/ezbc/scratch/'+core+\
+                        plt.savefig('/d/bip3/ezbc/scratch/'+core+\
                                     '_hist.png')
 
                     print('core ' + core + ': ' + param  + \
@@ -4744,8 +4773,8 @@ def main():
                       )
 
     rotate_cores = (
-                    #True,
                     False,
+                    #True,
                     )
 
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
@@ -4761,7 +4790,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
