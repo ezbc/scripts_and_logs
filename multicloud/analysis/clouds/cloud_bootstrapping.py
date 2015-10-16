@@ -2625,6 +2625,9 @@ def get_core_properties(data_dict, cloud_name):
             ra = df_cores[df_cores['Name'] == name]['ra'].values[0]
             dec = df_cores[df_cores['Name'] == name]['dec'].values[0]
             cores[name]['center_wcs'] = (ra, dec)
+            cores[name]['temp'] = \
+                df_cores[df_cores['Name'] == name]['temp'].values[0]
+
             # convert centers to pixel coords
             center_pixel = get_pix_coords(ra=ra,
                                           dec=dec,
@@ -3212,7 +3215,9 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     result = minimize(residual,
                       params,
                       args=(h_sd, rh2),
-                      method='leastsq')
+                      #method='leastsq',
+                      method='anneal',
+                      )
 
     rh2_fit_params = (params['alphaG'].value, params['Z'].value,
             params['phi_g'].value)
@@ -4258,7 +4263,7 @@ def calc_mc_analysis(mc_results):
                     low_error = np.interp(alpha / 2.0, cdf, y)
                     high_error = np.interp(1 - alpha / 2.0, cdf, y)
 
-                    if 0:
+                    if 1:
                         import matplotlib.pyplot as plt
                         plt.close(); plt.clf()
                         plt.plot(y, cdf)
@@ -4790,7 +4795,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
