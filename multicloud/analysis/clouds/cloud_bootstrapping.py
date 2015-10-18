@@ -1970,6 +1970,14 @@ def plot_multicloud_results(results):
                     filename,
                     )
 
+    # Write param summary to dataframe for ease of use
+    filename = results_dir + 'tables/multicloud_model_summary.pickle'
+    write_fit_summary_dict(model_analysis_dict,
+                           core_list,
+                           cloud_name_list,
+                           filename,
+                           )
+
     # Write table for
     filename = results_dir + 'tables/multicloud_hi_transitions.csv'
     hi_trans_dict = collect_hi_transition_results(model_analysis_list,
@@ -2157,6 +2165,66 @@ def print_dict_keys(d):
         if type(d[key]) is dict:
             print('--')
             print_dict_keys(d[key])
+
+
+def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
+        filename):
+
+    import pandas as pd
+    import pickle
+
+    d = {}
+
+    # Collect parameter names for each model for each core
+    for i, cloud in enumerate(cloud_name_list):
+        mc_analysis = mc_analysis_dict[cloud]
+        core_names = np.sort(mc_analysis['cores'].keys())
+
+        cores = core_list[i]
+
+        # each core correspond to a row
+        for cloud_row, core_name in enumerate(core_names):
+            core = mc_analysis['cores'][core_name]
+
+            core_props = cores[core_name]
+
+            d[core_name] = {}
+            core_new = d[core_name]
+            core_new['cloud'] = cloud
+            ra_deg = core_props['center_wcs'][0]
+            dec_deg = core_props['center_wcs'][1]
+            #ra_deg = 15*(ra[0] + ra[1] / 60. + ra[2] / 3600.)
+            #dec_deg = dec[0] + dec[1] / 60. + dec[2] / 3600.
+            core_new['ra'] = ra_deg
+            core_new['dec'] = dec_deg
+            core_new['temp'] = core_props['temp']
+            core_new['temp_error'] = core_props['temp_error']
+            core_new['region_vertices'] = core_props['poly_verts']['wcs']
+
+            # append model params and errors to row
+            for model in ('krumholz', 'sternberg'):
+                if model == 'krumholz':
+                    params_to_write = ['phi_cnm', 'Z', 'phi_mol',
+                                       'hi_transition']
+                else:
+                    params_to_write = ['alphaG', 'Z', 'phi_g',
+                                       'hi_transition']
+                core_new[model] = {}
+                for i, param_name in enumerate(params_to_write):
+                    param = \
+                        core[model + '_results'][param_name]
+                    param_error = \
+                        core[model + '_results'][param_name + '_error']
+
+                    core_new[model][param_name] = param
+                    #core_new[model][param_name + '_error_low'] = \
+                    #        param_error[0]
+                    #core_new[model][param_name + '_error_high'] = \
+                    #        param_error[1]
+                    core_new[model][param_name + '_error'] = param_error
+
+    with open(filename, 'wb') as f:
+        pickle.dump(d, f)
 
 def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
 
@@ -2627,6 +2695,10 @@ def get_core_properties(data_dict, cloud_name):
             cores[name]['center_wcs'] = (ra, dec)
             cores[name]['temp'] = \
                 df_cores[df_cores['Name'] == name]['temp'].values[0]
+            cores[name]['temp_error'] = \
+                df_cores[df_cores['Name'] == name]['temp_error'].values[0]
+
+            print cores[name]['temp_error']
 
             # convert centers to pixel coords
             center_pixel = get_pix_coords(ra=ra,
@@ -4795,7 +4867,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,

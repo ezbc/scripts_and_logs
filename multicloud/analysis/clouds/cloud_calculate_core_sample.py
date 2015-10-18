@@ -298,6 +298,7 @@ def load_cold_cores(load_raw_data=True):
         df['SNR'] = []
         df['nh2'] = []
         df['temp'] = []
+        df['temp_error'] = []
         for i in xrange(len(cc_data)):
             #if myg.point_in_polygon(ra, region_vertices):
             ra = cc_data[i][3]
@@ -313,6 +314,12 @@ def load_cold_cores(load_raw_data=True):
                 df['SNR'].append(cc_data.field('SNR')[i])
                 df['nh2'].append(cc_data.field('NH2')[i])
                 df['temp'].append(cc_data.field('TEMP_CLUMP')[i])
+                temp_error = (cc_data.field('TEMP_CLUMP')[i] - \
+                                cc_data.field('TEMP_CLUMP_LOW1')[i],
+                              cc_data.field('TEMP_CLUMP_UP1')[i] - \
+                                cc_data.field('TEMP_CLUMP')[i]
+                              )
+                df['temp_error'].append(temp_error)
                 df['Region'].append(region_check)
 
         df = pd.DataFrame(df)
@@ -806,8 +813,8 @@ def save_region_dict(region_dict):
 
 def main():
 
-    load_gcc_data = 1
-    load_coresample_data = 1
+    load_gcc_data = 0
+    load_coresample_data = 0
     N_cores = 10
     use_old_sample = 0
     load_regions = 1
