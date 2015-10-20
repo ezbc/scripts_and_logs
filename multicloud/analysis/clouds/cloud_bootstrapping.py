@@ -2880,7 +2880,7 @@ def fit_av_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
             return results
 
 def fit_steady_state_models(h_sd, rh2, model_kwargs,
-        bootstrap_residuals=False):
+        bootstrap_residuals=False, nboot=100):
 
     # Fit R_H2
     #---------
@@ -2898,10 +2898,14 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs,
                           vary=sternberg_params['param_vary'],
                           radiation_type=sternberg_params['radiation_type'],
                           bootstrap_residuals=bootstrap_residuals,
+                          nboot=nboot,
                           )
         if bootstrap_residuals:
             alphaG, alphaG_error, Z_s14, Z_s14_error, phi_g, phi_g_error = \
                     result
+            sternberg_results['alphaG_error'] = alphaG_error
+            sternberg_results['Z_error'] = Z_s14_error
+            sternberg_results['phi_g_error'] = phi_g_error
         else:
             alphaG, Z_s14, phi_g = result
             alphaG_error, Z_s14_error, phi_g_error = 3*[np.nan]
@@ -2913,31 +2917,31 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs,
                          guesses=krumholz_params['guesses'],
                          vary=krumholz_params['param_vary'],
                          bootstrap_residuals=bootstrap_residuals,
+                         nboot=nboot,
                          )
         if bootstrap_residuals:
             phi_cnm, phi_cnm_error,Z_k09, Z_k09_error,phi_mol, phi_mol_error= \
                     result
+            krumholz_results['phi_cnm_error'] = phi_cnm_error
+            krumholz_results['Z_error'] = Z_k09_error
+            krumholz_results['phi_mol_error'] = phi_mol_error
         else:
-            alphaG, Z_s14, phi_g = result
-            alphaG_error, Z_s14_error, phi_g_error = 3*[np.nan]
+            phi_cnm, Z_k09, phi_mol = result
+            phi_cnm_error, Z_k09_error, phi_mol_error = 3*[np.nan]
     else:
         alphaG, Z_s14, phi_g, phi_cnm, Z_k09, phi_mol = 6 * [np.nan]
+        alphaG_error, Z_s14_error, phi_g_error, \
+        phi_cnm_error, Z_k09_error, phi_mol_error = 6*[np.nan]
 
     # keep results
     sternberg_results['alphaG'] = alphaG
     sternberg_results['Z'] = Z_s14
     sternberg_results['phi_g'] = phi_g
-    sternberg_results['alphaG_error'] = alphaG_error
-    sternberg_results['Z_error'] = Z_s14_error
-    sternberg_results['phi_g_error'] = phi_g_error
 
     # keep results
     krumholz_results['phi_cnm'] = phi_cnm
     krumholz_results['Z'] = Z_k09
     krumholz_results['phi_mol'] = phi_mol
-    krumholz_results['phi_cnm_error'] = phi_cnm_error
-    krumholz_results['Z_error'] = Z_k09_error
-    krumholz_results['phi_mol_error'] = phi_mol_error
 
     # see eq 6 of sternberg+09
     # alphaG is the number density of the CNM over the minimum number
@@ -3057,7 +3061,8 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
     return output
 
 def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
-        verbose=False, vary=[True, True, True], bootstrap_residuals=False):
+        verbose=False, vary=[True, True, True], bootstrap_residuals=False,
+        nboot=100):
 
     '''
     Parameters
@@ -3131,7 +3136,6 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
                       method='leastsq')
 
     if bootstrap_residuals:
-        nboot = 1000
         def resample_residuals(residuals):
             return np.random.choice(residuals,
                                     size=residuals.size,
@@ -3268,7 +3272,7 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
 
 def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         verbose=False, vary=[True, True, True], radiation_type='isotropic',
-        bootstrap_residuals=False,):
+        bootstrap_residuals=False, nboot=100):
 
     '''
     Parameters
@@ -3348,7 +3352,6 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
                       )
 
     if bootstrap_residuals:
-        nboot = 10
         def resample_residuals(residuals):
             return np.random.choice(residuals,
                                     size=residuals.size,
@@ -3788,20 +3791,10 @@ def bootstrap_worker(global_args, i):
             rh2_core = rh2_core[~mask_rh2]
             h_sd_core = h_sd_core[~mask_rh2]
 
-
-        print core
-        if i == 0:
-            bootstrap_residuals = True
-        else:
-            bootstrap_residuals = False
-
-        print bootstrap_residuals, i
-
         ss_model_result = \
             fit_steady_state_models(h_sd_core,
                                     rh2_core,
                                     model_kwargs=model_kwargs,
-                                    bootstrap_residuals=bootstrap_residuals,
                                     )
 
         # get HI transition result
@@ -4027,11 +4020,14 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
 
     return boot_results, mc_results
 
-def residual_worker(global_args, i):
+def residual_worker(global_args, core):
 
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
         calculate_sd, calculate_nh2, calculate_nh2_error
 
+    rh2 = global_args['rh2']
+    h_sd = global_args['h_sd']
+    nboot = global_args['nboot']
     av = global_args['av']
     av_error = global_args['av_error']
     nhi = global_args['nhi']
@@ -4050,221 +4046,51 @@ def residual_worker(global_args, i):
     model_kwargs = global_args['ss_model_kwargs']
     rotate_cores = global_args['rotate_cores']
 
-    # calculate N(HI)
-    nhi = myia.calculate_nhi(cube=hi_data,
-                             velocity_axis=vel_axis,
-                             velocity_range=vel_range_sim,
-                             )
-
-    # Bootstrap data
-    # -------------------------------------------------------------------------
-    # for plotting
-    plot_kwargs['bootstrap_num'] = i
-
-    # Fit the bootstrapped data
-    # -------------------------------------------------------------------------
-    av_model_results = fit_av_model(av,
-                            nhi,
-                            av_error=av_error,
-                            nhi_background=nhi_back,
-                            init_guesses=init_guesses,
-                            plot_kwargs=plot_kwargs,
-                            use_intercept=use_intercept)
-
-    # Calculate N(H2), then HI + H2 surf dens, fit relationship
-    # -------------------------------------------------------------------------
-    # calculate N(H2) maps
-    nh2_image = calculate_nh2(nhi_image=nhi,
-                              av_image=av,
-                              dgr=av_model_results['dgr_cloud'])
-
-    # convert to column density to surface density
-    hi_sd_image = calculate_sd(nhi,
-                               sd_factor=1/1.25)
-
-    h2_sd_image = calculate_sd(nh2,
-                               sd_factor=1/0.625)
-
-    h_sd_image = hi_sd_image + h2_sd_image
-
-    # Write ratio between H2 and HI
-    rh2_image = h2_sd_image / hi_sd_image
-
     model_kwargs = global_args['ss_model_kwargs']['model_kwargs']
     cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
     cores = global_args['ss_model_kwargs']['cores']
 
-    ss_model_results = {}
-
     # cycle through each core, bootstrapping the pixels
-            if rotate_cores:
-                core_indices = get_rotated_core_indices(cores[core],
-                                                        mask,
-                                                        corename=core,
-                                                        iteration=i,
-                                                        )
-                #if core == 'G168.54-6.22':
-                #    print np.sum(core_indices)
-            else:
-                # grab the indices of the core in the unraveled array
-                core_indices = cores[core]['indices']
+    if rotate_cores:
+        core_indices = get_rotated_core_indices(cores[core],
+                                                mask,
+                                                corename=core,
+                                                iteration=i,
+                                                )
+        #if core == 'G168.54-6.22':
+        #    print np.sum(core_indices)
+    else:
+        # grab the indices of the core in the unraveled array
+        core_indices = cores[core]['indices']
 
-            if 0:
-                assert av[core_indices] == cores[core]['test_pix']
+    h_sd_core = h_sd[core_indices]
+    rh2_core = rh2[core_indices]
 
-            h_sd_core = h_sd_image[core_indices]
-            rh2_core = rh2_image[core_indices]
+    # mask negative ratios
+    mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
+    rh2_core = rh2_core[~mask_rh2]
+    h_sd_core = h_sd_core[~mask_rh2]
 
-            # mask negative ratios
-            mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
-            rh2_core = rh2_core[~mask_rh2]
-            h_sd_core = h_sd_core[~mask_rh2]
+    ss_model_result = \
+        fit_steady_state_models(h_sd_core,
+                                rh2_core,
+                                model_kwargs=model_kwargs,
+                                bootstrap_residuals=True,
+                                nboot=nboot,
+                                )
 
-            print bootstrap_residuals, i
+    # get HI transition result
+    add_hi_transition_calc(ss_model_result)
 
-            ss_model_result = \
-                fit_steady_state_models(h_sd_core,
-                                        rh2_core,
-                                        model_kwargs=model_kwargs,
-                                        bootstrap_residuals=True,
-                                        )
+    return ss_model_result, core
 
-            # get HI transition result
-            add_hi_transition_calc(ss_model_result)
-            ss_model_results[core] = ss_model_result
-
-            phi_cnm = ss_model_result['krumholz_results']['phi_cnm']
-            if phi_cnm < 0:
-                print 'core = ', core, ' phi_cnm =', phi_cnm
-
-
-        ss_model_result = \
-            fit_steady_state_models(h_sd_core,
-                                    rh2_core,
-                                    model_kwargs=model_kwargs,
-                                    bootstrap_residuals=bootstrap_residuals,
-                                    )
-
-        # get HI transition result
-        add_hi_transition_calc(ss_model_result)
-        ss_model_results[core] = ss_model_result
-
-        if 0:
-            print core, 'phi_cnm', ss_model_result['krumholz_results']['phi_cnm']
-        if 0:
-            import matplotlib.pyplot as plt
-            plt.close(); plt.clf();
-            hi_sd_core = hi_sd_image[core_indices][~mask]
-            rh2_fit, hsd_fit = \
-                calc_sternberg(ss_model_result['sternberg_results'],
-                              h_sd_extent=[1e-3, 100],
-                              return_fractions=False)
-            rh2_fit, hsd_fit = \
-                calc_krumholz(ss_model_result['krumholz_results'],
-                              h_sd_extent=[1e-3, 100],
-                              return_fractions=False)
-            #print ss_model_result['sternberg_results']['alphaG']
-
-            # fit spline to R_H2 as a function of HI surf dense
-            sort_indices = np.argsort(hi_sd_core)
-            hi_sd_core_sorted = hi_sd_core[sort_indices]
-            rh2_core_sorted = rh2_core[sort_indices]
-            rh2_spline = \
-                scipy.interpolate.UnivariateSpline(
-                                                   hi_sd_core_sorted,
-                                                   rh2_core_sorted,
-                                                   )
-            hi_sd_fit = np.arange(0, 100, 1)
-            rh2_spline_fit = rh2_spline(hi_sd_fit)
-
-            # when R_H2 = 1, HI-to-H2 transition
-            hi_transition = np.interp(1, rh2_fit, hsd_fit) / 2.0
-
-            plt.scatter(h_sd_core, rh2_core, color='k', alpha=0.1)
-            plt.plot(hsd_fit, rh2_fit, color='r', alpha=1)
-            plt.plot(hi_sd_fit, rh2_spline_fit, color='c', alpha=1)
-            plt.axvline(hi_transition)
-            plt.yscale('log')
-            plt.xlim([0,80]); plt.ylim([0.001, 10])
-            plt.savefig('/d/bip3/ezbc/scratch/rh2_vs_hsd' + \
-                        core + '_' + str(i) + '.png')
-
-
-        phi_cnm = ss_model_result['krumholz_results']['phi_cnm']
-        if phi_cnm < 0:
-            print 'core = ', core, ' phi_cnm =', phi_cnm
-
-    # Write results
-    # -------------------------------------------------------------------------
-    #global_args['init_guesses'] = av_model_result
-
-    # Write results
-    mc_results = {}
-    mc_results['data_params'] = {'av_background_sim': av_background_sim,
-                                 'vel_range_sim': vel_range_sim,
-                                 'av_scalar_sim': av_scalar_sim}
-    mc_results['av_model_results'] = av_model_results
-    mc_results['ss_model_results'] = ss_model_results
-
-
-    # Plot distribution and fit
-    if plot_kwargs['plot_diagnostics']:
-    #if 1:
-        dgr_cloud = av_model_results['dgr_cloud']
-        dgr_background = av_model_results['dgr_background']
-        intercept = av_model_results['intercept']
-
-        filename = plot_kwargs['figure_dir'] + \
-                   'diagnostics/av_nhi/' + plot_kwargs['filename_base'] + \
-                   '_av_vs_nhi_bootstrap' + \
-                   '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
-        av_cloud = create_cloud_model(av_boot,
-                                     nhi_back_boot,
-                                     dgr_background,)
-        av_background = create_background_model(av_boot,
-                                     nhi_boot,
-                                     dgr_cloud,)
-        if nhi_back_boot is not None:
-            #nhi_total = nhi_boot + nhi_back_boot
-            #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
-            #av_boot = np.hstack((av_cloud, av_background))
-            #av_images = (av_boot, av_cloud, av_background)
-            av_images = (av_cloud, av_background)
-            #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
-            nhi_images = (nhi_boot, nhi_back_boot)
-        else:
-            nhi_total = nhi_boot
-            av_images = (av_boot,)
-            nhi_images = (nhi_total,)
-
-        fit_params = {
-                      'dgr_cloud': dgr_cloud,
-                      'dgr_cloud_error': (0, 0),
-                      'dgr_background': dgr_background,
-                      'dgr_background_error': (0, 0),
-                      'intercept': intercept,
-                      'intercept_error': (0,0),
-                      }
-
-        #print('plotting')
-        plot_av_vs_nhi(av_images,
-                       nhi_images,
-                       av_error=av_error_boot,
-                       fit_params=fit_params,
-                       contour_plot=plot_kwargs['av_nhi_contour'],
-                       limits=plot_kwargs['av_nhi_limits'],
-                       filename=filename,
-                       )
-    #queue.put(result)
-    return mc_results
-
-def residual_worker_wrapper(args, i):
+def residual_worker_wrapper(args, core):
 
     import sys
     import traceback
 
     try:
-        output = residual_worker(args, i)
+        output = residual_worker(args, core)
         return output
     except Exception as error:
         # capture the exception and bundle the traceback
@@ -4281,6 +4107,8 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     import multiprocessing as mp
     import sys
     import traceback
+    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
+        calculate_sd, calculate_nh2, calculate_nh2_error
 
     if av_error_data is None:
         av_error_data = np.ones(av_data.size)
@@ -4309,59 +4137,18 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     boot_results = np.empty((3, num_bootstraps))
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
 
-
-
-
-    #i = global_args['i']
-    #np.random.seed()
-
-    #queue = global_args['queue']
-
-    # Create simulated data
-    # -------------------------------------------------------------------------
-    # add random noise
-    av_sim = av + simulate_noise(av, av_error)
-
-    # rescale the data somewhere between Planck and 2MASS:
-    # rescaled Planck = Planck / beta where beta is between 1.0 and 1.4
-    av_sim, av_scalar_sim = simulate_rescaling(av_sim, scalar=av_scalar)
-
-    # remove background
-    av_sim, av_background_sim = \
-            simulate_background_error(av_sim,
-                                      scale=intercept_error)
-
     # calculate N(HI)
-    if global_args['sim_hi_error']:
-        nhi_sim, vel_range_sim = simulate_nhi(hi_data,
-                                              vel_axis,
-                                              vel_range,
-                                              vel_range_error)
-    else:
-        nhi_sim = nhi
+    nhi = myia.calculate_nhi(cube=hi_data,
+                             velocity_axis=vel_axis,
+                             velocity_range=vel_range,
+                             )
 
-    # Bootstrap data
+    # Fit the data
     # -------------------------------------------------------------------------
-    boot_indices = np.random.choice(av.size, size=av.size,)# p=probabilities)
-
-    av_boot = av_sim[boot_indices]
-    av_error_boot = av_error[boot_indices]
-    nhi_boot = nhi_sim[boot_indices]
-
-    if nhi_back is not None:
-        nhi_back_boot = nhi_back[boot_indices]
-    else:
-        nhi_back_boot = None
-
-    # for plotting
-    plot_kwargs['bootstrap_num'] = i
-
-    # Fit the bootstrapped data
-    # -------------------------------------------------------------------------
-    av_model_results = fit_av_model(av_boot,
-                            nhi_boot,
-                            av_error=av_error_boot,
-                            nhi_background=nhi_back_boot,
+    av_model_results = fit_av_model(av,
+                            nhi,
+                            av_error=av_error,
+                            nhi_background=nhi_back,
                             init_guesses=init_guesses,
                             plot_kwargs=plot_kwargs,
                             use_intercept=use_intercept)
@@ -4369,12 +4156,12 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     # Calculate N(H2), then HI + H2 surf dens, fit relationship
     # -------------------------------------------------------------------------
     # calculate N(H2) maps
-    nh2_image = calculate_nh2(nhi_image=nhi_sim,
-                              av_image=av_sim,
+    nh2_image = calculate_nh2(nhi_image=nhi,
+                              av_image=av,
                               dgr=av_model_results['dgr_cloud'])
 
     # convert to column density to surface density
-    hi_sd_image = calculate_sd(nhi_sim,
+    hi_sd_image = calculate_sd(nhi,
                                sd_factor=1/1.25)
 
     h2_sd_image = calculate_sd(nh2_image,
@@ -4385,70 +4172,17 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     # Write ratio between H2 and HI
     rh2_image = h2_sd_image / hi_sd_image
 
-
-    model_kwargs = global_args['ss_model_kwargs']['model_kwargs']
-    cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
-    cores = global_args['ss_model_kwargs']['cores']
-
-    ss_model_results = {}
-
-    # cycle through each core, bootstrapping the pixels
-    for core in cores_to_plot:
-        if rotate_cores:
-            core_indices = get_rotated_core_indices(cores[core],
-                                                    mask,
-                                                    corename=core,
-                                                    iteration=i,
-                                                    )
-            #if core == 'G168.54-6.22':
-            #    print np.sum(core_indices)
-        else:
-            # grab the indices of the core in the unraveled array
-            core_indices = cores[core]['indices']
-
-        if 0:
-            assert av[core_indices] == cores[core]['test_pix']
-
-        # Bootstrap core indices
-        #core_boot_indices = core_indices[index_ints]
-        np.random.seed()
-        core_boot_indices = np.random.choice(core_indices.size,
-                                             size=core_indices.size,)
-        # get bootstrapped pixels
-        #h_sd_core = h_sd_image[core_boot_indices]
-        #rh2_core = rh2_image[core_boot_indices]
-        h_sd_core = h_sd_image[core_indices]
-        rh2_core = rh2_image[core_indices]
-
-        # mask negative ratios
-        if 1:
-            mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
-            rh2_core = rh2_core[~mask_rh2]
-            h_sd_core = h_sd_core[~mask_rh2]
-
-
-        print core
-        if i == 0:
-            bootstrap_residuals = True
-        else:
-            bootstrap_residuals = False
-
-        print bootstrap_residuals, i
-
-
-
-
-
-
-
     # Prep arguments
     global_args = {}
     global_args['av'] = av
     global_args['av_unmasked'] = av_data
     global_args['av_error'] = av_error
+    global_args['rh2'] = rh2_image
+    global_args['h_sd'] = h_sd_image
     global_args['nhi'] = nhi
     global_args['rotate_cores'] = rotate_cores
     global_args['mask'] = mask
+    global_args['nboot'] = num_bootstraps
     global_args['nhi_back'] = nhi_back
     global_args['init_guesses'] = init_guesses
     global_args['plot_kwargs'] = plot_kwargs
@@ -4467,6 +4201,7 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         global_args['vel_axis'] = None
         global_args['vel_range'] = None
         global_args['vel_range_error'] = None
+    cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
 
     # Prep multiprocessing
     queue = mp.Queue(10)
@@ -4482,23 +4217,47 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         pool.join()
 
         # Get the results
-        mc_results = collect_bootstrap_results(processes, ss_model_kwargs)
+        resid_results = collect_residual_results(processes, ss_model_kwargs)
 
         for i in xrange(len(processes)):
             result = processes[i].get()
-            boot_results[:, i] = result['av_model_results'].values()
     else:
         for i in xrange(num_bootstraps):
             processes.append(residual_worker(global_args, i))
 
-        mc_results = collect_bootstrap_results(processes, ss_model_kwargs,
+        resid_results = collect_residual_results(processes, ss_model_kwargs,
                                                multiprocess=False)
 
-        for i in xrange(len(processes)):
-            result = processes[i]
-            boot_results[:, i] = result['av_model_results'].values()
+    return resid_results
 
-    return boot_results, mc_results
+def collect_residual_results(processes, ss_model_kwargs, multiprocess=True):
+
+    empty = lambda: np.empty(len(processes))
+    mc_analysis = {}
+    mc_analysis['cores'] = {}
+
+    for i in xrange(len(processes)):
+        #result = queue.get())
+
+        if multiprocess:
+            result = processes[i].get()
+        else:
+            result = processes[i]
+
+        model_result, core = result
+        mc_analysis[core] = {}
+
+        for model in model_result:
+            mc_analysis[core][model] = {}
+            model_dict = \
+                mc_analysis[core][model]
+            for param in model_result[model]:
+                param_result = \
+                    model_result[model][param]
+                model_dict[param] = param_result
+                print param, param_result
+
+    return mc_analysis
 
 def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
 
@@ -4545,13 +4304,11 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
         for core in result['ss_model_results']:
             for model in result['ss_model_results'][core]:
                 for param in result['ss_model_results'][core][model]:
-
                     param_result = \
                         result['ss_model_results'][core][model][param]
                     model_dict = \
                         mc_results['ss_model_results']['cores'][core][model]
                     model_dict[param][i] = param_result
-
 
     return mc_results
 
@@ -4869,7 +4626,7 @@ def add_coldens_images(data_products, mc_analysis):
     data_products['h_sd'] = h_sd
     data_products['rh2'] = rh2
 
-def calc_mc_analysis(mc_results):
+def calc_mc_analysis(mc_results, resid_results):
 
     import mystats
 
@@ -4896,34 +4653,20 @@ def calc_mc_analysis(mc_results):
                     mystats.calc_cdf_error(param_results,
                                            alpha=0.32)
 
-                if param == 'alphaG':
-                    y = param_results
-                    y = np.array(y[~np.isnan(y)])
-                    y = np.sort(y)
-                    cdf = 1. * np.arange(len(y)) / (len(y) - 1)
+                # add fit error
+                if param != 'hi_transition':
+                    fit_error = \
+                        np.array(resid_results[core][model][param + '_error'])
 
-                    alpha = 0.32
-                    median = np.interp(0.5, cdf, y)
-                    low_error = np.interp(alpha / 2.0, cdf, y)
-                    high_error = np.interp(1 - alpha / 2.0, cdf, y)
-
-                    if 0:
-                        import matplotlib.pyplot as plt
-                        plt.close(); plt.clf()
-                        plt.plot(y, cdf)
-                        print(core, median, low_error, high_error)
-                        plt.axvline(median)
-                        plt.axvline(low_error)
-                        plt.axvline(high_error)
-
-                        plt.savefig('/d/bip3/ezbc/scratch/' + core + \
-                                    '_alphag_cdf.png')
+                    print 'before', param, param_error
+                    param_error = np.sqrt(fit_error**2 + \
+                                          np.array(param_error)**2)
+                    print 'after', param, param_error
 
                 core_analysis[core][model][param] = param_value
                 core_analysis[core][model][param + '_error'] = param_error
 
                 params[param] = param_value
-
 
                 if 0:
                     if param == 'phi_cnm':
@@ -4952,6 +4695,7 @@ def calc_mc_analysis(mc_results):
             core_analysis[core][model]['hsd_fit'] = model_fits[1]
             core_analysis[core][model]['hisd_fit'] = model_fits[2]
 
+
     mc_analysis = {'dgr': dgr,
                    'dgr_error': dgr_error,
                    'cores': core_analysis,
@@ -4962,7 +4706,8 @@ def calc_mc_analysis(mc_results):
 def add_results_analysis(results_dict):
 
     # calculate statistics of bootstrapped model values
-    results_dict['mc_analysis'] = calc_mc_analysis(results_dict['mc_results'])
+    results_dict['mc_analysis'] = calc_mc_analysis(results_dict['mc_results'],
+                                            results_dict['resid_mc_results'])
 
     if 0:
         for core in results_dict['mc_analysis']['cores']:
@@ -5284,6 +5029,27 @@ def run_cloud_analysis(global_args,):
 
     print('\n\tBeginning bootstrap monte carlo...')
 
+    # Bootstrap residuals of best fitting models
+    resid_mc_results = \
+        bootstrap_residuals(av_data_backsub,
+                       nhi_image=nhi_image,
+                       av_error_data=av_error_data,
+                       nhi_image_background=nhi_image_background,
+                       plot_kwargs=plot_kwargs,
+                       hi_data=hi_data_crop,
+                       vel_axis=hi_vel_axis_crop,
+                       vel_range=velocity_range,
+                       vel_range_error=2,
+                       av_reference=av_data_ref,
+                       use_intercept=global_args['use_intercept'],
+                       num_bootstraps=100,
+                       scale_kwargs=scale_kwargs,
+                       sim_hi_error=global_args['sim_hi_error'],
+                       ss_model_kwargs=global_args['ss_model_kwargs'],
+                       multiprocess=global_args['multiprocess'],
+                       rotate_cores=global_args['rotate_cores'],
+                       )
+
     # Perform bootsrapping
     boot_result, mc_results = \
         bootstrap_fits(av_data_backsub,
@@ -5307,9 +5073,6 @@ def run_cloud_analysis(global_args,):
     np.save(bootstrap_filename, boot_result)
 
 
-    # Bootstrap residuals of best fitting models
-
-
     results_dict = {'boot_result': boot_result,
                     'data': data,
                     'data_products': data_products,
@@ -5317,6 +5080,7 @@ def run_cloud_analysis(global_args,):
                     'plot_kwargs': plot_kwargs,
                     'filenames': filenames,
                     'mc_results': mc_results,
+                    'resid_mc_results': resid_mc_results,
                     }
 
     print('\n\tSaving results...')
