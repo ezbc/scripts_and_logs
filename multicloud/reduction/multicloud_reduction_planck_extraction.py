@@ -54,6 +54,28 @@ def extract_data(datatype = 'ebv'):
                 resolution = 0.05,
                 cut_last_pixel = False,
                 verbose = True)
+    elif datatype == 'temp':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = 'Dust Opacity',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 4,
+                dr_version = 2,
+                resolution = 0.05,
+                cut_last_pixel = False,
+                verbose = True)
+    elif datatype == 'temp_error':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = 'Dust Opacity',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 5,
+                dr_version = 2,
+                resolution = 0.05,
+                cut_last_pixel = False,
+                verbose = True)
     elif datatype == '857':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = '857',
@@ -129,9 +151,10 @@ def tau353_to_ebv(data, header):
 
 def main():
     av_dir = '/d/bip3/ezbc/multicloud/data/av/'
+    temp_dir = '/d/bip3/ezbc/multicloud/data/dust_temp/'
     planck_dir = '/d/bip3/ezbc/multicloud/data/planck/'
 
-    if 1:
+    if 0:
     	# Color excess maps
         # -----------------
         (data, header) = extract_data(datatype = 'tau353')
@@ -148,7 +171,7 @@ def main():
         (data, header) = ebv2av(data, header)
         write_data(data, header, av_dir + 'multicloud_av_error_planck.fits')
 
-    if 1:
+    if 0:
         (data, header) = extract_data(datatype = 'ebv')
         write_data(data, header, planck_dir + 'multicloud_planck_radiance_ebv.fits')
         (data, header) = ebv2av(data, header)
@@ -160,8 +183,7 @@ def main():
         (data, header) = ebv2av(data, header)
         write_data(data, header,
                 av_dir + 'multicloud_av_error_planck_radiance.fits')
-    if 1:
-
+    if 0:
         # Band maps
         # ---------
         (data, header) = extract_data(datatype = '857')
@@ -173,8 +195,14 @@ def main():
         (data, header) = extract_data(datatype = '353')
         write_data(data, header, planck_dir + 'multicloud_planck_353ghz.fits')
 
+    if 1:
+        # Temp maps
+        # ---------
+        (data, header) = extract_data(datatype = 'temp')
+        write_data(data, header, temp_dir + 'multicloud_dust_temp.fits')
 
-
+        (data, header) = extract_data(datatype = 'temp_error')
+        write_data(data, header, temp_dir + 'multicloud_dust_temp_error.fits')
 
 if __name__ == '__main__':
 	main()

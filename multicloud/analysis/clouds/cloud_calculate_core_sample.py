@@ -439,8 +439,6 @@ def crop_to_core_sample(df, N_cores=10, load=False, previous_cores=None,
                                          )
                     core_df = df.iloc[random_core_index]
 
-                    print core_df['nh2']
-
                 # check if core near another one, if not add it to the list
                 if row > 0:
                     core_near_another = is_core_near_another(df_new,
@@ -463,7 +461,7 @@ def crop_to_core_sample(df, N_cores=10, load=False, previous_cores=None,
             if 0:
                 core_sample[region] = df._slice(cloud_indices)
                 core_sample[region].sort(['SNR'], ascending=[True])
-                core_sample[region] = core_sample[region]._slice(slice(0, 15))
+                core_sample[region] = core_sample[region]._slice(slice(0, 30))
 
         with open(filename, 'wb') as f:
             pickle.dump(core_sample, f)
@@ -813,7 +811,7 @@ def save_region_dict(region_dict):
 
 def main():
 
-    load_gcc_data = 0
+    load_gcc_data = 1
     load_coresample_data = 0
     N_cores = 10
     use_old_sample = 0

@@ -55,6 +55,28 @@ def extract_data(datatype = 'ebv'):
                 resolution = 0.01,
                 cut_last_pixel = False,
                 verbose = True)
+    elif datatype == 'temp':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = 'Dust Opacity',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 4,
+                dr_version = 2,
+                resolution = 0.05,
+                cut_last_pixel = False,
+                verbose = True)
+    elif datatype == 'temp_error':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = 'Dust Opacity',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 5,
+                dr_version = 2,
+                resolution = 0.05,
+                cut_last_pixel = False,
+                verbose = True)
     elif datatype == '857':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = '857',
@@ -110,7 +132,7 @@ def ebv2av(data, header, error=None):
     if error is None:
         return (av, header)
     else:
-        rv_data = np.loadtxt('/usr/users/ezbc/research/scripts/multicloud/' + \
+        rv_data = np.loadtxt('/usr/users/ezbc/research/scripts/perseus/' + \
                              'analysis/clouds/cloud_errors.csv',
                              skiprows=1, delimiter=',')
 
@@ -193,8 +215,9 @@ def main():
     av_dir = '/d/bip3/ezbc/perseus/data/av/'
     co_dir = '/d/bip3/ezbc/perseus/data/co/'
     planck_dir = '/d/bip3/ezbc/perseus/data/planck/'
+    temp_dir = '/d/bip3/ezbc/perseus/data/dust_temp/'
 
-    if 1:
+    if 0:
         # Color excess maps
         # -----------------
         # tau_353
@@ -209,7 +232,7 @@ def main():
         (data_av_tau353, header) = ebv2av(data_ebv_tau353, header)
         write_data(data_av_tau353, header,
                    av_dir + 'perseus_av_planck_tau353.fits')
-    if 1:
+    if 0:
 
         # tau 353 error
         (data_tau353_error, header) = extract_data(datatype = 'tau353err')
@@ -286,6 +309,16 @@ def main():
 
         (data, header) = extract_data(datatype = 'co_error')
         write_data(data, header, co_dir + 'perseus_co_error_planck.fits')
+
+    if 1:
+        # Temp maps
+        # ---------
+        (data, header) = extract_data(datatype = 'temp')
+        write_data(data, header, temp_dir + 'perseus_dust_temp.fits')
+
+        (data, header) = extract_data(datatype = 'temp_error')
+        write_data(data, header, temp_dir + 'perseus_dust_temp_error.fits')
+
 
 
 

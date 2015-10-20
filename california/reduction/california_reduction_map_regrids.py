@@ -77,18 +77,25 @@ def main():
               'hi/california_hi_galfa_cube',
               'av/california_av_planck_tau353',
               'av/california_av_error_planck_tau353',
+              'dust_temp/california_dust_temp',
+              'dust_temp/california_dust_temp_error',
               '/d/bip3/ezbc/multicloud/data/av/multicloud_av_k09_nan',
               'co/california_co_cfa_cube')
 
     im_pl = 'av/california_av_planck_tau353'
     im_pl_err = 'av/california_av_error_planck_tau353'
+    im_Td = 'dust_temp/california_dust_temp'
+    im_Td_err = 'dust_temp/california_dust_temp_error'
     im_k09 = 'av/california_av_k09'
     im_hi = 'hi/california_hi_galfa_cube'
     im_co = 'co/california_co_cfa_cube'
 
     # Load the images into miriad
     print('\nLoading images into miriad')
-    out_images = (im_hi, im_pl, im_pl_err, im_k09, im_co)
+    out_images = (im_hi, im_pl, im_pl_err,
+                  im_Td,
+                  im_Td_err,
+            im_k09, im_co)
 
     for i in xrange(len(in_images)):
         exists = check_file(out_images[i] + '.mir', clobber=clobber)
@@ -101,7 +108,10 @@ def main():
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
-    images = (im_pl, im_pl_err, im_hi)
+    images = (im_pl, im_pl_err,
+                  im_Td,
+                  im_Td_err,
+            im_hi)
     delta_ra = -0.083333333
     delta_dec = 0.083333333
 
@@ -196,6 +206,8 @@ def main():
 
     images = [im_pl + '_5arcmin',
               im_pl_err + '_5arcmin',
+              im_Td + '_5arcmin',
+              im_Td_err + '_5arcmin',
               im_k09 + '_regrid_planckres',
               im_co + '_regrid_planckres',
               im_hi + '_regrid_planckres']

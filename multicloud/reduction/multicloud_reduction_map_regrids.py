@@ -86,6 +86,8 @@ def main():
     in_images = ('hi/multicloud_hi_galfa_cube',
               'av/multicloud_av_planck',
               'av/multicloud_av_error_planck',
+              'dust_temp/multicloud_dust_temp',
+              'dust_temp/multicloud_dust_temp_error',
               'av/multicloud_av_planck_radiance',
               'av/multicloud_av_error_planck_radiance',
               'co/multicloud_co_cfa_cube',
@@ -96,6 +98,8 @@ def main():
     im_hi = 'hi/multicloud_hi_galfa_cube'
     im_pl = 'av/multicloud_av_planck'
     im_pl_err = 'av/multicloud_av_error_planck'
+    im_Td = 'dust_temp/multicloud_dust_temp'
+    im_Td_err = 'dust_temp/multicloud_dust_temp_error'
     im_pl2 = 'av/multicloud_av_planck_radiance'
     im_pl2_err = 'av/multicloud_av_error_planck_radiance'
     im_co = 'co/multicloud_co_cfa_cube'
@@ -108,6 +112,8 @@ def main():
     out_images = (im_hi,
                   im_pl,
                   im_pl_err,
+                  im_Td,
+                  im_Td_err,
                   im_pl2,
                   im_pl2_err,
                   im_co,
@@ -130,7 +136,7 @@ def main():
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
-    images = (im_pl, im_pl_err, im_pl2, im_pl2_err, im_hi)
+    images = (im_pl, im_pl_err, im_Td, im_Td_err, im_pl2, im_pl2_err, im_hi)
 
     desc = (59.75,0,-0.08333,180,26.05,0,0.08333,132)
 
@@ -233,6 +239,8 @@ def main():
     images = [
               im_pl + '_5arcmin',
               im_pl_err + '_5arcmin',
+              im_Td + '_5arcmin',
+              im_Td_err + '_5arcmin',
               im_pl2 + '_5arcmin',
               im_pl2_err + '_5arcmin',
               im_k09 + '_regrid_planckres',

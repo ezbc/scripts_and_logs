@@ -79,17 +79,21 @@ def main():
     in_images = ('hi/perseus_hi_galfa_cube',
               'av/perseus_av_planck_tau353',
               'av/perseus_av_error_planck_tau353',
+              'dust_temp/perseus_dust_temp',
+              'dust_temp/perseus_dust_temp_error',
               'av/perseus_av_planck_radiance',
               'av/perseus_av_error_planck_radiance',
               'co/perseus_co_cfa_cube',
               #'av/perseus_av_k09_nan',
-              '/d/bip3/ezbc/multicloud/data/av/multicloud_av_k09_nan',
+              '/d/bip3/ezbc/perseus/data/av/perseus_av_k09_nan',
               'av/perseus_av_lee12_2mass_nan',
               'av/perseus_av_lee12_iris_masked')
 
     im_hi = 'hi/perseus_hi_galfa_cube'
     im_pl = 'av/perseus_av_planck_tau353'
     im_pl_err = 'av/perseus_av_error_planck_tau353'
+    im_Td = 'dust_temp/perseus_dust_temp'
+    im_Td_err = 'dust_temp/perseus_dust_temp_error'
     im_pl2 = 'av/perseus_av_planck_radiance'
     im_pl2_err = 'av/perseus_av_error_planck_radiance'
     im_co = 'co/perseus_co_cfa_cube'
@@ -102,6 +106,8 @@ def main():
     out_images = (im_hi,
                   im_pl,
                   im_pl_err,
+                  im_Td,
+                  im_Td_err,
                   im_pl2,
                   im_pl2_err,
                   im_co,
@@ -124,7 +130,7 @@ def main():
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
-    images = (im_pl, im_pl_err, im_pl2, im_pl2_err, im_hi)
+    images = (im_pl, im_pl_err, im_Td, im_Td_err, im_pl2, im_pl2_err, im_hi)
 
     desc = (59.75,0,-0.08333,180,26.05,0,0.08333,132)
 
@@ -221,6 +227,8 @@ def main():
     images = [
               im_pl + '_5arcmin',
               im_pl_err + '_5arcmin',
+              im_Td + '_5arcmin',
+              im_Td_err + '_5arcmin',
               im_pl2 + '_5arcmin',
               im_pl2_err + '_5arcmin',
               im_k09 + '_regrid_planckres',

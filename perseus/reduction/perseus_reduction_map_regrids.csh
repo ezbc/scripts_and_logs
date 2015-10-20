@@ -46,7 +46,7 @@ regrid in=av/perseus_av_error_planck.mir \
 # regrid galfa hi image to have lower velocity resolution
 regrid in=hi/perseus_hi_galfa_cube.mir \
     out=hi/perseus_hi_galfa_cube_1kms.mir \
-    desc=59.75,0,-0.08333,180,26.05,0,0.08333,132,0,100,1,200
+    desc=59.75,0,-0.08333,180, 26.05,0,0.08333,132, 0,100,1,200
 
 # Smooth the files
 smooth in=av/perseus_av_lee12_masked.mir fwhm=5 pa=0 \
