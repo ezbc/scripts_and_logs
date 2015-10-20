@@ -1955,7 +1955,7 @@ def plot_multicloud_results(results):
     # Print results
     # =========================================================================
     # Write results to a
-    print_av_error_stats(av_list[0], av_error_list[0])
+    #print_av_error_stats(av_list[0], av_error_list[0])
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
@@ -2196,8 +2196,11 @@ def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
             #dec_deg = dec[0] + dec[1] / 60. + dec[2] / 3600.
             core_new['ra'] = ra_deg
             core_new['dec'] = dec_deg
-            core_new['temp'] = core_props['temp']
-            core_new['temp_error'] = core_props['temp_error']
+            try:
+                core_new['temp'] = core_props['temp']
+                core_new['temp_error'] = core_props['temp_error']
+            except KeyError:
+                core_new['temp'], core_new['temp_error'] = 17, 1
             core_new['region_vertices'] = core_props['poly_verts']['wcs']
 
             # append model params and errors to row
@@ -2692,10 +2695,10 @@ def get_core_properties(data_dict, cloud_name):
             ra = df_cores[df_cores['Name'] == name]['ra'].values[0]
             dec = df_cores[df_cores['Name'] == name]['dec'].values[0]
             cores[name]['center_wcs'] = (ra, dec)
-            #cores[name]['temp'] = \
-            #    df_cores[df_cores['Name'] == name]['temp'].values[0]
-            #cores[name]['temp_error'] = \
-            #    df_cores[df_cores['Name'] == name]['temp_error'].values[0]
+            cores[name]['temp'] = \
+                df_cores[df_cores['Name'] == name]['temp'].values[0]
+            cores[name]['temp_error'] = \
+                df_cores[df_cores['Name'] == name]['temp_error'].values[0]
 
             #print cores[name]['temp_error']
 
@@ -3163,14 +3166,12 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
             for param_name in param_names:
                 param_dict[param_name][i] = params[param_name].value
-                print param_name, param_dict[param_name][i]
 
         rh2_fit_params = []
         for param_name in param_names:
             conf = mystats.calc_cdf_error(param_dict[param_name])
             rh2_fit_params.append(conf[0])
             rh2_fit_params.append(conf[1])
-        print len(rh2_fit_params)
     else:
         rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
                 params['phi_mol'].value)
@@ -4255,7 +4256,6 @@ def collect_residual_results(processes, ss_model_kwargs, multiprocess=True):
                 param_result = \
                     model_result[model][param]
                 model_dict[param] = param_result
-                print param, param_result
 
     return mc_analysis
 
@@ -4658,10 +4658,10 @@ def calc_mc_analysis(mc_results, resid_results):
                     fit_error = \
                         np.array(resid_results[core][model][param + '_error'])
 
-                    print 'before', param, param_error
+                    #print 'before', param, param_error
                     param_error = np.sqrt(fit_error**2 + \
                                           np.array(param_error)**2)
-                    print 'after', param, param_error
+                    #print 'after', param, param_error
 
                 core_analysis[core][model][param] = param_value
                 core_analysis[core][model][param + '_error'] = param_error
@@ -5042,7 +5042,7 @@ def run_cloud_analysis(global_args,):
                        vel_range_error=2,
                        av_reference=av_data_ref,
                        use_intercept=global_args['use_intercept'],
-                       num_bootstraps=100,
+                       num_bootstraps=global_args['num_resid_bootstraps'],
                        scale_kwargs=scale_kwargs,
                        sim_hi_error=global_args['sim_hi_error'],
                        ss_model_kwargs=global_args['ss_model_kwargs'],
@@ -5229,7 +5229,8 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 10,
+                'num_bootstraps': 1000,
+                'num_resid_bootstraps': 1000,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 'multiprocess': 1,
