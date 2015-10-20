@@ -1800,6 +1800,350 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
             dpi = 100
         plt.savefig(filename, bbox_inches='tight', dpi=dpi)
 
+def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
+        model_results=None, model_analysis=None, xlimits=None, ylimits=None,
+        scale=('linear', 'linear'), filename=None, show_params=False,
+        levels=5, ncols=2):
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Determine size of figure and number of grids
+    # --------------------------------------------
+    if 0:
+        n = int(np.ceil(len(core_names)**0.5))
+        if n**2 - n > len(core_names):
+            nrows = n - 1
+            ncols = ncols
+            y_scaling = 1.0 - 1.0 / n
+        else:
+            nrows, ncols = n, n
+            y_scaling = 1.0
+
+    if 1:
+        n = len(core_names)
+        nrows = (n + 1) / ncols
+        if n > nrows * ncols:
+            nrows += 1
+        y_scaling = nrows / 2.0
+        x_scaling = ncols / 2.0
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+
+    figsize = (3.6*x_scaling, 3.6*y_scaling)
+
+    # Create figure instance
+    fig = plt.figure(figsize=figsize)
+
+    if n == 1:
+        n = 2
+
+    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
+
+    if xlimits is not None and ylimits is not None:
+        aspect = (xlimits[1] - xlimits[0]) / (ylimits[1] - ylimits[0])
+    else:
+        aspect = False
+
+    if 1:
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+        axes = np.ravel(axes)
+    else:
+        axes = AxesGrid(fig, (1,1,1),
+                        nrows_ncols=(nrows, ncols),
+                        ngrids=n,
+                        #axes_pad=0.1,
+                        axes_pad=0.3,
+                        aspect=False,
+                        label_mode='all',
+                        share_all=False,
+                        )
+
+
+    # Cycle through lists
+    # -------------------
+    for i, core in enumerate(core_names):
+        hi_sd = hisd_list[i]
+        h_sd = hsd_list[i]
+
+        # Load parameters
+        alphaG = model_analysis[core]['sternberg_results']['alphaG']
+        alphaG_error = \
+                model_analysis[core]['sternberg_results']['alphaG_error']
+        phi_cnm = model_analysis[core]['krumholz_results']['phi_cnm']
+        phi_cnm_error = \
+                model_analysis[core]['krumholz_results']['phi_cnm_error']
+        hi_sd_fit_sternberg = \
+                model_analysis[core]['sternberg_results']['hisd_fit']
+        hi_sd_fit_krumholz = \
+                model_analysis[core]['krumholz_results']['hisd_fit']
+        h_sd_fit = model_analysis[core]['krumholz_results']['hsd_fit']
+
+
+        # Drop the NaNs from the images
+        indices = np.where((hi_sd == hi_sd) &\
+                           (h_sd == h_sd))
+
+        hi_sd_nonans = hi_sd[indices]
+        h_sd_nonans = h_sd[indices]
+
+        rh2 = (h_sd_nonans - hi_sd_nonans) / hi_sd_nonans
+
+        # Create plot
+        ax = axes[i]
+
+        #ax.set_xticks([0, 40, 80, 120])
+
+        if 1:
+            if xlimits is None:
+                xmin = np.min(h_sd_nonans)
+                xmax = np.max(h_sd_nonans)
+                xscalar = 0.15 * xmax
+                xlimits = [xmin - xscalar, xmax + xscalar]
+            if ylimits is None:
+                ymin = np.min(rh2)
+                ymax = np.max(rh2)
+                yscalar = 0.15 * ymax
+                ylimits = [ymin - yscalar, ymax + yscalar]
+
+            cmap = myplt.truncate_colormap(plt.cm.gray_r,
+                                           minval=0.2,
+                                           maxval=1)
+
+            l1 = myplt.scatter_contour(h_sd_nonans.ravel(),
+                                 rh2.ravel(),
+                                 threshold=2,
+                                 log_counts=0,
+                                 levels=levels,
+                                 ax=ax,
+                                 histogram2d_args=dict(bins=20,
+                                        range=(((xlimits)[0], xlimits[1]),
+                                                (ylimits[0], ylimits[1]))),
+                                 plot_args=dict(marker='o',
+                                                linestyle='none',
+                                                markeredgewidth=0,
+                                                color='black',
+                                                alpha=0.4,
+                                                markersize=2.5,
+                                                ),
+                                 contour_args=dict(
+                                                   cmap=cmap,
+                                                   ),
+                                 )
+
+        if xlimits is not None:
+            ax.set_xlim(xlimits[0], xlimits[1])
+        if ylimits is not None:
+            ax.set_ylim(ylimits[0], ylimits[1])
+            ylimits = None
+
+        if 0:
+            # get bootstrap results
+            model = 'krumholz'
+            core_results = model_results['cores'][core]
+
+            params = {}
+            nfits = len(core_results['krumholz_results']['phi_cnm'])
+            if nfits > 500:
+                nfits = 500
+            alpha = 1 / float(nfits) * 10.0
+            for j in xrange(nfits):
+                params['phi_cnm'] = \
+                    core_results['krumholz_results']['phi_cnm'][j]
+                params['Z'] = core_results['krumholz_results']['Z'][j]
+                params['phi_mol'] = \
+                    core_results['krumholz_results']['phi_mol'][j]
+                if 'sternberg' in model:
+                    model_fits = calc_sternberg(params,
+                                              h_sd_extent=(0, limits[1]),
+                                              return_fractions=False,
+                                              return_hisd=True)
+                elif 'krumholz' in model:
+                    model_fits = calc_krumholz(params,
+                                              h_sd_extent=(0, limits[1]),
+                                              return_fractions=False,
+                                              return_hisd=True)
+
+                ax.plot(model_fits[1], model_fits[2],
+                        linestyle='-',
+                        color=c_cycle[2],
+                        alpha=alpha,
+                        )
+                hi_trans = core_results['krumholz_results']['hi_transition'][j]
+                ax.axvline(hi_trans,
+                           alpha=0.5,
+                           color='r')
+
+        else:
+            if 0:
+                l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
+                        label='S+14',
+                        color=c_cycle[1],
+                        alpha=0.75,
+                        )
+            for model in ('krumholz', 'sternberg'):
+                analysis = model_analysis[core][model + '_results']
+                plot_fits = calc_model_plot_fit(analysis,
+                                                model=model)
+
+                if 'krumholz' in model:
+                    label = 'K+09'
+                    color = c_cycle[0]
+                    alpha = 0.3
+                else:
+                    label = 'S+14'
+                    color = c_cycle[1]
+                    alpha = 0.8
+
+
+                fill_between = 1
+                if fill_between:
+                    l3 = ax.plot(plot_fits[0], plot_fits[1],
+                            linestyle='-',
+                            label=label,
+                            color=color,
+                            linewidth=1,
+                            zorder=1000,
+                            alpha=1
+                            )
+                    if sum(plot_fits[2] > plot_fits[3]) > 0:
+                        where = plot_fits[2] > plot_fits[3]
+                    else:
+                        where = plot_fits[2] < plot_fits[3]
+
+                    ax.fill_between(plot_fits[0], plot_fits[2], plot_fits[3],
+                                    where=where,
+                                    facecolor=color,
+                                    edgecolor='none',
+                                    alpha=0.3,
+                                    interpolate=True,
+                                    zorder=0,
+                                    )
+                else:
+                    l3 = ax.plot(plot_fits[0], plot_fits[1],
+                            linestyle='-',
+                            label=label,
+                            linewidth=2,
+                            color=color,
+                            alpha=1
+                            )
+                    ax.plot(plot_fits[0], plot_fits[2],
+                            linestyle='-',
+                            color=color,
+                            alpha=alpha
+                            )
+                    ax.plot(plot_fits[0], plot_fits[3],
+                            linestyle='-',
+                            color=color,
+                            alpha=alpha,
+                            )
+
+        if i == 0:
+            ax.legend(loc='upper right')
+
+        # Annotations
+        anno_xpos = 0.95
+
+        if show_params:
+            alphaG_text = r'\noindent$\alpha G$ =' + \
+                           r' %.2f' % (alphaG) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (alphaG_error[0],
+                                                       alphaG_error[1])
+            phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
+                           r' %.2f' % (phi_cnm) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
+                                                       phi_cnm_error[1])
+
+            ax.annotate(alphaG_text + phi_cnm_text,
+                    xytext=(anno_xpos, 0.05),
+                    xy=(anno_xpos, 0.05),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=8,
+                    color='k',
+                    bbox=dict(boxstyle='round',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='bottom',
+                    )
+
+        ax.annotate(core,
+                    xytext=(0.9, 0.1),
+                    xy=(0, 0),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    verticalalignment='bottom',
+                    horizontalalignment='right',
+                    )
+
+        ax.set_xscale(scale[0])
+        ax.set_yscale(scale[1])
+
+        # turn labels on or off
+        if i % ncols == 0:
+            ylabel = True
+        else:
+            #ax.yaxis.set_ticklabels([])
+            ylabel = False
+
+        if i >= len(core_names) - ncols:
+            #ax.set_xlabel(labels[x_i])
+            xlabel = True
+        else:
+            xlabel = False
+
+        if len(core_names) % ncols > 0 and i == len(core_names) - 1:
+            axes[i + 1].axis('off')
+
+        # Adjust asthetics
+        if xlabel:
+            ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
+                           '[M$_\odot$ pc$^{-2}$]',)
+        if ylabel:
+            ax.set_ylabel(r'$\Sigma_{\rm H\,I}$ [M$_\odot$ pc$^{-2}$]',)
+
+        if 'log' not in scale:
+            ax.locator_params(nbins=5)
+
+    if 0:
+        fig.legend(l2 + l3,
+                   ('S+14', 'K+09'),
+                   loc='upper center',
+                   #loc=3,
+                   ncol=2,
+                   numpoints=6,
+                   bbox_transform = plt.gcf().transFigure,
+                   #bbox_transform = imagegrid.transFigure,
+                   #bbox_to_anchor=(0., 0.95, 1.05, -0.0),
+                   mode="expand",
+                   bbox_to_anchor=(0.3, 1.0, 0.5, 0.1),
+                   borderaxespad=0.0)
+
+    if filename is not None:
+        if filename[-3:] == 'pdf':
+            dpi = 600
+        else:
+            dpi = 100
+        plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+
 def calc_model_plot_fit(analysis, model='krumholz'):
 
     if 'sternberg' in model:
@@ -3119,7 +3463,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params.add('phi_cnm',
                value=guesses[0],
                min=0.001,
-               max=10000,
+               max=1000,
                vary=vary[0])
     params.add('phi_mol',
                value=guesses[2],
@@ -3156,12 +3500,12 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
             param_dict[param_name] = empty.copy()
 
         for i in xrange(nboot):
-            rh2_resampled = rh2 + resample_residuals(residual)
+            rh2_resampled = rh2_model + resample_residuals(residual)
             result = minimize(calc_residual,
                               params,
                               args=(h_sd, rh2_resampled),
-                              #method='leastsq',
-                              method='anneal',
+                              #method='anneal',
+                              method='leastsq',
                               )
 
             for param_name in param_names:
@@ -3172,6 +3516,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
             conf = mystats.calc_cdf_error(param_dict[param_name])
             rh2_fit_params.append(conf[0])
             rh2_fit_params.append(conf[1])
+            #print param_name, conf
     else:
         rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
                 params['phi_mol'].value)
@@ -3292,6 +3637,11 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     rh2_fit_params : array-like, optional
         Model parameter fits.
 
+
+    Residual bootstrapping:
+    http://stats.stackexchange.com/questions/67519/bootstrapping-residuals-am-i-doing-it-right
+
+
     '''
 
     from scipy.optimize import curve_fit
@@ -3331,12 +3681,12 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params.add('alphaG',
                value=guesses[0],
                min=0.1,
-               max=500,
+               max=5000,
                vary=vary[0])
     params.add('phi_g',
                value=guesses[2],
                min=0.5,
-               max=3,
+               max=10,
                vary=vary[2])
     params.add('Z',
                value=guesses[1],
@@ -3371,7 +3721,7 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
             param_dict[param_name] = empty.copy()
 
         for i in xrange(nboot):
-            rh2_resampled = rh2 + resample_residuals(residual)
+            rh2_resampled = rh2_model + resample_residuals(residual)
             result = minimize(calc_residual,
                               params,
                               args=(h_sd, rh2_resampled),
@@ -3381,16 +3731,18 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
             for param_name in param_names:
                 param_dict[param_name][i] = params[param_name].value
-                print '\n', param_name, param_dict[param_name][i]
 
         rh2_fit_params = []
         for param_name in param_names:
             conf = mystats.calc_cdf_error(param_dict[param_name])
             rh2_fit_params.append(conf[0])
             rh2_fit_params.append(conf[1])
+            #print param_name, conf
     else:
         rh2_fit_params = (params['alphaG'].value, params['Z'].value,
                 params['phi_g'].value)
+
+        print rh2_fit_params
 
     return rh2_fit_params
 
@@ -4654,27 +5006,36 @@ def calc_mc_analysis(mc_results, resid_results):
                                            alpha=0.32)
 
                 # add fit error
-                if param != 'hi_transition':
+                if param != 'hi_transition' and resid_results is not None:
                     fit_error = \
                         np.array(resid_results[core][model][param + '_error'])
 
-                    #print 'before', param, param_error
-                    param_error = np.sqrt(fit_error**2 + \
-                                          np.array(param_error)**2)
-                    #print 'after', param, param_error
+                    param_error = np.array(param_error)
+                    print ''
+                    print 'before', param, param_error / param_value
+                    print 'fit_error', fit_error / param_value
+                    print 'mc error', param_error / param_value
+                    if 0:
+                        param_error = np.sqrt(fit_error**2 + \
+                                              np.array(param_error)**2)
+                    print 'after', param, param_error / param_value
+
 
                 core_analysis[core][model][param] = param_value
                 core_analysis[core][model][param + '_error'] = param_error
 
                 params[param] = param_value
 
-                if 0:
-                    if param == 'phi_cnm':
+                if 1:
+                    if param == 'phi_g' or param == 'alphaG':
                         import matplotlib.pyplot as plt
+                        import mystats
                         plt.close(); plt.clf()
-                        plt.hist(param_results, bins=50)
+                        cdf = mystats.calc_cdf(param_results)
+                        plt.plot(np.sort(param_results), cdf)
+                        plt.xlabel(param)
                         plt.savefig('/d/bip3/ezbc/scratch/'+core+\
-                                    '_hist.png')
+                                    '_' + param + '_cdf.png')
 
                     print('core ' + core + ': ' + param  + \
                           ' = {0:.2f}'.format(param_value) + \
@@ -5027,29 +5388,32 @@ def run_cloud_analysis(global_args,):
                'bootstrap_results/' + filename_base + \
                '_bootstrap_results.pickle'
 
-    print('\n\tBeginning bootstrap monte carlo...')
-
     # Bootstrap residuals of best fitting models
-    resid_mc_results = \
-        bootstrap_residuals(av_data_backsub,
-                       nhi_image=nhi_image,
-                       av_error_data=av_error_data,
-                       nhi_image_background=nhi_image_background,
-                       plot_kwargs=plot_kwargs,
-                       hi_data=hi_data_crop,
-                       vel_axis=hi_vel_axis_crop,
-                       vel_range=velocity_range,
-                       vel_range_error=2,
-                       av_reference=av_data_ref,
-                       use_intercept=global_args['use_intercept'],
-                       num_bootstraps=global_args['num_resid_bootstraps'],
-                       scale_kwargs=scale_kwargs,
-                       sim_hi_error=global_args['sim_hi_error'],
-                       ss_model_kwargs=global_args['ss_model_kwargs'],
-                       multiprocess=global_args['multiprocess'],
-                       rotate_cores=global_args['rotate_cores'],
-                       )
+    if global_args['bootstrap_fit_residuals']:
+        print('\n\tBeginning residual bootstrapping...')
+        resid_mc_results = \
+            bootstrap_residuals(av_data_backsub,
+                           nhi_image=nhi_image,
+                           av_error_data=av_error_data,
+                           nhi_image_background=nhi_image_background,
+                           plot_kwargs=plot_kwargs,
+                           hi_data=hi_data_crop,
+                           vel_axis=hi_vel_axis_crop,
+                           vel_range=velocity_range,
+                           vel_range_error=2,
+                           av_reference=av_data_ref,
+                           use_intercept=global_args['use_intercept'],
+                           num_bootstraps=global_args['num_resid_bootstraps'],
+                           scale_kwargs=scale_kwargs,
+                           sim_hi_error=global_args['sim_hi_error'],
+                           ss_model_kwargs=global_args['ss_model_kwargs'],
+                           multiprocess=global_args['multiprocess'],
+                           rotate_cores=global_args['rotate_cores'],
+                           )
+    else:
+        resid_mc_results = None
 
+    print('\n\tBeginning bootstrap monte carlo...')
     # Perform bootsrapping
     boot_result, mc_results = \
         bootstrap_fits(av_data_backsub,
@@ -5071,7 +5435,6 @@ def run_cloud_analysis(global_args,):
                        rotate_cores=global_args['rotate_cores'],
                        )
     np.save(bootstrap_filename, boot_result)
-
 
     results_dict = {'boot_result': boot_result,
                     'data': data,
@@ -5229,8 +5592,9 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 1000,
-                'num_resid_bootstraps': 1000,
+                'num_bootstraps': 10000,
+                'num_resid_bootstraps': 100,
+                'bootstrap_fit_residuals': False,
                 'hi_range_calc': permutation[11],
                 'sim_hi_error': True,
                 'multiprocess': 1,

@@ -2,6 +2,11 @@
 
 import pickle
 import numpy as np
+from astropy.io import fits
+from astropy.coordinates import SkyCoord
+from astropy import units as u
+from astropy.io import fits
+from astropy.wcs import WCS
 
 def load_cores():
 
@@ -35,20 +40,106 @@ def add_model_analysis(core_dict):
     for core_name in core_dict:
         core = core_dict[core_name]
 
-        core['rad_field'] = calc_radiation_field(core['temp'])
-        core['rad_field_error'] = [0.1 * core['rad_field'],
-                                   0.1 * core['rad_field']]
+        temp = core['dust_temp_avg']
+        temp_error = core['dust_temp_error_avg']
+        core['rad_field'], core['rad_field_error'] = \
+                calc_radiation_field(temp,
+                                     T_dust_error=temp_error)
 
-        core['n_H'] = calc_n_H(I_UV=core['rad_field'],
-                               alphaG=core['sternberg']['alphaG'],
-                               phi_g=core['sternberg']['phi_g'])
-        core['n_H_error'] = [0.1 * core['n_H'], 0.1 * core['n_H']]
+        #rad_error = np.sort((calc_radiation_field(temp + temp_error),
+        #                     calc_radiation_field(temp - temp_error)))
+        #core['rad_field_error'] = rad_error
+        for param in core['sternberg']:
+            if type(core['sternberg'][param]) is tuple:
+                core['sternberg'][param] = np.array(core['sternberg'][param])
+        for param in core['krumholz']:
+            if type(core['krumholz'][param]) is tuple:
+                core['krumholz'][param] = np.array(core['krumholz'][param])
+
+        # calculate n_H and error
+        core['n_H'], core['n_H_error'] = \
+                calc_n_H(I_UV=core['rad_field'],
+                         alphaG=core['sternberg']['alphaG'],
+                         phi_g=core['sternberg']['phi_g'],
+                         #alphaG=10,
+                         #phi_g=2,
+                         I_UV_error=core['rad_field_error'],
+                         alphaG_error=core['sternberg']['alphaG_error'],
+                         phi_g_error=core['sternberg']['phi_g_error'],
+                         )
+
+        #if core['n_H'] <= 0:
+        #    core['n_H'] = 10
+
+        #core['n_H_error'] = [0.1 * core['n_H'], 0.1 * core['n_H']]
 
         core['T_H'] = calc_temperature(n_H=core['n_H'],
-                                       pressure=3800.0)
-        core['T_H_error'] = [0.1 * core['T_H'], 0.1 * core['T_H']]
+                                       pressure=3000.0) / 1000.0
+        core['T_H_error'] = np.array([0.1 * core['T_H'], 0.1 * core['T_H']])
+        T_H_error = np.sort((calc_temperature(core['n_H'] - \
+                              core['n_H_error'][1]),
+                             calc_temperature(core['n_H'] + \
+                              core['n_H_error'][0])))
+        core['T_H_error'] = T_H_error / 1000.0
+
+        print core['n_H_error']
 
         core['alt_name'] = get_alt_name(core_name)
+
+def add_dust_temps(core_dict):
+
+    import myimage_analysis as myia
+    import mygeometry as myg
+
+    # Get the data
+    # ------------
+    dust_temp_dir = '/d/bip3/ezbc/multicloud/data/dust_temp/'
+    temp_filename = dust_temp_dir + 'multicloud_dust_temp_5arcmin.fits'
+    temp_error_filename = dust_temp_dir + \
+            'multicloud_dust_temp_error_5arcmin.fits'
+    temp_data, temp_header = fits.getdata(temp_filename, header=True)
+    temp_error_data = fits.getdata(temp_error_filename)
+
+    # Get the mask for each core
+    # --------------------------
+    # Create WCS object
+    wcs_header = WCS(temp_header)
+    for core_name in core_dict:
+        vertices_wcs = core_dict[core_name]['region_vertices']
+
+        # Format vertices to be 2 x N array
+        #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
+
+        # Make a galactic coords object and convert to Ra/dec
+        coords_fk5 = SkyCoord(vertices_wcs[0] * u.deg,
+                              vertices_wcs[1] * u.deg,
+                              frame='fk5',
+                              )
+        # convert to pixel
+        coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+
+        # write data to dataframe
+        vertices_pix = np.array((coords_pixel[1], coords_pixel[0])).T
+
+        core_dict[core_name]['region_vertices_pix'] = vertices_pix
+
+        # Mask pixels outside of the region
+        region_mask = np.logical_not(myg.get_polygon_mask(temp_data,
+                                                          vertices_pix))
+        core_dict[core_name]['region_mask'] = region_mask
+
+        # Grab the temperatures
+        core_dict[core_name]['dust_temps'] = temp_data[~region_mask]
+        core_dict[core_name]['dust_temp_errors'] = temp_error_data[~region_mask]
+
+        # Calculate average temp
+        core_dict[core_name]['dust_temp_avg'] = \
+            np.nanmean(temp_data[~region_mask])
+        core_dict[core_name]['dust_temp_error_avg'] = \
+            np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
+                temp_error_data[~region_mask].size**0.5
+
+    return core_dict
 
 def get_alt_name(core_name):
 
@@ -142,15 +233,14 @@ def write_model_params_table(core_dict):
     params_to_write = ['phi_cnm', 'alphaG']
 
     # Collect parameter names for each model for each core
-    cloud_old = 'california'
-    add_cloud = True
+    cloud_old = ''
     for cloud_row, core_name in enumerate(core_name_list):
         core = core_dict[core_name]
         cloud = core['cloud']
 
         # add cloud name
         # -------------
-        if add_cloud:
+        if cloud_old != cloud:
             row_text = cloud.capitalize()
         else:
             row_text = ''
@@ -167,8 +257,9 @@ def write_model_params_table(core_dict):
 
         # add dust temp
         # -------------
-        param = core['temp']
-        param_error = core['temp_error']
+        param = core['dust_temp_avg']
+        param_error = core['dust_temp_error_avg']
+        param_error = [param_error, param_error]
         param_info = (param, param_error[1], param_error[0])
         row_text = \
             add_row_element(row_text,
@@ -191,7 +282,7 @@ def write_model_params_table(core_dict):
             if model == 'krumholz':
                 params_to_write = ['phi_cnm',]
             else:
-                params_to_write = ['alphaG', 'hi_transition']
+                params_to_write = ['alphaG', 'phi_g', 'hi_transition']
 
             for i, param_name in enumerate(params_to_write):
                 param = \
@@ -200,6 +291,8 @@ def write_model_params_table(core_dict):
                     core[model][param_name + '_error']
 
                 param_info = (param, param_error[1], param_error[0])
+
+                print param_info
 
                 row_text = \
                     add_row_element(row_text,
@@ -228,15 +321,10 @@ def write_model_params_table(core_dict):
 
         # Finish row
         row_text += ' \\\\[0.1cm] \n'
-        if cloud_old != cloud \
-            and cloud != 'taurus':
-            row_text += '\hline  \\\\[-0.2cm] \n'
-            cloud_old = cloud
-        elif cloud_old != cloud and \
-                cloud == 'taurus':
-            row_text.replace(r'\\[0.1cm] \n', '')
-        else:
-            add_cloud = False
+        if cloud_old != cloud and cloud != 'california':
+            row_text = '\hline  \\\\[-0.2cm] \n' + row_text
+
+        cloud_old = cloud
 
         f.write(row_text)
 
@@ -254,6 +342,10 @@ def main():
     # load core summary file
     core_dict = load_cores()
 
+    # average dust temperatures over each core region
+    add_dust_temps(core_dict)
+
+    # Add model_analysis
     add_model_analysis(core_dict)
 
     # write the latex table
