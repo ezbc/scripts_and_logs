@@ -255,13 +255,6 @@ def load_regions():
                 poly_verts.append((region.coord_list[2*i],
                                    region.coord_list[2*i+1]))
 
-            if 0:
-                poly_verts_pix = []
-                for i in xrange(0, len(poly_verts)):
-                    poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
-                                        dec=poly_verts[i][1],
-                                        header=header)[:-1][::-1].tolist())
-
             region_dict[region_name] = {}
             region_dict[region_name]['vertices'] = {}
             region_dict[region_name]['vertices']['wcs'] = np.array(poly_verts)

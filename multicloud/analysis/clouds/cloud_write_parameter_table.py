@@ -73,20 +73,29 @@ def add_model_analysis(core_dict):
 
         #core['n_H_error'] = [0.1 * core['n_H'], 0.1 * core['n_H']]
 
-        core['T_H'] = calc_temperature(n_H=core['n_H'],
-                                       pressure=3000.0) / 1000.0
-        core['T_H_error'] = np.array([0.1 * core['T_H'], 0.1 * core['T_H']])
-        T_H_error = np.sort((calc_temperature(core['n_H'] - \
-                              core['n_H_error'][1]),
-                             calc_temperature(core['n_H'] + \
-                              core['n_H_error'][0])))
-        core['T_H_error'] = T_H_error / 1000.0
+        if 0:
+            core['T_H'] = calc_temperature(n_H=core['n_H'],
+                                           pressure=3000.0) / 1000.0
+            core['T_H_error'] = np.array([0.1 * core['T_H'], 0.1 * core['T_H']])
+            T_H_error = np.sort((calc_temperature(core['n_H'] - \
+                                  core['n_H_error'][1]),
+                                 calc_temperature(core['n_H'] + \
+                                  core['n_H_error'][0])))
+            core['T_H_error'] = T_H_error / 1000.0
+            if abs(core['T_H_error'][0]) > core['T_H']:
+                core['T_H_error'][0] = core['T_H']
 
-        print core['n_H_error']
+        core['T_H'], core['T_H_error'] = \
+                calc_temperature(n_H=core['n_H'],
+                                 pressure=3000.0,
+                                 n_H_error=core['n_H_error'])
+
+        core['T_H'] /= 1000.0
+        core['T_H_error'] = np.array(core['T_H_error']) / 1000.0
 
         core['alt_name'] = get_alt_name(core_name)
 
-def add_dust_temps(core_dict):
+def add_dust_temps(core_dict, cloud_average=True):
 
     import myimage_analysis as myia
     import mygeometry as myg
@@ -104,40 +113,90 @@ def add_dust_temps(core_dict):
     # --------------------------
     # Create WCS object
     wcs_header = WCS(temp_header)
-    for core_name in core_dict:
-        vertices_wcs = core_dict[core_name]['region_vertices']
+    if cloud_average:
+        for core_name in core_dict:
+            # load cloud regions
+            core_dict = add_cloud_region(core_dict)
+            vertices_wcs = core_dict[core_name]['cloud_region_vertices'].T
 
-        # Format vertices to be 2 x N array
-        #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
+            # Format vertices to be 2 x N array
+            #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
 
-        # Make a galactic coords object and convert to Ra/dec
-        coords_fk5 = SkyCoord(vertices_wcs[0] * u.deg,
-                              vertices_wcs[1] * u.deg,
-                              frame='fk5',
-                              )
-        # convert to pixel
-        coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+            # Make a galactic coords object and convert to Ra/dec
+            coords_fk5 = SkyCoord(vertices_wcs[0] * u.deg,
+                                  vertices_wcs[1] * u.deg,
+                                  frame='fk5',
+                                  )
+            # convert to pixel
+            coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
 
-        # write data to dataframe
-        vertices_pix = np.array((coords_pixel[1], coords_pixel[0])).T
+            # write data to dataframe
+            vertices_pix = np.array((coords_pixel[1], coords_pixel[0])).T
 
-        core_dict[core_name]['region_vertices_pix'] = vertices_pix
+            core_dict[core_name]['cloud_region_vertices_pix'] = vertices_pix
 
-        # Mask pixels outside of the region
-        region_mask = np.logical_not(myg.get_polygon_mask(temp_data,
-                                                          vertices_pix))
-        core_dict[core_name]['region_mask'] = region_mask
+            # Mask pixels outside of the region
+            region_mask = np.logical_not(myg.get_polygon_mask(temp_data,
+                                                              vertices_pix))
+            core_dict[core_name]['cloud_region_mask'] = region_mask
 
-        # Grab the temperatures
-        core_dict[core_name]['dust_temps'] = temp_data[~region_mask]
-        core_dict[core_name]['dust_temp_errors'] = temp_error_data[~region_mask]
+            # Grab the temperatures
+            core_dict[core_name]['dust_temps'] = temp_data[~region_mask]
+            core_dict[core_name]['dust_temp_errors'] = \
+                temp_error_data[~region_mask]
 
-        # Calculate average temp
-        core_dict[core_name]['dust_temp_avg'] = \
-            np.nanmean(temp_data[~region_mask])
-        core_dict[core_name]['dust_temp_error_avg'] = \
-            np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
-                temp_error_data[~region_mask].size**0.5
+            if 1:
+                import matplotlib.pyplot as plt
+                import myplotting as myplt
+                plt.close(); plt.clf()
+                myplt.plot_cdf(core_dict[core_name]['dust_temps'])
+                cloud = core_dict[core_name]['cloud']
+                plt.xlabel('Dust Temperature [K]')
+                plt.xlim([12, 24])
+                plt.savefig('/d/bip3/ezbc/scratch/' + cloud + '_temp_hist.png')
+
+            # Calculate average temp
+            core_dict[core_name]['dust_temp_avg'] = \
+                np.nanmean(temp_data[~region_mask])
+            core_dict[core_name]['dust_temp_error_avg'] = \
+                np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
+                    temp_error_data[~region_mask].size
+    else:
+        for core_name in core_dict:
+            vertices_wcs = core_dict[core_name]['region_vertices']
+
+            # Format vertices to be 2 x N array
+            #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
+
+            # Make a galactic coords object and convert to Ra/dec
+            coords_fk5 = SkyCoord(vertices_wcs[0] * u.deg,
+                                  vertices_wcs[1] * u.deg,
+                                  frame='fk5',
+                                  )
+            # convert to pixel
+            coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+
+            # write data to dataframe
+            vertices_pix = np.array((coords_pixel[1], coords_pixel[0])).T
+
+            core_dict[core_name]['region_vertices_pix'] = vertices_pix
+
+            # Mask pixels outside of the region
+            region_mask = np.logical_not(myg.get_polygon_mask(temp_data,
+                                                              vertices_pix))
+            core_dict[core_name]['region_mask'] = region_mask
+
+            # Grab the temperatures
+            core_dict[core_name]['dust_temps'] = temp_data[~region_mask]
+            core_dict[core_name]['dust_temp_errors'] = \
+                temp_error_data[~region_mask]
+
+            # Calculate average temp
+            core_dict[core_name]['dust_temp_avg'] = \
+                np.nanmean(temp_data[~region_mask])
+            core_dict[core_name]['dust_temp_error_avg'] = \
+                np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
+                    temp_error_data[~region_mask].size
 
     return core_dict
 
@@ -292,8 +351,6 @@ def write_model_params_table(core_dict):
 
                 param_info = (param, param_error[1], param_error[0])
 
-                print param_info
-
                 row_text = \
                     add_row_element(row_text,
                                     param_info,
@@ -337,10 +394,54 @@ def add_row_element(row_text, element, text_format='{0:s}'):
     else:
         return row_text + ' & ' + text_format.format(element)
 
+def add_cloud_region(core_dict):
+
+    import pyregion as pyr
+
+    data_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
+
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
+    filename = region_dir + 'multicloud_divisions_coldcore_selection.reg'
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    regions = pyr.open(filename)
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        region_name = tag[tag.find('{')+1:tag.find('}')].lower()
+
+        if region_name in ('taurus', 'california', 'perseus'):
+            # Format vertices to be 2 x N array
+            poly_verts = []
+            for i in xrange(0, len(region.coord_list)/2):
+                poly_verts.append((region.coord_list[2*i],
+                                   region.coord_list[2*i+1]))
+
+            for core in core_dict:
+                if core_dict[core]['cloud'] == region_name:
+                    core_dict[core]['cloud_region_vertices'] = \
+                            np.array(poly_verts)
+
+    return core_dict
+
+
+def save_core_dict(core_dict):
+
+    table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    filename = table_dir + 'tables/multicloud_model_summary.pickle'
+
+    with open(filename, 'wb') as f:
+        pickle.dump(core_dict, f)
+
 def main():
 
     # load core summary file
     core_dict = load_cores()
+
 
     # average dust temperatures over each core region
     add_dust_temps(core_dict)
@@ -350,6 +451,9 @@ def main():
 
     # write the latex table
     write_model_params_table(core_dict)
+
+    # save core_dict
+    save_core_dict(core_dict)
 
 if __name__ == '__main__':
     main()

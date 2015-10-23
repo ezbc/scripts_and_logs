@@ -1857,7 +1857,7 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
     else:
         aspect = False
 
-    if 1:
+    if 0:
         fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
         axes = np.ravel(axes)
     else:
@@ -1865,9 +1865,9 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
                         nrows_ncols=(nrows, ncols),
                         ngrids=n,
                         #axes_pad=0.1,
-                        axes_pad=0.3,
+                        axes_pad=0.1,
                         aspect=False,
-                        label_mode='all',
+                        label_mode='L',
                         share_all=False,
                         )
 
@@ -1922,32 +1922,19 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
                                            minval=0.2,
                                            maxval=1)
 
-            l1 = myplt.scatter_contour(h_sd_nonans.ravel(),
-                                 rh2.ravel(),
-                                 threshold=2,
-                                 log_counts=0,
-                                 levels=levels,
-                                 ax=ax,
-                                 histogram2d_args=dict(bins=20,
-                                        range=(((xlimits)[0], xlimits[1]),
-                                                (ylimits[0], ylimits[1]))),
-                                 plot_args=dict(marker='o',
-                                                linestyle='none',
-                                                markeredgewidth=0,
-                                                color='black',
-                                                alpha=0.4,
-                                                markersize=2.5,
-                                                ),
-                                 contour_args=dict(
-                                                   cmap=cmap,
-                                                   ),
-                                 )
+            ax.scatter(h_sd_nonans.ravel(),
+                       rh2.ravel(),
+                       #markersize=1.5,
+                       s=5,
+                       alpha=0.4,
+                       color='k',
+                       )
 
         if xlimits is not None:
             ax.set_xlim(xlimits[0], xlimits[1])
         if ylimits is not None:
             ax.set_ylim(ylimits[0], ylimits[1])
-            ylimits = None
+            #ylimits = None
 
         if 0:
             # get bootstrap results
@@ -1998,6 +1985,8 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
                 plot_fits = calc_model_plot_fit(analysis,
                                                 model=model)
 
+                rh2_fit = (plot_fits[0] - plot_fits[1]) / plot_fits[1]
+
                 if 'krumholz' in model:
                     label = 'K+09'
                     color = c_cycle[0]
@@ -2008,50 +1997,17 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
                     alpha = 0.8
 
 
-                fill_between = 1
-                if fill_between:
-                    l3 = ax.plot(plot_fits[0], plot_fits[1],
-                            linestyle='-',
-                            label=label,
-                            color=color,
-                            linewidth=1,
-                            zorder=1000,
-                            alpha=1
-                            )
-                    if sum(plot_fits[2] > plot_fits[3]) > 0:
-                        where = plot_fits[2] > plot_fits[3]
-                    else:
-                        where = plot_fits[2] < plot_fits[3]
-
-                    ax.fill_between(plot_fits[0], plot_fits[2], plot_fits[3],
-                                    where=where,
-                                    facecolor=color,
-                                    edgecolor='none',
-                                    alpha=0.3,
-                                    interpolate=True,
-                                    zorder=0,
-                                    )
-                else:
-                    l3 = ax.plot(plot_fits[0], plot_fits[1],
-                            linestyle='-',
-                            label=label,
-                            linewidth=2,
-                            color=color,
-                            alpha=1
-                            )
-                    ax.plot(plot_fits[0], plot_fits[2],
-                            linestyle='-',
-                            color=color,
-                            alpha=alpha
-                            )
-                    ax.plot(plot_fits[0], plot_fits[3],
-                            linestyle='-',
-                            color=color,
-                            alpha=alpha,
-                            )
+                l3 = ax.plot(plot_fits[0], rh2_fit,
+                        linestyle='-',
+                        label=label,
+                        color=color,
+                        linewidth=1,
+                        zorder=1000,
+                        alpha=1
+                        )
 
         if i == 0:
-            ax.legend(loc='upper right')
+            ax.legend(loc='upper left')
 
         # Annotations
         anno_xpos = 0.95
@@ -2118,7 +2074,7 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
             ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
                            '[M$_\odot$ pc$^{-2}$]',)
         if ylabel:
-            ax.set_ylabel(r'$\Sigma_{\rm H\,I}$ [M$_\odot$ pc$^{-2}$]',)
+            ax.set_ylabel(r'$R_{H2}$',)
 
         if 'log' not in scale:
             ax.locator_params(nbins=5)
@@ -2435,6 +2391,24 @@ def plot_multicloud_results(results):
                               #scale=('log', 'linear'),
                               #scale=('linear', 'log'),
                               scale=('linear', 'linear'),
+                              filename=filename,
+                              ncols=ncols
+                              )
+            filename = plot_kwargs['figure_dir'] + \
+                       'models/' + cloud + '_rh2_vs_hsd.' + filetype
+            plot_rh2_vs_h_grid(hsd_cores_list[i],
+                              hisd_cores_list[i],
+                              core_names=core_names,
+                              model_results=model_results_list[i],
+                              model_analysis=\
+                                  model_analysis_list[i]['cores'],
+                              #limits=[-9, 100, 2, 14],
+                              #limits=[-9, 159, 3, 14],
+                              xlimits=[-9, 100],
+                              ylimits=[10**-3, 10**2],
+                              levels=levels,
+                              #scale=('log', 'linear'),
+                              scale=('linear', 'log'),
                               filename=filename,
                               ncols=ncols
                               )
@@ -3681,11 +3655,11 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     params.add('alphaG',
                value=guesses[0],
                min=0.1,
-               max=5000,
+               max=500,
                vary=vary[0])
     params.add('phi_g',
                value=guesses[2],
-               min=0.5,
+               min=0.01,
                max=10,
                vary=vary[2])
     params.add('Z',
@@ -3871,6 +3845,10 @@ def create_filename_base(global_args):
         rotate_cores_name = '_rotatedcores'
     else:
         rotate_cores_name = ''
+    if global_args['vary_phi_g']:
+        vary_phi_g_name = '_varyphig'
+    else:
+        vary_phi_g_name = ''
 
     filename_extension = global_args['cloud_name'] + '_' + global_args['data_type'] + \
             background_name + \
@@ -3878,7 +3856,7 @@ def create_filename_base(global_args):
             region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name + \
             '_' + hi_range_name + '_' + global_args['radiation_type'] + \
-            rotate_cores_name
+            rotate_cores_name + vary_phi_g_name
 
     return filename_extension, global_args
 
@@ -4888,19 +4866,19 @@ def save_results(results_dict, filename, write_fits=False):
         pickle.dump(results_dict, output)
     output.close()
 
-def get_model_fit_kwargs(cloud_name):
+def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
 
     '''
 
     '''
     vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = False # Vary metallicity in S+14 fit?
-    vary_phi_g = 1 # Vary phi_g in S+14 fit?
+    vary_phi_g = vary_phi_g # Vary phi_g in S+14 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=(1.0, 1.0, 1.0) # Guesses for (alphaG, Z, phi_g)
+    guesses=(10.0, 1.0, 2.0) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
@@ -5026,7 +5004,7 @@ def calc_mc_analysis(mc_results, resid_results):
 
                 params[param] = param_value
 
-                if 1:
+                if 0:
                     if param == 'phi_g' or param == 'alphaG':
                         import matplotlib.pyplot as plt
                         import mystats
@@ -5352,7 +5330,8 @@ def run_cloud_analysis(global_args,):
                      }
 
     # Get model fitting params
-    model_fitting = get_model_fit_kwargs(cloud_name)
+    model_fitting = get_model_fit_kwargs(cloud_name,
+                                         vary_phi_g=global_args['vary_phi_g'])
     model_fitting['sternberg_params']['radiation_type'] = \
             global_args['radiation_type']
 
@@ -5561,10 +5540,15 @@ def main():
                     #True,
                     )
 
+    vary_phi_g = (
+                    #True,
+                    False,
+                    )
+
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
             regions, subtract_comps, use_background, hi_range_calc,
-            radiation_type, rotate_cores)
+            radiation_type, rotate_cores, vary_phi_g)
 
     permutations = list(itertools.product(*elements))
 
@@ -5574,7 +5558,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -5600,6 +5584,7 @@ def main():
                 'multiprocess': 1,
                 'radiation_type': permutation[12],
                 'rotate_cores': permutation[13],
+                'vary_phi_g': permutation[14],
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
