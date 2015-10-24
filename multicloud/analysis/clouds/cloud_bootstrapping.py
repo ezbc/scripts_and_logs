@@ -1800,6 +1800,195 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
             dpi = 100
         plt.savefig(filename, bbox_inches='tight', dpi=dpi)
 
+def plot_hi_cdf_grid(hsd_list, hisd_list, core_names=None,
+        model_results=None, model_analysis=None, xlimits=None, ylimits=None,
+        scale=('linear', 'linear'), filename=None, show_params=False,
+        levels=5, ncols=2):
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Determine size of figure and number of grids
+    # --------------------------------------------
+    if 0:
+        n = int(np.ceil(len(core_names)**0.5))
+        if n**2 - n > len(core_names):
+            nrows = n - 1
+            ncols = ncols
+            y_scaling = 1.0 - 1.0 / n
+        else:
+            nrows, ncols = n, n
+            y_scaling = 1.0
+
+    if 1:
+        n = len(core_names)
+        nrows = (n + 1) / ncols
+        if n > nrows * ncols:
+            nrows += 1
+        y_scaling = nrows / 2.0
+        x_scaling = ncols / 2.0
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+
+    figsize = (3.6*x_scaling, 3.6*y_scaling)
+
+    # Create figure instance
+    fig = plt.figure(figsize=figsize)
+
+    if n == 1:
+        n = 2
+
+    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
+
+    if xlimits is not None and ylimits is not None:
+        aspect = (xlimits[1] - xlimits[0]) / (ylimits[1] - ylimits[0])
+    else:
+        aspect = False
+
+    if 1:
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+        axes = np.ravel(axes)
+    else:
+        axes = AxesGrid(fig, (1,1,1),
+                        nrows_ncols=(nrows, ncols),
+                        ngrids=n,
+                        #axes_pad=0.1,
+                        axes_pad=0.3,
+                        aspect=False,
+                        label_mode='all',
+                        share_all=False,
+                        )
+
+
+    # Cycle through lists
+    # -------------------
+    for i, core in enumerate(core_names):
+        hi_sd = hisd_list[i]
+        h_sd = hsd_list[i]
+
+        # Load parameters
+        alphaG = model_analysis[core]['sternberg_results']['alphaG']
+        alphaG_error = \
+                model_analysis[core]['sternberg_results']['alphaG_error']
+        phi_cnm = model_analysis[core]['krumholz_results']['phi_cnm']
+        phi_cnm_error = \
+                model_analysis[core]['krumholz_results']['phi_cnm_error']
+        hi_sd_fit_sternberg = \
+                model_analysis[core]['sternberg_results']['hisd_fit']
+        hi_sd_fit_krumholz = \
+                model_analysis[core]['krumholz_results']['hisd_fit']
+        h_sd_fit = model_analysis[core]['krumholz_results']['hsd_fit']
+
+
+        # Drop the NaNs from the images
+        indices = np.where((hi_sd == hi_sd) &\
+                           (h_sd == h_sd))
+
+        hi_sd_nonans = hi_sd[indices]
+        h_sd_nonans = h_sd[indices]
+
+        # Create plot
+        ax = axes[i]
+
+        #ax.set_xticks([0, 40, 80, 120])
+
+        if 1:
+            myplt.plot_cdf(hi_sd_nonans,
+                           ax=ax,
+                           plot_kwargs={'linewidth': 2},
+                           )
+
+        if xlimits is not None:
+            ax.set_xlim(xlimits[0], xlimits[1])
+        if ylimits is not None:
+            ax.set_ylim(ylimits[0], ylimits[1])
+            ylimits = None
+
+        for model in ('sternberg', ):
+            analysis = model_analysis[core][model + '_results']
+            hi_trans = analysis['hi_transition']
+            hi_trans_error = analysis['hi_transition_error']
+
+            ax.axvline(hi_trans,
+                       color='k',
+                       alpha=1,
+                       linestyle='--',
+                       linewidth=2,
+                       )
+            ax.axvspan(hi_trans - hi_trans_error[0],
+                       hi_trans + hi_trans_error[1],
+                       color='k',
+                       alpha=0.3,
+                       )
+
+        if i == 0:
+            ax.legend(loc='upper left')
+
+        # Annotations
+        anno_xpos = 0.95
+
+        ax.annotate(core,
+                    xytext=(0.9, 0.1),
+                    xy=(0, 0),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    verticalalignment='bottom',
+                    horizontalalignment='right',
+                    )
+
+        ax.set_xscale(scale[0])
+        ax.set_yscale(scale[1])
+
+        # turn labels on or off
+        if i % ncols == 0:
+            ylabel = True
+        else:
+            #ax.yaxis.set_ticklabels([])
+            ylabel = False
+
+        if i >= len(core_names) - ncols:
+            #ax.set_xlabel(labels[x_i])
+            xlabel = True
+        else:
+            xlabel = False
+
+        if len(core_names) % ncols > 0 and i == len(core_names) - 1:
+            axes[i + 1].axis('off')
+
+        # Adjust asthetics
+        if xlabel:
+            ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ ' + \
+                           '[M$_\odot$ pc$^{-2}$]',)
+        if ylabel:
+            ax.set_ylabel(r'CDF',)
+
+        if 'log' not in scale:
+            ax.locator_params(nbins=5)
+
+    if filename is not None:
+        if filename[-3:] == 'pdf':
+            dpi = 600
+        else:
+            dpi = 100
+        plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+
 def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
         model_results=None, model_analysis=None, xlimits=None, ylimits=None,
         scale=('linear', 'linear'), filename=None, show_params=False,
@@ -2376,6 +2565,8 @@ def plot_multicloud_results(results):
                                       )
             else:
                 ncols = 2
+            # HI SD vs. H SD
+            # -----------------------------------------------------------------
             filename = plot_kwargs['figure_dir'] + \
                        'models/' + cloud + '_hisd_vs_hsd.' + filetype
             plot_hi_vs_h_grid(hsd_cores_list[i],
@@ -2394,6 +2585,29 @@ def plot_multicloud_results(results):
                               filename=filename,
                               ncols=ncols
                               )
+            # HI CDF
+            # -----------------------------------------------------------------
+            filename = plot_kwargs['figure_dir'] + \
+                       'models/' + cloud + '_hisd_cdf.' + filetype
+            plot_hi_cdf_grid(hsd_cores_list[i],
+                              hisd_cores_list[i],
+                              core_names=core_names,
+                              model_results=model_results_list[i],
+                              model_analysis=\
+                                  model_analysis_list[i]['cores'],
+                              #limits=[-9, 100, 2, 14],
+                              #limits=[-9, 159, 3, 14],
+                              #xlimits=[-1, 20],
+                              levels=levels,
+                              #scale=('log', 'linear'),
+                              #scale=('linear', 'log'),
+                              scale=('linear', 'linear'),
+                              filename=filename,
+                              ncols=ncols
+                              )
+
+            # RH2 vs. H SD
+            # -----------------------------------------------------------------
             filename = plot_kwargs['figure_dir'] + \
                        'models/' + cloud + '_rh2_vs_hsd.' + filetype
             plot_rh2_vs_h_grid(hsd_cores_list[i],

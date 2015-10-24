@@ -153,7 +153,8 @@ def add_dust_temps(core_dict, cloud_average=True):
                 cloud = core_dict[core_name]['cloud']
                 plt.xlabel('Dust Temperature [K]')
                 plt.xlim([12, 24])
-                plt.savefig('/d/bip3/ezbc/scratch/' + cloud + '_temp_hist.png')
+                plt.savefig('/d/bip3/ezbc/multicloud/figures/dust/' + \
+                            cloud + '_temp_hist.png')
 
             # Calculate average temp
             core_dict[core_name]['dust_temp_avg'] = \
