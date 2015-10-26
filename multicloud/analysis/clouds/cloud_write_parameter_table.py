@@ -7,6 +7,8 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.io import fits
 from astropy.wcs import WCS
+import myimage_analysis as myia
+import mygeometry as myg
 
 def load_cores():
 
@@ -37,6 +39,7 @@ def add_model_analysis(core_dict):
         $T_{\rm CNM}$} \\
     '''
 
+    clouds_printed = []
     for core_name in core_dict:
         core = core_dict[core_name]
 
@@ -45,6 +48,17 @@ def add_model_analysis(core_dict):
         core['rad_field'], core['rad_field_error'] = \
                 calc_radiation_field(temp,
                                      T_dust_error=temp_error)
+
+        cloud = core_dict[core_name]['cloud']
+        if cloud not in clouds_printed:
+            print ''
+            print cloud + ' dust temp and error:'
+            print core['dust_temp_avg']
+            print core['dust_temp_error_avg']
+            print 'rad field and error:'
+            print core['rad_field']
+            print core['rad_field_error']
+            clouds_printed.append(cloud)
 
         #rad_error = np.sort((calc_radiation_field(temp + temp_error),
         #                     calc_radiation_field(temp - temp_error)))
@@ -95,10 +109,113 @@ def add_model_analysis(core_dict):
 
         core['alt_name'] = get_alt_name(core_name)
 
-def add_dust_temps(core_dict, cloud_average=True):
+def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
 
-    import myimage_analysis as myia
-    import mygeometry as myg
+    cloud_temps = {}
+    for core_name in core_dict:
+        # load cloud regions
+        core_dict = add_cloud_region(core_dict)
+        vertices_wcs = core_dict[core_name]['cloud_region_vertices'].T
+
+        # Format vertices to be 2 x N array
+        #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
+
+        # Make a galactic coords object and convert to Ra/dec
+        coords_fk5 = SkyCoord(vertices_wcs[0] * u.deg,
+                              vertices_wcs[1] * u.deg,
+                              frame='fk5',
+                              )
+
+        # convert to pixel
+        coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+
+        # write data to dataframe
+        vertices_pix = np.array((coords_pixel[1], coords_pixel[0])).T
+
+        core_dict[core_name]['cloud_region_vertices_pix'] = vertices_pix
+
+        # Mask pixels outside of the region
+        region_mask = np.logical_not(myg.get_polygon_mask(temp_data,
+                                                          vertices_pix))
+        core_dict[core_name]['cloud_region_mask'] = region_mask
+
+        # Grab the temperatures
+        core_dict[core_name]['dust_temps'] = temp_data[~region_mask]
+        core_dict[core_name]['dust_temp_errors'] = \
+            temp_error_data[~region_mask]
+
+        if 0:
+            import matplotlib.pyplot as plt
+            import myplotting as myplt
+            plt.close(); plt.clf()
+            myplt.plot_cdf(core_dict[core_name]['dust_temps'])
+            cloud = core_dict[core_name]['cloud']
+            plt.xlabel('Dust Temperature [K]')
+            plt.xlim([12, 24])
+            plt.savefig('/d/bip3/ezbc/multicloud/figures/dust/' + \
+                        cloud + '_temp_hist.png')
+
+        # adjust vertices to get errors on mean T_dust
+        cloud = core_dict[core_name]['cloud']
+        N_mc = 10000
+        temps_mc = np.empty(N_mc)
+        temp_errors_mc = np.empty(N_mc)
+        if cloud not in cloud_temps:
+            for j in xrange(N_mc):
+                new_vertices_wcs = vertices_wcs + \
+                                   np.random.normal(scale=1.0,
+                                                    size=vertices_wcs.shape)
+
+                # Make a galactic coords object and convert to Ra/dec
+                coords_fk5 = SkyCoord(new_vertices_wcs[0] * u.deg,
+                                      new_vertices_wcs[1] * u.deg,
+                                      frame='fk5',
+                                      )
+
+                # convert to pixel
+                coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+
+                # write data to dataframe
+                vertices_pix = np.array((coords_pixel[1],
+                                         coords_pixel[0])).T
+
+                # Mask pixels outside of the region
+                region_mask = \
+                        np.logical_not(myg.get_polygon_mask(temp_data,
+                                                            vertices_pix))
+
+                # Grab the temperatures
+                temps_mc[j] = np.mean(temp_data[~region_mask])
+                temp_errors_mc[j] = \
+                    np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
+                    temp_error_data[~region_mask].size
+
+            # Calculate average temp
+            #core_dict[core_name]['dust_temp_avg'] = \
+            #    np.nanmean(temp_data[~region_mask])
+            #core_dict[core_name]['dust_temp_error_avg'] = \
+            #    np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
+            #        temp_error_data[~region_mask].size
+            dust_temp_avg = np.nanmean(temps_mc)
+            dust_temp_error_avg = \
+                np.sqrt(np.nansum(np.mean(temp_errors_mc)**2 + \
+                                  np.std(temps_mc)**2))
+            core_dict[core_name]['dust_temp_avg'] = dust_temp_avg
+            core_dict[core_name]['dust_temp_error_avg'] = \
+                dust_temp_error_avg
+
+            cloud_temps[cloud] = \
+                    {'dust_temp_avg': dust_temp_avg,
+                     'dust_temp_error_avg': dust_temp_error_avg}
+        else:
+            core_dict[core_name]['dust_temp_avg'] = \
+                cloud_temps[cloud]['dust_temp_avg']
+            core_dict[core_name]['dust_temp_error_avg'] = \
+                cloud_temps[cloud]['dust_temp_error_avg']
+
+    return cloud_temps
+
+def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
 
     # Get the data
     # ------------
@@ -109,59 +226,31 @@ def add_dust_temps(core_dict, cloud_average=True):
     temp_data, temp_header = fits.getdata(temp_filename, header=True)
     temp_error_data = fits.getdata(temp_error_filename)
 
+    table_temp_dir = '/d/bip3/ezbc/multicloud/data/python_output/dust_temps/'
+    cloud_temp_filename = table_temp_dir + 'dust_temps.pickle'
+
     # Get the mask for each core
     # --------------------------
     # Create WCS object
     wcs_header = WCS(temp_header)
     if cloud_average:
-        for core_name in core_dict:
-            # load cloud regions
-            core_dict = add_cloud_region(core_dict)
-            vertices_wcs = core_dict[core_name]['cloud_region_vertices'].T
-
-            # Format vertices to be 2 x N array
-            #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
-
-            # Make a galactic coords object and convert to Ra/dec
-            coords_fk5 = SkyCoord(vertices_wcs[0] * u.deg,
-                                  vertices_wcs[1] * u.deg,
-                                  frame='fk5',
-                                  )
-            # convert to pixel
-            coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
-
-            # write data to dataframe
-            vertices_pix = np.array((coords_pixel[1], coords_pixel[0])).T
-
-            core_dict[core_name]['cloud_region_vertices_pix'] = vertices_pix
-
-            # Mask pixels outside of the region
-            region_mask = np.logical_not(myg.get_polygon_mask(temp_data,
-                                                              vertices_pix))
-            core_dict[core_name]['cloud_region_mask'] = region_mask
-
-            # Grab the temperatures
-            core_dict[core_name]['dust_temps'] = temp_data[~region_mask]
-            core_dict[core_name]['dust_temp_errors'] = \
-                temp_error_data[~region_mask]
-
-            if 1:
-                import matplotlib.pyplot as plt
-                import myplotting as myplt
-                plt.close(); plt.clf()
-                myplt.plot_cdf(core_dict[core_name]['dust_temps'])
-                cloud = core_dict[core_name]['cloud']
-                plt.xlabel('Dust Temperature [K]')
-                plt.xlim([12, 24])
-                plt.savefig('/d/bip3/ezbc/multicloud/figures/dust/' + \
-                            cloud + '_temp_hist.png')
-
-            # Calculate average temp
-            core_dict[core_name]['dust_temp_avg'] = \
-                np.nanmean(temp_data[~region_mask])
-            core_dict[core_name]['dust_temp_error_avg'] = \
-                np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
-                    temp_error_data[~region_mask].size
+        if load_cloud_average:
+            with open(cloud_temp_filename, 'rb') as f:
+                cloud_temps = pickle.load(f)
+                for core_name in core_dict:
+                    cloud = core_dict[core_name]['cloud']
+                    core_dict[core_name]['dust_temp_avg'] = \
+                        cloud_temps[cloud]['dust_temp_avg']
+                    core_dict[core_name]['dust_temp_error_avg'] = \
+                        cloud_temps[cloud]['dust_temp_error_avg']
+        else:
+            cloud_temps = calc_cloud_dust_temp(core_dict,
+                                               wcs_header,
+                                               temp_data,
+                                               temp_error_data,
+                                               )
+            with open(cloud_temp_filename, 'wb') as f:
+                pickle.dump(cloud_temps, f)
     else:
         for core_name in core_dict:
             vertices_wcs = core_dict[core_name]['region_vertices']
@@ -315,26 +404,27 @@ def write_model_params_table(core_dict):
         row_text = add_row_element(row_text,
                                    core['alt_name'])
 
-        # add dust temp
-        # -------------
-        param = core['dust_temp_avg']
-        param_error = core['dust_temp_error_avg']
-        param_error = [param_error, param_error]
-        param_info = (param, param_error[1], param_error[0])
-        row_text = \
-            add_row_element(row_text,
-                            param_info,
-                            text_format=text_param_format)
+        if 0:
+            # add dust temp
+            # -------------
+            param = core['dust_temp_avg']
+            param_error = core['dust_temp_error_avg']
+            param_error = [param_error, param_error]
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format)
 
-        # add rad field
-        # -------------
-        param = core['rad_field']
-        param_error = core['rad_field_error']
-        param_info = (param, param_error[1], param_error[0])
-        row_text = \
-            add_row_element(row_text,
-                            param_info,
-                            text_format=text_param_format)
+            # add rad field
+            # -------------
+            param = core['rad_field']
+            param_error = core['rad_field_error']
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format)
 
         # append model params and errors
         # ------------------------------
@@ -342,7 +432,9 @@ def write_model_params_table(core_dict):
             if model == 'krumholz':
                 params_to_write = ['phi_cnm',]
             else:
-                params_to_write = ['alphaG', 'phi_g', 'hi_transition']
+                params_to_write = ['alphaG',
+                                   #'phi_g',
+                                   'hi_transition']
 
             for i, param_name in enumerate(params_to_write):
                 param = \
@@ -429,7 +521,6 @@ def add_cloud_region(core_dict):
 
     return core_dict
 
-
 def save_core_dict(core_dict):
 
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
@@ -442,7 +533,6 @@ def main():
 
     # load core summary file
     core_dict = load_cores()
-
 
     # average dust temperatures over each core region
     add_dust_temps(core_dict)

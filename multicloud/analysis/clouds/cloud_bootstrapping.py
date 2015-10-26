@@ -1643,25 +1643,21 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                            color='r')
 
         else:
-            if 0:
-                l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
-                        label='S+14',
-                        color=c_cycle[1],
-                        alpha=0.75,
-                        )
             for model in ('krumholz', 'sternberg'):
                 analysis = model_analysis[core][model + '_results']
                 plot_fits = calc_model_plot_fit(analysis,
                                                 model=model)
+                c_cycle = myplt.set_color_cycle(num_colors=2,
+                                                cmap_limits=[0.5, 0.7])
 
                 if 'krumholz' in model:
                     label = 'K+09'
                     color = c_cycle[0]
-                    alpha = 0.3
+                    alpha = 0.2
                 else:
                     label = 'S+14'
                     color = c_cycle[1]
-                    alpha = 0.8
+                    alpha = 1
 
 
                 fill_between = 1
@@ -1905,9 +1901,10 @@ def plot_hi_cdf_grid(hsd_list, hisd_list, core_names=None,
         #ax.set_xticks([0, 40, 80, 120])
 
         if 1:
+            kwargs = {'linewidth': 2}
             myplt.plot_cdf(hi_sd_nonans,
                            ax=ax,
-                           plot_kwargs={'linewidth': 2},
+                           plot_kwargs=kwargs,
                            )
 
         if xlimits is not None:

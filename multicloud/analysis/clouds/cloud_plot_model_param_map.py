@@ -232,6 +232,131 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=100)
 
+def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
+        limits=None, filename=None, vlimits=(None,None), contours=None,
+        parameter='phi_cnm'):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import AxesGrid
+    import pywcsgrid2 as wcs
+    from matplotlib.patches import Polygon
+    import matplotlib.patheffects as PathEffects
+    import myplotting as myplt
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 10))
+
+    nrows_ncols=(5,1)
+    ngrids=5
+    axesgrid = AxesGrid(fig, (1,1,1),
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
+                 cbar_location='right',
+                 cbar_pad="2%",
+                 cbar_size='3%',
+                 axes_pad=0.1,
+                 axes_class=(wcs.Axes,
+                             dict(header=header)),
+                 aspect=True,
+                 label_mode='L',
+                 share_all=False)
+
+    # ------------------
+    # Av image
+    # ------------------
+    parameters = ['phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
+    for i in xrange(ngrids):
+        # create axes
+        ax = axesgrid[i]
+        # show the image
+        X, Y = np.meshgrid(np.arange(av_image.shape[1]),
+                           np.arange(av_image.shape[0]))
+
+        im = ax.contour(X, Y, av_image,
+                origin='lower',
+                levels=contours,
+                cmap=myplt.truncate_colormap(plt.cm.binary, minval=0.3,)
+                #vmin=vlimits[0],
+                #vmax=vlimits[1],
+                #norm=matplotlib.colors.LogNorm()
+                )
+
+        # Asthetics
+        ax.set_display_coord_system("fk5")
+        ax.set_ticklabel_type("hms", "dms")
+
+        ax.set_xlabel('Right Ascension [J2000]',)
+        ax.set_ylabel('Declination [J2000]',)
+
+        ax.locator_params(nbins=4)
+
+        # plot limits
+        if limits is not None:
+            limits_pix = myplt.convert_wcs_limits(limits, header)
+            ax.set_xlim(limits_pix[0],limits_pix[1])
+            ax.set_ylim(limits_pix[2],limits_pix[3])
+
+        # Plot cores for each cloud
+        # -------------------------
+        from matplotlib.patches import Circle
+        from matplotlib.collections import PatchCollection
+
+        parameter = parameters[i]
+        patches = get_patches(df, header)
+        cmap = myplt.truncate_colormap(plt.cm.copper, minval=0.1, maxval=1.0)
+        collection = PatchCollection(patches,
+                                     cmap=cmap,
+                                     edgecolors='none',
+                                     zorder=1000,
+                                     )
+
+        # set values in collection
+        collection_values = []
+        if parameter in ['phi_cnm', 'alphaG', 'hi_transition']:
+            collection.set_array(df[parameter])
+        else:
+            for core in df['core']:
+                collection_values.append(core_dict[core][parameter])
+
+
+            collection.set_array(np.array(collection_values))
+
+        ax.add_collection(collection,
+                          )
+
+        # colorbar
+        #cbar = axesgrid.cbar_axes[i].colorbar(collection)
+        cbar = ax.cax.colorbar(collection)
+        if parameter == 'rad_field':
+            cbar.set_label_text(r'$I_{UV}$ [$I_{UV,D}$]',)
+        elif parameter == 'n_H':
+            cbar.set_label_text(r'$n_H$ [cm$^{-3}$]',)
+        elif parameter == 'T_H':
+            cbar.set_label_text(r'$T_H$ [1,000 K]',)
+        elif parameter == 'phi_cnm':
+            cbar.set_label_text(r'$\phi_{\rm CNM}$',)
+        elif parameter == 'alphaG':
+            cbar.set_label_text(r'$\alpha G$',)
+        elif parameter == 'hi_transition':
+            cbar.set_label_text(r'$\Sigma_{\rm HI,trans}$ ' + \
+                                r'$[M_\odot\,{\rm pc}^{-2}]$',)
+
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight', dpi=100)
+
 
 def get_patches(df, header):
 
@@ -459,7 +584,7 @@ def load_cores():
     with open(filename, 'rb') as f:
         core_dict = pickle.load(f)
 
-    if 'rad_field' not in core_dict[core_dict.keys()[0]]:
+    if 'n_H' not in core_dict[core_dict.keys()[0]]:
         raise ValueError('Need interpretation, run' + \
                          'cloud_write_parameter_table.py first')
 
