@@ -1648,16 +1648,16 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                 plot_fits = calc_model_plot_fit(analysis,
                                                 model=model)
                 c_cycle = myplt.set_color_cycle(num_colors=2,
-                                                cmap_limits=[0.5, 0.7])
+                                                cmap_limits=[0.4, 0.8])
 
                 if 'krumholz' in model:
                     label = 'K+09'
                     color = c_cycle[0]
-                    alpha = 0.2
+                    alpha = 0.5
                 else:
                     label = 'S+14'
                     color = c_cycle[1]
-                    alpha = 1
+                    alpha = 0.5
 
 
                 fill_between = 1
@@ -1675,32 +1675,40 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                     else:
                         where = plot_fits[2] < plot_fits[3]
 
-                    ax.fill_between(plot_fits[0], plot_fits[2], plot_fits[3],
-                                    where=where,
-                                    facecolor=color,
-                                    edgecolor='none',
-                                    alpha=0.3,
-                                    interpolate=True,
-                                    zorder=0,
-                                    )
+                    if model == 'sternberg':
+                        ax.fill_between(plot_fits[0],
+                                        plot_fits[2],
+                                        plot_fits[3],
+                                        where=where,
+                                        facecolor=color,
+                                        edgecolor='none',
+                                        alpha=0.3,
+                                        interpolate=True,
+                                        zorder=0,
+                                        )
                 else:
                     l3 = ax.plot(plot_fits[0], plot_fits[1],
                             linestyle='-',
                             label=label,
                             linewidth=2,
                             color=color,
-                            alpha=1
+                            alpha=1,
                             )
-                    ax.plot(plot_fits[0], plot_fits[2],
-                            linestyle='-',
-                            color=color,
-                            alpha=alpha
-                            )
-                    ax.plot(plot_fits[0], plot_fits[3],
-                            linestyle='-',
-                            color=color,
-                            alpha=alpha,
-                            )
+                    if model == 'sternberg':
+                        ax.plot(plot_fits[0], plot_fits[2],
+                                linestyle='-',
+                                color=color,
+                                alpha=alpha,
+                                linewidth=1.5,
+                                zorder=0,
+                                )
+                        ax.plot(plot_fits[0], plot_fits[3],
+                                linestyle='-',
+                                color=color,
+                                alpha=alpha,
+                                linewidth=1.5,
+                                zorder=0,
+                                )
 
         if i == 0:
             ax.legend(loc='upper right')

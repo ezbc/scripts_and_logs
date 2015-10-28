@@ -9,6 +9,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 import myimage_analysis as myia
 import mygeometry as myg
+import mystats
 
 def load_cores():
 
@@ -157,7 +158,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
 
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
-        N_mc = 10000
+        N_mc = 1000
         temps_mc = np.empty(N_mc)
         temp_errors_mc = np.empty(N_mc)
         if cloud not in cloud_temps:
@@ -200,6 +201,13 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
             dust_temp_error_avg = \
                 np.sqrt(np.nansum(np.mean(temp_errors_mc)**2 + \
                                   np.std(temps_mc)**2))
+
+            dust_temp_avg, mc_error = mystats.calc_cdf_error(temps_mc)
+            mc_error = np.array(mc_error)
+            dust_temp_error_avg = \
+                np.sqrt(np.nansum(np.mean(temp_errors_mc)**2 + \
+                                  mc_error**2))
+
             core_dict[core_name]['dust_temp_avg'] = dust_temp_avg
             core_dict[core_name]['dust_temp_error_avg'] = \
                 dust_temp_error_avg
@@ -282,8 +290,10 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
                 temp_error_data[~region_mask]
 
             # Calculate average temp
+            dust_temp, dust_temp_error = \
+                mystats.calc_cdf_error(temp_data[~region_mask])
             core_dict[core_name]['dust_temp_avg'] = \
-                np.nanmean(temp_data[~region_mask])
+                dust_temp
             core_dict[core_name]['dust_temp_error_avg'] = \
                 np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
                     temp_error_data[~region_mask].size
@@ -315,13 +325,15 @@ def get_alt_name(core_name):
     elif core_name == 'G171.00-15.80':
         alt_name = 'B217'
     elif core_name == 'G172.12-16.94':
-        alt_name = 'B215'
-    elif core_name == 'G172.93-16.73':
         alt_name = 'L1524'
+    elif core_name == 'G171.14-17.57':
+        alt_name = 'L1504'
+    elif core_name == 'G172.93-16.73':
+        alt_name = 'B18'
     elif core_name == 'G174.40-13.45':
         alt_name = 'B220'
     elif core_name == 'G174.70-15.47':
-        alt_name = 'B18'
+        alt_name = 'L1535'
     else:
         alt_name = ''
 
