@@ -2631,6 +2631,28 @@ def plot_multicloud_results(results):
                               filename=filename,
                               ncols=ncols
                               )
+
+            # RH2 vs. H SD for L1478
+            # -----------------------------------------------------------------
+            filename = plot_kwargs['figure_dir'] + \
+                       'models/' + cloud + '_rh2_vs_hsd.' + filetype
+            plot_rh2_vs_h_grid(hsd_cores_list[i],
+                              hisd_cores_list[i],
+                              core_names=core_names,
+                              model_results=model_results_list[i],
+                              model_analysis=\
+                                  model_analysis_list[i]['cores'],
+                              #limits=[-9, 100, 2, 14],
+                              #limits=[-9, 159, 3, 14],
+                              xlimits=[-9, 100],
+                              ylimits=[10**-3, 10**2],
+                              levels=levels,
+                              #scale=('log', 'linear'),
+                              scale=('linear', 'log'),
+                              filename=filename,
+                              ncols=ncols
+                              )
+
         if 0:
             filename = plot_kwargs['figure_dir'] + \
                        'av_nhi/multicloud_av_vs_nhi_log.' + filetype

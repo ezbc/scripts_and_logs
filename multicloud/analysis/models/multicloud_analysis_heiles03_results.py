@@ -79,7 +79,7 @@ def main():
 
     # Data locations in script
     # --------------------------------------------------------------------------
-    filedir = '/d/bip3/ezbc/multicloud/data/heiles03_data/'
+    filedir = '/d/bip3/ezbc/multicloud/data/cnm_data/heiles03/'
 
     # Read the data
     source_table = read_data(filedir + 'heiles03_sources.tsv')

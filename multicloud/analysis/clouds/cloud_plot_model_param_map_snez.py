@@ -257,10 +257,10 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     font_scale = 9
 
     # Create figure instance
-    fig = plt.figure(figsize=(3.5, 10))
+    fig = plt.figure(figsize=(3.5, 3.5))
 
-    nrows_ncols=(5,1)
-    ngrids=5
+    nrows_ncols=(1,1)
+    ngrids=1
     axesgrid = AxesGrid(fig, (1,1,1),
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
@@ -278,7 +278,7 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     # ------------------
     # Av image
     # ------------------
-    parameters = ['phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
+    parameters = ['T_cnm']
     for i in xrange(ngrids):
         # create axes
         ax = axesgrid[i]
@@ -320,7 +320,7 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
         cmap = myplt.truncate_colormap(plt.cm.copper, minval=0.1, maxval=1.0)
         collection = PatchCollection(patches,
                                      cmap=cmap,
-                                     edgecolors='none',
+                                     edgecolors='k',
                                      zorder=1000,
                                      )
 
@@ -331,7 +331,6 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
         else:
             for core in df['core']:
                 collection_values.append(core_dict[core][parameter])
-
 
             collection.set_array(np.array(collection_values))
 
@@ -347,6 +346,8 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
             cbar.set_label_text(r'$n_H$ [cm$^{-3}$]',)
         elif parameter == 'T_H':
             cbar.set_label_text(r'$T_H$ [1,000 K]',)
+        elif parameter == 'T_cnm':
+            cbar.set_label_text(r'$T_{\rm CNM}$ [K]',)
         elif parameter == 'phi_cnm':
             cbar.set_label_text(r'$\phi_{\rm CNM}$',)
         elif parameter == 'alphaG':
@@ -626,8 +627,6 @@ def plot_cdfs(core_dict, df):
         for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
             Ts_avg_list.append(Ts_avg)
 
-    print Ts_avg_list
-
     # collect data
     T_cnms = np.empty(len(core_dict))
     T_Hs = np.empty(len(core_dict))
@@ -697,7 +696,7 @@ def plot_cdfs(core_dict, df):
 
             n_sim = 1000
             alpha = 1.0 / n_sim
-            alpha = 0.008
+            alpha = 0.005
             for j in xrange(n_sim):
                 if 0:
                     error = data_error_list[i]
@@ -768,35 +767,21 @@ def main():
     av_data, av_header = load_av_data()
 
     # compare cdfs of predicted vs. measured temperatures
-    print('\nPlotting Temperature CDFs...')
-    plot_cdfs(core_dict, df)
 
     # plot the cores
     print('\nPlotting maps...')
     filetypes = ['png', 'pdf']
     for filetype in filetypes:
         figure_dir = '/d/bip3/ezbc/multicloud/figures/'
-        if 0:
-            filename = figure_dir + 'maps/multicloud_av_modelparams_map.' + \
-                       filetype
-            plot_params_map(header=av_header,
-                           av_image=av_data,
-                           df=df,
-                           #limits=[75, 50, 20, 37,],
-                           limits=[76, 43.5, 19.5, 38,],
-                           filename=filename,
-                           contours=[2, 4, 8, 16],
-                           #vlimits=[-0.1,18]
-                           )
 
-        filename = figure_dir + 'maps/multicloud_av_ISMparams_map.' + \
+        filename = figure_dir + 'maps/multicloud_av_Tcnm_map.' + \
                    filetype
         plot_ISMparams_map(header=av_header,
                            av_image=av_data,
                            df=df,
                            core_dict=core_dict,
                            #limits=[75, 50, 20, 37,],
-                           limits=[76, 43.5, 19.5, 38,],
+                           limits=[76, 60, 20, 32,],
                            filename=filename,
                            contours=[2, 4, 8, 16],
                            #vlimits=[-0.1,18]

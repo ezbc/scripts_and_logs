@@ -25,6 +25,7 @@ def add_model_analysis(core_dict):
 
     from myscience import calc_radiation_field, calc_temperature
     from myscience.sternberg14 import calc_n_H
+    import myscience.krumholz09 as myk09
 
     ''' need the following parameters
 
@@ -76,8 +77,6 @@ def add_model_analysis(core_dict):
                 calc_n_H(I_UV=core['rad_field'],
                          alphaG=core['sternberg']['alphaG'],
                          phi_g=core['sternberg']['phi_g'],
-                         #alphaG=10,
-                         #phi_g=2,
                          I_UV_error=core['rad_field_error'],
                          alphaG_error=core['sternberg']['alphaG_error'],
                          phi_g_error=core['sternberg']['phi_g_error'],
@@ -107,6 +106,25 @@ def add_model_analysis(core_dict):
 
         core['T_H'] /= 1000.0
         core['T_H_error'] = np.array(core['T_H_error']) / 1000.0
+
+        # calculate krumholz params
+        core['T_cnm'], core['T_cnm_error'] = \
+                myk09.calc_T_cnm(core['krumholz']['phi_cnm'],
+                    phi_cnm_error=core['krumholz']['phi_cnm_error'],
+                    calc_error=True,
+                    )
+
+        core['n_cnm'], core['n_cnm_error'] = \
+                myk09.calc_n_cnm(G_0=(core['rad_field'] / 1.7),
+                         G_0_error=(core['rad_field_error'] / 1.7),
+                         T_cnm=core['T_cnm'],
+                         T_cnm_error=core['T_cnm_error'],
+                         calc_error=True,
+                         )
+
+        print '\n'
+        print core['T_cnm'], core['n_cnm']
+        print core['T_cnm_error'], core['n_cnm_error']
 
         core['alt_name'] = get_alt_name(core_name)
 
@@ -471,10 +489,30 @@ def write_model_params_table(core_dict):
                             param_info,
                             text_format=text_param_format)
 
+        # add H vol dens
+        # --------------
+        param = core['n_cnm']
+        param_error = core['n_cnm_error']
+        param_info = (param, param_error[1], param_error[0])
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format)
+
         # add HI temp
         # -----------
         param = core['T_H']
         param_error = core['T_H_error']
+        param_info = (param, param_error[1], param_error[0])
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format)
+
+        # add HI temp
+        # -----------
+        param = core['T_cnm']
+        param_error = core['T_cnm_error']
         param_info = (param, param_error[1], param_error[0])
         row_text = \
             add_row_element(row_text,
