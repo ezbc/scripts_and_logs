@@ -4647,9 +4647,11 @@ def bootstrap_worker(global_args, i):
         DGR = av_model_results['dgr_cloud']
         print 'DGR = ', DGR
         phi_g = DGR / 0.053
+        Z = DGR / 0.053
         print 'phi_g', phi_g
         new_model_kwargs = dict(model_kwargs)
         new_model_kwargs['sternberg_params']['guesses'][2] = phi_g
+        #new_model_kwargs['sternberg_params']['guesses'][1] = Z
 
     # cycle through each core, bootstrapping the pixels
     for core in cores_to_plot:
@@ -6089,7 +6091,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,

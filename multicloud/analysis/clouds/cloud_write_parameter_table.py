@@ -77,9 +77,10 @@ def add_model_analysis(core_dict):
                 calc_n_H(I_UV=core['rad_field'],
                          alphaG=core['sternberg']['alphaG'],
                          phi_g=core['sternberg']['phi_g'],
+                         Z_g=core['sternberg']['Z'],
                          I_UV_error=core['rad_field_error'],
                          alphaG_error=core['sternberg']['alphaG_error'],
-                         phi_g_error=core['sternberg']['phi_g_error'],
+                         Z_g_error=core['sternberg']['Z_error'],
                          )
 
         #if core['n_H'] <= 0:

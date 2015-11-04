@@ -753,7 +753,11 @@ def plot_cdfs(core_dict, df):
     ax.set_xlim([7*10**-1, 10**4])
     ax.set_ylim([0,1])
 
-    plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
+    ax.set_xlabel('Temperature [K]')
+    ax.set_ylabel('Cumulative Distribution')
+
+    #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
+    plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.pdf')
 
 def main():
 
