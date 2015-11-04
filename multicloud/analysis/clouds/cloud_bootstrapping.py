@@ -2294,6 +2294,311 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
             dpi = 100
         plt.savefig(filename, bbox_inches='tight', dpi=dpi)
 
+def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
+        model_results=None, model_analysis=None, xlimits=None, ylimits=None,
+        scale=('linear', 'linear'), filename=None, show_params=False,
+        levels=5, ncols=2):
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Determine size of figure and number of grids
+    # --------------------------------------------
+    if 0:
+        n = int(np.ceil(len(core_names)**0.5))
+        if n**2 - n > len(core_names):
+            nrows = n - 1
+            ncols = ncols
+            y_scaling = 1.0 - 1.0 / n
+        else:
+            nrows, ncols = n, n
+            y_scaling = 1.0
+
+    if 1:
+        n = len(core_names)
+        nrows = (n + 1) / ncols
+        if n > nrows * ncols:
+            nrows += 1
+        y_scaling = nrows / 2.0
+        x_scaling = ncols / 2.0
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+
+    figsize = (3.6*x_scaling, 3.6*y_scaling)
+
+    # Create figure instance
+    fig = plt.figure(figsize=figsize)
+
+    if n == 1:
+        n = 2
+
+    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
+
+    if xlimits is not None and ylimits is not None:
+        aspect = (xlimits[1] - xlimits[0]) / (ylimits[1] - ylimits[0])
+    else:
+        aspect = False
+
+    if 0:
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+        axes = np.ravel(axes)
+    else:
+        axes = AxesGrid(fig, (1,1,1),
+                        nrows_ncols=(nrows, ncols),
+                        ngrids=n,
+                        #axes_pad=0.1,
+                        axes_pad=0.1,
+                        aspect=False,
+                        label_mode='L',
+                        share_all=False,
+                        )
+
+
+    # Cycle through lists
+    # -------------------
+    for i, core in enumerate(core_names):
+        hi_sd = hisd_list[i]
+        h_sd = hsd_list[i]
+
+        # Load parameters
+        alphaG = model_analysis[core]['sternberg_results']['alphaG']
+        alphaG_error = \
+                model_analysis[core]['sternberg_results']['alphaG_error']
+        phi_cnm = model_analysis[core]['krumholz_results']['phi_cnm']
+        phi_cnm_error = \
+                model_analysis[core]['krumholz_results']['phi_cnm_error']
+        hi_sd_fit_sternberg = \
+                model_analysis[core]['sternberg_results']['hisd_fit']
+        hi_sd_fit_krumholz = \
+                model_analysis[core]['krumholz_results']['hisd_fit']
+        h_sd_fit = model_analysis[core]['krumholz_results']['hsd_fit']
+
+
+        # Drop the NaNs from the images
+        indices = np.where((hi_sd == hi_sd) &\
+                           (h_sd == h_sd))
+
+        hi_sd_nonans = hi_sd[indices]
+        h_sd_nonans = h_sd[indices]
+
+        rh2 = (h_sd_nonans - hi_sd_nonans) / hi_sd_nonans
+
+        # Create plot
+        ax = axes[i]
+
+        #ax.set_xticks([0, 40, 80, 120])
+
+        if 1:
+            if xlimits is None:
+                xmin = np.min(h_sd_nonans)
+                xmax = np.max(h_sd_nonans)
+                xscalar = 0.15 * xmax
+                xlimits = [xmin - xscalar, xmax + xscalar]
+            if ylimits is None:
+                ymin = np.min(rh2)
+                ymax = np.max(rh2)
+                yscalar = 0.15 * ymax
+                ylimits = [ymin - yscalar, ymax + yscalar]
+
+            cmap = myplt.truncate_colormap(plt.cm.gray_r,
+                                           minval=0.2,
+                                           maxval=1)
+
+            ax.scatter(h_sd_nonans.ravel(),
+                       rh2.ravel(),
+                       #markersize=1.5,
+                       s=10,
+                       alpha=0.3,
+                       color='k',
+                       )
+
+        if xlimits is not None:
+            ax.set_xlim(xlimits[0], xlimits[1])
+        if ylimits is not None:
+            ax.set_ylim(ylimits[0], ylimits[1])
+            #ylimits = None
+
+        if 0:
+            # get bootstrap results
+            model = 'krumholz'
+            core_results = model_results['cores'][core]
+
+            params = {}
+            nfits = len(core_results['krumholz_results']['phi_cnm'])
+            if nfits > 500:
+                nfits = 500
+            alpha = 1 / float(nfits) * 10.0
+            for j in xrange(nfits):
+                params['phi_cnm'] = \
+                    core_results['krumholz_results']['phi_cnm'][j]
+                params['Z'] = core_results['krumholz_results']['Z'][j]
+                params['phi_mol'] = \
+                    core_results['krumholz_results']['phi_mol'][j]
+                if 'sternberg' in model:
+                    model_fits = calc_sternberg(params,
+                                              h_sd_extent=(0, limits[1]),
+                                              return_fractions=False,
+                                              return_hisd=True)
+                elif 'krumholz' in model:
+                    model_fits = calc_krumholz(params,
+                                              h_sd_extent=(0, limits[1]),
+                                              return_fractions=False,
+                                              return_hisd=True)
+
+                ax.plot(model_fits[1], model_fits[2],
+                        linestyle='-',
+                        color=c_cycle[2],
+                        alpha=alpha,
+                        )
+                hi_trans = core_results['krumholz_results']['hi_transition'][j]
+                ax.axvline(hi_trans,
+                           alpha=0.5,
+                           color='r')
+
+        else:
+            if 0:
+                l2 = ax.plot(h_sd_fit, hi_sd_fit_sternberg,
+                        label='S+14',
+                        color=c_cycle[1],
+                        alpha=0.75,
+                        )
+            for model in ('krumholz',):
+                analysis = model_analysis[core][model + '_results']
+                plot_fits = calc_model_plot_fit(analysis,
+                                                model=model)
+
+                rh2_fit = (plot_fits[0] - plot_fits[1]) / plot_fits[1]
+
+                if 'krumholz' in model:
+                    label = 'K+09'
+                    color = c_cycle[1]
+                    alpha = 0.6
+                else:
+                    label = 'S+14'
+                    color = c_cycle[1]
+                    alpha = 0.8
+
+
+                l3 = ax.plot(plot_fits[0], rh2_fit,
+                        linestyle='-',
+                        label=label,
+                        color=color,
+                        linewidth=2,
+                        zorder=1000,
+                        alpha=0.6
+                        )
+
+        if 0:
+            if i == 0:
+                ax.legend(loc='upper left')
+
+        # Annotations
+        anno_xpos = 0.95
+
+        if show_params:
+            alphaG_text = r'\noindent$\alpha G$ =' + \
+                           r' %.2f' % (alphaG) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (alphaG_error[0],
+                                                       alphaG_error[1])
+            phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
+                           r' %.2f' % (phi_cnm) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
+                                                       phi_cnm_error[1])
+
+            ax.annotate(alphaG_text + phi_cnm_text,
+                    xytext=(anno_xpos, 0.05),
+                    xy=(anno_xpos, 0.05),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=8,
+                    color='k',
+                    bbox=dict(boxstyle='round',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='bottom',
+                    )
+
+        if core == 'G169.32-16.17':
+            core_name = 'B213'
+        else:
+            core_name = core
+        ax.annotate(core_name,
+                    xytext=(0.9, 0.1),
+                    xy=(0, 0),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    verticalalignment='bottom',
+                    horizontalalignment='right',
+                    )
+
+        ax.set_xscale(scale[0])
+        ax.set_yscale(scale[1])
+
+        # turn labels on or off
+        if i % ncols == 0:
+            ylabel = True
+        else:
+            #ax.yaxis.set_ticklabels([])
+            ylabel = False
+
+        if i >= len(core_names) - ncols:
+            #ax.set_xlabel(labels[x_i])
+            xlabel = True
+        else:
+            xlabel = False
+
+        if len(core_names) % ncols > 0 and i == len(core_names) - 1:
+            axes[i + 1].axis('off')
+
+        # Adjust asthetics
+        if xlabel:
+            ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
+                           '[M$_\odot$ pc$^{-2}$]',)
+        if ylabel:
+            ax.set_ylabel(r'$R_{H2}$',)
+
+        if 'log' not in scale:
+            ax.locator_params(nbins=5)
+
+    if 0:
+        fig.legend(l2 + l3,
+                   ('S+14', 'K+09'),
+                   loc='upper center',
+                   #loc=3,
+                   ncol=2,
+                   numpoints=6,
+                   bbox_transform = plt.gcf().transFigure,
+                   #bbox_transform = imagegrid.transFigure,
+                   #bbox_to_anchor=(0., 0.95, 1.05, -0.0),
+                   mode="expand",
+                   bbox_to_anchor=(0.3, 1.0, 0.5, 0.1),
+                   borderaxespad=0.0)
+
+    if filename is not None:
+        if filename[-3:] == 'pdf':
+            dpi = 600
+        else:
+            dpi = 100
+        plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+
 def calc_model_plot_fit(analysis, model='krumholz'):
 
     if 'sternberg' in model:
@@ -2570,6 +2875,33 @@ def plot_multicloud_results(results):
                                       )
             else:
                 ncols = 2
+
+
+            # RH2 vs. H SD for L1478
+            # -----------------------------------------------------------------
+            if cloud == 'taurus':
+                single_core = 'G169.32-16.17'
+                filename = plot_kwargs['figure_dir'] + \
+                           'models/' + cloud + '_rh2_vs_hsd_' + \
+                           single_core + '.' + filetype
+                index = core_names.index(single_core)
+                plot_rh2_vs_h((hsd_cores_list[i][index],),
+                              (hisd_cores_list[i][index],),
+                              core_names=(core_names[index],),
+                              model_results=model_results_list[i],
+                              model_analysis=\
+                                  model_analysis_list[i]['cores'],
+                              #limits=[-9, 100, 2, 14],
+                              #limits=[-9, 159, 3, 14],
+                              xlimits=[-9, 100],
+                              ylimits=[10**-3, 10**2],
+                              levels=levels,
+                              #scale=('log', 'linear'),
+                              scale=('linear', 'log'),
+                              filename=filename,
+                              ncols=ncols
+                              )
+
             # HI SD vs. H SD
             # -----------------------------------------------------------------
             filename = plot_kwargs['figure_dir'] + \
@@ -2612,27 +2944,6 @@ def plot_multicloud_results(results):
                               )
 
             # RH2 vs. H SD
-            # -----------------------------------------------------------------
-            filename = plot_kwargs['figure_dir'] + \
-                       'models/' + cloud + '_rh2_vs_hsd.' + filetype
-            plot_rh2_vs_h_grid(hsd_cores_list[i],
-                              hisd_cores_list[i],
-                              core_names=core_names,
-                              model_results=model_results_list[i],
-                              model_analysis=\
-                                  model_analysis_list[i]['cores'],
-                              #limits=[-9, 100, 2, 14],
-                              #limits=[-9, 159, 3, 14],
-                              xlimits=[-9, 100],
-                              ylimits=[10**-3, 10**2],
-                              levels=levels,
-                              #scale=('log', 'linear'),
-                              scale=('linear', 'log'),
-                              filename=filename,
-                              ncols=ncols
-                              )
-
-            # RH2 vs. H SD for L1478
             # -----------------------------------------------------------------
             filename = plot_kwargs['figure_dir'] + \
                        'models/' + cloud + '_rh2_vs_hsd.' + filetype
@@ -5119,7 +5430,7 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=(10.0, 1.0, 2.0) # Guesses for (alphaG, Z, phi_g)
+    guesses=(10.0, 1.0, 1) # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
@@ -5799,7 +6110,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -5817,7 +6128,7 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 10000,
+                'num_bootstraps': 100,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'hi_range_calc': permutation[11],

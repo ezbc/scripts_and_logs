@@ -28,7 +28,7 @@ def main():
     # --------------------------------------------------------------------------
     clouds = ('taurus', 'perseus', 'california')
     dec_ranges = ((35, 20), (35, 20), (44, 35))
-    ra_ranges = ((5.5, 3.9), (4, 3), (70, 40))
+    ra_ranges = ((5.5, 4), (4, 3), (5.5, 3.5))
     tspin_threshold = 10000.0
 
     # Data locations in script
@@ -107,6 +107,8 @@ def main():
 
         for j in xrange(len(param_data)):
             tspin = param_data[j][param_cols.index('Ts')]
+            TB = param_data[j][param_cols.index('TB')]
+            tau = param_data[j][param_cols.index('tau')]
             tspin_error = param_data[j][param_cols.index('e_Ts')]
             source = param_data[j][param_cols.index('Source')]
             if source in cloud_sources:
@@ -122,6 +124,12 @@ def main():
                 if not avg_temp_added:
                     avg_temp = \
                         avg_temp_data[avg_temp_sources == source][0]
+
+                    #avg_temp = np.mean(TB) / np.mean(tau)
+                    avg_temp = np.sum(TB) / np.sum(1 - np.exp(-tau))
+
+                    print avg_temp
+
                     avg_tspin_list.append(avg_temp)
 
                 if tspin < tspin_threshold and tspin_error != 0.0:

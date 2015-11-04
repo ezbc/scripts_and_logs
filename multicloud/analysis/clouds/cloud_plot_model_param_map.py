@@ -626,8 +626,6 @@ def plot_cdfs(core_dict, df):
         for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
             Ts_avg_list.append(Ts_avg)
 
-    print Ts_avg_list
-
     # collect data
     T_cnms = np.empty(len(core_dict))
     T_Hs = np.empty(len(core_dict))
@@ -637,6 +635,7 @@ def plot_cdfs(core_dict, df):
     n_Hs = np.empty(len(core_dict))
     n_cnm_errors = np.empty((len(core_dict), 2))
     n_H_errors = np.empty((len(core_dict), 2))
+
 
     for i, core_name in enumerate(core_dict):
         core = core_dict[core_name]
@@ -695,9 +694,9 @@ def plot_cdfs(core_dict, df):
                 n = n_Hs
                 n_error = n_H_errors[:, 0]
 
-            n_sim = 1000
+            n_sim = 100
             alpha = 1.0 / n_sim
-            alpha = 0.008
+            alpha = 0.1
             for j in xrange(n_sim):
                 if 0:
                     error = data_error_list[i]
@@ -714,7 +713,7 @@ def plot_cdfs(core_dict, df):
                                                 'color': c_cycle[i],
                                                 'alpha': alpha})
         if i < 2:
-            x = myplt.plot_cdf(data,
+            x = myplt.plot_cdf(data[data > 0],
                                ax=ax,
                                plot_kwargs={'label': data_names[i],
                                             'color': c_cycle[i],
@@ -751,7 +750,7 @@ def plot_cdfs(core_dict, df):
 
     ax.legend(loc='best')
     ax.set_xscale('log')
-    ax.set_xlim([0, 10**4])
+    ax.set_xlim([7*10**-1, 10**4])
     ax.set_ylim([0,1])
 
     plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
