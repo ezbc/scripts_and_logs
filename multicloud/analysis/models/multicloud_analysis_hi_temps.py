@@ -104,6 +104,7 @@ def main():
         cloud_t_cnm_list = []
         source_list = []
         weights = []
+        avg_temp_dict = {}
 
         for j in xrange(len(param_data)):
             tspin = param_data[j][param_cols.index('Ts')]
@@ -125,12 +126,28 @@ def main():
                     avg_temp = \
                         avg_temp_data[avg_temp_sources == source][0]
 
-                    #avg_temp = np.mean(TB) / np.mean(tau)
-                    avg_temp = np.sum(TB) / np.sum(1 - np.exp(-tau))
-
-                    print avg_temp
-
                     avg_tspin_list.append(avg_temp)
+
+                #avg_temp = np.mean(TB) / np.mean(tau)
+                if 0:
+                    print ''
+                    print source
+                    print TB
+                    print tau
+                    if source not in avg_temp_dict:
+                        avg_temp = TB / (1 - np.exp(-tau))
+                        avg_temp_dict[source] = avg_temp
+                    else:
+                        avg_temp_dict[source] = \
+                            (avg_temp_dict[source] + TB / (1 - np.exp(-tau)))
+                    if TB < 0:
+                        print ''
+                        print source
+                        print 'tau =', tau
+                        print 'TB =', TB
+                        print 'Tavg =', avg_temp_dict[source]
+
+                #avg_tspin_list.append(avg_temp)
 
                 if tspin < tspin_threshold and tspin_error != 0.0:
                     cloud_t_cnm_list.append(tspin)
@@ -155,8 +172,12 @@ def main():
                         t_int_list.append(Tk)
 
         temp_dict[cloud]['Ts_list'] = t_cnm_list
+        #avg_tspin_list = []
+        #for source in avg_temp_dict:
+        #    avg_tspin_list.append(avg_temp_dict[source])
         temp_dict[cloud]['Ts_avg_list'] = avg_tspin_list
 
+        print avg_tspin_list
 
         if 0:
             if cloud=='perseus':

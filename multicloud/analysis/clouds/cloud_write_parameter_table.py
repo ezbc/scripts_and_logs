@@ -122,10 +122,6 @@ def add_model_analysis(core_dict):
                          calc_error=True,
                          )
 
-        print '\n'
-        print core['T_cnm'], core['n_cnm']
-        print core['T_cnm_error'], core['n_cnm_error']
-
         core['alt_name'] = get_alt_name(core_name)
 
 def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
@@ -465,6 +461,10 @@ def write_model_params_table(core_dict):
                 params_to_write = ['alphaG',
                                    #'phi_g',
                                    'hi_transition']
+
+                print '\nphi_g:'
+                print core[model]['phi_g']
+                print core[model]['phi_g_error']
 
             for i, param_name in enumerate(params_to_write):
                 param = \

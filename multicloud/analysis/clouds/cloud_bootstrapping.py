@@ -4640,14 +4640,16 @@ def bootstrap_worker(global_args, i):
     ss_model_results = {}
 
     # scale phi_g by relative to the galactic DGR
+    # Galactic DGR = 5.3 x 10^-22 cm^2 mag
+    # our DGR in units of 10^-20 cm^2 mag
+    # Galactic DGR in our units = 5.3 x 10^-22 / 10^-20 = 5.3 x 10^-2 = 0.053
     if 1:
         DGR = av_model_results['dgr_cloud']
         print 'DGR = ', DGR
         phi_g = DGR / 0.053
         print 'phi_g', phi_g
         new_model_kwargs = dict(model_kwargs)
-        new_model_kwargs['sternberg_params']['phi_g'] = phi_g
-
+        new_model_kwargs['sternberg_params']['guesses'][2] = phi_g
 
     # cycle through each core, bootstrapping the pixels
     for core in cores_to_plot:
@@ -4688,6 +4690,9 @@ def bootstrap_worker(global_args, i):
                                     rh2_core,
                                     model_kwargs=model_kwargs,
                                     )
+
+        print '\npost fit phi_g:'
+        print ss_model_result['sternberg_results']['phi_g']
 
         # get HI transition result
         add_hi_transition_calc(ss_model_result)
@@ -5398,7 +5403,7 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=(10.0, 1.0, 1) # Guesses for (alphaG, Z, phi_g)
+    guesses=[10.0, 1.0, 1] # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
@@ -5426,7 +5431,7 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=(8.0, 1.0, 10.0) # Guesses for (phi_cnm, Z, phi_mol)
+    guesses=[8.0, 1.0, 10.0] # Guesses for (phi_cnm, Z, phi_mol)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
@@ -5523,6 +5528,12 @@ def calc_mc_analysis(mc_results, resid_results):
                 core_analysis[core][model][param + '_error'] = param_error
 
                 params[param] = param_value
+
+                if param == 'phi_g':
+                    print '\nanalysis'
+                    print param_value
+                    print param_error
+
 
                 if 0:
                     if param == 'phi_g' or param == 'alphaG':
