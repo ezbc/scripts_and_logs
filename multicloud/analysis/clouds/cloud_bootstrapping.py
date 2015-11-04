@@ -4639,6 +4639,15 @@ def bootstrap_worker(global_args, i):
 
     ss_model_results = {}
 
+    # scale phi_g by relative to the galactic DGR
+    if 1:
+        DGR = av_model_results['dgr_cloud']
+        print 'DGR = ', DGR
+        phi_g = DGR / 0.053
+        print 'phi_g', phi_g
+        new_model_kwargs = dict(model_kwargs)
+        new_model_kwargs['sternberg_params']['phi_g'] = phi_g
+
 
     # cycle through each core, bootstrapping the pixels
     for core in cores_to_plot:
@@ -4683,47 +4692,6 @@ def bootstrap_worker(global_args, i):
         # get HI transition result
         add_hi_transition_calc(ss_model_result)
         ss_model_results[core] = ss_model_result
-
-        if 0:
-            print core, 'phi_cnm', ss_model_result['krumholz_results']['phi_cnm']
-        if 0:
-            import matplotlib.pyplot as plt
-            plt.close(); plt.clf();
-            hi_sd_core = hi_sd_image[core_indices][~mask]
-            rh2_fit, hsd_fit = \
-                calc_sternberg(ss_model_result['sternberg_results'],
-                              h_sd_extent=[1e-3, 100],
-                              return_fractions=False)
-            rh2_fit, hsd_fit = \
-                calc_krumholz(ss_model_result['krumholz_results'],
-                              h_sd_extent=[1e-3, 100],
-                              return_fractions=False)
-            #print ss_model_result['sternberg_results']['alphaG']
-
-            # fit spline to R_H2 as a function of HI surf dense
-            sort_indices = np.argsort(hi_sd_core)
-            hi_sd_core_sorted = hi_sd_core[sort_indices]
-            rh2_core_sorted = rh2_core[sort_indices]
-            rh2_spline = \
-                scipy.interpolate.UnivariateSpline(
-                                                   hi_sd_core_sorted,
-                                                   rh2_core_sorted,
-                                                   )
-            hi_sd_fit = np.arange(0, 100, 1)
-            rh2_spline_fit = rh2_spline(hi_sd_fit)
-
-            # when R_H2 = 1, HI-to-H2 transition
-            hi_transition = np.interp(1, rh2_fit, hsd_fit) / 2.0
-
-            plt.scatter(h_sd_core, rh2_core, color='k', alpha=0.1)
-            plt.plot(hsd_fit, rh2_fit, color='r', alpha=1)
-            plt.plot(hi_sd_fit, rh2_spline_fit, color='c', alpha=1)
-            plt.axvline(hi_transition)
-            plt.yscale('log')
-            plt.xlim([0,80]); plt.ylim([0.001, 10])
-            plt.savefig('/d/bip3/ezbc/scratch/rh2_vs_hsd' + \
-                        core + '_' + str(i) + '.png')
-
 
         phi_cnm = ss_model_result['krumholz_results']['phi_cnm']
         if phi_cnm < 0:
