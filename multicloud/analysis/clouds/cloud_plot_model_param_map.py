@@ -652,7 +652,7 @@ def plot_cdfs(core_dict, df):
     plt.close;plt.clf()
 
     # Create figure instance
-    fig = plt.figure(figsize=(3.5, 3.5))
+    fig = plt.figure(figsize=(3.5, 2.5))
     ax = fig.add_subplot(111)
     c_cycle = myplt.set_color_cycle(4, cmap_limits=(0.0, 0.9))
 
@@ -666,8 +666,8 @@ def plot_cdfs(core_dict, df):
                       r'$T_{\rm CNM}$',
                       r'$T_H$']
     else:
-        data_names = ['Stanimirovic+14\n' + r'$T_{\rm s}$',
-                      'Stanimirovic+14\n' + r'$<T_{\rm s}>$',
+        data_names = [r'Stanimirovi$\acute{c}$+14' + '\n' + r'$T_{\rm s}$',
+                      r'Stanimirovi$\acute{c}$+14' + '\n' + r'$<T_{\rm s}>$',
                       r'$T_{\rm CNM}$',
                       r'$T_H$']
     linestyles = ['--', '-.', '-', '-']

@@ -3617,6 +3617,10 @@ def add_core_mask(cores, data):
             cores[core]['indices_orig'] = np.where(mask == 0)
 
             cores[core]['mask'] = mask
+
+            print 'npix in core ' + core + ':'
+            print np.where(mask == 0)[0].size
+
         except KeyError:
             cores[core]['mask'] = None
             cores[core]['indices_orig'] = None
@@ -3753,7 +3757,7 @@ def fit_av_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
             return results
 
 def fit_steady_state_models(h_sd, rh2, model_kwargs,
-        bootstrap_residuals=False, nboot=100):
+        bootstrap_residuals=False, nboot=100, G0=1.0):
 
     # Fit R_H2
     #---------
@@ -3791,6 +3795,7 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs,
                          vary=krumholz_params['param_vary'],
                          bootstrap_residuals=bootstrap_residuals,
                          nboot=nboot,
+                         G0=G0,
                          )
         if bootstrap_residuals:
             phi_cnm, phi_cnm_error,Z_k09, Z_k09_error,phi_mol, phi_mol_error= \
@@ -3935,7 +3940,7 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
 
 def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         verbose=False, vary=[True, True, True], bootstrap_residuals=False,
-        nboot=100):
+        nboot=100, G0=1.0):
 
     '''
     Parameters
@@ -3948,6 +3953,8 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         Initial guess for the parameters. See scipy.optimize.curve_fit.
     rh2_error : bool
         Error in rh2 parameter. Calculates a more accurate chi^2 statistic
+    G0 : float
+        radiation field
 
     Returns
     -------
@@ -3973,12 +3980,12 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
         return chisq
 
-    def calc_residual(params, h_sd, rh2):
+    def calc_residual(params, h_sd, rh2, G0):
         phi_cnm = params['phi_cnm'].value
         phi_mol = params['phi_mol'].value
         Z = params['Z'].value
 
-        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
+        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol, G_0=G0)
 
         residual = rh2 - rh2_model
 
@@ -4005,7 +4012,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     # Perform the fit!
     result = minimize(calc_residual,
                       params,
-                      args=(h_sd, rh2),
+                      args=(h_sd, rh2, G0),
                       method='leastsq')
 
     if bootstrap_residuals:
@@ -4687,10 +4694,13 @@ def bootstrap_worker(global_args, i):
             rh2_core = rh2_core[~mask_rh2]
             h_sd_core = h_sd_core[~mask_rh2]
 
+        G0 = model_kwargs['krumholz_params']['G0'] + \
+             np.random.normal(model_kwargs['krumholz_params']['G0_error'])
         ss_model_result = \
             fit_steady_state_models(h_sd_core,
                                     rh2_core,
                                     model_kwargs=model_kwargs,
+                                    G0=G0,
                                     )
 
         print '\npost fit phi_g:'
@@ -5444,6 +5454,17 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     krumholz_params['h_sd_fit_range'] = h_sd_fit_range
     krumholz_params['results_filename'] = results_filename
     krumholz_params['parameters'] = ['phi_cnm', 'Z', 'phi_mol']
+    if cloud_name == 'taurus':
+        G0 = 0.6
+        G0_error = 0.1
+    elif cloud_name == 'california':
+        G0 = 1.0
+        G0_error = 0.2
+    elif cloud_name == 'perseus':
+        G0 = 0.7
+        G0_error = 0.2
+    krumholz_params['G0'] = G0
+    krumholz_params['G0_error'] = G0_error
 
     results = {}
     results['results_filename'] = results_filename
@@ -6091,7 +6112,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
