@@ -779,12 +779,13 @@ def plot_spectra_grid(spectra_list, hi_range_kwargs_list=None,
                 drawstyle = 'steps-mid'
                 )
 
-        ax.plot(hi_vel_axis,
-                hi_std_spectrum,
-                linewidth=1.5,
-                linestyle='-.',
-                label=r'$\sigma_{HI}$',
-                )
+        if 0:
+            ax.plot(hi_vel_axis,
+                    hi_std_spectrum,
+                    linewidth=1.5,
+                    linestyle='-.',
+                    label=r'$\sigma_{HI}$',
+                    )
 
         if gauss_fits is not None:
             ax.plot(hi_vel_axis, gauss_fits[0],
@@ -2866,6 +2867,12 @@ def plot_multicloud_results(results):
                      filename=filename,
                      limits=[-30, 30, -10, 59],
                      )
+
+        filename = results_dir + 'tables/multicloud_vel_ranges.tex'
+        write_hi_vel_range_table(cloud_name_list,
+                                 hi_range_kwargs_list,
+                                 filename)
+
         # Plot N(HI) vs. Av
         # ---------------------------------------------------------------------
         filename = plot_kwargs['figure_dir'] + \
@@ -3261,6 +3268,37 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
               )
 
     df.save(filename.replace('csv', 'pickle'))
+
+def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename):
+
+    # Open file to be appended
+    f = open(filename, 'wb')
+
+    for i in xrange(0, len(names_list)):
+        cloud_name = names_list[i]
+        hi_range_kwargs = hi_range_kwargs_list[i]
+        vel_range = hi_range_kwargs['vel_range']
+        vel_range_error = hi_range_kwargs['hi_range_error']
+
+        row_text = cloud_name.capitalize()
+        print row_text
+
+        row_text = add_row_element(row_text,
+                        vel_range,
+                        text_format='[{0:.0f}, {1:.0f}]')
+        print row_text
+        row_text = add_row_element(row_text,
+                        vel_range_error,
+                        text_format='{0:.0f}')
+        print row_text
+        row_text += ' \\\\[0.1cm] \n'
+        print row_text
+
+        f.write(row_text)
+
+    f.close()
+
+
 
 def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
 
@@ -6251,7 +6289,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
