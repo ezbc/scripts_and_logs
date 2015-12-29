@@ -76,6 +76,28 @@ def extract_data(datatype = 'ebv'):
                 resolution = 0.05,
                 cut_last_pixel = False,
                 verbose = True)
+    elif datatype == 'beta':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = 'Dust Opacity',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 6,
+                dr_version = 2,
+                resolution = 0.05,
+                cut_last_pixel = False,
+                verbose = True)
+    elif datatype == 'beta_error':
+        (data, header) = pl.get_data(data_location = data_location,
+                data_type = 'Dust Opacity',
+                x_range = ra_range,
+                y_range = dec_range,
+                coord_type = 'equatorial',
+                field = 7,
+                dr_version = 2,
+                resolution = 0.05,
+                cut_last_pixel = False,
+                verbose = True)
     elif datatype == '857':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = '857',
@@ -195,7 +217,7 @@ def main():
         (data, header) = extract_data(datatype = '353')
         write_data(data, header, planck_dir + 'multicloud_planck_353ghz.fits')
 
-    if 1:
+    if 0:
         # Temp maps
         # ---------
         (data, header) = extract_data(datatype = 'temp')
@@ -203,6 +225,15 @@ def main():
 
         (data, header) = extract_data(datatype = 'temp_error')
         write_data(data, header, temp_dir + 'multicloud_dust_temp_error.fits')
+
+    if 1:
+        # Beta maps
+        # ---------
+        (data, header) = extract_data(datatype = 'beta')
+        write_data(data, header, temp_dir + 'multicloud_dust_beta.fits')
+
+        (data, header) = extract_data(datatype = 'beta_error')
+        write_data(data, header, temp_dir + 'multicloud_dust_beta_error.fits')
 
 if __name__ == '__main__':
 	main()

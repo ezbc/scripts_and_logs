@@ -11,6 +11,127 @@ import myimage_analysis as myia
 import mygeometry as myg
 import mystats
 
+def plot_dust_histogram(dust_temps, limits=None, filename=None):
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    font_scale = 9
+    params = {
+              'figure.figsize': (3.5, 6),
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    myplt.set_color_cycle(num_colors=1, cmap_limits=[0, 0.6])
+
+    # Create figure instance
+    fig = plt.figure()
+
+    axes = AxesGrid(fig, (1,1,1),
+                    nrows_ncols=(3, 1),
+                    ngrids=3,
+                    axes_pad=0.1,
+                    aspect=False,
+                    label_mode='L',
+                    share_all=True)
+
+
+    def hist(data, normalize=True):
+        # Derive the histograms
+        n_bins = 300
+        #bin_edges = np.logspace(-3, 3, num=n_bins, base=base)
+        bin_edges = np.linspace(np.min(data), np.max(data),
+                                num=n_bins)
+        n = np.zeros(n_bins - 1)
+        for i in xrange(n_bins - 1):
+            bin_count = len(data[(data > bin_edges[i]) & \
+                                 (data < bin_edges[i + 1])])
+            n[i] = bin_count
+
+        bin_centers = 0.5*(bin_edges[1:] + bin_edges[:-1])
+
+        n = np.append(n, 0)
+        bin_centers = np.append(bin_centers,
+                bin_centers[-1] + (bin_centers[-1] - bin_centers[-2]))
+
+        if limits is not None:
+            bin_size = (bin_centers[-1] - bin_centers[-2])
+            while bin_centers[-1] < limits[0][1]:
+                print 'end bin:', bin_centers[-1]
+                n = np.append(n, 0)
+                bin_centers = np.append(bin_centers,
+                                        bin_centers[-1] + bin_size)
+            while bin_centers[0] > limits[0][0]:
+                print 'start bin:', bin_centers[0]
+                n = np.append(0, n)
+                bin_centers = np.append(bin_centers[0] - bin_size,
+                                        bin_centers,
+                                        )
+
+        # Normalize the bins
+        if normalize:
+            n /= np.max(n)
+
+        return n, bin_centers
+
+    for i, cloud_name in enumerate(['california', 'perseus', 'taurus']):
+
+        cloud_temps = dust_temps[cloud_name]['dust_temps']
+
+        n, bin_centers = hist(cloud_temps)
+
+        ax = axes[i]
+        ax.locator_params(nbins = 6)
+
+        ax.errorbar(
+            bin_centers,
+            n,
+            #yerr = n**0.5,
+            marker = '',
+            #label=r'',
+            linewidth=1.5,
+            color='k',
+            drawstyle = 'steps-mid'
+        )
+
+        ax.annotate(cloud_name.capitalize(),
+                    xytext=(0.96, 0.9),
+                    xy=(0.96, 0.9),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    )
+        # legend!
+        if i == 2:
+            ax.legend(loc='upper left')
+
+        # plot limits
+        if limits is not None:
+            ax.set_xlim(limits[0][0],limits[0][1])
+            ax.set_ylim(limits[1][0],limits[1][1])
+
+        ax.set_xlabel(r'$T_{\rm dust}$ [K]')
+        ax.set_ylabel('PDF')
+
+    if filename is not None:
+        plt.draw()
+        plt.savefig(filename,
+                    bbox_inches='tight', dpi=100)
+
 def load_cores():
 
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
@@ -52,15 +173,16 @@ def add_model_analysis(core_dict):
                                      T_dust_error=temp_error)
 
         cloud = core_dict[core_name]['cloud']
-        if cloud not in clouds_printed:
-            print ''
-            print cloud + ' dust temp and error:'
-            print core['dust_temp_avg']
-            print core['dust_temp_error_avg']
-            print 'rad field and error:'
-            print core['rad_field']
-            print core['rad_field_error']
-            clouds_printed.append(cloud)
+        if 0:
+            if cloud not in clouds_printed:
+                print ''
+                print cloud + ' dust temp and error:'
+                print core['dust_temp_avg']
+                print core['dust_temp_error_avg']
+                print 'rad field and error:'
+                print core['rad_field']
+                print core['rad_field_error']
+                clouds_printed.append(cloud)
 
         #rad_error = np.sort((calc_radiation_field(temp + temp_error),
         #                     calc_radiation_field(temp - temp_error)))
@@ -173,14 +295,17 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
 
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
-        N_mc = 1000
+        N_mc = 10
         temps_mc = np.empty(N_mc)
         temp_errors_mc = np.empty(N_mc)
         if cloud not in cloud_temps:
             for j in xrange(N_mc):
-                new_vertices_wcs = vertices_wcs + \
-                                   np.random.normal(scale=1.0,
-                                                    size=vertices_wcs.shape)
+                if j != 0:
+                    new_vertices_wcs = vertices_wcs + \
+                                       np.random.normal(scale=1.0,
+                                                        size=vertices_wcs.shape)
+                else:
+                    new_vertices_wcs = vertices_wcs
 
                 # Make a galactic coords object and convert to Ra/dec
                 coords_fk5 = SkyCoord(new_vertices_wcs[0] * u.deg,
@@ -200,8 +325,13 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
                         np.logical_not(myg.get_polygon_mask(temp_data,
                                                             vertices_pix))
 
+                # Get the region's temperature
+                if j == 0:
+                    temps = temp_data[~region_mask]
+
                 # Grab the temperatures
-                temps_mc[j] = np.mean(temp_data[~region_mask])
+                temps_mc[j] = np.median(temp_data[~region_mask])
+
                 temp_errors_mc[j] = \
                     np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
                     temp_error_data[~region_mask].size
@@ -229,7 +359,9 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
 
             cloud_temps[cloud] = \
                     {'dust_temp_avg': dust_temp_avg,
-                     'dust_temp_error_avg': dust_temp_error_avg}
+                     'dust_temp_error_avg': dust_temp_error_avg,
+                     'dust_temps': temps
+                     }
         else:
             core_dict[core_name]['dust_temp_avg'] = \
                 cloud_temps[cloud]['dust_temp_avg']
@@ -238,7 +370,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
 
     return cloud_temps
 
-def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
+def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
 
     # Get the data
     # ------------
@@ -251,6 +383,9 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
 
     table_temp_dir = '/d/bip3/ezbc/multicloud/data/python_output/dust_temps/'
     cloud_temp_filename = table_temp_dir + 'dust_temps.pickle'
+
+    dust_hist_filename = '/d/bip3/ezbc/multicloud/figures/temps/' + \
+                         'multicloud_dust_hist.png'
 
     # Get the mask for each core
     # --------------------------
@@ -274,6 +409,11 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
                                                )
             with open(cloud_temp_filename, 'wb') as f:
                 pickle.dump(cloud_temps, f)
+
+            plot_dust_histogram(cloud_temps,
+                                limits=[[14, 20], [-0.05, 1.05]],
+                                filename=dust_hist_filename)
+
     else:
         for core_name in core_dict:
             vertices_wcs = core_dict[core_name]['region_vertices']
@@ -463,9 +603,10 @@ def write_model_params_table(core_dict):
                                    #'phi_g',
                                    'hi_transition']
 
-                print '\nphi_g:'
-                print core[model]['phi_g']
-                print core[model]['phi_g_error']
+
+                #print '\nphi_g:'
+                #print core[model]['phi_g']
+                #print core[model]['phi_g_error']
 
             for i, param_name in enumerate(params_to_write):
                 param = \
@@ -545,7 +686,8 @@ def add_cloud_region(core_dict):
     data_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
 
     region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
-    filename = region_dir + 'multicloud_divisions_coldcore_selection.reg'
+    #filename = region_dir + 'multicloud_divisions_coldcore_selection.reg'
+    filename = region_dir + 'multicloud_divisions.reg'
 
     # region[0] in following format:
     # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]

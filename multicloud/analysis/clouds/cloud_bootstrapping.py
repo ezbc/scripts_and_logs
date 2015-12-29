@@ -1642,7 +1642,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                            alpha=0.5,
                            color='r')
 
-        else:
+        elif 1:
             for model in ('krumholz', 'sternberg'):
                 analysis = model_analysis[core][model + '_results']
                 plot_fits = calc_model_plot_fit(analysis,
@@ -1660,16 +1660,16 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                     alpha = 0.5
 
 
-                fill_between = 1
+                fill_between = 0
+                l3 = ax.plot(plot_fits[0], plot_fits[1],
+                        linestyle='-',
+                        label=label,
+                        color=color,
+                        linewidth=1,
+                        zorder=1000,
+                        alpha=1
+                        )
                 if fill_between:
-                    l3 = ax.plot(plot_fits[0], plot_fits[1],
-                            linestyle='-',
-                            label=label,
-                            color=color,
-                            linewidth=1,
-                            zorder=1000,
-                            alpha=1
-                            )
                     if sum(plot_fits[2] > plot_fits[3]) > 0:
                         where = plot_fits[2] > plot_fits[3]
                     else:
@@ -1686,7 +1686,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                                         interpolate=True,
                                         zorder=0,
                                         )
-                else:
+                elif 0:
                     l3 = ax.plot(plot_fits[0], plot_fits[1],
                             linestyle='-',
                             label=label,
@@ -2304,6 +2304,8 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
     import matplotlib.pyplot as plt
     import myplotting as myplt
     from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+    import matplotlib
+    matplotlib.use('Agg')
 
     # Determine size of figure and number of grids
     # --------------------------------------------
@@ -2419,10 +2421,60 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
             ax.scatter(h_sd_nonans.ravel(),
                        rh2.ravel(),
                        #markersize=1.5,
-                       s=10,
+                       marker='o',
+                       s=3,
                        alpha=0.3,
                        color='k',
                        )
+        elif 0:
+            if xlimits is None:
+                xmin = np.min(h_sd_nonans)
+                xmax = np.max(h_sd_nonans)
+                xscalar = 0.15 * xmax
+                xlimits = [xmin - xscalar, xmax + xscalar]
+            if ylimits is None:
+                ymin = np.min(rh2)
+                ymax = np.max(rh2)
+                yscalar = 0.15 * ymax
+                ylimits = [ymin - yscalar, ymax + yscalar]
+
+            cmap = myplt.truncate_colormap(plt.cm.gray_r,
+                                           minval=0.2,
+                                           maxval=1)
+
+            bins = (np.linspace(xlimits[0], xlimits[1], 20),
+                    np.logspace(np.log10(ylimits[0]), np.log10(ylimits[1]), 20))
+
+            hist_range=((xlimits[0], xlimits[1]),
+                        (np.log10(ylimits[0]), np.log10(ylimits[1])))
+            print bins
+
+            l1 = myplt.scatter_contour(h_sd_nonans.ravel(),
+                                 rh2.ravel(),
+                                 threshold=2,
+                                 log_counts=0,
+                                 levels=levels,
+                                 ax=ax,
+                                 histogram2d_args=dict(bins=bins,
+                                                       range=hist_range,),
+                                 plot_args=dict(marker='o',
+                                                linestyle='none',
+                                                markeredgewidth=0,
+                                                color='black',
+                                                alpha=0.4,
+                                                markersize=2.5,
+                                                ),
+                                 contour_args=dict(
+                                                   cmap=cmap,
+                                                   ),
+                                 )
+
+        if xlimits is not None:
+            ax.set_xlim(xlimits[0], xlimits[1])
+        if ylimits is not None:
+            ax.set_ylim(ylimits[0], ylimits[1])
+            ylimits = None
+
 
         if xlimits is not None:
             ax.set_xlim(xlimits[0], xlimits[1])
@@ -2476,8 +2528,10 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
                         )
             for model in ('krumholz',):
                 analysis = model_analysis[core][model + '_results']
+                hsd = np.logspace(np.log10(0.1), np.log10(200), 1000)
                 plot_fits = calc_model_plot_fit(analysis,
-                                                model=model)
+                                                model=model,
+                                                hsd=hsd)
 
                 rh2_fit = (plot_fits[0] - plot_fits[1]) / plot_fits[1]
 
@@ -2494,8 +2548,8 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
                 l3 = ax.plot(plot_fits[0], rh2_fit,
                         linestyle='-',
                         label=label,
-                        color=color,
-                        linewidth=2,
+                        color='b',
+                        linewidth=1,
                         zorder=1000,
                         alpha=0.6
                         )
@@ -2596,10 +2650,11 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
         if filename[-3:] == 'pdf':
             dpi = 600
         else:
-            dpi = 100
-        plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+            dpi = 600
+        #plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+        plt.savefig(filename, dpi=dpi)
 
-def calc_model_plot_fit(analysis, model='krumholz'):
+def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
 
     if 'sternberg' in model:
         alphaG = analysis['alphaG']
@@ -2611,7 +2666,8 @@ def calc_model_plot_fit(analysis, model='krumholz'):
                   'Z': analysis['Z'],
                   }
         h_sd, hi_sd = calc_sternberg(params,
-                                  h_sd_extent=(0, 200),
+                                  h_sd_extent=(0, 100),
+                                  h_sd=hsd,
                                   return_fractions=False,
                                   return_hisd=True)[1:3]
 
@@ -2621,6 +2677,7 @@ def calc_model_plot_fit(analysis, model='krumholz'):
                   }
         hi_sd_low = calc_sternberg(params,
                                   h_sd_extent=(0, 200),
+                                  h_sd=hsd,
                                   return_fractions=False,
                                   return_hisd=True)[2]
 
@@ -2629,7 +2686,8 @@ def calc_model_plot_fit(analysis, model='krumholz'):
                   'Z': analysis['Z'],
                   }
         hi_sd_high = calc_sternberg(params,
-                                  h_sd_extent=(0, 200),
+                                  h_sd_extent=(0, 100),
+                                  h_sd=hsd,
                                   return_fractions=False,
                                   return_hisd=True)[2]
     elif 'krumholz' in model:
@@ -2643,6 +2701,7 @@ def calc_model_plot_fit(analysis, model='krumholz'):
                   }
         h_sd, hi_sd = calc_krumholz(params,
                                   h_sd_extent=(0, 200),
+                                  h_sd=hsd,
                                   return_fractions=False,
                                   return_hisd=True)[1:3]
 
@@ -2652,6 +2711,7 @@ def calc_model_plot_fit(analysis, model='krumholz'):
                   }
         hi_sd_low = calc_krumholz(params,
                                   h_sd_extent=(0, 200),
+                                  h_sd=hsd,
                                   return_fractions=False,
                                   return_hisd=True)[2]
 
@@ -2661,6 +2721,7 @@ def calc_model_plot_fit(analysis, model='krumholz'):
                   }
         hi_sd_high = calc_krumholz(params,
                                   h_sd_extent=(0, 200),
+                                  h_sd=hsd,
                                   return_fractions=False,
                                   return_hisd=True)[2]
 
@@ -2885,6 +2946,26 @@ def plot_multicloud_results(results):
                            'models/' + cloud + '_rh2_vs_hsd_' + \
                            single_core + '.' + filetype
                 index = core_names.index(single_core)
+                plot_rh2_vs_h((hsd_cores_list[i][index],),
+                              (hisd_cores_list[i][index],),
+                              core_names=(core_names[index],),
+                              model_results=model_results_list[i],
+                              model_analysis=\
+                                  model_analysis_list[i]['cores'],
+                              #limits=[-9, 100, 2, 14],
+                              #limits=[-9, 159, 3, 14],
+                              xlimits=[-9, 100],
+                              ylimits=[10**-3, 10**2],
+                              levels=levels,
+                              #scale=('log', 'linear'),
+                              scale=('linear', 'log'),
+                              filename=filename,
+                              ncols=ncols
+                              )
+
+                filename = plot_kwargs['figure_dir'] + \
+                           'models/' + cloud + '_rh2_vs_hsd_' + \
+                           single_core + '.ps'
                 plot_rh2_vs_h((hsd_cores_list[i][index],),
                               (hisd_cores_list[i][index],),
                               core_names=(core_names[index],),
@@ -3618,8 +3699,8 @@ def add_core_mask(cores, data):
 
             cores[core]['mask'] = mask
 
-            print 'npix in core ' + core + ':'
-            print np.where(mask == 0)[0].size
+            #print 'npix in core ' + core + ':'
+            #print np.where(mask == 0)[0].size
 
         except KeyError:
             cores[core]['mask'] = None
@@ -4275,7 +4356,7 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         rh2_fit_params = (params['alphaG'].value, params['Z'].value,
                 params['phi_g'].value)
 
-        print rh2_fit_params
+        #print rh2_fit_params
 
     return rh2_fit_params
 
@@ -4581,9 +4662,12 @@ def bootstrap_worker(global_args, i):
     av_sim, av_scalar_sim = simulate_rescaling(av_sim, scalar=av_scalar)
 
     # remove background
-    av_sim, av_background_sim = \
-            simulate_background_error(av_sim,
-                                      scale=intercept_error)
+    if 0:
+        av_sim, av_background_sim = \
+                simulate_background_error(av_sim,
+                                          scale=intercept_error)
+    else:
+        av_background_sim = 0.0
 
     # calculate N(HI)
     if global_args['sim_hi_error']:
@@ -4652,10 +4736,10 @@ def bootstrap_worker(global_args, i):
     # Galactic DGR in our units = 5.3 x 10^-22 / 10^-20 = 5.3 x 10^-2 = 0.053
     if 1:
         DGR = av_model_results['dgr_cloud']
-        print 'DGR = ', DGR
+        #print 'DGR = ', DGR
         phi_g = DGR / 0.053
         Z = DGR / 0.053
-        print 'phi_g', phi_g
+        #print 'phi_g', phi_g
         new_model_kwargs = dict(model_kwargs)
         new_model_kwargs['sternberg_params']['guesses'][2] = phi_g
         #new_model_kwargs['sternberg_params']['guesses'][1] = Z
@@ -4703,16 +4787,16 @@ def bootstrap_worker(global_args, i):
                                     G0=G0,
                                     )
 
-        print '\npost fit phi_g:'
-        print ss_model_result['sternberg_results']['phi_g']
+        #print '\npost fit phi_g:'
+        #print ss_model_result['sternberg_results']['phi_g']
 
         # get HI transition result
         add_hi_transition_calc(ss_model_result)
         ss_model_results[core] = ss_model_result
 
         phi_cnm = ss_model_result['krumholz_results']['phi_cnm']
-        if phi_cnm < 0:
-            print 'core = ', core, ' phi_cnm =', phi_cnm
+        #if phi_cnm < 0:
+            #print 'core = ', core, ' phi_cnm =', phi_cnm
 
     # Write results
     # -------------------------------------------------------------------------
@@ -5064,6 +5148,7 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         global_args['vel_axis'] = vel_axis
         global_args['vel_range'] = vel_range
         global_args['vel_range_error'] = vel_range_error
+        print 'vel_range_error', vel_range_error
     else:
         global_args['hi_data'] = None
         global_args['vel_axis'] = None
@@ -5182,10 +5267,16 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
 def scale_av_with_refav(av_data, av_reference, av_error_data):
 
     import scipy as sp
+
+
     if av_reference is not None:
+        # Mask AV for Av > 10 mag. The 2MASS Av will saturate at high Av thus is
+        # unreliable.
+
         nan_mask = (np.isnan(av_reference) | \
                     np.isnan(av_data) | \
-                    np.isnan(av_error_data))
+                    np.isnan(av_error_data) | \
+                    (av_reference > 10.0))
         p, V = np.polyfit(av_reference[~nan_mask], av_data[~nan_mask], deg=1,
                        #w=1.0/av_error_data[~nan_mask]**2,
                        cov=True,
@@ -5236,13 +5327,37 @@ def scale_av_with_refav(av_data, av_reference, av_error_data):
     kwargs['intercept'] = intercept
     kwargs['intercept_error'] = intercept_error
 
+    print 'Reference Av characteristcs:'
+    print '\t', av_scalar, av_scalar_error
+    print '\t', intercept, intercept_error
+    print ''
+
     return kwargs
 
 def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
-        width_scale=2, co_spectrum=None, co_vel_axis=None, ncomps=1):
+        width_scale=2, co_spectrum=None, co_vel_axis=None, ncomps=1,):
+
+    '''
+    Discussion of HI width error from Min:
+    (3) For the uncertainty in the HI velocity range, you take the absolute
+    difference between the Gaussian HI component center and the median CO peak
+    velocity.  In fact, this is sort of the minimum uncertainty we expect.  The
+    uncertainty mostly comes from our adoption of +/- 2 sigma(HI) to determine
+    the HI velocity range.  In this sense, the maximum uncertainty we expect
+    would be (HI velocity range we determine by using +/- 2 sigma(HI) as
+    thresholds) - (HI velocity range over which CO emission appears).
+    Therefore, a more realistic estimate for the uncertainty in the HI velocity
+    range would be, e.g., ("minimum" error + "maximum" error) / 2.  This
+    estimate would be a better measure in particular for Taurus, where CO
+    emission appears over a relatively small velocity range.
+
+    '''
 
     from scipy.stats import nanmedian
     from myfitting import fit_gaussians
+
+    co_width = np.copy(gauss_fit_kwargs['co_width'])
+    del(gauss_fit_kwargs['co_width'])
 
     hi_fits = fit_gaussians(hi_vel_axis,
             hi_spectrum, **gauss_fit_kwargs)
@@ -5250,15 +5365,21 @@ def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
     # use either the gaussian closest to the CO peak, or the tallest gaussian
     if co_spectrum is not None:
         co_peak_vel = co_vel_axis[co_spectrum == np.nanmax(co_spectrum)][0]
-        vel_diffs = []
+        vel_diffs_center = []
+        vel_diffs_edge = []
         for i, param in enumerate(hi_fits[2]):
             vel_center = param[1]
             width = param[2]
-            vel_diffs.append(np.abs(param[1] - co_peak_vel))
+            vel_center_diff = np.abs(vel_center - co_peak_vel)
+            vel_diffs_center.append(vel_center_diff)
+            #vel_diffs_edge.append(vel_center_diff + 2.0 * width)
+            vel_diffs_edge.append(4.0 * width)
 
         # get the velocity range
-        vel_diffs = np.asarray(vel_diffs)
-        sort_indices = np.argsort(vel_diffs)
+        vel_diffs_center = np.asarray(vel_diffs_center)
+        vel_diffs_edge = np.asarray(vel_diffs_edge)
+
+        sort_indices = np.argsort(vel_diffs_center)
         cloud_comp_num = np.asarray(sort_indices[:ncomps])
         velocity_range = [np.inf, -np.inf]
         for i in cloud_comp_num:
@@ -5276,7 +5397,21 @@ def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
                 velocity_range[0] = lower_vel
 
         # the offset between the co and fitted gaussians will be the HI error
-        hi_width_error = np.max(vel_diffs[cloud_comp_num])
+        hi_width_error_min = np.max(vel_diffs_center[cloud_comp_num])
+
+        # max error
+        hi_width_error_max = np.max(vel_diffs_edge[cloud_comp_num]) - \
+                             co_width
+                             #gauss_fit_kwargs['co_width']
+        hi_width_error_max = np.abs(velocity_range[1] - velocity_range[0]) - \
+                             co_width
+
+        hi_width_error = (hi_width_error_min + hi_width_error_max) / 2.0
+
+        print 'min error', hi_width_error_min, 'km/s'
+        print 'max error', hi_width_error_max, 'km/s'
+        print 'avg error', hi_width_error, 'km/s'
+
     else:
         amp_max = -np.Inf
         for i, param in enumerate(hi_fits[2]):
@@ -5297,6 +5432,7 @@ def get_gauss_fit_kwargs(global_args):
                    2, -20, 20)
         ncomps = 2
         ncomps_in_cloud = 1
+        co_width = np.abs(10.0 - (-1.0))
     elif global_args['cloud_name'] == 'taurus':
         guesses = (35, 3, 5,
                    5, -15, 20,
@@ -5304,6 +5440,7 @@ def get_gauss_fit_kwargs(global_args):
                    )
         ncomps = 2
         ncomps_in_cloud = 1
+        co_width = np.abs(8.0 - (4.0))
     elif global_args['cloud_name'] == 'california':
         guesses = (50, 3, 5,
                    10, -3, 3,
@@ -5313,8 +5450,10 @@ def get_gauss_fit_kwargs(global_args):
                    )
         ncomps = 4
         ncomps_in_cloud = 2
+        co_width = np.abs(8.0 - (-4.0))
     gauss_fit_kwargs = {'guesses': guesses,
                         'ncomps': ncomps,
+                        'co_width': co_width,
                         #'width_scale': 2,
                         }
 
@@ -5537,14 +5676,14 @@ def calc_mc_analysis(mc_results, resid_results):
                         np.array(resid_results[core][model][param + '_error'])
 
                     param_error = np.array(param_error)
-                    print ''
-                    print 'before', param, param_error / param_value
-                    print 'fit_error', fit_error / param_value
-                    print 'mc error', param_error / param_value
+                    #print ''
+                    #print 'before', param, param_error / param_value
+                    #print 'fit_error', fit_error / param_value
+                    #print 'mc error', param_error / param_value
                     if 0:
                         param_error = np.sqrt(fit_error**2 + \
                                               np.array(param_error)**2)
-                    print 'after', param, param_error / param_value
+                    #print 'after', param, param_error / param_value
 
 
                 core_analysis[core][model][param] = param_value
@@ -5552,10 +5691,10 @@ def calc_mc_analysis(mc_results, resid_results):
 
                 params[param] = param_value
 
-                if param == 'phi_g':
-                    print '\nanalysis'
-                    print param_value
-                    print param_error
+                #if param == 'phi_g':
+                    #print '\nanalysis'
+                    #print param_value
+                    #print param_error
 
 
                 if 0:
@@ -5957,7 +6096,7 @@ def run_cloud_analysis(global_args,):
                        hi_data=hi_data_crop,
                        vel_axis=hi_vel_axis_crop,
                        vel_range=velocity_range,
-                       vel_range_error=2,
+                       vel_range_error=hi_range_error,
                        av_reference=av_data_ref,
                        use_intercept=global_args['use_intercept'],
                        num_bootstraps=global_args['num_bootstraps'],
@@ -6130,7 +6269,8 @@ def main():
                 'plot_diagnostics': 0,
                 'clobber_spectra': False,
                 'use_background': permutation[10],
-                'num_bootstraps': 100,
+                #'num_bootstraps': 10000,
+                'num_bootstraps': 1000,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'hi_range_calc': permutation[11],

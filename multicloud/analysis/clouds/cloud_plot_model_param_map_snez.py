@@ -239,11 +239,13 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
 
     # Import external modules
     import matplotlib.pyplot as plt
+    import matplotlib
     from mpl_toolkits.axes_grid1 import AxesGrid
     import pywcsgrid2 as wcs
     from matplotlib.patches import Polygon
     import matplotlib.patheffects as PathEffects
     import myplotting as myplt
+    matplotlib.use('Agg')
 
     # Set up plot aesthetics
     # ----------------------
@@ -278,7 +280,7 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     # ------------------
     # Av image
     # ------------------
-    parameters = ['T_cnm']
+    parameters = ['n_cnm']
     for i in xrange(ngrids):
         # create axes
         ax = axesgrid[i]
@@ -344,6 +346,8 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
             cbar.set_label_text(r'$I_{UV}$ [$I_{UV,D}$]',)
         elif parameter == 'n_H':
             cbar.set_label_text(r'$n_H$ [cm$^{-3}$]',)
+        elif parameter == 'n_cnm':
+            cbar.set_label_text(r'$n_{\rm CNM}$ [cm$^{-3}$]',)
         elif parameter == 'T_H':
             cbar.set_label_text(r'$T_H$ [1,000 K]',)
         elif parameter == 'T_cnm':
@@ -357,7 +361,8 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
                                 r'$[M_\odot\,{\rm pc}^{-2}]$',)
 
     if filename is not None:
-        plt.savefig(filename, bbox_inches='tight', dpi=100)
+        #plt.savefig(filename, bbox_inches='tight', dpi=100)
+        plt.savefig(filename, dpi=400)
 
 def get_patches(df, header):
 
@@ -770,11 +775,11 @@ def main():
 
     # plot the cores
     print('\nPlotting maps...')
-    filetypes = ['png', 'pdf']
+    filetypes = ['png', 'pdf', 'ps']
     for filetype in filetypes:
         figure_dir = '/d/bip3/ezbc/multicloud/figures/'
 
-        filename = figure_dir + 'maps/multicloud_av_Tcnm_map.' + \
+        filename = figure_dir + 'maps/multicloud_av_ncnm_map.' + \
                    filetype
         plot_ISMparams_map(header=av_header,
                            av_image=av_data,

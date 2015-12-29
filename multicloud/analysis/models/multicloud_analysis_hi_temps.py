@@ -27,8 +27,8 @@ def main():
     # Parameters in script
     # --------------------------------------------------------------------------
     clouds = ('taurus', 'perseus', 'california')
-    dec_ranges = ((35, 20), (35, 20), (44, 35))
-    ra_ranges = ((5.5, 4), (4, 3), (5.5, 3.5))
+    dec_ranges = ((37, 19), (37, 19), (37, 35))
+    ra_ranges = ((5.5, 3.8), (3.8, 2.9), (5.5, 3.5))
     tspin_threshold = 10000.0
 
     # Data locations in script

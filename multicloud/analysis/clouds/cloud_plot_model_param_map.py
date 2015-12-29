@@ -626,6 +626,8 @@ def plot_cdfs(core_dict, df):
         for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
             Ts_avg_list.append(Ts_avg)
 
+    print '\nNumber of LOS:', len(Ts_avg_list)
+
     # collect data
     T_cnms = np.empty(len(core_dict))
     T_Hs = np.empty(len(core_dict))
