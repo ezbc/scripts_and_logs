@@ -3281,18 +3281,14 @@ def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename):
         vel_range_error = hi_range_kwargs['hi_range_error']
 
         row_text = cloud_name.capitalize()
-        print row_text
 
         row_text = add_row_element(row_text,
                         vel_range,
                         text_format='[{0:.0f}, {1:.0f}]')
-        print row_text
         row_text = add_row_element(row_text,
                         vel_range_error,
                         text_format='{0:.0f}')
-        print row_text
         row_text += ' \\\\[0.1cm] \n'
-        print row_text
 
         f.write(row_text)
 
@@ -3875,7 +3871,7 @@ def fit_av_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
         else:
             return results
 
-def fit_steady_state_models(h_sd, rh2, model_kwargs,
+def fit_steady_state_models(h_sd, rh2, model_kwargs,rh2_error=None,
         bootstrap_residuals=False, nboot=100, G0=1.0):
 
     # Fit R_H2
@@ -3895,6 +3891,7 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs,
                           radiation_type=sternberg_params['radiation_type'],
                           bootstrap_residuals=bootstrap_residuals,
                           nboot=nboot,
+                          rh2_error=rh2_error,
                           )
         if bootstrap_residuals:
             alphaG, alphaG_error, Z_s14, Z_s14_error, phi_g, phi_g_error = \
@@ -4269,8 +4266,9 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
     return output
 
 def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
-        verbose=False, vary=[True, True, True], radiation_type='isotropic',
-        bootstrap_residuals=False, nboot=100):
+        h_sd_error=None, verbose=False, vary=[True, True, True],
+        radiation_type='isotropic', bootstrap_residuals=False, nboot=100,
+        odr_fit=True):
 
     '''
     Parameters
@@ -4394,7 +4392,23 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         rh2_fit_params = (params['alphaG'].value, params['Z'].value,
                 params['phi_g'].value)
 
-        #print rh2_fit_params
+    if odr_fit:
+        import scipy.odr as odr
+
+        alphaG, Z, phi_g = guesses
+        def odr_func(alphaG, h_sd):
+
+            return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                     return_fractions=False)
+
+        model = odr.Model(odr_func)
+        data = odr.RealData(h_sd, rh2, sx=0.1 * h_sd, sy=rh2_error)
+        odr_instance = odr.ODR(data, model, beta0=[10.0,])
+        output = odr_instance.run()
+        alphaG = output.beta[0]
+        print 'alphaG =', alphaG
+
+        rh2_fit_params = (alphaG, Z, phi_g)
 
     return rh2_fit_params
 
@@ -5016,6 +5030,7 @@ def residual_worker(global_args, core):
         calculate_sd, calculate_nh2, calculate_nh2_error
 
     rh2 = global_args['rh2']
+    rh2_error = global_args['rh2_error']
     h_sd = global_args['h_sd']
     nboot = global_args['nboot']
     av = global_args['av']
@@ -5055,15 +5070,18 @@ def residual_worker(global_args, core):
 
     h_sd_core = h_sd[core_indices]
     rh2_core = rh2[core_indices]
+    rh2_core_error = rh2_error[core_indices]
 
     # mask negative ratios
     mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
     rh2_core = rh2_core[~mask_rh2]
+    rh2_core_error = rh2_core_error[~mask_rh2]
     h_sd_core = h_sd_core[~mask_rh2]
 
     ss_model_result = \
         fit_steady_state_models(h_sd_core,
                                 rh2_core,
+                                rh2_error=rh2_core_error,
                                 model_kwargs=model_kwargs,
                                 bootstrap_residuals=True,
                                 nboot=nboot,
@@ -5149,18 +5167,27 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     nh2_image = calculate_nh2(nhi_image=nhi,
                               av_image=av,
                               dgr=av_model_results['dgr_cloud'])
+    nh2_image_error = calculate_nh2(nhi_image=nhi,
+                              av_image=av_error,
+                              dgr=av_model_results['dgr_cloud'])
 
     # convert to column density to surface density
     hi_sd_image = calculate_sd(nhi,
                                sd_factor=1/1.25)
+    hi_sd_image_error = 0.02 * hi_sd_image
 
     h2_sd_image = calculate_sd(nh2_image,
                                sd_factor=1/0.625)
+    h2_sd_image_error = calculate_sd(nh2_image_error,
+                               sd_factor=1/0.625)
 
     h_sd_image = hi_sd_image + h2_sd_image
+    h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
 
     # Write ratio between H2 and HI
     rh2_image = h2_sd_image / hi_sd_image
+    rh2_image_error = rh2_image * (h2_sd_image_error**2 / h2_sd_image**2 + \
+                      h_sd_image_error**2 / h_sd_image**2)**0.5
 
     # Prep arguments
     global_args = {}
@@ -5168,6 +5195,7 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     global_args['av_unmasked'] = av_data
     global_args['av_error'] = av_error
     global_args['rh2'] = rh2_image
+    global_args['rh2_error'] = rh2_image_error
     global_args['h_sd'] = h_sd_image
     global_args['nhi'] = nhi
     global_args['rotate_cores'] = rotate_cores
@@ -6289,7 +6317,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -6308,7 +6336,7 @@ def main():
                 'clobber_spectra': False,
                 'use_background': permutation[10],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 1000,
+                'num_bootstraps': 10,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'hi_range_calc': permutation[11],
