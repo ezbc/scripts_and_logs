@@ -3744,9 +3744,9 @@ def add_core_mask(cores, data):
 Modeling Functions
 '''
 
-def fit_av_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
-        plot_kwargs=None, init_guesses=[0.05, 0.05, 0], use_intercept=True,
-        return_fit=False, fit_method='lbfgsb'):
+def fit_av_model(av, nhi, av_error=None, nhi_error=None, algebraic=False,
+nhi_background=None, plot_kwargs=None, init_guesses=[0.05, 0.05, 0],
+use_intercept=True, return_fit=False, fit_method='lbfgsb'):
 
     from lmfit import minimize, Parameters
     import lmfit
@@ -5019,11 +5019,13 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
     global_args['ss_model_kwargs'] = ss_model_kwargs
     if sim_hi_error:
         global_args['hi_data'] = hi_data
+        global_args['hi_data_error'] = hi_data_error
         global_args['vel_axis'] = vel_axis
         global_args['vel_range'] = vel_range
         global_args['vel_range_error'] = vel_range_error
     else:
         global_args['hi_data'] = None
+        global_args['hi_data_error'] = None
         global_args['vel_axis'] = None
         global_args['vel_range'] = None
         global_args['vel_range_error'] = None
@@ -5510,9 +5512,9 @@ def calc_hi_vel_range(hi_spectrum, hi_vel_axis, gauss_fit_kwargs,
 
         hi_width_error = (hi_width_error_min + hi_width_error_max) / 2.0
 
-        print 'min error', hi_width_error_min, 'km/s'
-        print 'max error', hi_width_error_max, 'km/s'
-        print 'avg error', hi_width_error, 'km/s'
+        #print 'min error', hi_width_error_min, 'km/s'
+        #print 'max error', hi_width_error_max, 'km/s'
+        #print 'avg error', hi_width_error, 'km/s'
 
     else:
         amp_max = -np.Inf
@@ -5623,6 +5625,8 @@ def load_results(filename, load_fits=True):
                 fits.getdata(results['filenames']['av_ref_filename'])
         results['data']['hi_data'], results['data']['hi_header'] = \
                 fits.getdata(results['filenames']['hi_filename'], header=True)
+        results['data']['hi_data_error'] = \
+                fits.getdata(results['filenames']['hi_error_filename'])
         results['data']['co_data'], results['data']['co_header'] = \
                 fits.getdata(results['filenames']['co_filename'], header=True)
 
@@ -5638,6 +5642,7 @@ def save_results(results_dict, filename, write_fits=False):
         results_dict['data']['av_error_data'] = None
         results_dict['data']['av_data_ref'] = None
         results_dict['data']['hi_data'] = None
+        results_dict['data']['hi_data_error'] = None
         results_dict['data']['co_data'] = None
 
     with open(filename, 'wb') as output:
@@ -5859,6 +5864,7 @@ def run_cloud_analysis(global_args,):
     import myimage_analysis as myia
     from mycoords import make_velocity_axis
     from mystats import calc_symmetric_error, calc_logL
+    import os
     import myio
     import pickle
     import mystats
@@ -5989,14 +5995,28 @@ def run_cloud_analysis(global_args,):
 
     # Load HI and CO cubes
     hi_data, hi_header = fits.getdata(hi_filename, header=True)
-    hi_data_error = fits.getdata(hi_error_filename)
     co_data, co_header = fits.getdata(co_filename, header=True)
+
 
     hi_data[:, region_mask] = np.nan
     co_data[:, region_mask] = np.nan
 
     hi_vel_axis = make_velocity_axis(hi_header)
     co_vel_axis = make_velocity_axis(co_header)
+
+    # Load HI error
+    if global_args['clobber_hi_error']:
+        print('\n\tCalculating HI noise cube...')
+        os.system('rm -rf ' + hi_error_filename)
+        hi_data_error = \
+            myia.calculate_noise_cube(cube=hi_data,
+                                      velocity_axis=hi_vel_axis,
+                                      velocity_noise_range=[-110,-90, 90,110],
+                                      Tsys=30.0,
+                                      filename=hi_error_filename)
+    else:
+        hi_data_error = fits.getdata(hi_error_filename)
+
 
     # Derive N(HI)
     # -------------------------------------------------------------------------
@@ -6391,6 +6411,7 @@ def main():
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'hi_range_calc': permutation[11],
+                'clobber_hi_error': 0,
                 'sim_hi_error': True,
                 'multiprocess': 1,
                 'radiation_type': permutation[12],
