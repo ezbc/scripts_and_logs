@@ -1065,15 +1065,15 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         #x_limit = np.median(x_errors[0])
         #ax.axvline(x_limit, color='k', linestyle='--')
         if 'dgr_error' in fit_params:
-            dgr_error_text = r'$^{+%.1f}_{-%.1f}$ ' % fit_params['dgr_error']
+            dgr_error_text = r'$_{-%.1f}^{+%.1f}$ ' % fit_params['dgr_error']
         else:
             dgr_error_text = ''
 
         # Plot 1 to 1 pline
         y_fit = np.linspace(-10, 100, 1000)
         dgr_error_text = \
-            r'$^{+%.1f}_{-%.1f}$ ' % (fit_params['dgr_error'][0] * 100.,
-                                      fit_params['dgr_error'][1] * 100.)
+            r'$^{+%.1f}_{-%.1f}$ ' % (fit_params['dgr_error'][1] * 100.,
+                                      fit_params['dgr_error'][0] * 100.)
         cloud_text = 'DGR:\n' + \
                      '{0:.1f}'.format(fit_params['dgr'] * 100.) + \
                 dgr_error_text + \
@@ -2655,6 +2655,131 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
         #plt.savefig(filename, bbox_inches='tight', dpi=dpi)
         plt.savefig(filename, dpi=dpi)
 
+def plot_rh2_vs_h_diagnostic(h_sd, rh2, h_sd_error=None, rh2_error=None,
+        xlimits=None, ylimits=None, scale=('log', 'log'), filename=None,
+        show_params=False, levels=5, ncols=2, scatter=True,
+        model_results=None):
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+    import matplotlib
+    matplotlib.use('Agg')
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    font_scale = 9
+
+    figsize = (3.6, 3.6)
+
+    # Create figure instance
+    fig = plt.figure(figsize=figsize)
+
+    c_cycle = myplt.set_color_cycle(num_colors=3, cmap_limits=[0.5, 0.8])
+
+    if 0:
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+        axes = np.ravel(axes)
+    else:
+        axes = AxesGrid(fig, (1,1,1),
+                        nrows_ncols=(1, 1),
+                        ngrids=1,
+                        #axes_pad=0.1,
+                        axes_pad=0.1,
+                        aspect=False,
+                        label_mode='L',
+                        share_all=False,
+                        )
+
+    # Create plot
+    ax = axes[0]
+
+    #ax.set_xticks([0, 40, 80, 120])
+
+    if 1:
+        cmap = myplt.truncate_colormap(plt.cm.gray_r,
+                                       minval=0.2,
+                                       maxval=1)
+
+        ax.errorbar(h_sd,
+                    rh2,
+                    xerr=h_sd_error,
+                    yerr=rh2_error,
+                    #markersize=1.5,
+                    marker='^',
+                    alpha=0.3,
+                    color='k',
+                    )
+
+    if xlimits is not None:
+        ax.set_xlim(xlimits[0], xlimits[1])
+    if ylimits is not None:
+        ax.set_ylim(ylimits[0], ylimits[1])
+
+    if 1:
+        alpha = 0.6
+        s14 = model_results['sternberg_results']
+        s14_params = (s14['alphaG'], s14['Z'], s14['phi_g'])
+        k09 = model_results['krumholz_results']
+        k09_params = (k09['phi_cnm'], k09['Z'], k09['phi_mol'])
+        h_sd_extent = np.logspace(-2, 3, 1000)
+
+        # Sternberg
+        model_fits = calc_sternberg(s14,
+                                  h_sd=h_sd_extent,
+                                  return_fractions=False,
+                                  return_hisd=True)
+
+        if len(model_fits[0]) > 1:
+            ax.plot(model_fits[1], model_fits[0],
+                    linestyle='-',
+                    label='S+14',
+                    color='r',
+                    alpha=alpha,
+                    )
+
+        model_fits = calc_krumholz(k09,
+                                  h_sd=h_sd_extent,
+                                  return_fractions=False,
+                                  return_hisd=True)
+
+        if len(model_fits[0]) > 1:
+            ax.plot(model_fits[1], model_fits[0],
+                    linestyle='-',
+                    label='K+09',
+                    color='b',
+                    alpha=alpha,
+                    )
+
+    ax.legend(loc='best')
+
+    ax.set_xscale(scale[0], nonposx='clip')
+    ax.set_yscale(scale[1], nonposy='clip')
+
+    # Adjust asthetics
+    ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
+                   '[M$_\odot$ pc$^{-2}$]',)
+    ax.set_ylabel(r'$R_{H2}$',)
+
+    if 'log' not in scale:
+        ax.locator_params(nbins=5)
+
+    if filename is not None:
+        if filename[-3:] == 'pdf':
+            dpi = 100
+        else:
+            dpi = 100
+        #plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+        plt.savefig(filename, dpi=dpi)
+
 def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
 
     if 'sternberg' in model:
@@ -2830,6 +2955,13 @@ def plot_multicloud_results(results):
                     cloud_name_list,
                     filename,
                     )
+
+    # Write nhi properties
+    filename = results_dir + 'tables/nhi_properties.csv'
+    write_nhi_properties_csv(nhi_list,
+                             cloud_name_list,
+                             filename,
+                             )
 
     # Write param summary to dataframe for ease of use
     filename = results_dir + 'tables/multicloud_model_summary.pickle'
@@ -3294,7 +3426,48 @@ def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename):
 
     f.close()
 
+def write_nhi_properties_csv(nhi_list, cloud_name_list, filename):
 
+    import pandas as pd
+
+    d = {}
+    d['cloud'] = []
+    d['nhi_std'] = []
+    d['nhi_median'] = []
+    d['nhi_mean'] = []
+    d['nhi_min'] = []
+    d['nhi_max'] = []
+
+    # Collect parameter names for each model for each core
+    for i, cloud in enumerate(cloud_name_list):
+        d['cloud'].append(cloud)
+
+        print np.std(nhi_list[i])
+        nhi = nhi_list[i]
+        nhi = nhi[~np.isnan(nhi)]
+        d['nhi_std'].append(np.std(nhi))
+        d['nhi_median'].append(np.median(nhi))
+        d['nhi_mean'].append(np.mean(nhi))
+        d['nhi_min'].append(np.min(nhi))
+        d['nhi_max'].append(np.max(nhi))
+
+    # Create dataframe and write it!
+    df = pd.DataFrame(data=d,)
+    df.to_csv(filename,
+              sep='\t',
+              columns=('cloud',
+                       'nhi_std',
+                       'nhi_median',
+                       'nhi_mean',
+                       'nhi_min',
+                       'nhi_max',
+                       ),
+              float_format='%.1f',
+              index=False,
+              )
+
+    df.save(filename.replace('csv', 'tsv'))
+    df.save(filename.replace('csv', 'pickle'))
 
 def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
 
@@ -3872,9 +4045,10 @@ def fit_av_model(av, nhi, av_error=None, nhi_error=None, algebraic=False,
         odr_instance = odr.ODR(data, model, beta0=[0.1,])
         output = odr_instance.run()
         dgr_cloud = output.beta[0]
-        print 'dgr =', dgr_cloud
 
         dgr_background, intercept = 0.0, 0.0
+
+        #print 'dgr =', dgr_cloud
 
     results = {'dgr_cloud': dgr_cloud,
               'dgr_background': dgr_background,
@@ -3908,6 +4082,9 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
                           rh2_error=rh2_error,
                           h_sd_error=h_sd_error,
                           )
+
+
+
         if bootstrap_residuals:
             alphaG, alphaG_error, Z_s14, Z_s14_error, phi_g, phi_g_error = \
                     result
@@ -3917,6 +4094,7 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
         else:
             alphaG, Z_s14, phi_g = result
             alphaG_error, Z_s14_error, phi_g_error = 3*[np.nan]
+
 
         # Fit to krumholz model
         result = \
@@ -3930,6 +4108,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
                          rh2_error=rh2_error,
                          h_sd_error=h_sd_error,
                          )
+
+
         if bootstrap_residuals:
             phi_cnm, phi_cnm_error,Z_k09, Z_k09_error,phi_mol, phi_mol_error= \
                     result
@@ -3953,6 +4133,7 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
     krumholz_results['phi_cnm'] = phi_cnm
     krumholz_results['Z'] = Z_k09
     krumholz_results['phi_mol'] = phi_mol
+
 
     # see eq 6 of sternberg+09
     # alphaG is the number density of the CNM over the minimum number
@@ -4200,8 +4381,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
         data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
         odr_instance = odr.ODR(data, model, beta0=[phi_cnm,])
         output = odr_instance.run()
-        alphaG = output.beta[0]
-        #print 'alphaG =', alphaG
+        phi_cnm = output.beta[0]
 
         rh2_fit_params = (phi_cnm, Z, phi_mol)
 
@@ -4438,10 +4618,9 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
 
         model = odr.Model(odr_func)
         data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
-        odr_instance = odr.ODR(data, model, beta0=[10.0,])
+        odr_instance = odr.ODR(data, model, beta0=[alphaG,])
         output = odr_instance.run()
         alphaG = output.beta[0]
-        #print 'alphaG =', alphaG
 
         rh2_fit_params = (alphaG, Z, phi_g)
 
@@ -4905,6 +5084,18 @@ def bootstrap_worker(global_args, i):
                                     G0=G0,
                                     )
 
+        if plot_kwargs['plot_diagnostics']:
+            filename = plot_kwargs['figure_dir'] + \
+                       'diagnostics/models/' + plot_kwargs['filename_base'] + \
+                       '_rh2_vs_h_bootstrap' + \
+                       '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
+            plot_rh2_vs_h_diagnostic(h_sd_core,
+                                     rh2_core,
+                                     h_sd_error=h_sd_core_error,
+                                     rh2_error=rh2_core_error,
+                                     model_results=ss_model_result,
+                                     filename=filename)
+
         #print '\npost fit phi_g:'
         #print ss_model_result['sternberg_results']['phi_g']
 
@@ -4930,8 +5121,8 @@ def bootstrap_worker(global_args, i):
 
 
     # Plot distribution and fit
-    if plot_kwargs['plot_diagnostics']:
-    #if 1:
+    #if plot_kwargs['plot_diagnostics']:
+    if 0:
         dgr_cloud = av_model_results['dgr_cloud']
         dgr_background = av_model_results['dgr_background']
         intercept = av_model_results['intercept']
@@ -5156,6 +5347,8 @@ def residual_worker(global_args, core):
                                 bootstrap_residuals=True,
                                 nboot=nboot,
                                 )
+
+
 
     # get HI transition result
     add_hi_transition_calc(ss_model_result)
@@ -5797,6 +5990,16 @@ def calc_mc_analysis(mc_results, resid_results):
     dgr, dgr_error = mystats.calc_cdf_error(dgrs,
                                             alpha=0.32)
 
+    if 1:
+        import matplotlib.pyplot as plt
+        import myplotting as myplt
+        plt.clf(); plt.close()
+        myplt.plot_cdf(dgrs)
+        plt.axvline(dgr, linewidth=2)
+        plt.axvline(dgr - dgr_error[0], linewidth=1, linestyle='--')
+        plt.axvline(dgr_error[1] + dgr, linewidth=1, linestyle='--')
+        plt.savefig('/d/bip3/ezbc/scratch/dgr_cdf.png')
+
     # Model params fit for each core:
     for core in mc_results['ss_model_results']['cores']:
         core_analysis[core] = {}
@@ -6335,8 +6538,8 @@ def main():
     results = {}
 
     clouds = (
-              'california',
               'taurus',
+              'california',
               'perseus',
               )
 
@@ -6440,7 +6643,7 @@ def main():
                 'clobber_spectra': False,
                 'use_background': permutation[10],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 10,
+                'num_bootstraps': 1000,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'hi_range_calc': permutation[11],
