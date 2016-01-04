@@ -3745,11 +3745,13 @@ Modeling Functions
 '''
 
 def fit_av_model(av, nhi, av_error=None, nhi_error=None, algebraic=False,
-nhi_background=None, plot_kwargs=None, init_guesses=[0.05, 0.05, 0],
-use_intercept=True, return_fit=False, fit_method='lbfgsb'):
+        nhi_background=None, plot_kwargs=None, init_guesses=[0.05, 0.05, 0],
+        use_intercept=True, return_fit=False, fit_method='odr',
+        odr_fit=True,):
 
     from lmfit import minimize, Parameters
     import lmfit
+    import scipy.odr as odr
 
     if nhi_background is None:
         use_background = False
@@ -3772,8 +3774,7 @@ use_intercept=True, return_fit=False, fit_method='lbfgsb'):
         A = np.array([nhi, np.ones(nhi.shape)]).T
 
         params = np.dot(np.linalg.pinv(A), b)
-
-    else:
+    elif fit_method is not 'odr':
         # Set parameter limits and initial guesses
         params = Parameters()
         params.add('dgr_cloud',
@@ -3861,15 +3862,28 @@ use_intercept=True, return_fit=False, fit_method='lbfgsb'):
                         'diagnostics/av_nhi/' + plot_kwargs['filename_base']+ \
                         '_avnhi_bootsrap' + \
                         '{0:03d}.png'.format(plot_kwargs['bootstrap_num']))
+    else:
+        def odr_func(dgr, nhi):
+            model = dgr * nhi
+            return model
 
-        results = {'dgr_cloud': dgr_cloud,
-                  'dgr_background': dgr_background,
-                  'intercept': intercept}
+        model = odr.Model(odr_func)
+        data = odr.RealData(nhi, av, sx=nhi_error, sy=av_error)
+        odr_instance = odr.ODR(data, model, beta0=[0.1,])
+        output = odr_instance.run()
+        dgr_cloud = output.beta[0]
+        print 'dgr =', dgr_cloud
 
-        if return_fit:
-            return (result, params), (dgr_cloud, dgr_background, intercept)
-        else:
-            return results
+        dgr_background, intercept = 0.0, 0.0
+
+    results = {'dgr_cloud': dgr_cloud,
+              'dgr_background': dgr_background,
+              'intercept': intercept}
+
+    if return_fit:
+        return (result, params), (dgr_cloud, dgr_background, intercept)
+    else:
+        return results
 
 def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
         h_sd_error=None, bootstrap_residuals=False, nboot=100, G0=1.0):
@@ -4059,7 +4073,7 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
 
 def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
         rh2_error=None, verbose=False, vary=[True, True, True],
-        bootstrap_residuals=False, nboot=100, G0=1.0):
+        bootstrap_residuals=False, nboot=100, G0=1.0, odr_fit=True):
 
     '''
     Parameters
@@ -4087,91 +4101,109 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
     from lmfit import minimize, Parameters, report_fit
     from myscience import krumholz09 as k09
     import mystats
+    import scipy.odr as odr
 
-    def chisq(params, h_sd, rh2):
-        phi_cnm = params['phi_cnm'].value
-        phi_mol = params['phi_mol'].value
-        Z = params['Z'].value
+    if not odr_fit:
+        def chisq(params, h_sd, rh2):
+            phi_cnm = params['phi_cnm'].value
+            phi_mol = params['phi_mol'].value
+            Z = params['Z'].value
 
-        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
+            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
 
-        chisq = np.sum(np.abs(rh2 - rh2_model))
+            chisq = np.sum(np.abs(rh2 - rh2_model))
 
-        return chisq
+            return chisq
 
-    def calc_residual(params, h_sd, rh2, G0):
-        phi_cnm = params['phi_cnm'].value
-        phi_mol = params['phi_mol'].value
-        Z = params['Z'].value
+        def calc_residual(params, h_sd, rh2, G0):
+            phi_cnm = params['phi_cnm'].value
+            phi_mol = params['phi_mol'].value
+            Z = params['Z'].value
 
-        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol, G_0=G0)
+            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol, G_0=G0)
 
-        residual = rh2 - rh2_model
+            residual = rh2 - rh2_model
 
-        return residual
+            return residual
 
-    # Set parameter limits and initial guesses
-    params = Parameters()
-    params.add('phi_cnm',
-               value=guesses[0],
-               min=0.001,
-               max=1000,
-               vary=vary[0])
-    params.add('phi_mol',
-               value=guesses[2],
-               min=1,
-               max=20,
-               vary=vary[2])
-    params.add('Z',
-               value=guesses[1],
-               min=0.1,
-               max=4,
-               vary=vary[1])
+        # Set parameter limits and initial guesses
+        params = Parameters()
+        params.add('phi_cnm',
+                   value=guesses[0],
+                   min=0.001,
+                   max=1000,
+                   vary=vary[0])
+        params.add('phi_mol',
+                   value=guesses[2],
+                   min=1,
+                   max=20,
+                   vary=vary[2])
+        params.add('Z',
+                   value=guesses[1],
+                   min=0.1,
+                   max=4,
+                   vary=vary[1])
 
-    # Perform the fit!
-    result = minimize(calc_residual,
-                      params,
-                      args=(h_sd, rh2, G0),
-                      method='leastsq')
+        # Perform the fit!
+        result = minimize(calc_residual,
+                          params,
+                          args=(h_sd, rh2, G0),
+                          method='leastsq')
 
-    if bootstrap_residuals:
-        def resample_residuals(residuals):
-            return np.random.choice(residuals,
-                                    size=residuals.size,
-                                    replace=True)
-        phi_cnm = params['phi_cnm'].value
-        phi_mol = params['phi_mol'].value
-        Z = params['Z'].value
-        rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
-        residual = rh2 - rh2_model
+        if bootstrap_residuals:
+            def resample_residuals(residuals):
+                return np.random.choice(residuals,
+                                        size=residuals.size,
+                                        replace=True)
+            phi_cnm = params['phi_cnm'].value
+            phi_mol = params['phi_mol'].value
+            Z = params['Z'].value
+            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
+            residual = rh2 - rh2_model
 
-        empty = np.empty(nboot)
-        param_dict = {}
-        param_names = ('phi_cnm', 'Z', 'phi_mol')
-        for param_name in param_names:
-            param_dict[param_name] = empty.copy()
-
-        for i in xrange(nboot):
-            rh2_resampled = rh2_model + resample_residuals(residual)
-            result = minimize(calc_residual,
-                              params,
-                              args=(h_sd, rh2_resampled),
-                              #method='anneal',
-                              method='leastsq',
-                              )
-
+            empty = np.empty(nboot)
+            param_dict = {}
+            param_names = ('phi_cnm', 'Z', 'phi_mol')
             for param_name in param_names:
-                param_dict[param_name][i] = params[param_name].value
+                param_dict[param_name] = empty.copy()
 
-        rh2_fit_params = []
-        for param_name in param_names:
-            conf = mystats.calc_cdf_error(param_dict[param_name])
-            rh2_fit_params.append(conf[0])
-            rh2_fit_params.append(conf[1])
-            #print param_name, conf
-    else:
-        rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
-                params['phi_mol'].value)
+            for i in xrange(nboot):
+                rh2_resampled = rh2_model + resample_residuals(residual)
+                result = minimize(calc_residual,
+                                  params,
+                                  args=(h_sd, rh2_resampled),
+                                  #method='anneal',
+                                  method='leastsq',
+                                  )
+
+                for param_name in param_names:
+                    param_dict[param_name][i] = params[param_name].value
+
+            rh2_fit_params = []
+            for param_name in param_names:
+                conf = mystats.calc_cdf_error(param_dict[param_name])
+                rh2_fit_params.append(conf[0])
+                rh2_fit_params.append(conf[1])
+                #print param_name, conf
+        else:
+            rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
+                    params['phi_mol'].value)
+    elif odr_fit:
+
+        phi_cnm, Z, phi_mol = guesses
+        def odr_func(phi_cnm, h_sd):
+
+            return k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol,
+                                return_fractions=False)
+
+        model = odr.Model(odr_func)
+        data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
+        odr_instance = odr.ODR(data, model, beta0=[phi_cnm,])
+        output = odr_instance.run()
+        alphaG = output.beta[0]
+        #print 'alphaG =', alphaG
+
+        rh2_fit_params = (phi_cnm, Z, phi_mol)
 
     return rh2_fit_params
 
@@ -4303,100 +4335,100 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     import lmfit
     from myscience import sternberg14 as s14
     import mystats
+    import scipy.odr as odr
 
-    def chisq(params, h_sd, rh2):
-        alphaG = params['alphaG'].value
-        phi_g = params['phi_g'].value
-        Z = params['Z'].value
+    if not odr_fit:
+        def chisq(params, h_sd, rh2):
+            alphaG = params['alphaG'].value
+            phi_g = params['phi_g'].value
+            Z = params['Z'].value
 
-        rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                 return_fractions=False,
-                                 radiation_type=radiation_type)
+            rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                     return_fractions=False,
+                                     radiation_type=radiation_type)
 
-        chisq = np.sum(np.abs(rh2 - rh2_model))
+            chisq = np.sum(np.abs(rh2 - rh2_model))
 
-        return chisq
+            return chisq
 
-    def calc_residual(params, h_sd, rh2):
-        alphaG = params['alphaG'].value
-        phi_g = params['phi_g'].value
-        Z = params['Z'].value
+        def calc_residual(params, h_sd, rh2):
+            alphaG = params['alphaG'].value
+            phi_g = params['phi_g'].value
+            Z = params['Z'].value
 
-        rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                 return_fractions=False)
+            rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                     return_fractions=False)
 
-        residual = rh2 - rh2_model
+            residual = rh2 - rh2_model
 
-        return residual
+            return residual
 
-    # Set parameter limits and initial guesses
-    params = Parameters()
-    params.add('alphaG',
-               value=guesses[0],
-               min=0.1,
-               max=500,
-               vary=vary[0])
-    params.add('phi_g',
-               value=guesses[2],
-               min=0.01,
-               max=10,
-               vary=vary[2])
-    params.add('Z',
-               value=guesses[1],
-               min=0.1,
-               max=4,
-               vary=vary[1])
+        # Set parameter limits and initial guesses
+        params = Parameters()
+        params.add('alphaG',
+                   value=guesses[0],
+                   min=0.1,
+                   max=500,
+                   vary=vary[0])
+        params.add('phi_g',
+                   value=guesses[2],
+                   min=0.01,
+                   max=10,
+                   vary=vary[2])
+        params.add('Z',
+                   value=guesses[1],
+                   min=0.1,
+                   max=4,
+                   vary=vary[1])
 
-    # Perform the fit!
-    result = minimize(calc_residual,
-                      params,
-                      args=(h_sd, rh2),
-                      #method='leastsq',
-                      method='anneal',
-                      )
+        # Perform the fit!
+        result = minimize(calc_residual,
+                          params,
+                          args=(h_sd, rh2),
+                          #method='leastsq',
+                          method='anneal',
+                          )
 
-    if bootstrap_residuals:
-        def resample_residuals(residuals):
-            return np.random.choice(residuals,
-                                    size=residuals.size,
-                                    replace=True)
-        alphaG = params['alphaG'].value
-        phi_g = params['phi_g'].value
-        Z = params['Z'].value
-        rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                 return_fractions=False)
-        residual = rh2 - rh2_model
+        if bootstrap_residuals:
+            def resample_residuals(residuals):
+                return np.random.choice(residuals,
+                                        size=residuals.size,
+                                        replace=True)
+            alphaG = params['alphaG'].value
+            phi_g = params['phi_g'].value
+            Z = params['Z'].value
+            rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                     return_fractions=False)
+            residual = rh2 - rh2_model
 
-        empty = np.empty(nboot)
-        param_dict = {}
-        param_names = ('alphaG', 'Z', 'phi_g',)
-        for param_name in param_names:
-            param_dict[param_name] = empty.copy()
-
-        for i in xrange(nboot):
-            rh2_resampled = rh2_model + resample_residuals(residual)
-            result = minimize(calc_residual,
-                              params,
-                              args=(h_sd, rh2_resampled),
-                              #method='leastsq',
-                              method='anneal',
-                              )
-
+            empty = np.empty(nboot)
+            param_dict = {}
+            param_names = ('alphaG', 'Z', 'phi_g',)
             for param_name in param_names:
-                param_dict[param_name][i] = params[param_name].value
+                param_dict[param_name] = empty.copy()
 
-        rh2_fit_params = []
-        for param_name in param_names:
-            conf = mystats.calc_cdf_error(param_dict[param_name])
-            rh2_fit_params.append(conf[0])
-            rh2_fit_params.append(conf[1])
-            #print param_name, conf
-    else:
-        rh2_fit_params = (params['alphaG'].value, params['Z'].value,
-                params['phi_g'].value)
+            for i in xrange(nboot):
+                rh2_resampled = rh2_model + resample_residuals(residual)
+                result = minimize(calc_residual,
+                                  params,
+                                  args=(h_sd, rh2_resampled),
+                                  #method='leastsq',
+                                  method='anneal',
+                                  )
 
-    if odr_fit:
-        import scipy.odr as odr
+                for param_name in param_names:
+                    param_dict[param_name][i] = params[param_name].value
+
+            rh2_fit_params = []
+            for param_name in param_names:
+                conf = mystats.calc_cdf_error(param_dict[param_name])
+                rh2_fit_params.append(conf[0])
+                rh2_fit_params.append(conf[1])
+                #print param_name, conf
+        else:
+            rh2_fit_params = (params['alphaG'].value, params['Z'].value,
+                    params['phi_g'].value)
+    elif odr_fit:
 
         alphaG, Z, phi_g = guesses
         def odr_func(alphaG, h_sd):
@@ -4405,11 +4437,11 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
                                      return_fractions=False)
 
         model = odr.Model(odr_func)
-        data = odr.RealData(h_sd, rh2, sx=0.1 * h_sd, sy=rh2_error)
+        data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
         odr_instance = odr.ODR(data, model, beta0=[10.0,])
         output = odr_instance.run()
         alphaG = output.beta[0]
-        print 'alphaG =', alphaG
+        #print 'alphaG =', alphaG
 
         rh2_fit_params = (alphaG, Z, phi_g)
 
@@ -5194,6 +5226,7 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     av_model_results = fit_av_model(av,
                             nhi,
                             av_error=av_error,
+                            nhi_error=nhi_error,
                             nhi_background=nhi_back,
                             init_guesses=init_guesses,
                             plot_kwargs=plot_kwargs,
@@ -5431,10 +5464,10 @@ def scale_av_with_refav(av_data, av_reference, av_error_data):
     kwargs['intercept'] = intercept
     kwargs['intercept_error'] = intercept_error
 
-    print 'Reference Av characteristcs:'
-    print '\t', av_scalar, av_scalar_error
-    print '\t', intercept, intercept_error
-    print ''
+    #print 'Reference Av characteristcs:'
+    #print '\t', av_scalar, av_scalar_error
+    #print '\t', intercept, intercept_error
+    #print ''
 
     return kwargs
 
