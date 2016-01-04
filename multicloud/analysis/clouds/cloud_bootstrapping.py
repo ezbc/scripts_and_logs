@@ -4631,17 +4631,27 @@ def simulate_background_error(av, scale=1.0):
 
     return av_background_sim, background
 
-def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error):
+def simulate_nhi(hi_data, vel_axis, vel_range, vel_range_error,
+        hi_data_error=None):
 
     vel_range_sim = [vel_range[0] + np.random.normal(0, scale=vel_range_error),
                      vel_range[1] + np.random.normal(0, scale=vel_range_error)]
 
-    nhi_sim = myia.calculate_nhi(cube=hi_data,
-                              velocity_axis=vel_axis,
-                              velocity_range=vel_range_sim,
-                              )
-
-    return nhi_sim.ravel(), vel_range_sim
+    if hi_data_error is None:
+        nhi_sim = myia.calculate_nhi(cube=hi_data,
+                                  velocity_axis=vel_axis,
+                                  velocity_range=vel_range_sim,
+                                  )
+        return nhi_sim.ravel(), vel_range_sim
+    else:
+        nhi_sim, nhi_sim_error = \
+            myia.calculate_nhi(cube=hi_data,
+                               velocity_axis=vel_axis,
+                               velocity_range=vel_range_sim,
+                               noise_cube=hi_data_error,
+                               return_nhi_error=True,
+                               )
+        return nhi_sim.ravel(), nhi_sim_error.ravel(), vel_range_sim
 
 def get_rotated_core_indices(core, mask, corename=None, iteration=None):
 
@@ -4686,6 +4696,7 @@ def bootstrap_worker(global_args, i):
     nhi = global_args['nhi']
     nhi_back = global_args['nhi_back']
     hi_data = global_args['hi_data']
+    hi_data_error = global_args['hi_data_error']
     mask = global_args['mask']
     vel_axis = global_args['vel_axis']
     vel_range = global_args['vel_range']
@@ -4723,10 +4734,13 @@ def bootstrap_worker(global_args, i):
 
     # calculate N(HI)
     if global_args['sim_hi_error']:
-        nhi_sim, vel_range_sim = simulate_nhi(hi_data,
-                                              vel_axis,
-                                              vel_range,
-                                              vel_range_error)
+        nhi_sim, nhi_sim_error, vel_range_sim = \
+            simulate_nhi(hi_data,
+                         vel_axis,
+                         vel_range,
+                         vel_range_error,
+                         hi_data_error=hi_data_error,
+                         )
     else:
         nhi_sim = nhi
 
@@ -4927,7 +4941,8 @@ def bootstrap_worker_wrapper(args, i):
         # in a string, then raise new exception with the string traceback
         raise Exception("".join(traceback.format_exception(*sys.exc_info())))
 
-def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
+def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
+        nhi_image_error=None, hi_data_error=None, vel_axis=None,
         vel_range=None, vel_range_error=1, av_error_data=None,
         av_reference=None, nhi_image_background=None, num_bootstraps=100,
         plot_kwargs=None, scale_kwargs=None, use_intercept=True,
@@ -4942,10 +4957,11 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None, vel_axis=None,
         av_error_data = np.ones(av_data.size)
 
     # mask for nans, arrays will be 1D
-    (av, av_error, nhi, nhi_back, ), mask = \
-        mask_nans((av_data, av_error_data, nhi_image, nhi_image_background),
+    (av, av_error, nhi, nhi_error, nhi_back, ), mask = \
+        mask_nans((av_data, av_error_data, nhi_image, nhi_image_error, nhi_image_background),
                    return_mask=True)
     hi_data = hi_data[:, ~mask]
+    hi_data_error = hi_data_error[:, ~mask]
     cores = ss_model_kwargs['cores']
     for core in cores:
         if cores[core]['mask'] is not None:
@@ -5953,6 +5969,7 @@ def run_cloud_analysis(global_args,):
 
     # Load HI and CO cubes
     hi_data, hi_header = fits.getdata(hi_filename, header=True)
+    hi_data_error = fits.getdata(hi_error_filename)
     co_data, co_header = fits.getdata(co_filename, header=True)
 
     hi_data[:, region_mask] = np.nan
@@ -6026,10 +6043,13 @@ def run_cloud_analysis(global_args,):
               '{0:.1f} to {1:.1f}'.format(*velocity_range))
 
     # use the vel range to derive N(HI)
-    nhi_image = calculate_nhi(cube=hi_data,
-                              velocity_axis=hi_vel_axis,
-                              velocity_range=velocity_range,
-                              )
+    nhi_image, nhi_image_error = \
+        calculate_nhi(cube=hi_data,
+                      velocity_axis=hi_vel_axis,
+                      velocity_range=velocity_range,
+                      noise_cube=hi_data_error,
+                      return_nhi_error=True,
+                      )
     nhi_image_background = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
                               velocity_range=(-100,velocity_range[0]),
@@ -6041,6 +6061,7 @@ def run_cloud_analysis(global_args,):
 
     # mask for erroneous pixels
     nhi_image[nhi_image < 0] = np.nan
+    nhi_image_error[nhi_image_error < 0] = np.nan
     nhi_image_background[nhi_image_background < 0] = np.nan
 
     if not global_args['use_background']:
@@ -6054,6 +6075,7 @@ def run_cloud_analysis(global_args,):
                  'av_error_filename': av_error_filename,
                  'av_ref_filename': av_ref_filename,
                  'hi_filename': hi_filename,
+                 'hi_error_filename': hi_error_filename,
                  'co_filename': co_filename,
                  'results_dir': results_dir,
                  'figure_dir': figure_dir,
@@ -6065,6 +6087,7 @@ def run_cloud_analysis(global_args,):
             'av_error_data': av_error_data,
             'av_data_ref': av_data_ref,
             'hi_data': hi_data,
+            'hi_data_error': hi_data_error,
             'hi_vel_axis': hi_vel_axis,
             'co_data': co_data,
             'co_vel_axis': co_vel_axis,
@@ -6079,6 +6102,7 @@ def run_cloud_analysis(global_args,):
                      'av_data_backsub': av_data_backsub,
                      'av': av_data_backsub_scaled,
                      'nhi': nhi_image,
+                     'nhi_error': nhi_image_error,
                      'nhi_image_background': nhi_image_background,
                      'region_mask': region_mask,
                      'scale_kwargs': scale_kwargs,
@@ -6120,6 +6144,9 @@ def run_cloud_analysis(global_args,):
     hi_data_crop, hi_vel_axis_crop = myia.crop_cube(hi_data,
                                                     hi_vel_axis,
                                                     [-20, 30])
+    hi_data_error_crop, hi_vel_axis_crop = myia.crop_cube(hi_data_error,
+                                                    hi_vel_axis,
+                                                    [-20, 30])
 
     bootstrap_filename = results_dir + filename_base + '_bootresults.npy'
     results_filename = results_dir + \
@@ -6132,10 +6159,12 @@ def run_cloud_analysis(global_args,):
         resid_mc_results = \
             bootstrap_residuals(av_data_backsub,
                            nhi_image=nhi_image,
+                           nhi_image_error=nhi_image_error,
                            av_error_data=av_error_data,
                            nhi_image_background=nhi_image_background,
                            plot_kwargs=plot_kwargs,
                            hi_data=hi_data_crop,
+                           hi_data_error=hi_data_error_crop,
                            vel_axis=hi_vel_axis_crop,
                            vel_range=velocity_range,
                            vel_range_error=2,
@@ -6156,10 +6185,12 @@ def run_cloud_analysis(global_args,):
     boot_result, mc_results = \
         bootstrap_fits(av_data_backsub,
                        nhi_image=nhi_image,
+                       nhi_image_error=nhi_image_error,
                        av_error_data=av_error_data,
                        nhi_image_background=nhi_image_background,
                        plot_kwargs=plot_kwargs,
                        hi_data=hi_data_crop,
+                       hi_data_error=hi_data_error_crop,
                        vel_axis=hi_vel_axis_crop,
                        vel_range=velocity_range,
                        vel_range_error=hi_range_error,
