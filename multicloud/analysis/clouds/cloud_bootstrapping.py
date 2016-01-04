@@ -3871,8 +3871,8 @@ def fit_av_model(av, nhi, av_error=None, algebraic=False, nhi_background=None,
         else:
             return results
 
-def fit_steady_state_models(h_sd, rh2, model_kwargs,rh2_error=None,
-        bootstrap_residuals=False, nboot=100, G0=1.0):
+def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
+        h_sd_error=None, bootstrap_residuals=False, nboot=100, G0=1.0):
 
     # Fit R_H2
     #---------
@@ -3892,6 +3892,7 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs,rh2_error=None,
                           bootstrap_residuals=bootstrap_residuals,
                           nboot=nboot,
                           rh2_error=rh2_error,
+                          h_sd_error=h_sd_error,
                           )
         if bootstrap_residuals:
             alphaG, alphaG_error, Z_s14, Z_s14_error, phi_g, phi_g_error = \
@@ -3912,6 +3913,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs,rh2_error=None,
                          bootstrap_residuals=bootstrap_residuals,
                          nboot=nboot,
                          G0=G0,
+                         rh2_error=rh2_error,
+                         h_sd_error=h_sd_error,
                          )
         if bootstrap_residuals:
             phi_cnm, phi_cnm_error,Z_k09, Z_k09_error,phi_mol, phi_mol_error= \
@@ -4054,9 +4057,9 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
 
     return output
 
-def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
-        verbose=False, vary=[True, True, True], bootstrap_residuals=False,
-        nboot=100, G0=1.0):
+def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
+        rh2_error=None, verbose=False, vary=[True, True, True],
+        bootstrap_residuals=False, nboot=100, G0=1.0):
 
     '''
     Parameters
@@ -4751,6 +4754,7 @@ def bootstrap_worker(global_args, i):
     av_boot = av_sim[boot_indices]
     av_error_boot = av_error[boot_indices]
     nhi_boot = nhi_sim[boot_indices]
+    nhi_error_boot = nhi_sim_error[boot_indices]
 
     if nhi_back is not None:
         nhi_back_boot = nhi_back[boot_indices]
@@ -4765,6 +4769,7 @@ def bootstrap_worker(global_args, i):
     av_model_results = fit_av_model(av_boot,
                             nhi_boot,
                             av_error=av_error_boot,
+                            nhi_error=nhi_error_boot,
                             nhi_background=nhi_back_boot,
                             init_guesses=init_guesses,
                             plot_kwargs=plot_kwargs,
@@ -4774,21 +4779,30 @@ def bootstrap_worker(global_args, i):
     # -------------------------------------------------------------------------
     # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image=nhi_sim,
-                              av_image=av_sim,
+                              av_image=av,
+                              dgr=av_model_results['dgr_cloud'])
+    nh2_image_error = calculate_nh2(nhi_image=nhi_sim_error,
+                              av_image=av_error,
                               dgr=av_model_results['dgr_cloud'])
 
     # convert to column density to surface density
     hi_sd_image = calculate_sd(nhi_sim,
                                sd_factor=1/1.25)
+    hi_sd_image_error = calculate_sd(nhi_sim_error,
+                                     sd_factor=1/1.25)
 
     h2_sd_image = calculate_sd(nh2_image,
                                sd_factor=1/0.625)
+    h2_sd_image_error = calculate_sd(nh2_image_error,
+                               sd_factor=1/0.625)
 
     h_sd_image = hi_sd_image + h2_sd_image
+    h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
 
     # Write ratio between H2 and HI
     rh2_image = h2_sd_image / hi_sd_image
-
+    rh2_image_error = rh2_image * (h2_sd_image_error**2 / h2_sd_image**2 + \
+                      h_sd_image_error**2 / h_sd_image**2)**0.5
 
     model_kwargs = global_args['ss_model_kwargs']['model_kwargs']
     cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
@@ -4836,19 +4850,25 @@ def bootstrap_worker(global_args, i):
         #h_sd_core = h_sd_image[core_boot_indices]
         #rh2_core = rh2_image[core_boot_indices]
         h_sd_core = h_sd_image[core_indices]
+        h_sd_core_error = h_sd_image_error[core_indices]
         rh2_core = rh2_image[core_indices]
+        rh2_core_error = rh2_image_error[core_indices]
 
         # mask negative ratios
         if 1:
             mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
             rh2_core = rh2_core[~mask_rh2]
+            rh2_core_error = rh2_core_error[~mask_rh2]
             h_sd_core = h_sd_core[~mask_rh2]
+            h_sd_core_error = h_sd_core_error[~mask_rh2]
 
         G0 = model_kwargs['krumholz_params']['G0'] + \
              np.random.normal(model_kwargs['krumholz_params']['G0_error'])
         ss_model_result = \
             fit_steady_state_models(h_sd_core,
                                     rh2_core,
+                                    rh2_error=rh2_core_error,
+                                    h_sd_error=h_sd_core_error,
                                     model_kwargs=model_kwargs,
                                     G0=G0,
                                     )
