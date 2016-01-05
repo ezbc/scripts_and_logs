@@ -22,7 +22,7 @@ def main():
 
     # Location of models
     #MODEL_DIR = '/d/bip3/ezbc/shield/749237_lowres/modeling_cmode1_3inc/'
-    MODEL_DIR = '/d/bip3/ezbc/shield/749237_fullres/modeling_fineres/'
+    MODEL_DIR = '/d/bip3/ezbc/shield/749237_lowres/modeling_highres_2/'
 
     # If true, deletes files to be written
     CLOBBER = 0
@@ -126,4 +126,4 @@ def main():
         stats = pickle.load(f)
 
 if __name__ == '__main__':
-    main()
+    main(

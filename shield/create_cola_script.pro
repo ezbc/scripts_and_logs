@@ -34,7 +34,7 @@ incl=[45, 50, 55, 60, 65, 70, 75, 80, 85, 90]
 ;vflat=[20, 40]
 ;vflat=indgen(15)*3 + 15
 vflat=indgen(7)*6 + 8
-vflat=indgen(10)*5 + 10 
+vflat=indgen(15)*5 + 10 
 ;vflat=[40]
 ;lflat=[10, 30]
 ;lflat=indgen(15)*2 + 2
@@ -47,7 +47,7 @@ lflat=indgen(10)*3 + 1
 ;Z0=[1, 21]
 ;Z0=indgen(11)*2 + 1
 Z0=indgen(7)*4 + 1
-Z0=indgen(14)*2 + 3
+Z0=indgen(20)*2 + 3
 ;Z0=[11]
 
 print, incl

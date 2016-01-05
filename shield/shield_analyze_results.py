@@ -93,8 +93,8 @@ def main():
     # Location of models
     #MODEL_SUBNAME = 'modeling_cmode1'
     #MODEL_DIR = '/d/bip3/ezbc/shield/749237_lowres/' + MODEL_SUBNAME + '/'
-    MODEL_SUBNAME = 'modeling_fineres'
-    MODEL_DIR = '/d/bip3/ezbc/shield/749237_fullres/' + MODEL_SUBNAME + '/'
+    MODEL_SUBNAME = 'modeling_highres_2'
+    MODEL_DIR = '/d/bip3/ezbc/shield/749237_lowres/' + MODEL_SUBNAME + '/'
 
     os.chdir(MODEL_DIR)
     os.system('rm -rf *.image *.descr')

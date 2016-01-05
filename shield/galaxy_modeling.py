@@ -6,7 +6,7 @@ import os
 def make_model_dir(cubes):
 
     #model_dir = '/d/bip3/ezbc/shield/749237_lowres/modeling_cmode1_3inc/'
-    model_dir = '/d/bip3/ezbc/shield/749237_lowres/modeling_highres'
+    model_dir = '/d/bip3/ezbc/shield/749237_lowres/modeling_highres_2'
 
     if 1:
         try:
