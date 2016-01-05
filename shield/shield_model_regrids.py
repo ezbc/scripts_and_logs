@@ -20,7 +20,14 @@ def main():
     import myio
     import pickle
 
-    os.chdir('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/models')
+    # Location of models
+    #MODEL_DIR = '/d/bip3/ezbc/shield/749237_lowres/modeling_cmode1_3inc/'
+    MODEL_DIR = '/d/bip3/ezbc/shield/749237_fullres/modeling_fineres/'
+
+    # If true, deletes files to be written
+    CLOBBER = 0
+
+    os.chdir(MODEL_DIR + 'models')
 
     # Ddelete gipsy files, leaving only fits files
     filename_delete_list = os.listdir('./')
@@ -28,8 +35,6 @@ def main():
         if '.image' in filename or '.descr' in filename:
             os.system('rm -rf ' + filename)
 
-    # If true, deletes files to be written
-    clobber = 0
 
     # get leftover fits files
     filename_init_list = os.listdir('./')
@@ -52,17 +57,20 @@ def main():
     cube_name = '749237_rebin_cube_regrid.fits'
     unbinned_cube_name = '749237_rebin_cube.fits'
     cube_error_name = '749237_rebin_cube_error_regrid.fits'
-    data, header = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/' + \
-                                cube_name,
-                                header=True)
-    error = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/' + \
-                         cube_error_name)
+    data, header = \
+        fits.getdata(MODEL_DIR + \
+                     cube_name,
+                     header=True)
+    error = \
+        fits.getdata(MODEL_DIR + \
+                     cube_error_name)
 
     data_sum = np.nansum(data)
     #binsize = 6
 
-    _, unbinned_header = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/' + \
-                          unbinned_cube_name, header=True)
+    _, unbinned_header = fits.getdata(MODEL_DIR + '../' + \
+                                      unbinned_cube_name,
+                                      header=True)
     beamsize = unbinned_header['BMAJ']
     cdelt = np.abs(unbinned_header['CDELT1'])
     binsize = int(beamsize / cdelt)
@@ -74,7 +82,7 @@ def main():
 
         model_bin_name = model_name.replace('.FITS', '_regrid.FITS')
 
-        exists = myio.check_file(model_bin_name, clobber=clobber)
+        exists = myio.check_file(model_bin_name, clobber=CLOBBER)
         if exists:
             print('Loading cube:\n' + model_bin_name)
             model_bin = fits.getdata(model_bin_name)
@@ -100,7 +108,7 @@ def main():
             fits.writeto(model_bin_name,
                          model_bin,
                          header,
-                         clobber=clobber)
+                         clobber=CLOBBER)
 
         residuals = model_bin[~mask] - data[~mask]
         stats['model_names'].append(model_bin_name)
@@ -111,10 +119,10 @@ def main():
         stats['mean_abs_resid'][i] = np.nanmean(np.abs(residuals))
         stats['sum_abs_resid'][i] = np.nansum(np.abs(residuals))
 
-    with open('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/statistics.pickle', 'wb') as f:
+    with open(MODEL_DIR + 'statistics.pickle', 'wb') as f:
         pickle.dump(stats, f)
 
-    with open('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/statistics.pickle', 'rb') as f:
+    with open(MODEL_DIR + 'statistics.pickle', 'rb') as f:
         stats = pickle.load(f)
 
 if __name__ == '__main__':

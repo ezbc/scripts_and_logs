@@ -5,13 +5,14 @@ import os
 
 def make_model_dir(cubes):
 
-    model_dir = '/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/'
+    #model_dir = '/d/bip3/ezbc/shield/749237_lowres/modeling_cmode1_3inc/'
+    model_dir = '/d/bip3/ezbc/shield/749237_lowres/modeling_highres'
 
     if 1:
         try:
             os.system('mkdir ' + model_dir)
         except:
-            pass
+           pass
 
     os.system('cp create_cola_script.pro ' + model_dir)
     #os.system('cp gipsy_script.col ' + model_dir)
@@ -21,7 +22,7 @@ def make_model_dir(cubes):
 
 def main():
 
-    os.chdir('/usr/users/ezbc/research/scripts/shield/')
+    os.chdir('/d/cosmos/ezbc/research/scripts/shield/')
     cube_dir = '/d/bip3/ezbc/shield/749237_lowres/'
     cubes = (
              cube_dir + '749237_rebin_cube_regrid.fits',

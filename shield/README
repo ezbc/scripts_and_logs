@@ -1,0 +1,30 @@
+
+
+Copy relevant cubes to folder with python script
+
+> galaxy_modeling.py
+
+Create the gipsy script in IDL
+
+IDL> .r create_cola_script.pro
+IDL> create_cola_script
+
+Run python model regrid script, change MODEL_DIR variable
+
+> shield_model_regrids.py
+
+Plot and analyze results with python script
+
+> shield_analyze_results.py
+
+
+
+
+
+
+
+
+
+
+
+

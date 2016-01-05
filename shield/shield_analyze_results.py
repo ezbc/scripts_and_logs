@@ -4,17 +4,18 @@ import os
 import numpy as np
 
 
-def plot_results(stats):
+def plot_results(stats, filename):
 
     import myplotting as myplt
 
     stats = format_distributions(stats)
 
-
     myplt.corner_plot(stats['likelihoods_reshaped'],
                       plot_grids=stats['param_grids'],
                       labels=stats['param_names'],
-                      filename='/d/bip3/ezbc/shield/figures/749237_likelihoods.png',)
+                      filename='/d/bip3/ezbc/shield/figures/' + filename,
+                      logscale=True,
+                      )
 
 def format_distributions(stats):
 
@@ -26,14 +27,16 @@ def format_distributions(stats):
     keep_params = ['iflat', 'vflat', 'z0', 'inc']
     keep_params_sorted = []
 
+    print('\nParameter values:')
     for i, param_name in enumerate(param_names[1:]):
         if param_name in keep_params:
             param_grid = np.sort(np.unique(params[:, i]))
-            print param_name
-            print param_grid
             param_grids.append(param_grid)
             param_shapes.append(len(param_grid))
             keep_params_sorted.append(param_name)
+
+            print(param_name)
+            print(param_grid)
 
 
     stats['likelihoods_reshaped'] = likes.reshape(param_shapes)
@@ -86,7 +89,14 @@ def main():
     import pickle
     from astropy.io import fits
 
-    os.chdir('/d/bip3/ezbc/shield/749237_lowres/modeling_fineres/')
+
+    # Location of models
+    #MODEL_SUBNAME = 'modeling_cmode1'
+    #MODEL_DIR = '/d/bip3/ezbc/shield/749237_lowres/' + MODEL_SUBNAME + '/'
+    MODEL_SUBNAME = 'modeling_fineres'
+    MODEL_DIR = '/d/bip3/ezbc/shield/749237_fullres/' + MODEL_SUBNAME + '/'
+
+    os.chdir(MODEL_DIR)
     os.system('rm -rf *.image *.descr')
 
     input_param_filename = 'parameters.txt'
@@ -113,27 +123,39 @@ def main():
 
     #print np.sort(stats['logL'])
     model_best_name = stats['model_names'][np.argmax(stats['likelihoods'])]
-    print params[np.argmax(stats['likelihoods'])]
 
     stats['model_best'] = fits.getdata('models/' + model_best_name)
 
     cube_name = '749237_rebin_cube_regrid.fits'
     cube_error_name = '749237_rebin_cube_error_regrid.fits'
-    data = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/' + \
-                        'modeling_fineres/' + \
+    data = fits.getdata(MODEL_DIR + \
                         cube_name,)
-    error = fits.getdata('/d/bip3/ezbc/shield/749237_lowres/' + \
-                         'modeling_fineres/' + cube_error_name)
+    error = fits.getdata(MODEL_DIR + cube_error_name)
+    stats['std'] = np.median(error)
 
     stats['rescaled_std'] = np.nansum((stats['model_best'] - data)**2 / \
                             data.size)**0.5
 
     stats['chisq'] = np.nansum((stats['model_best'] - data)**2 / error**2) / \
-                     data.size
+                     (data.size - 4)
 
-    print('rescaled std = ', stats['rescaled_std'])
-    print('chi^2 = ', stats['chisq'])
-    print('best fit model = ' + model_best_name)
+    max_params = params[np.argmax(stats['likelihoods'])]
+    print('\nBest fit params:')
+    print('\tInclination: {0:.0f} degrees'.format(max_params[0]))
+    print('\tPA: {0:.0f} degrees'.format(max_params[1]))
+    print('\tIflat: {0:.0f} arcsec'.format(max_params[2]))
+    print('\tVflat: {0:.0f} km/s'.format(max_params[3]))
+    print('\tScale Height: {0:.0f} arcsec'.format(max_params[5]))
+    print('\nRescaled std = {0:e} Jy / beam'.format(stats['rescaled_std']))
+    print('\nInitial std = {0:e} Jy / beam'.format(stats['std']))
+    print('\nReduced Chi^2 = {0:.2f}'.format(stats['chisq']))
+    print('\nBest fit model = ' + model_best_name)
+    print('\nMax likelihood = {0:.2f}'.format(np.max(stats['likelihoods'])))
+
+    # Copy best model
+    os.system('mkdir ' + MODEL_DIR + 'best_fit_model/')
+    os.system('cp ' + MODEL_DIR + 'models/' + model_best_name + \
+              ' best_fit_model/.')
 
     if 0:
         import matplotlib.pyplot as plt
@@ -141,7 +163,10 @@ def main():
         plt.plot(stats['likelihoods'])
         plt.savefig('likelihood_test.png')
 
-    plot_results(stats)
+    plot_results(stats,
+                 filename='749237_likelihoods_' + \
+                          MODEL_SUBNAME.replace('modeling_','') + '.png')
 
 if __name__ == '__main__':
     main()
+
