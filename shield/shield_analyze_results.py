@@ -8,8 +8,6 @@ def plot_results(stats, filename):
 
     import myplotting as myplt
 
-    stats = format_distributions(stats)
-
     myplt.corner_plot(stats['likelihoods_reshaped'],
                       plot_grids=stats['param_grids'],
                       labels=stats['param_names'],
@@ -34,10 +32,6 @@ def format_distributions(stats):
             param_grids.append(param_grid)
             param_shapes.append(len(param_grid))
             keep_params_sorted.append(param_name)
-
-            print(param_name)
-            print(param_grid)
-
 
     stats['likelihoods_reshaped'] = likes.reshape(param_shapes)
     stats['param_names'] = keep_params_sorted
@@ -82,6 +76,57 @@ def rewrite_param_file(input_param_filename, output_param_filename):
 
     return params, modelNames, param_names
 
+def calc_param_errors(stats):
+
+    # grab the relevant data
+    distributions = stats['likelihoods_reshaped']
+    param_grids = stats['param_grids']
+
+    # get number of axes in likelihoods
+    dist_axes = np.arange(distributions.ndim)
+
+    stats['param_confs'] = {}
+
+    # cycle through each axis, marginalizing and calculating the conf interval
+    for dist_axis in dist_axes:
+        marg_axes = dist_axes[dist_axes != dist_axis]
+        if not isinstance(marg_axes, np.int64):
+            marg_axes = tuple(marg_axes)
+
+        # Derive the histogram
+        hist = np.sum(distributions, axis=marg_axes)
+
+        cdf = np.cumsum(hist) / sum(hist)
+
+        # get the left and right boundary of the interval that contains 95% of
+        # the probability mass
+        right = np.argmax(cdf > 0.975)
+        left = np.argmax(cdf > 0.025)
+        center = np.argmax(cdf > 0.5)
+
+        conf_interval = np.array([param_grids[dist_axis][left],
+                                  param_grids[dist_axis][center],
+                                  param_grids[dist_axis][right],]
+                                  )
+
+        stats['param_confs'][stats['param_names'][dist_axis]] = conf_interval
+
+        print('\t' + stats['param_names'][dist_axis] + ':')
+        pprint_conf(conf_interval)
+        print('')
+
+    return stats
+
+def pprint_conf(conf_interval):
+
+    errors = [conf_interval[2] - conf_interval[1],
+              conf_interval[1] - conf_interval[0]]
+
+    print('\t{0:.2f} +{1:.2f} / -{2:.2f}'.format(conf_interval[1],
+                                               errors[0],
+                                               errors[1],))
+
+
 def main():
 
     import mystats
@@ -112,7 +157,6 @@ def main():
         plt.plot(stats['logL'])
         plt.savefig('likelihood_test.png')
 
-
     stats['likelihoods'] = mystats.logL2L(stats['logL'])
 
     params, model_names, param_names = rewrite_param_file(input_param_filename,
@@ -139,13 +183,26 @@ def main():
     stats['chisq'] = np.nansum((stats['model_best'] - data)**2 / error**2) / \
                      (data.size - 4)
 
+    if 0:
+        print stats['likelihoods']
+        stats['likelihoods'] += 1.00001
+        stats['likelihoods'] = np.log10(stats['likelihoods'])
+        stats['likelihoods'][np.isnan(stats['likelihoods'])] = 0.0
+        stats['likelihoods'] /= np.sum(stats['likelihoods'])
+        print np.sort(stats['likelihoods'])
+
+    # get errors on parameters
+    # format likelihoods
+    stats = format_distributions(stats)
+    calc_param_errors(stats)
+
     max_params = params[np.argmax(stats['likelihoods'])]
-    print('\nBest fit params:')
-    print('\tInclination: {0:.0f} degrees'.format(max_params[0]))
-    print('\tPA: {0:.0f} degrees'.format(max_params[1]))
-    print('\tIflat: {0:.0f} arcsec'.format(max_params[2]))
-    print('\tVflat: {0:.0f} km/s'.format(max_params[3]))
-    print('\tScale Height: {0:.0f} arcsec'.format(max_params[5]))
+    #print('\nBest fit params:')
+    #print('\tInclination: {0:.0f} degrees'.format(max_params[0]))
+    #print('\tPA: {0:.0f} degrees'.format(max_params[1]))
+    #print('\tIflat: {0:.0f} arcsec'.format(max_params[2]))
+    #print('\tVflat: {0:.0f} km/s'.format(max_params[3]))
+    #print('\tScale Height: {0:.0f} arcsec'.format(max_params[5]))
     print('\nRescaled std = {0:e} Jy / beam'.format(stats['rescaled_std']))
     print('\nInitial std = {0:e} Jy / beam'.format(stats['std']))
     print('\nReduced Chi^2 = {0:.2f}'.format(stats['chisq']))
