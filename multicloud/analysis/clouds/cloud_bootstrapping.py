@@ -748,7 +748,7 @@ def plot_spectra_grid(spectra_list, hi_range_kwargs_list=None,
              }
     plt.rcParams.update(params)
 
-    myplt.set_color_cycle(num_colors=4, cmap_limits=[0, 0.6])
+    myplt.set_color_cycle(num_colors=4, cmap_limits=[0, 0.9])
 
     # Create figure instance
     fig = plt.figure()
@@ -1459,10 +1459,10 @@ def print_av_error_stats(av, av_error):
     print('\n\tMedian Av error below 5 mag = {0:.2f} mag'.format(error_below))
     print('\n\tMedian Av error above 5 mag = {0:.2f} mag'.format(error_above))
 
-def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
-        model_results=None, model_analysis=None, xlimits=None, ylimits=None,
-        scale=('linear', 'linear'), filename=None, show_params=False,
-        levels=5, ncols=2):
+def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
+        model_analysis=None, xlimits=None, ylimits=None, model_fits=None,
+        scale=('linear', 'linear'), filename=None, show_params=False, levels=5,
+        ncols=2, hsd_error_list=None, hisd_error_list=None):
 
     # Import external modules
     import numpy as np
@@ -1544,10 +1544,6 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
         phi_cnm = model_analysis[core]['krumholz_results']['phi_cnm']
         phi_cnm_error = \
                 model_analysis[core]['krumholz_results']['phi_cnm_error']
-        hi_sd_fit_sternberg = \
-                model_analysis[core]['sternberg_results']['hisd_fit']
-        hi_sd_fit_krumholz = \
-                model_analysis[core]['krumholz_results']['hisd_fit']
         h_sd_fit = model_analysis[core]['krumholz_results']['hsd_fit']
 
 
@@ -1606,15 +1602,40 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
             ax.set_ylim(ylimits[0], ylimits[1])
             ylimits = None
 
-        if 0:
+        if model_fits is not None:
+            c_cycle = myplt.set_color_cycle(num_colors=2,
+                                            cmap_limits=[0.4, 0.8])
+
+            for model in ('krumholz', 'sternberg'):
+                if 'krumholz' in model:
+                    label = 'K+09'
+                    color = c_cycle[0]
+                    alpha = 0.5
+                else:
+                    label = 'S+14'
+                    color = c_cycle[1]
+                    alpha = 0.5
+                h_sd_fit = model_fits[i][model + '_results']['h_sd']
+                hi_sd_fit = model_fits[i][model + '_results']['hi_sd']
+                l3 = ax.plot(h_sd_fit,
+                             hi_sd_fit,
+                             linestyle='-',
+                             label=label,
+                             color=color,
+                             linewidth=1,
+                             zorder=1000,
+                             alpha=1
+                             )
+        elif 0:
             # get bootstrap results
             model = 'krumholz'
+            model = 'sternberg'
             core_results = model_results['cores'][core]
 
             params = {}
             nfits = len(core_results['krumholz_results']['phi_cnm'])
             if nfits > 500:
-                nfits = 500
+                nfits = 1000
             alpha = 1 / float(nfits) * 10.0
             for j in xrange(nfits):
                 params['phi_cnm'] = \
@@ -1622,32 +1643,42 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                 params['Z'] = core_results['krumholz_results']['Z'][j]
                 params['phi_mol'] = \
                     core_results['krumholz_results']['phi_mol'][j]
+                params['alphaG'] = \
+                    core_results['sternberg_results']['alphaG'][j]
+                params['Z'] = core_results['sternberg_results']['Z'][j]
+                params['phi_g'] = \
+                    core_results['sternberg_results']['phi_g'][j]
                 if 'sternberg' in model:
                     model_fits = calc_sternberg(params,
-                                              h_sd_extent=(0, limits[1]),
+                                              h_sd_extent=(0, 300),
                                               return_fractions=False,
                                               return_hisd=True)
+                    color = 'b'
                 elif 'krumholz' in model:
                     model_fits = calc_krumholz(params,
-                                              h_sd_extent=(0, limits[1]),
+                                              h_sd_extent=(0, 300),
                                               return_fractions=False,
                                               return_hisd=True)
+                    color = 'r'
 
                 ax.plot(model_fits[1], model_fits[2],
                         linestyle='-',
-                        color=c_cycle[2],
+                        color=color,
                         alpha=alpha,
                         )
                 hi_trans = core_results['krumholz_results']['hi_transition'][j]
-                ax.axvline(hi_trans,
-                           alpha=0.5,
-                           color='r')
+
+                if 0:
+                    ax.axvline(hi_trans,
+                               alpha=0.5,
+                               color='r')
 
         elif 1:
             for model in ('krumholz', 'sternberg'):
                 analysis = model_analysis[core][model + '_results']
                 plot_fits = calc_model_plot_fit(analysis,
-                                                model=model)
+                                                model=model,
+                                                )
                 c_cycle = myplt.set_color_cycle(num_colors=2,
                                                 cmap_limits=[0.4, 0.8])
 
@@ -1660,16 +1691,27 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                     color = c_cycle[1]
                     alpha = 0.5
 
-
                 fill_between = 0
-                l3 = ax.plot(plot_fits[0], plot_fits[1],
-                        linestyle='-',
-                        label=label,
-                        color=color,
-                        linewidth=1,
-                        zorder=1000,
-                        alpha=1
-                        )
+                if 0:
+                    l3 = ax.plot(plot_fits[0], plot_fits[1],
+                            linestyle='-',
+                            label=label,
+                            color=color,
+                            linewidth=1,
+                            zorder=1000,
+                            alpha=1
+                            )
+                else:
+                    hi_sd_fit = \
+                        model_analysis[core][model + '_results']['hisd_fit']
+                    l3 = ax.plot(h_sd_fit, hi_sd_fit,
+                            linestyle='-',
+                            label=label,
+                            color=color,
+                            linewidth=1,
+                            zorder=1000,
+                            alpha=1
+                            )
                 if fill_between:
                     if sum(plot_fits[2] > plot_fits[3]) > 0:
                         where = plot_fits[2] > plot_fits[3]
@@ -1710,6 +1752,19 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                                 linewidth=1.5,
                                 zorder=0,
                                 )
+
+        if hsd_error_list[i] is not None:
+            print hsd_error_list[i]
+            print hisd_error_list[i]
+            ax.errorbar(90,
+                        np.max(hi_sd_nonans) * 1.1,
+                        xerr=np.median(hsd_error_list[i]),
+                        yerr=np.median(hisd_error_list[i]),
+                        #markersize=1.5,
+                        marker='',
+                        alpha=0.3,
+                        color='k',
+                        )
 
         if i == 0:
             ax.legend(loc='upper right')
@@ -1753,6 +1808,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None,
                               alpha=1),
                     verticalalignment='bottom',
                     horizontalalignment='right',
+                    zorder=10000,
                     )
 
         ax.set_xscale(scale[0])
@@ -1995,7 +2051,7 @@ def plot_hi_cdf_grid(hsd_list, hisd_list, core_names=None,
             dpi = 100
         plt.savefig(filename, bbox_inches='tight', dpi=dpi)
 
-def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
+def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
         model_results=None, model_analysis=None, xlimits=None, ylimits=None,
         scale=('linear', 'linear'), filename=None, show_params=False,
         levels=5, ncols=2):
@@ -2131,7 +2187,31 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None,
             ax.set_ylim(ylimits[0], ylimits[1])
             #ylimits = None
 
-        if 0:
+        if model_fits is not None:
+            c_cycle = myplt.set_color_cycle(num_colors=2,
+                                            cmap_limits=[0.4, 0.8])
+
+            for model in ('krumholz', 'sternberg'):
+                if 'krumholz' in model:
+                    label = 'K+09'
+                    color = c_cycle[0]
+                    alpha = 0.5
+                else:
+                    label = 'S+14'
+                    color = c_cycle[1]
+                    alpha = 0.5
+                h_sd_fit = model_fits[i][model + '_results']['h_sd']
+                rh2_fit = model_fits[i][model + '_results']['rh2']
+                l3 = ax.plot(h_sd_fit,
+                             rh2_fit,
+                             linestyle='-',
+                             label=label,
+                             color=color,
+                             linewidth=1,
+                             zorder=1000,
+                             alpha=1
+                             )
+        elif 0:
             # get bootstrap results
             model = 'krumholz'
             core_results = model_results['cores'][core]
@@ -2791,6 +2871,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                   'phi_g': analysis['phi_g'],
                   'Z': analysis['Z'],
                   }
+
         h_sd, hi_sd = calc_sternberg(params,
                                   h_sd_extent=(0, 100),
                                   h_sd=hsd,
@@ -2869,8 +2950,21 @@ def plot_multicloud_results(results):
     rh2_list = []
     hsd_list = []
     hisd_list = []
+    nhi_error_list = []
+    nh2_error_list = []
+    rh2_error_list = []
+    hsd_error_list = []
+    hisd_error_list = []
+    hsd_median_error_list = []
+    hisd_median_error_list = []
     hisd_cores_list = []
     hsd_cores_list = []
+    rh2_cores_list = []
+    hisd_error_cores_list = []
+    hsd_error_cores_list = []
+    hisd_median_error_cores_list = []
+    hsd_median_error_cores_list = []
+    rh2_error_cores_list = []
     model_results_list = []
     model_analysis_list = []
     model_analysis_dict = {}
@@ -2879,6 +2973,7 @@ def plot_multicloud_results(results):
     cloud_name_list = []
     core_names_list = []
     core_list = []
+    cloud_model_fits_list = []
     for i, cloud_name in enumerate(results):
         results_dict = results[cloud_name]
         figure_dir = results_dict['filenames']['figure_dir']
@@ -2899,6 +2994,13 @@ def plot_multicloud_results(results):
         rh2_list.append(data_products['rh2'])
         hsd_list.append(data_products['h_sd'])
         hisd_list.append(data_products['hi_sd'])
+        nhi_error_list.append(data_products['nhi_error'])
+        nh2_error_list.append(data_products['nh2_error'])
+        rh2_error_list.append(data_products['rh2_error'])
+        hsd_error_list.append(data_products['h_sd_error'])
+        hisd_error_list.append(data_products['hi_sd_error'])
+        hsd_median_error_list.append(data_products['h_sd_median_error'])
+        hisd_median_error_list.append(data_products['hi_sd_median_error'])
         dgr_list.append(results_dict['mc_analysis']['dgr'])
         #fit_params_list.append(results_dict['params_summary'])
         model_results_list.append(results_dict['mc_results']['ss_model_results'])
@@ -2909,17 +3011,37 @@ def plot_multicloud_results(results):
         global_args = results_dict['global_args']
         cores = global_args['ss_model_kwargs']['cores']
         cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
+        model_kwargs = global_args['ss_model_kwargs']['model_kwargs']
         rh2_core_list = []
         hsd_core_list = []
         hisd_core_list = []
+        rh2_error_core_list = []
+        hsd_error_core_list = []
+        hsd_median_error_core_list = []
+        hisd_error_core_list = []
+        hisd_median_error_core_list = []
         core_names = []
+        model_fits_list = []
         core_list.append(cores)
-        for core in cores_to_plot:
+        for j, core in enumerate(cores_to_plot):
             core_indices = cores[core]['indices_orig']
             core_names.append(core)
             hisd_core_list.append(hisd_list[i][core_indices])
             hsd_core_list.append(hsd_list[i][core_indices])
             rh2_core_list.append(rh2_list[i][core_indices])
+            hisd_error_core_list.append(hisd_error_list[i][core_indices])
+            hsd_error_core_list.append(hsd_error_list[i][core_indices])
+            hisd_median_error_core_list.append(hisd_median_error_list[i])
+            hsd_median_error_core_list.append(hsd_median_error_list[i])
+            rh2_error_core_list.append(rh2_error_list[i][core_indices])
+
+            model_fits_list.append(refit_data(hsd_core_list[j],
+                                              rh2_core_list[j],
+                                              h_sd_error=hsd_error_core_list[j],
+                                              rh2_error=rh2_error_core_list[j],
+                                              model_kwargs=model_kwargs,
+                                              )
+                                   )
 
             if 0:
                 rh2_copy = rh2_list[i].copy()
@@ -2927,9 +3049,14 @@ def plot_multicloud_results(results):
                 plt.imshow(rh2_copy, origin='lower')
                 plt.savefig('/d/bip3/ezbc/scratch/core_' + core + '.png')
 
+        cloud_model_fits_list.append(model_fits_list)
         core_names_list.append(core_names)
         hisd_cores_list.append(hisd_core_list)
         hsd_cores_list.append(hsd_core_list)
+        hisd_error_cores_list.append(hisd_error_core_list)
+        hsd_error_cores_list.append(hsd_error_core_list)
+        hisd_median_error_cores_list.append(hisd_median_error_core_list)
+        hsd_median_error_cores_list.append(hsd_median_error_core_list)
 
         if 0:
             print(cloud_name)
@@ -3055,6 +3182,7 @@ def plot_multicloud_results(results):
                                       model_results=model_results_list[i],
                                       model_analysis=\
                                               model_analysis_list[i]['cores'],
+                                      model_fits=model_fits_list,
                                       limits=[-9, 159, -1.5, 15],
                                       scale=('linear', 'linear'),
                                       levels=levels,
@@ -3068,6 +3196,7 @@ def plot_multicloud_results(results):
                                       model_results=model_results_list[i],
                                       model_analysis=\
                                           model_analysis_list[i]['cores'],
+                                      model_fits=cloud_model_fits_list,
                                       limits=[-9, 159, -1.5, 15],
                                       levels=levels,
                                       scale=('linear', 'linear'),
@@ -3132,6 +3261,9 @@ def plot_multicloud_results(results):
                               model_results=model_results_list[i],
                               model_analysis=\
                                   model_analysis_list[i]['cores'],
+                              model_fits=cloud_model_fits_list[i],
+                              hsd_error_list=hsd_median_error_cores_list[i],
+                              hisd_error_list=hisd_median_error_cores_list[i],
                               #limits=[-9, 100, 2, 14],
                               #limits=[-9, 159, 3, 14],
                               xlimits=[-9, 100],
@@ -3173,6 +3305,7 @@ def plot_multicloud_results(results):
                               model_results=model_results_list[i],
                               model_analysis=\
                                   model_analysis_list[i]['cores'],
+                              model_fits=cloud_model_fits_list[i],
                               #limits=[-9, 100, 2, 14],
                               #limits=[-9, 159, 3, 14],
                               xlimits=[-9, 100],
@@ -3442,7 +3575,6 @@ def write_nhi_properties_csv(nhi_list, cloud_name_list, filename):
     for i, cloud in enumerate(cloud_name_list):
         d['cloud'].append(cloud)
 
-        print np.std(nhi_list[i])
         nhi = nhi_list[i]
         nhi = nhi[~np.isnan(nhi)]
         d['nhi_std'].append(np.std(nhi))
@@ -4060,7 +4192,8 @@ def fit_av_model(av, nhi, av_error=None, nhi_error=None, algebraic=False,
         return results
 
 def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
-        h_sd_error=None, bootstrap_residuals=False, nboot=100, G0=1.0):
+        h_sd_error=None, bootstrap_residuals=False, nboot=100, G0=1.0,
+        odr_fit=False,):
 
     # Fit R_H2
     #---------
@@ -4081,6 +4214,7 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
                           nboot=nboot,
                           rh2_error=rh2_error,
                           h_sd_error=h_sd_error,
+                          odr_fit=odr_fit,
                           )
 
 
@@ -4107,6 +4241,7 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
                          G0=G0,
                          rh2_error=rh2_error,
                          h_sd_error=h_sd_error,
+                         odr_fit=odr_fit,
                          )
 
 
@@ -4929,6 +5064,7 @@ def bootstrap_worker(global_args, i):
 
     #queue = global_args['queue']
 
+
     # Create simulated data
     # -------------------------------------------------------------------------
     # add random noise
@@ -4957,6 +5093,13 @@ def bootstrap_worker(global_args, i):
                          )
     else:
         nhi_sim = nhi
+
+    if global_args['calculate_median_error']:
+        error_dict = {}
+        error_dict['av_sim'] = av_sim
+        error_dict['nhi_sim'] = nhi_sim
+    else:
+        error_dict = None
 
     # Bootstrap data
     # -------------------------------------------------------------------------
@@ -5052,6 +5195,11 @@ def bootstrap_worker(global_args, i):
         if 0:
             assert av[core_indices] == cores[core]['test_pix']
 
+
+        if 0:
+            print('\n\tRegion size = ' + \
+                  '{0:.0f} pix'.format(core_indices.size))
+
         # Bootstrap core indices
         #core_boot_indices = core_indices[index_ints]
         np.random.seed()
@@ -5118,7 +5266,7 @@ def bootstrap_worker(global_args, i):
                                  'av_scalar_sim': av_scalar_sim}
     mc_results['av_model_results'] = av_model_results
     mc_results['ss_model_results'] = ss_model_results
-
+    mc_results['sim_images'] = error_dict
 
     # Plot distribution and fit
     #if plot_kwargs['plot_diagnostics']:
@@ -5190,7 +5338,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
         av_reference=None, nhi_image_background=None, num_bootstraps=100,
         plot_kwargs=None, scale_kwargs=None, use_intercept=True,
         sim_hi_error=False, ss_model_kwargs=None, multiprocess=True,
-        rotate_cores=False,):
+        rotate_cores=False, calc_median_error=False):
 
     import multiprocessing as mp
     import sys
@@ -5240,6 +5388,16 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
     global_args['scale_kwargs'] = scale_kwargs
     global_args['sim_hi_error'] = sim_hi_error
     global_args['ss_model_kwargs'] = ss_model_kwargs
+    global_args['calculate_median_error'] = calc_median_error
+
+    # initialize errors on av and nhi
+    error_dict = {}
+    error_dict['nhi_error'] =  0.0
+    error_dict['av_error'] =  0.0
+    error_dict['av_sim_images'] = []
+    error_dict['nhi_sim_images'] = []
+    global_args['error_dict'] = error_dict
+
     if sim_hi_error:
         global_args['hi_data'] = hi_data
         global_args['hi_data_error'] = hi_data_error
@@ -5549,6 +5707,9 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
     mc_results['ss_model_results'] = {}
     mc_results['av_model_results']['dgr'] = empty()
     mc_results['ss_model_results']['cores'] = {}
+    mc_results['sim_images'] = {}
+    mc_results['sim_images']['av_sim'] = []
+    mc_results['sim_images']['nhi_sim'] = []
     for core in ss_model_kwargs['cores_to_plot']:
         mc_results['ss_model_results']['cores'][core] = {}
         core_dict = mc_results['ss_model_results']['cores'][core]
@@ -5569,6 +5730,9 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
              'vel_range_sim': np.empty((len(processes), 2)),
              'av_scalar_sim': empty()}
 
+    mc_results['sim_images'] = {'av_sim': [],
+                                'nhi_sim': []}
+
     for i in xrange(len(processes)):
         #result = queue.get())
 
@@ -5583,6 +5747,14 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
         mc_results['av_model_results']['dgr'][i] = \
             result['av_model_results']['dgr_cloud']
 
+        if result['sim_images'] is not None:
+            mc_results['sim_images']['av_sim']\
+                    .append(result['sim_images']['av_sim'])
+            mc_results['sim_images']['nhi_sim']\
+                    .append(result['sim_images']['nhi_sim'])
+        else:
+            mc_results['sim_images'] = None
+
         for core in result['ss_model_results']:
             for model in result['ss_model_results'][core]:
                 for param in result['ss_model_results'][core][model]:
@@ -5591,6 +5763,8 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
                     model_dict = \
                         mc_results['ss_model_results']['cores'][core][model]
                     model_dict[param][i] = param_result
+
+
 
     return mc_results
 
@@ -5945,38 +6119,101 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
 
     return results
 
-def add_coldens_images(data_products, mc_analysis):
+def add_coldens_images(data_products, mc_analysis, mc_results):
 
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
         calculate_sd, calculate_nh2, calculate_nh2_error
 
     nhi = data_products['nhi']
+    nhi_error = data_products['nhi_error']
     av = data_products['av']
+    av_error = data_products['av_error']
+    dgr = mc_analysis['dgr']
+    dgr_error = np.mean(np.abs(mc_analysis['dgr_error']))
 
-    # calculate N(H2) maps
-    nh2 = calculate_nh2(nhi_image=nhi,
-                        av_image=av,
-                        dgr=mc_analysis['dgr'])
+    nh2_image = calculate_nh2(nhi_image=nhi,
+                              av_image=av,
+                              dgr=dgr)
+
+    # nh2 = (av * dgr - nhi) / 2
+    # nh2_error = ((nh2 * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5)**2 \
+    #              - nhi_error**2.0)**0.5 / 2
+    av_comp_error = nh2_image * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5
+    nh2_image_error = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
 
     # convert to column density to surface density
-    hi_sd = calculate_sd(nhi,
-                         sd_factor=1/1.25)
+    hi_sd_image = calculate_sd(nhi,
+                               sd_factor=1/1.25)
+    hi_sd_image_error = calculate_sd(nhi_error,
+                                     sd_factor=1/1.25)
 
-    h2_sd = calculate_sd(nh2,
-                         sd_factor=1/0.625)
+    h2_sd_image = calculate_sd(nh2_image,
+                               sd_factor=1/0.625)
+    h2_sd_image_error = calculate_sd(nh2_image_error,
+                               sd_factor=1/0.625)
 
-    h_sd = hi_sd + h2_sd
+    h_sd_image = hi_sd_image + h2_sd_image
+    h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
 
     # Write ratio between H2 and HI
-    rh2 = h2_sd / hi_sd
+    rh2_image = h2_sd_image / hi_sd_image
+    rh2_image_error = rh2_image * (h2_sd_image_error**2 / h2_sd_image**2 + \
+                      h_sd_image_error**2 / h_sd_image**2)**0.5
 
-    data_products['nh2'] = nh2
-    data_products['h2_sd'] = h2_sd
-    data_products['hi_sd'] = hi_sd
-    data_products['h_sd'] = h_sd
-    data_products['rh2'] = rh2
+    data_products['nh2'] = nh2_image
+    data_products['h2_sd'] = h2_sd_image
+    data_products['hi_sd'] = hi_sd_image
+    data_products['h_sd'] = h_sd_image
+    data_products['rh2'] = rh2_image
+    data_products['nh2_error'] = nh2_image_error
+    data_products['h2_sd_error'] = h2_sd_image_error
+    data_products['hi_sd_error'] = hi_sd_image_error
+    data_products['h_sd_error'] = h_sd_image_error
+    data_products['rh2_error'] = rh2_image_error
 
-def calc_mc_analysis(mc_results, resid_results):
+    # Median sim errors
+    # --------------------------------------------------------------------------
+    if mc_results['sim_images'] is not None:
+        av_error = np.median(np.nanstd(mc_results['sim_images']['av_sim']))
+        nhi_error = np.median(np.nanstd(mc_results['sim_images']['nhi_sim']))
+
+        # nh2 = (av * dgr - nhi) / 2
+        # nh2_error = ((nh2 * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5)**2 \
+        #              - nhi_error**2.0)**0.5 / 2
+        av_comp_error = nh2_image * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5
+        nh2_image_error = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
+
+        # convert to column density to surface density
+        hi_sd_image = calculate_sd(nhi,
+                                   sd_factor=1/1.25)
+        hi_sd_image_error = calculate_sd(nhi_error,
+                                         sd_factor=1/1.25)
+
+        h2_sd_image = calculate_sd(nh2_image,
+                                   sd_factor=1/0.625)
+        h2_sd_image_error = calculate_sd(nh2_image_error,
+                                   sd_factor=1/0.625)
+
+        h_sd_image = hi_sd_image + h2_sd_image
+        h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
+
+        # Write ratio between H2 and HI
+        rh2_image = h2_sd_image / hi_sd_image
+        rh2_image_error = rh2_image * (h2_sd_image_error**2 / h2_sd_image**2 + \
+                          h_sd_image_error**2 / h_sd_image**2)**0.5
+
+        data_products['h_sd_median_error'] = \
+            scipy.stats.nanmedian(h_sd_image_error.ravel())
+        data_products['hi_sd_median_error'] = \
+                scipy.stats.nanmedian(hi_sd_image_error.ravel())
+        data_products['rh2_median_error'] = \
+                scipy.stats.nanmedian(rh2_image_error.ravel())
+    else:
+        data_products['h_sd_median_error'] = None
+        data_products['hi_sd_median_error'] = None
+        data_products['rh2_median_error'] = None
+
+def calc_mc_analysis(mc_results, resid_results, data_products):
 
     import mystats
 
@@ -6070,28 +6307,71 @@ def calc_mc_analysis(mc_results, resid_results):
             core_analysis[core][model]['hsd_fit'] = model_fits[1]
             core_analysis[core][model]['hisd_fit'] = model_fits[2]
 
-
     mc_analysis = {'dgr': dgr,
                    'dgr_error': dgr_error,
                    'cores': core_analysis,
                    }
 
+    # comment
+
     return mc_analysis
 
-def add_results_analysis(results_dict):
+def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
 
-    # calculate statistics of bootstrapped model values
-    results_dict['mc_analysis'] = calc_mc_analysis(results_dict['mc_results'],
-                                            results_dict['resid_mc_results'])
+    data_array = h_sd, rh2, h_sd_error, rh2_error
+    h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
+
+    G0 = model_kwargs['krumholz_params']['G0'] + \
+         np.random.normal(model_kwargs['krumholz_params']['G0_error'])
+    ss_model_result = \
+        fit_steady_state_models(h_sd.ravel(),
+                                rh2.ravel(),
+                                rh2_error=rh2_error.ravel(),
+                                h_sd_error=h_sd_error.ravel(),
+                                model_kwargs=model_kwargs,
+                                G0=G0,
+                                )
+    fitted_models = {}
+    for model in ss_model_result:
+        params = {}
+        for param in ss_model_result[model]:
+            params[param] = ss_model_result[model][param]
+
+        if 'sternberg' in model:
+            model_fits = calc_sternberg(params,
+                                      h_sd_extent=(0.001, 200),
+                                      return_fractions=False,
+                                      return_hisd=True)
+        elif 'krumholz' in model:
+            model_fits = calc_krumholz(params,
+                                      h_sd_extent=(0.001, 200),
+                                      return_fractions=False,
+                                      return_hisd=True)
+
+        fitted_models[model] = {}
+        fits = fitted_models[model]
+        fits['rh2'] = model_fits[0]
+        fits['h_sd'] = model_fits[1]
+        fits['hi_sd'] = model_fits[2]
+
+    return fitted_models
+
+def add_results_analysis(results_dict):
 
     if 0:
         for core in results_dict['mc_analysis']['cores']:
             for key in results_dict['mc_analysis']['cores'][core]:
                 print results_dict['mc_analysis']['cores'][core][key]
 
+    # calculate statistics of bootstrapped model values
+    results_dict['mc_analysis'] = calc_mc_analysis(results_dict['mc_results'],
+                                            results_dict['resid_mc_results'],
+                                            results_dict['data_products'])
+
     # derive N(H2), N(H) etc...
     add_coldens_images(results_dict['data_products'],
-                       results_dict['mc_analysis'])
+                       results_dict['mc_analysis'],
+                       results_dict['mc_results'])
 
 def run_cloud_analysis(global_args,):
 
@@ -6224,10 +6504,15 @@ def run_cloud_analysis(global_args,):
     avg_scalar = (scale_kwargs['av_scalar'] + 1) / 2.0
     av_data_backsub_scaled = av_data_backsub / avg_scalar
 
-    if 0:
-        print('\n\tSubtracting background of ' + \
-              str(scale_kwargs['intercept']) + \
-              ' from ' + cloud_name)
+    if 1:
+        print('\n\tAv scaling stats:')
+        print('\t\tSlope: ' + \
+              '{0:.2f} +/- {1:.2f}'.format(scale_kwargs['av_scalar'],
+                                           scale_kwargs['av_scalar_error']))
+        print('\t\tIntercept: ' + \
+              '{0:.2f} +/- {1:.2f}'.format(scale_kwargs['intercept'],
+                                           scale_kwargs['intercept_error']))
+
 
     # Load HI and CO cubes
     hi_data, hi_header = fits.getdata(hi_filename, header=True)
@@ -6268,8 +6553,28 @@ def run_cloud_analysis(global_args,):
         hi_spectrum, hi_std_spectrum, co_spectrum = \
                 myio.load_pickle(spectra_filename)
     else:
-        hi_spectrum = myia.calc_spectrum(hi_data)
-        hi_std_spectrum = myia.calc_spectrum(hi_data, statistic=np.nanstd)
+        print('\n\tCalculating spectra...')
+        if global_args['smooth_hi_to_co_res']:
+            from astropy.convolution import Gaussian2DKernel, convolve
+            # Create kernel
+            # one pix = 5 arcmin, need 8.4 arcmin for CO res
+            # The beamsize is the FWHM. The convolution kernel needs the
+            # standard deviation
+            hi_res = 1.0
+            co_res = 8.4 / 5.0
+            width = (co_res**2 - hi_res**2)**0.5
+            std = width / 2.355
+            g = Gaussian2DKernel(width)
+
+            # Convolve data
+            hi_data_co_res = np.zeros(hi_data.shape)
+            for i in xrange(hi_data.shape[0]):
+                hi_data_co_res[i, :, :] = \
+                    convolve(hi_data[i, :, :], g, boundary='extend')
+
+        hi_spectrum = myia.calc_spectrum(hi_data_co_res)
+        hi_std_spectrum = myia.calc_spectrum(hi_data_co_res,
+                                             statistic=np.nanstd)
         co_spectrum = myia.calc_spectrum(co_data)
         myio.save_pickle(spectra_filename,
                          (hi_spectrum, hi_std_spectrum, co_spectrum))
@@ -6326,6 +6631,10 @@ def run_cloud_analysis(global_args,):
                       noise_cube=hi_data_error,
                       return_nhi_error=True,
                       )
+    nhi_error_median = scipy.stats.nanmedian(nhi_image_error, axis=None)
+    print('\n\tMedian N(HI) error = ' + \
+          '{0:.2f} x 10^20 cm^-2'.format(nhi_error_median))
+
     nhi_image_background = calculate_nhi(cube=hi_data,
                               velocity_axis=hi_vel_axis,
                               velocity_range=(-100,velocity_range[0]),
@@ -6377,6 +6686,7 @@ def run_cloud_analysis(global_args,):
     data_products = {
                      'av_data_backsub': av_data_backsub,
                      'av': av_data_backsub_scaled,
+                     'av_error': av_error_data,
                      'nhi': nhi_image,
                      'nhi_error': nhi_image_error,
                      'nhi_image_background': nhi_image_background,
@@ -6478,6 +6788,7 @@ def run_cloud_analysis(global_args,):
                        ss_model_kwargs=global_args['ss_model_kwargs'],
                        multiprocess=global_args['multiprocess'],
                        rotate_cores=global_args['rotate_cores'],
+                       calc_median_error=global_args['calculate_median_error']
                        )
     np.save(bootstrap_filename, boot_result)
 
@@ -6640,15 +6951,17 @@ def main():
                 'region': permutation[8],
                 'subtract_comps': permutation[9],
                 'plot_diagnostics': 0,
-                'clobber_spectra': False,
                 'use_background': permutation[10],
-                #'num_bootstraps': 10000,
-                'num_bootstraps': 1000,
-                'num_resid_bootstraps': 100,
-                'bootstrap_fit_residuals': False,
-                'hi_range_calc': permutation[11],
+                'clobber_spectra': 0,
+                'smooth_hi_to_co_res': 1,
                 'clobber_hi_error': 0,
                 'sim_hi_error': True,
+                'hi_range_calc': permutation[11],
+                #'num_bootstraps': 10000,
+                'num_bootstraps': 10,
+                'num_resid_bootstraps': 100,
+                'bootstrap_fit_residuals': False,
+                'calculate_median_error': False,
                 'multiprocess': 1,
                 'radiation_type': permutation[12],
                 'rotate_cores': permutation[13],

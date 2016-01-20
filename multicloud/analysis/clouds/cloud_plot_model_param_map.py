@@ -235,7 +235,7 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
 
 def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
         limits=None, filename=None, vlimits=(None,None), contours=None,
-        parameter='phi_cnm'):
+        parameter='phi_cnm', models=['krumholz', 'sternberg']):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -259,6 +259,15 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     # Create figure instance
     fig = plt.figure(figsize=(3.5, 10))
 
+
+    if 0:
+        parameters = []
+        if 'krumholz' in models:
+            parameters.append('phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
+
+    parameters = ['phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
+
+
     nrows_ncols=(5,1)
     ngrids=5
     axesgrid = AxesGrid(fig, (1,1,1),
@@ -278,7 +287,6 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     # ------------------
     # Av image
     # ------------------
-    parameters = ['phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
     for i in xrange(ngrids):
         # create axes
         ax = axesgrid[i]
@@ -794,18 +802,47 @@ def main():
                            #vlimits=[-0.1,18]
                            )
 
-        filename = figure_dir + 'maps/multicloud_av_ISMparams_map.' + \
-                   filetype
-        plot_ISMparams_map(header=av_header,
-                           av_image=av_data,
-                           df=df,
-                           core_dict=core_dict,
-                           #limits=[75, 50, 20, 37,],
-                           limits=[76, 43.5, 19.5, 38,],
-                           filename=filename,
-                           contours=[2, 4, 8, 16],
-                           #vlimits=[-0.1,18]
-                           )
+        elif 1:
+            filename = figure_dir + 'maps/multicloud_av_ISMparams_map.' + \
+                       filetype
+            plot_ISMparams_map(header=av_header,
+                               av_image=av_data,
+                               df=df,
+                               core_dict=core_dict,
+                               #limits=[75, 50, 20, 37,],
+                               limits=[76, 43.5, 19.5, 38,],
+                               filename=filename,
+                               contours=[2, 4, 8, 16],
+                               #vlimits=[-0.1,18]
+                               )
+        else:
+            filename = figure_dir + 'maps/multicloud_av_ISMparams_K+09_map.' + \
+                       filetype
+            plot_ISMparams_map(header=av_header,
+                               av_image=av_data,
+                               df=df,
+                               core_dict=core_dict,
+                               #limits=[75, 50, 20, 37,],
+                               limits=[76, 43.5, 19.5, 38,],
+                               filename=filename,
+                               contours=[2, 4, 8, 16],
+                               #vlimits=[-0.1,18]
+                               models='krumholz',
+                               )
+
+            filename = figure_dir + 'maps/multicloud_av_ISMparams_S+14_map.' + \
+                       filetype
+            plot_ISMparams_map(header=av_header,
+                               av_image=av_data,
+                               df=df,
+                               core_dict=core_dict,
+                               #limits=[75, 50, 20, 37,],
+                               limits=[76, 43.5, 19.5, 38,],
+                               filename=filename,
+                               contours=[2, 4, 8, 16],
+                               #vlimits=[-0.1,18]
+                               models='sternberg',
+                               )
 
 if __name__ == '__main__':
     main()

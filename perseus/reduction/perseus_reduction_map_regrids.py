@@ -77,6 +77,7 @@ def main():
                    clobber=True)
 
     in_images = ('hi/perseus_hi_galfa_cube',
+                'hi/perseus_hi_galfa_dr1_cube',
               'av/perseus_av_planck_tau353',
               'av/perseus_av_error_planck_tau353',
               'dust_temp/perseus_dust_temp',
@@ -90,6 +91,7 @@ def main():
               'av/perseus_av_lee12_iris_masked')
 
     im_hi = 'hi/perseus_hi_galfa_cube'
+    im_hi_dr1 = 'hi/perseus_hi_galfa_dr1_cube'
     im_pl = 'av/perseus_av_planck_tau353'
     im_pl_err = 'av/perseus_av_error_planck_tau353'
     im_Td = 'dust_temp/perseus_dust_temp'
@@ -104,6 +106,7 @@ def main():
     # Load the images into miriad
     print('\nLoading images into miriad...')
     out_images = (im_hi,
+                  im_hi_dr1,
                   im_pl,
                   im_pl_err,
                   im_Td,
@@ -130,7 +133,8 @@ def main():
     # Regrid Planck images and HI image to have one beam/pixel
     print('\nRegridding Planck images')
 
-    images = (im_pl, im_pl_err, im_Td, im_Td_err, im_pl2, im_pl2_err, im_hi)
+    images = (im_pl, im_pl_err, im_Td, im_Td_err, im_pl2, im_pl2_err, im_hi,
+            im_hi_dr1)
 
     desc = (59.75,0,-0.08333,180,26.05,0,0.08333,132)
 
@@ -159,7 +163,7 @@ def main():
     for image in images:
 
         # If HI, regrid the velocity axis as well
-        if image == im_hi:
+        if image in (im_hi, im_hi_dr1):
             desc = desc_hi
         else:
             desc = desc_av
@@ -177,17 +181,17 @@ def main():
     print('\nSmoothing images to Planck resolution')
 
     planck_beam = 5.0 # arcmin
-    im_beams = np.array([3.7, 2.5, 2.5, 4.3]) # arcmin
+    im_beams = np.array([3.7, 3.7, 2.5, 2.5, 4.3]) # arcmin
     conv_beams = (planck_beam**2 - im_beams**2)**0.5
 
-    images = [im_hi, im_k09, im_lee_2mass, im_lee_iris]
+    images = [im_hi, im_hi_dr1, im_k09, im_lee_2mass, im_lee_iris]
 
     for i in xrange(len(images)):
         exists = check_file(images[i] + '_smooth_planckres.mir',
                             clobber=clobber)
 
         if not exists:
-            if images[i] == im_hi:
+            if images[i] in (im_hi, im_hi_dr1):
                 image = images[i] + '_5arcmin'
             else:
                 image = images[i]
@@ -235,7 +239,9 @@ def main():
               im_lee_2mass + '_regrid_planckres',
               im_lee_iris + '_regrid_planckres',
               im_co + '_regrid_planckres',
-              im_hi + '_regrid_planckres']
+              im_hi + '_regrid_planckres',
+              im_hi_dr1 + '_regrid_planckres',
+              ]
 
     for image in images:
         exists = check_file(image + '.fits', clobber=clobber)

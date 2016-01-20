@@ -80,6 +80,7 @@ def main():
               '/d/bip3/ezbc/multicloud/data/av/multicloud_av_k09_nan',
               'av/taurus_av_pineda2010',
               'hi/taurus_hi_galfa_cube',
+              'hi/taurus_hi_galfa_dr1_cube',
               'av/taurus_av_planck_tau353',
               'av/taurus_av_error_planck_tau353',
               'av/taurus_av_planck_radiance',
@@ -100,6 +101,7 @@ def main():
     im_pl2 = 'av/taurus_av_planck_radiance'
     im_pl2_err = 'av/taurus_av_error_planck_radiance'
     im_hi = 'hi/taurus_hi_galfa_cube'
+    im_hi_dr1 = 'hi/taurus_hi_galfa_dr1_cube'
     im_co = 'co/taurus_co_cfa_cube'
     im_p10 = 'av/taurus_av_p10'
     im_k09 = 'av/taurus_av_k09'
@@ -117,6 +119,7 @@ def main():
     out_images = (im_k09,
                   im_p10,
                   im_hi,
+                  im_hi_dr1,
                   im_pl,
                   im_pl_err,
                   im_pl2,
@@ -151,6 +154,7 @@ def main():
               im_pl2,
               im_pl2_err,
               im_hi,
+              im_hi_dr1,
               #im_pl_co,
               #im_pl_co_err,
               #im_pl_co_10,
@@ -188,7 +192,7 @@ def main():
     for image in images:
 
         # If HI, regrid the velocity axis as well
-        if image == im_hi:
+        if image in (im_hi, im_hi_dr1):
             desc = desc_hi
         else:
         	desc = desc_av
@@ -207,10 +211,10 @@ def main():
     print('\nSmoothing images to Planck resolution')
 
     planck_beam = 5.0 # arcsec
-    im_beams = np.array([2.4, 3.3, 3.7]) # arcsec
+    im_beams = np.array([2.4, 3.3, 3.7, 3.7]) # arcsec
     conv_beams = (planck_beam**2 - im_beams**2)**0.5
 
-    images = [im_k09, im_p10, im_hi]
+    images = [im_k09, im_p10, im_hi, im_hi_dr1]
 
     for i in xrange(len(images)):
 
@@ -220,7 +224,7 @@ def main():
         print('\t{:s}.mir\n'.format(image))
 
         if not exists:
-            if images[i] == im_hi:
+            if images[i] in (im_hi, im_hi_dr1):
                 image = images[i] + '_5arcmin'
             else:
             	image = images[i]
@@ -271,7 +275,9 @@ def main():
               im_k09 + '_regrid_planckres',
               im_p10 + '_regrid_planckres',
               im_co + '_regrid_planckres',
-              im_hi + '_regrid_planckres']
+              im_hi + '_regrid_planckres',
+              im_hi_dr1 + '_regrid_planckres',
+              ]
 
     for image in images:
         check_file(image + '.fits', clobber=clobber)

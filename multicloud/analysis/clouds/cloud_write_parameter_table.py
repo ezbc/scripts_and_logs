@@ -595,37 +595,44 @@ def write_model_params_table(core_dict):
 
         # append model params and errors
         # ------------------------------
-        for model in ( 'krumholz', 'sternberg',):
-            if model == 'krumholz':
-                params_to_write = ['phi_cnm',]
-            else:
-                params_to_write = ['alphaG',
-                                   #'phi_g',
-                                   'hi_transition']
+        if 0:
+            for model in ( 'krumholz', 'sternberg',):
+                if model == 'krumholz':
+                    params_to_write = ['phi_cnm',]
+                else:
+                    params_to_write = ['alphaG',
+                                       #'phi_g',
+                                       'hi_transition']
 
 
-                #print '\nphi_g:'
-                #print core[model]['phi_g']
-                #print core[model]['phi_g_error']
+                    #print '\nphi_g:'
+                    #print core[model]['phi_g']
+                    #print core[model]['phi_g_error']
 
-            for i, param_name in enumerate(params_to_write):
-                param = \
-                    core[model][param_name]
-                param_error = \
-                    core[model][param_name + '_error']
+                for i, param_name in enumerate(params_to_write):
+                    param = \
+                        core[model][param_name]
+                    param_error = \
+                        core[model][param_name + '_error']
 
-                param_info = (param, param_error[1], param_error[0])
+                    param_info = (param, param_error[1], param_error[0])
 
-                row_text = \
-                    add_row_element(row_text,
-                                    param_info,
-                                    text_format=text_param_format)
+                    row_text = \
+                        add_row_element(row_text,
+                                        param_info,
+                                        text_format=text_param_format)
 
-        # add H vol dens
-        # --------------
-        param = core['n_H']
-        param_error = core['n_H_error']
+        # Krumholz parameters
+        # -------------------
+        model = 'krumholz'
+        param_name = 'phi_cnm'
+        param = \
+            core[model][param_name]
+        param_error = \
+            core[model][param_name + '_error']
+
         param_info = (param, param_error[1], param_error[0])
+
         row_text = \
             add_row_element(row_text,
                             param_info,
@@ -643,8 +650,49 @@ def write_model_params_table(core_dict):
 
         # add HI temp
         # -----------
-        param = core['T_H']
-        param_error = core['T_H_error']
+        param = core['T_cnm']
+        param_error = core['T_cnm_error']
+        param_info = (param, param_error[1], param_error[0])
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format)
+
+
+        # Sternberg parameters
+        # -------------------
+        model = 'sternberg'
+        param_name = 'alphaG'
+        param = \
+            core[model][param_name]
+        param_error = \
+            core[model][param_name + '_error']
+
+        param_info = (param, param_error[1], param_error[0])
+
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format)
+
+        model = 'sternberg'
+        param_name = 'hi_transition'
+        param = \
+            core[model][param_name]
+        param_error = \
+            core[model][param_name + '_error']
+
+        param_info = (param, param_error[1], param_error[0])
+
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format)
+
+        # add H vol dens
+        # --------------
+        param = core['n_H']
+        param_error = core['n_H_error']
         param_info = (param, param_error[1], param_error[0])
         row_text = \
             add_row_element(row_text,
@@ -653,13 +701,14 @@ def write_model_params_table(core_dict):
 
         # add HI temp
         # -----------
-        param = core['T_cnm']
-        param_error = core['T_cnm_error']
+        param = core['T_H']
+        param_error = core['T_H_error']
         param_info = (param, param_error[1], param_error[0])
         row_text = \
             add_row_element(row_text,
                             param_info,
                             text_format=text_param_format)
+
 
         # Finish row
         row_text += ' \\\\[0.1cm] \n'
