@@ -5,7 +5,7 @@ reload(pl)
 from astropy.io import fits as pf
 import numpy as np
 
-def get_equatorial_limits(glons, glats):
+def get_galactic_limits(glons, glats):
 
     from astropy import units as u
     from astropy.coordinates import SkyCoord
@@ -16,7 +16,7 @@ def get_equatorial_limits(glons, glats):
     for perm in itertools.product(glons, glats):
         coord_list.append([perm[0], perm[1]])
 
-    # Convert the galactic to equatorial
+    # Convert the galactic to galactic
     coord_list_eq = []
     for coord in coord_list:
         c_gal = SkyCoord(l=coord[0]*u.degree,
@@ -37,23 +37,30 @@ def extract_data(datatype = 'ebv'):
     data_location = '/d/bip3/ezbc/planck/planck_raw_data/'
 
     # get bounding box around galactic box
-    glon_range = (38, 21)
-    glat_range = (40, 70)
-    ra_range, dec_range = get_equatorial_limits(glon_range, glat_range)
+    glon_range = (70, 90)
+    glat_range = (-4, 5)
+    #glon_range = (170, 180)
+    #glat_range = (-20, -10)
+    ra_range, dec_range = get_galactic_limits(glon_range, glat_range)
 
-    print ra_range, dec_range
-    #ra_range = (170, 181)
-    #dec_range = (-1, 1)
+    coord_type = 'equatorial'
+    coord_type = 'galactic'
+    x_range, y_range = glon_range, glat_range
+    #x_range, y_range = ra_range, dec_range
 
-    #ra_range = (0, 360)
-    #dec_range = (-90, 90)
+    print x_range, y_range
+    #x_range = (170, 181)
+    #y_range = (-1, 1)
+
+    #x_range = (0, 360)
+    #y_range = (-90, 90)
 
     if datatype == 'ebv':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 2,
                 dr_version = 2,
                 resolution = 0.01,
@@ -62,9 +69,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == 'ebv_err':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 3,
                 dr_version = 2,
                 resolution = 0.01,
@@ -73,9 +80,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == 'tau353':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 0,
                 dr_version = 2,
                 resolution = 0.01,
@@ -84,9 +91,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == 'tau353err':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 1,
                 dr_version = 2,
                 resolution = 0.01,
@@ -95,9 +102,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == 'temp':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 4,
                 dr_version = 2,
                 resolution = 0.05,
@@ -106,9 +113,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == 'temp_error':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = 'Dust Opacity',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 5,
                 dr_version = 2,
                 resolution = 0.05,
@@ -117,9 +124,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == '857':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = '857',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 1,
                 dr_version = 1,
                 resolution = 0.01,
@@ -128,9 +135,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == '545':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = '545',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 1,
                 dr_version = 1,
                 resolution = 0.01,
@@ -139,9 +146,9 @@ def extract_data(datatype = 'ebv'):
     elif datatype == '353':
         (data, header) = pl.get_data(data_location = data_location,
                 data_type = '353',
-                x_range = ra_range,
-                y_range = dec_range,
-                coord_type = 'equatorial',
+                x_range = x_range,
+                y_range = y_range,
+                coord_type = coord_type,
                 field = 1,
                 dr_version = 1,
                 resolution = 0.01,
