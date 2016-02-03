@@ -13,13 +13,13 @@ def create_synthetic_data(data_dict, filename=None):
     temp_range = [30, 9000]
     amp_range = [3 * RMS, 25 * RMS]
     nspectra = 200
-    ncomponents = 5
+    ncomponents = 10
 
     agd_data = \
         train.create_train_data(velocity_axis=data_dict['velocity_axis'],
                                 temp_range=temp_range,
                                 amp_range=amp_range,
-                                mean_range=[10, 400],
+                                mean_range=[-10, 20],
                                 ncomponents=ncomponents,
                                 nspectra=nspectra,
                                 rms=RMS)
@@ -67,20 +67,22 @@ def train_decomposer(train_dict, filename=None, one_phase=0):
         g.set('phase', 'two')
         g.set('alpha1', 3)
         g.set('alpha2', 8)
-        g.set('SNR_thresh', [3.,3.])
-        g.set('SNR2_thresh', [3.,0.])
+        g.set('SNR_thresh', [5, 5.])
+        g.set('SNR2_thresh', [5.,0.])
         #g.set('SNR_thresh', [5.,5.])
         #g.set('SNR2_thresh', [5.,0.])
 
-        g.train(alpha1_initial=5.0,
-                alpha2_initial=7,
+        g.train(alpha1_initial=2,
+                alpha2_initial=5,
                 plot=False,
                 verbose=False,
                 mode='conv',
-                learning_rate=1.0,
+                learning_rate=1,
                 eps=1.0,
                 MAD=0.1,
                 )
+
+        print 'made it to 85'
 
     return g
 
@@ -149,7 +151,7 @@ def format_data(data_dict, filename=None):
     vel_axis = data_dict['velocity_axis']
 
     # Calculate the RMS as the median RMS of all spectra above 350 km/s
-    rms_indices = np.where(vel_axis > 350)[0]
+    rms_indices = np.where(vel_axis > 20)[0]
     RMS = np.median(np.sqrt(np.nanmean(cube[rms_indices, :, :]**2)))
     if 0:
         print 'RMS cube shape', cube[rms_indices, :, :].shape
@@ -258,7 +260,7 @@ def main():
     from mydecomposition import get_decomposed_data, decompose_data
 
     #os.chdir('/d/bip3/ezbc/magellanic_stream/scripts/gausspy_decomp/')
-    os.chdir('/home/ezbc/research/magellanic_stream/scripts/gausspy_decomp/')
+    #os.chdir('/home/ezbc/research/magellanic_stream/scripts/gausspy_decomp/')
 
     DIR_HI = '/d/bip3/ezbc/multicloud/data/hi/'
     FILENAME_DATA = '/d/bip3/ezbc/multicloud/data/decomposition/agd_multicloud_data.pickle'
@@ -266,7 +268,8 @@ def main():
     FILENAME_TRAIN_DECOMPOSED = \
             '/d/bip3/ezbc/multicloud/data/decomposition/agd_multicloud_train_decomp.pickle'
     FILENAME_DECOMPOSED = '/d/bip3/ezbc/multicloud/data/decomposition/agd_multicloud_decomp.pickle'
-    FILENAME_CUBE = '/d/bip3/ezbc/multicloud/data/hi/multicloud_hi_galfa_cube.fits'
+    FILENAME_CUBE = \
+    '/d/bip3/ezbc/perseus/data/hi/perseus_hi_galfa_cube_sub_regrid.fits'
 
     # Which steps to load?
     LOAD_DATA = 0
@@ -280,6 +283,7 @@ def main():
                              filename_cube=FILENAME_CUBE)
 
     print data_dict['x_values']
+    print data_dict['RMS']
 
     # 1) Create synthetic data with known Gaussian parameters expected to be
     # in the data.

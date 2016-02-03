@@ -2,6 +2,7 @@
 
 import numpy as np
 import pickle
+import os
 
 def crop_results(results_dict, filename_crop, cropped_size=100, limits=None):
 
@@ -63,20 +64,20 @@ def crop_outliers(results_dict):
 def reload_wcs_positions(results_dict):
 
     from mycoords import make_velocity_axis
-    from mydecomposition import plot_nhi_maps, create_synthetic_cube
+    from localmodule import plot_nhi_maps, create_synthetic_cube
     import myimage_analysis as myia
-    import pyfits as fits
+    from astropy.io import fits
     from astropy import units as u
     from astropy.coordinates import SkyCoord
     from astropy import wcs
 
     # Plot names
-    DIR_FIG = '/d/bip3/ezbc/magellanic_stream/figures/'
+    DIR_FIG = '/d/bip3/ezbc/multicloud/figures/decomposition/'
     FILENAME_FIG = DIR_FIG + 'nhi_map_data_synth.png'
 
     # Load HI Cube
-    DIR_HI = '/d/bip3/ezbc/magellanic_stream/data/hi/'
-    FILENAME_CUBE = 'gass_280_-45_1450212515.fits'
+    DIR_HI = '/d/bip3/ezbc/multicloud/data/hi/'
+    FILENAME_CUBE = 'perseus_hi_galfa_cube_sub_regrid.fits'
     FILENAME_CUBE_SYNTH = DIR_HI + 'cube_synth.npy'
 
     print('\nLoading data cube...')
@@ -150,7 +151,7 @@ def reformat_results(results_dict, glat_lim=[-np.inf, np.inf],
             # Add each Gaussian component parameters
             for j in xrange(len(amps)):
                 keep = ((amps[j] < 100) & \
-                        (fwhms[j] < 500) & \
+                        (fwhms[j] < 100) & \
                         (fwhms[j] > 0) & \
                         (glat > glat_lim[0]) & \
                         (glat < glat_lim[1]) & \
@@ -179,7 +180,7 @@ def reformat_results(results_dict, glat_lim=[-np.inf, np.inf],
 
 def plot_spectra(results_dict, data_dict):
 
-    from mydecomposition import construct_spectrum
+    from localmodule import construct_spectrum
 
     #vel_axis = np.arange(0, 400, 1)
 
@@ -210,21 +211,54 @@ def plot_spectra(results_dict, data_dict):
 
     # test
 
-def plot_cluster_nhi_panels(results_ref=None, colors=None, limits=None,
-        cube=None, header=None, load_synthetic_cube=False, show=False):
+def get_cube():
 
     from mycoords import make_velocity_axis
-    from mydecomposition import plot_nhi_map_panels, create_synthetic_cube
+    from localmodule import plot_nhi_maps, create_synthetic_cube
     import myimage_analysis as myia
-    import pyfits as fits
+    from astropy.io import fits
+    from astropy.io import fits
+
+
+    # Load HI Cube
+    #DIR_HI = '../../data/hi/'
+    DIR_HI = '/d/bip3/ezbc/perseus/data/hi/'
+    #FILENAME_CUBE = '../../data/hi/gass_280_-50_1452892031.fits'
+    FILENAME_CUBE = 'perseus_hi_galfa_cube_sub_regrid.fits'
+    FILENAME_CUBE_SYNTH = DIR_HI + 'cube_synth.npy'
+
+    print('\nLoading data cube...')
+    cube_data, header = fits.getdata(DIR_HI + FILENAME_CUBE, header=True)
+
+    header['CUNIT3'] = 'm/s'
+    header['CUNIT2'] = 'deg'
+    header['CUNIT1'] = 'deg'
+    header['CTYPE3'] = 'VOPT'
+    header['SPECSYS'] = 'LSRK'
+
+    return cube_data, header
+
+def plot_cluster_nhi_panels(results_ref=None, colors=None, limits=None,
+        cube=None, header=None, load_synthetic_cube=False, show=False,
+        velocity_range=[0,500], save_pdf=False):
+
+    from mycoords import make_velocity_axis
+    from localmodule import plot_nhi_map_panels, create_synthetic_cube
+    import myimage_analysis as myia
+    from astropy.io import fits
 
     # Plot names
     DIR_FIG = '/d/bip3/ezbc/magellanic_stream/figures/'
+    #DIR_FIG = '../../figures/'
+    DIR_FIG = '/d/bip3/ezbc/multicloud/figures/decomposition/'
     FILENAME_FIG = DIR_FIG + 'nhi_maps_components.png'
+    if save_pdf:
+        FILENAME_FIG = FILENAME_FIG.replace('.png','.pdf')
 
     # Load HI Cube
-    DIR_HI = '/d/bip3/ezbc/magellanic_stream/data_products/hi/'
-    FILENAME_CUBE = 'gass_280_-45_1450212515.fits'
+    DIR_HI = '/d/bip3/ezbc/multicloud/data_products/hi/'
+    #FILENAME_CUBE = 'gass_280_-45_1450212515.fits'
+    FILENAME_CUBE = 'perseus_hi_galfa_cube_sub_regrid.fits'
     FILENAME_CUBE_SYNTH_BASE = DIR_HI + 'cube_synth_comp'
 
     velocity_axis = make_velocity_axis(header)
@@ -232,7 +266,7 @@ def plot_cluster_nhi_panels(results_ref=None, colors=None, limits=None,
     # Create N(HI) data
     nhi_data = myia.calculate_nhi(cube=cube,
                                   velocity_axis=velocity_axis,
-                                  velocity_range=[100, 400],
+                                  velocity_range=velocity_range,
                                   )
 
     # Create synthetic cube from fitted spectra
@@ -273,7 +307,7 @@ def plot_cluster_nhi_panels(results_ref=None, colors=None, limits=None,
         # Create N(HI) synthetic
         nhi_synthetic = myia.calculate_nhi(cube=cube_synthetic,
                                            velocity_axis=velocity_axis,
-                                           velocity_range=[100, 400],
+                                           velocity_range=velocity_range,
                                            )
 
         nhi_list.append(nhi_synthetic)
@@ -284,6 +318,18 @@ def plot_cluster_nhi_panels(results_ref=None, colors=None, limits=None,
 
     v_limits = [0, nhi_max]
 
+    # crop to highest valued cubes
+    n_left = 4
+    n_left = len(nhi_list)
+    sum_list = []
+    for nhi in nhi_list:
+        sum_list.append(np.nansum(nhi))
+    sort_indices = np.argsort(sum_list)[::-1]
+    new_list = []
+    for i in xrange(n_left):
+        new_list.append(nhi_list[sort_indices[i]])
+    nhi_list = new_list
+
     # Plot the maps together
 
     plot_nhi_map_panels(nhi_list,
@@ -291,50 +337,133 @@ def plot_cluster_nhi_panels(results_ref=None, colors=None, limits=None,
                         #limits=[278, -37, 282, -35],
                         limits=limits,
                         filename=FILENAME_FIG,
-                        #nhi_vlimits=v_limits,
-                        show=show
+                        nhi_vlimits=[-0.1, 15],
+                        show=show,
+                        vscale='linear',
                         )
 
-def get_cube():
+def plot_cluster_vel_panels(results_ref=None, colors=None, limits=None,
+        cube=None, header=None, load_synthetic_cube=False, show=False,
+        velocity_range=[0,500], save_pdf=False):
 
     from mycoords import make_velocity_axis
-    from mydecomposition import plot_nhi_maps, create_synthetic_cube
-    import myimage_analysis as myia
-    from astropy.io import fits
-    DIR_FIG = '../../figures/'
-    FILENAME_FIG = DIR_FIG + 'nhi_map_data_synth.png'
-
-    # Load HI Cube
-    DIR_HI = '../../data/hi/'
-    FILENAME_CUBE = '../../data/hi/gass_280_-50_1452892031.fits'
-    FILENAME_CUBE_SYNTH = DIR_HI + 'cube_synth.npy'
-
-    print('\nLoading data cube...')
-    cube_data, header = fits.getdata(DIR_HI + FILENAME_CUBE, header=True)
-
-    header['CUNIT3'] = 'm/s'
-    header['CUNIT2'] = 'deg'
-    header['CUNIT1'] = 'deg'
-    header['CTYPE3'] = 'VOPT'
-    header['SPECSYS'] = 'LSRK'
-
-    return cube_data, header
-
-def plot_nhi_maps(results_dict, limits=None, cube_data=None, header=None,
-        load_synthetic_cube=False):
-
-    from mycoords import make_velocity_axis
-    from mydecomposition import plot_nhi_maps, create_synthetic_cube
+    from localmodule import plot_vel_map_panels, create_synthetic_cube
     import myimage_analysis as myia
     from astropy.io import fits
 
     # Plot names
-    DIR_FIG = '/d/bip3/ezbc/magellanic_stream/figures/'
-    FILENAME_FIG = DIR_FIG + 'nhi_map_data_synth.png'
+    #DIR_FIG = '../../figures/'
+    DIR_FIG = '/d/bip3/ezbc/multicloud/figures/decomposition/'
+    FILENAME_FIG = DIR_FIG + 'vel_maps_components.png'
+    if save_pdf:
+        FILENAME_FIG = FILENAME_FIG.replace('.png','.pdf')
 
     # Load HI Cube
-    DIR_HI = '/d/bip3/ezbc/magellanic_stream/data_products/hi/'
-    FILENAME_CUBE = 'gass_280_-45_1450212515.fits'
+    DIR_HI = '../../data_products/hi/'
+    DIR_HI = '/d/bip3/ezbc/multicloud/data_products/hi/'
+    #FILENAME_CUBE = 'gass_280_-45_1450212515.fits'
+    FILENAME_CUBE = 'perseus_hi_galfa_cube_sub_regrid.fits'
+    FILENAME_CUBE_SYNTH_BASE = DIR_HI + 'cube_synth_comp'
+
+    # Create synthetic cube from fitted spectra
+    velocity_axis = results_ref['velocity_axis']
+
+    # get number of unique components
+    component_colors = np.unique(colors)
+    n_components = len(component_colors)
+
+    vel_list = []
+    nhi_list = []
+    vel_max = 0.0
+    for i in xrange(n_components):
+        if not load_synthetic_cube:
+            print('\n\tCreating synthetic cube ' + str(i+1) + ' of ' + \
+                   str(n_components))
+
+            # get the relevant parameters
+            indices = np.where(colors == component_colors[i])[0]
+            pix_positions = results_ref['pos_pix'][indices]
+            fit_params_list = results_ref['data'][indices, 2:]
+
+            print('\n\t\tNumber of components in cube: ' + \
+                  '{0:.0f}'.format(len(fit_params_list)))
+
+            cube_synthetic = \
+                create_synthetic_cube(pix_positions=pix_positions,
+                                      velocity_axis=velocity_axis,
+                                      fit_params_list=fit_params_list,
+                                      cube_data=cube,
+                                      )
+
+            np.save(FILENAME_CUBE_SYNTH_BASE + str(i) + '.npy', cube_synthetic)
+        else:
+            print('\n\tLoading synthetic cube ' + str(i+1) + ' of ' + \
+                   str(n_components))
+            cube_synthetic = np.load(FILENAME_CUBE_SYNTH_BASE + str(i) + '.npy')
+
+        # Create N(HI) synthetic
+        vel_synthetic = myia.calculate_moment(cube_synthetic,
+                                              moment=1,
+                                              weights=velocity_axis,
+                                              )
+        nhi_synthetic = myia.calculate_nhi(cube=cube_synthetic,
+                                           velocity_axis=velocity_axis,
+                                           velocity_range=velocity_range,
+                                           )
+
+        vel_list.append(vel_synthetic)
+        nhi_list.append(nhi_synthetic)
+
+        vel_max_temp = np.max(vel_synthetic)
+        if vel_max_temp > vel_max:
+            vel_max = vel_max_temp
+
+    # crop to highest valued cubes
+    n_left = 4
+    sum_list = []
+    n_left = len(nhi_list)
+    for nhi in nhi_list:
+        sum_list.append(np.nansum(nhi))
+    sort_indices = np.argsort(sum_list)[::-1]
+    new_list = []
+    for i in xrange(n_left):
+        new_list.append(vel_list[sort_indices[i]])
+    vel_list = new_list
+
+    # value limits
+    v_limits = [0, vel_max]
+
+    # Plot the maps together
+
+    plot_vel_map_panels(vel_list,
+                        header=header,
+                        #limits=[278, -37, 282, -35],
+                        limits=limits,
+                        filename=FILENAME_FIG,
+                        #vel_vlimits=,
+                        show=show,
+                        vscale='linear',
+                        )
+
+def plot_nhi_maps(results_dict, limits=None, cube_data=None, header=None,
+        load_synthetic_cube=False, show=False, velocity_range=[0, 500],
+        save_pdf=False):
+
+    from mycoords import make_velocity_axis
+    from localmodule import plot_nhi_maps, create_synthetic_cube
+    import myimage_analysis as myia
+    from astropy.io import fits
+
+    # Plot names
+    #DIR_FIG = '../../figures/'
+    DIR_FIG = '/d/bip3/ezbc/multicloud/figures/decomposition/'
+    FILENAME_FIG_BASE = DIR_FIG + 'nhi_map_data_synth'
+
+    # Load HI Cube
+    DIR_HI = '../../data_products/hi/'
+    DIR_HI = '/d/bip3/ezbc/multicloud/data_products/hi/'
+    #FILENAME_CUBE = 'gass_280_-45_1450212515.fits'
+    FILENAME_CUBE = 'perseus_hi_galfa_cube_sub_regrid.fits'
     FILENAME_CUBE_SYNTH = DIR_HI + 'cube_synth.npy'
 
     velocity_axis = make_velocity_axis(header)
@@ -342,7 +471,7 @@ def plot_nhi_maps(results_dict, limits=None, cube_data=None, header=None,
     # Create N(HI) data
     nhi_data = myia.calculate_nhi(cube=cube_data,
                                   velocity_axis=velocity_axis,
-                                  velocity_range=[100, 400],
+                                  velocity_range=velocity_range,
                                   )
 
     # Create synthetic cube from fitted spectra
@@ -359,10 +488,11 @@ def plot_nhi_maps(results_dict, limits=None, cube_data=None, header=None,
     # Create N(HI) synthetic
     nhi_synthetic = myia.calculate_nhi(cube=cube_synthetic,
                                        velocity_axis=velocity_axis,
-                                       velocity_range=[100, 400],
+                                       velocity_range=velocity_range,
                                        )
 
-    v_limits = [0, np.max(nhi_synthetic)]
+    v_limits = [0, np.max(nhi_data)]
+    v_limits = [-1, 41]
 
     if 0:
         import matplotlib.pyplot as plt
@@ -372,30 +502,40 @@ def plot_nhi_maps(results_dict, limits=None, cube_data=None, header=None,
         axes[1].imshow(nhi_synthetic, origin='lower')
         plt.show()
 
+    if save_pdf:
+        ext = '.pdf'
+    else:
+        ext = '.png'
+    filename_fig = FILENAME_FIG_BASE + ext
     print('\nPlotting N(HI) maps...')
+    print(filename_fig)
     # Plot the maps together
     plot_nhi_maps(nhi_data,
                   nhi_synthetic,
                   header=header,
                   #limits=[278, -37, 282, -35],
                   limits=limits,
-                  filename=FILENAME_FIG,
+                  filename=filename_fig,
                   nhi_1_vlimits=v_limits,
                   nhi_2_vlimits=v_limits,
-                  show=True
+                  show=show,
+                  vscale='linear',
                   )
 
 def get_PCA(data, n_components=3):
 
-    from mydecomposition import perform_PCA
+    from localmodule import perform_PCA
 
-    data_reduced = perform_PCA(data, n_components=n_components)
+    data_reduced = perform_PCA(data,
+                               n_components=n_components,
+                               pca_type='regular',
+                               )
 
     return data_reduced
 
 def get_clusters(data, n_clusters=3, method='kmean'):
 
-    from mydecomposition import cluster_data
+    from localmodule import cluster_data
 
     labels = cluster_data(data,
                           n_clusters=n_clusters,
@@ -416,16 +556,14 @@ def plot_cluster_data(data, colors=None, filename=None, show=False,
 
     colors = mpl.cm.rainbow(colors)
 
-    plt.close();
-
     if labels is None:
         labels = ["1st eigenvector", "2nd eigenvector", "3rd eigenvector"]
 
     alpha = 1.0 / np.log10(data.shape[0])
 
+    plt.clf()
     if n_components <= 2:
         fig = plt.figure(1, figsize=(4,4))
-        plt.clf()
         ax = fig.add_subplot(111)
         #data[:,0] += np.abs(np.min(data[:,0]) + 1.0)
 
@@ -459,12 +597,12 @@ def plot_cluster_data(data, colors=None, filename=None, show=False,
                                  )
 
     elif n_components >= 3:
-        plt.figure(2, figsize=(6, 6))
+        #plt.figure(2, figsize=(6, 6))
         plt.clf()
         # To getter a better understanding of interaction of the dimensions
         # plot the first three PCA dimensions
         fig = plt.figure(1, figsize=(8, 6))
-        ax = Axes3D(fig, elev=20, azim=135)
+        ax = Axes3D(fig, elev=27, azim=-22)
         ax.scatter(data[:, 0], data[:, 1], data[:, 2], c=colors, alpha=alpha)
         #ax.set_title("First three PCA directions")
         ax.set_xlabel(labels[0])
@@ -486,46 +624,109 @@ def plot_cluster_data(data, colors=None, filename=None, show=False,
     if show:
         plt.show()
 
+def plot_ppv(data, colors=None, filename_base=None, show=False,
+    labels=None, show_tick_labels=False, zlim=None, ylim=None, xlim=None):
+
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    from myplotting import scatter_contour
+    import matplotlib as mpl
+
+    n_components = data.shape[1]
+
+    clusters = np.unique(colors)
+    print len(clusters)
+    print clusters
+    #colors = mpl.cm.rainbow(colors)
+
+    if labels is None:
+        labels = ["1st eigenvector", "2nd eigenvector", "3rd eigenvector"]
+
+    alpha = 1.0 / np.log10(data.shape[0])
+
+    for i in xrange(len(clusters)):
+        #plt.figure(2, figsize=(6, 6))
+        plt.clf()
+        # To getter a better understanding of interaction of the dimensions
+        # plot the first three PCA dimensions
+        fig = plt.figure(1, figsize=(8, 6))
+        ax = Axes3D(fig, elev=27, azim=-22)
+
+        # get data associated with particular cluster
+        indices_cluster = np.where(colors == clusters[i])[0]
+        data_cluster = data[indices_cluster]
+        colors_cluster = colors[indices_cluster]
+        ax.scatter(data_cluster[:, 0],
+                   data_cluster[:, 1],
+                   data_cluster[:, 2],
+                   color='k',
+                   alpha=alpha,
+                   )
+
+        #ax.set_title("First three PCA directions")
+        ax.set_xlabel(labels[0])
+        ax.set_ylabel(labels[1])
+        ax.set_zlabel(labels[2])
+        if zlim is not None:
+            ax.set_zlim(zlim)
+        if xlim is not None:
+            ax.set_xlim(xlim)
+        if ylim is not None:
+            ax.set_ylim(ylim)
+        if not show_tick_labels:
+            ax.w_xaxis.set_ticklabels([])
+            ax.w_yaxis.set_ticklabels([])
+            ax.w_zaxis.set_ticklabels([])
+
+        if filename_base is not None:
+            plt.savefig(filename_base + '_comp' + str(i) + '.png',)
+        if show:
+            plt.show()
+
 def main():
 
     ''' Script to cluster gaussian components found from AGD.
 
     '''
 
-    import os
-    from mydecomposition import get_decomposed_data, perform_PCA
+    #os.chdir('/home/ezbc/research/magellanic_stream/scripts/gausspy_decomp/')
+
+    from localmodule import get_decomposed_data, perform_PCA
 
     # Set the constants
-    DIR_DECOMP = '../../data/decomposition/'
-    DIR_FIGURE = '../../figures/'
-    FILENAME_DATA = 'agd_gass_data.pickle'
-    FILENAME_TRAIN = DIR_DECOMP + 'agd_gass_train.pickle'
+    DIR_DECOMP = '/d/bip3/ezbc/multicloud/data/decomposition/'
+    DIR_FIGURE = '/d/bip3/ezbc/multicloud/figures/decomposition/'
+    FILENAME_DATA = 'agd_multicloud_data.pickle'
+    FILENAME_TRAIN = DIR_DECOMP + 'agd_multicloud_train.pickle'
     FILENAME_TRAIN_DECOMPOSED = \
-        DIR_DECOMP + 'agd_gass_train_decomp.pickle'
-    FILENAME_DECOMPOSED = DIR_DECOMP + 'agd_gass_decomp.pickle'
+        DIR_DECOMP + 'agd_multicloud_train_decomp.pickle'
+    FILENAME_DECOMPOSED = DIR_DECOMP + 'agd_multicloud_decomp.pickle'
     FILENAME_DECOMPOSED_CROP = \
-        DIR_DECOMP + 'agd_gass_decomp_crop.pickle'
+        DIR_DECOMP + 'agd_multicloud_decomp_crop.pickle'
     FILENAME_DECOMP_REFORMAT = \
-        DIR_DECOMP + 'agd_gass_decomp_reformat.pickle'
-    FILENAME_CLUSTERS = DIR_DECOMP + 'agd_gass_clusters.pickle'
+        DIR_DECOMP + 'agd_multicloud_decomp_reformat.pickle'
+    FILENAME_CLUSTERS = DIR_DECOMP + 'agd_multicloud_clusters.pickle'
+    FILENAME_PPV_BASE = DIR_FIGURE + '/ppv/ppv'
     FILENAME_PLOT = DIR_FIGURE + 'pca.png'
 
     CROP_LIMITS = [285, 290, -39, -35]
-    CROP_LIMITS = [285, 297, -43, -35]
+    CROP_LIMITS = [310, 270, -70, -20]
+    PLOT_LIMITS = [300, 270, -20, -60]
+    #PLOT_LIMITS = [300, 270, -20, -0]
+    PLOT_LIMITS = None
+    #HI_VEL_RANGE = [100, 500]
+    HI_VEL_RANGE = [-100, 100]
     PLOT_NHI = 1
+    PLOT_VEL = 1
     SHOW_PLOTS = 0
+    DATA_PLOT_FREQ = 50
 
     # Clustering constants
     N_PC = 5
-    N_CLUSTERS = 20
+    N_CLUSTERS = 5
     #CLUSTER_METHOD = 'kmeans'
     CLUSTER_METHOD = 'spectral'
-
-    # Switch to working directory
-
-    #os.chdir('/d/bip3/ezbc/magellanic_stream/scripts/gausspy_decomp/')
-    os.chdir('/home/ezbc/research/magellanic_stream/scripts/gausspy_decomp/')
-    #os.chdir('/d/bip3/ezbc/magellanic_stream/scripts/gausspy_decomp/')
+    #CLUSTER_METHOD = 'dbscan'
 
     # Load cropped decomp data?
     LOAD_DECOMP_CROP = 0
@@ -576,7 +777,7 @@ def main():
                                     )
 
     if 0:
-        FILENAME_DATA = DIR_DECOMP + 'agd_gass_data.pickle'
+        FILENAME_DATA = DIR_DECOMP + 'agd_multicloud_data.pickle'
         data_dict = get_data(load=1, filename=FILENAME_DATA)
         plot_spectra(results_dict, data_dict)
 
@@ -587,10 +788,13 @@ def main():
 
         pickle.dump(results_ref, open(FILENAME_DECOMP_REFORMAT, 'wb'))
 
+
     print('\nPerforming PCA...')
     results_ref['data_reduced'] = get_PCA(results_ref['data'],
                                           n_components=N_PC)
 
+    print('\nNumber of components to be ' + \
+          'clustered: {0:.0f}'.format(len(results_ref['data'])))
     if LOAD_CLUSTERS and os.path.isfile(FILENAME_CLUSTERS):
         results_ref['cluster_labels'] = \
             pickle.load(open(FILENAME_CLUSTERS, 'rb'))
@@ -603,8 +807,8 @@ def main():
         pickle.dump(results_ref['cluster_labels'],
                     open(FILENAME_CLUSTERS, 'wb'))
 
-    print('\nNumber of components to be ' + \
-          'clustered: {0:.0f}'.format(len(results_ref['data'])))
+    print('\nNumber of unique clusters: ' + \
+          '{0:.0f}'.format(len(np.unique(results_ref['cluster_labels']))))
 
 
     # Crop the data
@@ -616,30 +820,71 @@ def main():
 
 
     print('\nPlotting cluster analysis...')
-    plot_cluster_data(results_ref['data_reduced'],
-                      colors=results_ref['cluster_labels'],
+    plot_cluster_data(results_ref['data_reduced'][::DATA_PLOT_FREQ],
+                      colors=results_ref['cluster_labels'][::DATA_PLOT_FREQ],
                       filename=FILENAME_PLOT,
                       show=SHOW_PLOTS)
 
     print('\nPlotting cluster analysis...')
-    plot_cluster_data(results_ref['data'][:, (0,4,3)],
-                      colors=results_ref['cluster_labels'],
-                      filename=FILENAME_PLOT.replace('.png','_data.png'),
-                      #labels=['Glon [deg]', 'Glat [deg]', 'FWHM [km/s]',],
-                      labels=['Glon [deg]', 'Velocity [km/s]', 'FWHM [km/s]',],
-                      show_tick_labels=True,
-                      zlim=[-10,100],
-                      show=SHOW_PLOTS)
+    if 0:
+        plot_cluster_data(results_ref['data'][:, (0,4,3)],
+                          colors=results_ref['cluster_labels'],
+                          filename=FILENAME_PLOT.replace('.png','_data.png'),
+                          #labels=['Glon [deg]', 'Glat [deg]', 'FWHM [km/s]',],
+                          labels=['Glon [deg]', 'Velocity [km/s]', 'FWHM [km/s]',],
+                          show_tick_labels=True,
+                          zlim=[-10,100],
+                          show=SHOW_PLOTS)
+    else:
+        plot_cluster_data(results_ref['data'][:, (0,1,4)][::DATA_PLOT_FREQ],
+                          colors=results_ref['cluster_labels'][::DATA_PLOT_FREQ],
+                          filename=FILENAME_PLOT.replace('.png','_data_glon_glat_vel.png'),
+                          #labels=['Glon [deg]', 'Glat [deg]', 'FWHM [km/s]',],
+                          labels=['Glon [deg]','Glat [deg]','Velocity [km/s]',],
+                          show_tick_labels=True,
+                          zlim=[-10,400],
+                          show=SHOW_PLOTS)
+        plot_cluster_data(results_ref['data'][:, (0,3,4)][::DATA_PLOT_FREQ],
+                          colors=results_ref['cluster_labels'][::DATA_PLOT_FREQ],
+                          filename=FILENAME_PLOT.replace('.png','_data_glon_fwhm_vel.png'),
+                          #labels=['Glon [deg]', 'Glat [deg]', 'FWHM [km/s]',],
+                          labels=['Glon [deg]','FWHM [km/s]','Velocity [km/s]',],
+                          show_tick_labels=True,
+                          zlim=[-10,400],
+                          show=SHOW_PLOTS)
+
+    plot_ppv(results_ref['data'][:, (0,1,4)],
+             colors=results_ref['cluster_labels'],
+             filename_base=FILENAME_PPV_BASE,
+             labels=['Glon [deg]','Glat [deg]','Velocity [km/s]',],
+             show_tick_labels=True,
+             #xlim=[240,320],
+             #ylim=[-90,-10],
+             #zlim=[-10,400],
+             #zlim=[-10,400],
+             show=SHOW_PLOTS,
+             )
 
     # Plot the decomposed HI map with the data
     if PLOT_NHI and not LOAD_REFORMATTED_DATA:
         print('\nPlotting N(HI) maps...')
         cube, header = get_cube()
+        plot_nhi_maps(results_dict,
+                      limits=PLOT_LIMITS,
+                      cube_data=cube,
+                      header=header,
+                      show=SHOW_PLOTS,
+                      velocity_range=HI_VEL_RANGE,
+                      )
 
         plot_nhi_maps(results_dict,
-                      limits=CROP_LIMITS,
+                      limits=PLOT_LIMITS,
                       cube_data=cube,
-                      header=header)
+                      header=header,
+                      show=SHOW_PLOTS,
+                      velocity_range=HI_VEL_RANGE,
+                      save_pdf=True,
+                      )
 
     if PLOT_NHI:
         print('\nPlotting N(HI) maps...')
@@ -648,8 +893,39 @@ def main():
                                 colors=results_ref['cluster_labels'],
                                 cube=cube,
                                 header=header,
-                                limits=CROP_LIMITS,
+                                limits=PLOT_LIMITS,
                                 load_synthetic_cube=LOAD_SYNTHETIC_CUBE,
+                                velocity_range=HI_VEL_RANGE,
+                                show=SHOW_PLOTS,
+                                )
+        plot_cluster_nhi_panels(results_ref=results_ref,
+                                colors=results_ref['cluster_labels'],
+                                cube=cube,
+                                header=header,
+                                limits=PLOT_LIMITS,
+                                load_synthetic_cube=LOAD_SYNTHETIC_CUBE,
+                                velocity_range=HI_VEL_RANGE,
+                                show=SHOW_PLOTS,
+                                save_pdf=True,
+                                )
+    if PLOT_VEL:
+        cube, header = get_cube()
+        plot_cluster_vel_panels(results_ref=results_ref,
+                                colors=results_ref['cluster_labels'],
+                                cube=cube,
+                                header=header,
+                                limits=PLOT_LIMITS,
+                                load_synthetic_cube=LOAD_SYNTHETIC_CUBE,
+                                velocity_range=HI_VEL_RANGE,
+                                show=SHOW_PLOTS)
+        plot_cluster_vel_panels(results_ref=results_ref,
+                                colors=results_ref['cluster_labels'],
+                                cube=cube,
+                                header=header,
+                                limits=PLOT_LIMITS,
+                                load_synthetic_cube=LOAD_SYNTHETIC_CUBE,
+                                velocity_range=HI_VEL_RANGE,
+                                save_pdf=True,
                                 show=SHOW_PLOTS)
 
 
