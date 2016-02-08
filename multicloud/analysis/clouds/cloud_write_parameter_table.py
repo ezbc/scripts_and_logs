@@ -224,26 +224,39 @@ def add_model_analysis(core_dict):
 
         core['T_H'], core['T_H_error'] = \
                 calc_temperature(n_H=core['n_H'],
-                                 pressure=3000.0,
+                                 pressure=3580.0,
                                  n_H_error=core['n_H_error'])
 
         core['T_H'] /= 1000.0
         core['T_H_error'] = np.array(core['T_H_error']) / 1000.0
 
         # calculate krumholz params
-        core['T_cnm'], core['T_cnm_error'] = \
-                myk09.calc_T_cnm(core['krumholz']['phi_cnm'],
-                    phi_cnm_error=core['krumholz']['phi_cnm_error'],
-                    calc_error=True,
-                    )
+        krumholz_pressure_calc = True
+        if krumholz_pressure_calc:
+            core['n_cnm'], core['n_cnm_error'] = \
+                    calc_n_min(G_0=(core['rad_field'] / 1.7),
+                               G_0_error=(core['rad_field_error'] / 1.7),
+                               Z=1.0)
+            core['T_cnm'], core['T_cnm_error'] = \
+                calc_temperature(n_H=core['n_cnm'],
+                                 pressure=3580.0,
+                                 pressure_error=(100, 100),
+                                 n_H_error=core['n_cnm_error'])
 
-        core['n_cnm'], core['n_cnm_error'] = \
-                myk09.calc_n_cnm(G_0=(core['rad_field'] / 1.7),
-                         G_0_error=(core['rad_field_error'] / 1.7),
-                         T_cnm=core['T_cnm'],
-                         T_cnm_error=core['T_cnm_error'],
-                         calc_error=True,
-                         )
+        else:
+            core['T_cnm'], core['T_cnm_error'] = \
+                    myk09.calc_T_cnm(core['krumholz']['phi_cnm'],
+                        phi_cnm_error=core['krumholz']['phi_cnm_error'],
+                        calc_error=True,
+                        )
+
+            core['n_cnm'], core['n_cnm_error'] = \
+                    myk09.calc_n_cnm(G_0=(core['rad_field'] / 1.7),
+                             G_0_error=(core['rad_field_error'] / 1.7),
+                             T_cnm=core['T_cnm'],
+                             T_cnm_error=core['T_cnm_error'],
+                             calc_error=True,
+                             )
 
         core['alt_name'] = get_alt_name(core_name)
 

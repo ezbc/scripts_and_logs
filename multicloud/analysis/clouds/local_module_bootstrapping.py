@@ -1069,7 +1069,7 @@ def scale_av_with_refav(av_data, av_reference, av_error_data, perform_mc=1):
         mc_array = np.empty((N_mc, 4))
         for i in xrange(N_mc):
             av_data_sim = av_data + np.random.normal(0.2,
-                                                     size=av_data.size)
+                                                     size=av_data.shape)
             mc_array[i] = \
                 fit_av_with_refav(av_data_sim, av_reference, av_error_data)
 
