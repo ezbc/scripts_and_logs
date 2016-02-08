@@ -233,10 +233,21 @@ def add_model_analysis(core_dict):
         # calculate krumholz params
         krumholz_pressure_calc = True
         if krumholz_pressure_calc:
-            core['n_cnm'], core['n_cnm_error'] = \
-                    calc_n_min(G_0=(core['rad_field'] / 1.7),
-                               G_0_error=(core['rad_field_error'] / 1.7),
-                               Z=1.0)
+            # get the minimum CNM density, calculate n_CNM with phi_CNM, then
+            # calculate temperature given galactic pressure between WNM and CNM
+            n_min, n_min_error = myk09.calc_n_min(G_0=core['rad_field'] / 1.7,
+                               G_0_error=core['rad_field_error'] / 1.7,
+                               Z=1.0,
+                               calc_error=True,
+                               )
+            phi_cnm = core['krumholz']['phi_cnm']
+            phi_cnm_error = core['krumholz']['phi_cnm_error']
+            core['n_cnm'] = n_min * phi_cnm
+            core['n_cnm_error'] = ((phi_cnm * n_min_error)**2 + \
+                                   (n_min * phi_cnm_error)**2)**0.5
+
+            print core['n_cnm_error']
+
             core['T_cnm'], core['T_cnm_error'] = \
                 calc_temperature(n_H=core['n_cnm'],
                                  pressure=3580.0,
