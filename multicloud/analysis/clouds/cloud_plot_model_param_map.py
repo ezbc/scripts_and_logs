@@ -262,8 +262,8 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
 
     if 0:
         parameters = []
-        if 'krumholz' in models:
-            parameters.append('phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
+        #if 'krumholz' in models:
+        #    parameters.append('phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
 
     parameters = ['phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
 
@@ -680,12 +680,12 @@ def plot_cdfs(core_dict, df):
                       r'Stanimirovi$\acute{c}$+14' + '\n' + r'$<T_{\rm s}>$',
                       r'$T_{\rm CNM}$',
                       r'$T_H$']
-    linestyles = ['--', '-.', '-', '-']
+    linestyles = ['--', '-.', '-.', '-']
 
     # Plot MC sim of error?
     include_errors = True
     P_low = 1960
-    P = 3000.
+    P = 3580.
     P_hi = 4810
 
     for i, data in enumerate(data_list):
@@ -694,34 +694,60 @@ def plot_cdfs(core_dict, df):
             include_errors = False
         else:
             include_errors = True
+
         if include_errors:
             if i < 2:
-                n = 3000 / data
+                n = P / data
             elif i == 2:
                 n = n_cnms
                 n_error = n_cnm_errors[:, 0]
+                T = T_cnms
+                T_error = T_cnm_errors[:, 0]
             elif i ==3:
                 n = n_Hs
                 n_error = n_H_errors[:, 0]
+                T = T_Hs
+                T_error = T_H_errors[:, 0]
 
-            n_sim = 100
-            alpha = 1.0 / n_sim
-            alpha = 0.1
-            for j in xrange(n_sim):
-                if 0:
-                    error = data_error_list[i]
-                    data_sim = data + np.random.normal(scale=error[:, 0])
-                else:
-                    #pressure = np.random.uniform(P_low, P_hi, size=data.size)
-                    pressure = P + np.random.normal(scale=(P - P_low),
-                                                    size=data.size)
-                    data_sim = pressure / (n + np.random.normal(n_error))
+            if 0:
+                n_sim = 100
+                alpha = 1.0 / n_sim
+                alpha = 0.1
+                for j in xrange(n_sim):
+                    if 0:
+                        error = data_error_list[i]
+                        data_sim = data + np.random.normal(scale=error[:, 0])
+                    else:
+                        pressure = P + np.random.normal(scale=(P - P_low),
+                                                        size=data.size)
+                        data_sim = pressure / (n + np.random.normal(n_error))
 
-                x = myplt.plot_cdf(data_sim,
-                                   ax=ax,
-                                   plot_kwargs={#'label': label,
-                                                'color': c_cycle[i],
-                                                'alpha': alpha})
+                    x = myplt.plot_cdf(data_sim,
+                                       ax=ax,
+                                       plot_kwargs={#'label': label,
+                                                    'color': c_cycle[i],
+                                                    'alpha': alpha})
+            elif i >= 2:
+                linestyle = linestyles[i]
+                label = data_names[i]
+                alpha = 0.3
+                error = T_error
+                data = T
+                n_sim = 1000
+                myplt.plot_cdf_confint(data,
+                                       data_error=error,
+                                       ax=ax,
+                                       nsim=n_sim,
+                                       plot_kwargs_line={'color': c_cycle[i],
+                                                         'linestyle': linestyle,
+                                                         'label': label,
+                                                         },
+                                       plot_kwargs_fill_between=\
+                                               {'color': c_cycle[i],
+                                                'alpha': alpha,
+                                                'linewidth': 0,
+                                                },
+                                       )
         if i < 2:
             x = myplt.plot_cdf(data[data > 0],
                                ax=ax,
@@ -731,36 +757,17 @@ def plot_cdfs(core_dict, df):
                                             'linewidth': 2,
                                             'zorder': 1000})
         else:
-            x = myplt.plot_cdf((0,0),
-                               ax=ax,
-                               plot_kwargs={'label': data_names[i],
-                                            'color': c_cycle[i],
-                                            'linestyle': linestyles[i]})
-
-        if 0:
-            sort_indices = np.argsort(data)
-            data_error = data_error_list[i][sort_indices]
-            data_low = data - data_error[:, 0]
-            data_hi = data + data_error[:, 1]
-
-            cdf_low = mystats.calc_cdf(data_low)
-            cdf_hi = mystats.calc_cdf(data_hi)
-
-        if 0:
-            ax.fill_between(x,
-                            cdf_hi,
-                            cdf_low,
-                            #where=where,
-                            facecolor=c_cycle[i],
-                            edgecolor='none',
-                            alpha=0.3,
-                            interpolate=True,
-                            zorder=0,
-                            )
+            if 0:
+                x = myplt.plot((0,0),
+                                ax=ax,
+                                plot_kwargs={'label': data_names[i],
+                                             'color': c_cycle[i],
+                                             'linestyle': linestyles[i]})
 
     ax.legend(loc='best')
-    ax.set_xscale('log')
+    ax.set_xscale('linear')
     ax.set_xlim([7*10**-1, 10**4])
+    ax.set_xlim([-30, 1000])
     ax.set_ylim([0,1])
 
     ax.set_xlabel('Temperature [K]')
@@ -768,6 +775,154 @@ def plot_cdfs(core_dict, df):
 
     #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
     plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.pdf')
+
+def plot_modelparam_cdfs(core_dict, df):
+
+    import myplotting as myplt
+    import matplotlib.pyplot as plt
+    import mystats
+    # Import external modules
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import AxesGrid
+    import pywcsgrid2 as wcs
+    from matplotlib.patches import Polygon
+    import matplotlib.patheffects as PathEffects
+    import myplotting as myplt
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    c_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
+    font_scale = 9
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 5))
+
+    parameters = ['phi_cnm', 'alphaG',]
+
+    fig, axes = plt.subplots(2,1,sharey=True, figsize=(3.5, 5))
+
+    clouds = 'california', 'perseus', 'taurus'
+    linestyles = ['-', '--', '-.']
+
+    include_errors = True
+    for i, cloud in enumerate(clouds):
+        phi_cnms = []
+        phi_cnms_error = []
+        alphaGs = []
+        alphaGs_error = []
+        for core in core_dict:
+            if core_dict[core]['cloud'] == cloud:
+                phi_cnms.append(core_dict[core]['krumholz']['phi_cnm'])
+                alphaGs.append(core_dict[core]['sternberg']['alphaG'])
+                phi_cnms_error.append(core_dict[core]['krumholz']['phi_cnm_error'])
+                alphaGs_error.append(core_dict[core]['sternberg']['alphaG_error'])
+
+        alphaGs = np.array(alphaGs)
+        alphaGs_error = np.array(alphaGs_error)
+        phi_cnms = np.array(phi_cnms)
+        phi_cnms_error = np.array(phi_cnms_error)
+
+        if include_errors:
+            n_sim = 100000
+            alpha = 1.0 / n_sim
+            alpha = 0.1
+            if 0:
+                for j in xrange(n_sim):
+                    phi_cnm_sim = \
+                        phi_cnms + np.random.normal(scale=phi_cnms_error[:, 0])
+                    alphaG_sim = \
+                            alphaGs + np.random.normal(scale=alphaGs_error[:, 0])
+                    if j == 0:
+                        label = cloud.capitalize()
+                        x = axes[0].plot(0,0,
+                                         label=label,
+                                         color=c_cycle[i],
+                                         )
+                    else:
+                        label = None
+                    x = myplt.plot_cdf(phi_cnm_sim,
+                                       ax=axes[0],
+                                       plot_kwargs={#'label': label,
+                                                    'color': c_cycle[i],
+                                                    #'linestyle': linestyles[i],
+                                                    'alpha': alpha,
+                                                    })
+
+                    x = myplt.plot_cdf(alphaG_sim,
+                                       ax=axes[1],
+                                       plot_kwargs={#'label': label,
+                                                    'color': c_cycle[i],
+                                                    #'linestyle': linestyles[i],
+                                                    'alpha': alpha,
+                                                    })
+            else:
+                label = cloud.capitalize()
+                linestyle = linestyles[i]
+                alpha = 0.3
+                axes[0].plot(0,0,
+                             label=label,
+                             color=c_cycle[i],
+                             )
+                myplt.plot_cdf_confint(phi_cnms,
+                                       data_error=phi_cnms_error[:,0],
+                                       ax=axes[0],
+                                       nsim=n_sim,
+                                       plot_kwargs_line={'color': c_cycle[i],
+                                                         'linestyle': linestyle,
+                                                         },
+                                       plot_kwargs_fill_between=\
+                                               {'color': c_cycle[i],
+                                                'alpha': alpha,
+                                                'linewidth': 0,
+                                                },
+                                       )
+                myplt.plot_cdf_confint(alphaGs,
+                                       data_error=alphaGs_error[:,0],
+                                       ax=axes[1],
+                                       nsim=n_sim,
+                                       plot_kwargs_line={'color': c_cycle[i],
+                                                         'linestyle': linestyle,
+                                                         },
+                                       plot_kwargs_fill_between=\
+                                             {'color': c_cycle[i],
+                                              'alpha': alpha,
+                                              'linewidth': 0,
+                                              },
+                                       )
+        else:
+            x = myplt.plot_cdf(phi_cnms,
+                               ax=axes[0],
+                               plot_kwargs={'label': cloud.capitalize(),
+                                            'color': c_cycle[i],
+                                            'linestyle': linestyles[i],
+                                            })
+
+            x = myplt.plot_cdf(alphaGs,
+                               ax=axes[1],
+                               plot_kwargs={'label': cloud.capitalize(),
+                                            'color': c_cycle[i],
+                                            'linestyle': linestyles[i],
+                                            })
+
+    axes[0].legend(loc='lower right')
+    #ax.set_xscale('log')
+    axes[0].set_xlabel(r'$\phi_{\rm CNM}$')
+    axes[1].set_xlabel(r'$\alpha G$')
+    axes[0].set_ylabel('Cumulative Distribution')
+    axes[1].set_ylabel('Cumulative Distribution')
+    axes[0].set_ylim([0,1])
+    axes[1].set_ylim([0,1])
+    axes[0].set_xlim([-4,30])
+    axes[1].set_xlim([-20,60])
+
+    #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
+    plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/modelparams_cdf.pdf')
 
 def main():
 
@@ -783,6 +938,9 @@ def main():
     # compare cdfs of predicted vs. measured temperatures
     print('\nPlotting Temperature CDFs...')
     plot_cdfs(core_dict, df)
+
+    print('\nPlotting Phicnm vs alphaG CDFs...')
+    plot_modelparam_cdfs(core_dict, df)
 
     # plot the cores
     print('\nPlotting maps...')
