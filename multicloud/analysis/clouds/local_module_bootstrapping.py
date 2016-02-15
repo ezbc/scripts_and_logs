@@ -9,7 +9,12 @@ import myimage_analysis as myia
 from multiprocessing.queues import Queue
 import mygeometry as myg
 import scipy
-
+from local_module_plotting import *
+from local_module_dataprep import *
+from local_module_multiprocessing import *
+from local_module_regions import *
+from local_module_fitting import *
+from local_module_bootstrapping import *
 
 
 def create_cloud_model(av, nhi_background, dgr_background,):
@@ -1048,7 +1053,7 @@ def fit_av_with_refav(av_data, av_reference, av_error_data):
 
     return av_scalar, av_scalar_error, intercept, intercept_error
 
-def scale_av_with_refav(av_data, av_reference, av_error_data, perform_mc=1):
+def scale_av_with_refav(av_data, av_reference, av_error_data, perform_mc=0):
 
     import scipy as sp
     import mystats

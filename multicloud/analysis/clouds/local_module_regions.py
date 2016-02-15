@@ -8,6 +8,12 @@ import myimage_analysis as myia
 from multiprocessing.queues import Queue
 import mygeometry as myg
 import scipy
+from local_module_plotting import *
+from local_module_dataprep import *
+from local_module_multiprocessing import *
+from local_module_regions import *
+from local_module_fitting import *
+from local_module_bootstrapping import *
 
 def read_ds9_region(filename):
 
