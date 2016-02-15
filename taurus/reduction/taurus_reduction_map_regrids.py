@@ -73,7 +73,7 @@ def main():
     os.chdir('/d/bip3/ezbc/taurus/data')
 
     # If true, deletes files to be written
-    clobber = 0
+    clobber = 1
 
     in_images = (
               #'av/taurus_av_kainulainen2009_nan',

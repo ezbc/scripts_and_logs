@@ -777,7 +777,7 @@ def run_cloud_analysis(global_args,):
     # --------------------------------------------------------------------------
     filename = plot_kwargs['figure_dir'] + \
                'spectra/' + plot_kwargs['filename_base'] + \
-               '_spectra.png'
+               '_spectra_dr2.png'
     print('Saving\neog ' + filename + ' &')
     plot_spectra(hi_spectrum,
                  hi_vel_axis,
@@ -841,7 +841,6 @@ def run_cloud_analysis(global_args,):
                    cb_text='DR2 / DR1'
                    #hi_vlimits=None,
                    )
-
 
 def main():
 

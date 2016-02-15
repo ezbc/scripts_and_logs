@@ -222,10 +222,14 @@ def add_model_analysis(core_dict):
             if abs(core['T_H_error'][0]) > core['T_H']:
                 core['T_H_error'][0] = core['T_H']
 
+
+
+        pressure = 3700.0
+        pressure_error = (1200.0, 1200.0)
         core['T_H'], core['T_H_error'] = \
                 calc_temperature(n_H=core['n_H'],
-                                 pressure=3580.0,
-                                 pressure_error=(1000, 1000),
+                                 pressure=pressure,
+                                 pressure_error=pressure_error,
                                  n_H_error=core['n_H_error'])
 
         core['T_H'] /= 1000.0
@@ -251,8 +255,8 @@ def add_model_analysis(core_dict):
 
             core['T_cnm'], core['T_cnm_error'] = \
                 calc_temperature(n_H=core['n_cnm'],
-                                 pressure=3580.0,
-                                 pressure_error=(1000, 1000),
+                                 pressure=pressure,
+                                 pressure_error=pressure_error,
                                  n_H_error=core['n_cnm_error'])
 
         else:

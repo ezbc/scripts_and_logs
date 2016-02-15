@@ -71,10 +71,11 @@ def main():
     os.chdir('/d/bip3/ezbc/california/data')
 
     # If true, deletes files to be written
-    clobber = 0
+    clobber = 1
 
     in_images = (
               'hi/california_hi_galfa_cube',
+              'hi/california_hi_galfa_dr1_cube',
               'av/california_av_planck_tau353',
               'av/california_av_error_planck_tau353',
               'dust_temp/california_dust_temp',

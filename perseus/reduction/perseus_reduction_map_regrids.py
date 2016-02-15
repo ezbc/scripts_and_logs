@@ -65,8 +65,8 @@ def main():
     os.chdir('/d/bip3/ezbc/perseus/data')
 
     # If true, deletes files to be written
-    clobber = 0
-    clobber_hi = 0
+    clobber = 1
+    clobber_hi = 1
 
     # First, change zeros in lee image to nans
     data, header = pyfits.getdata('av/perseus_av_lee12_2mass.fits', header=True)

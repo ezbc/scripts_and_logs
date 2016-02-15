@@ -48,6 +48,9 @@ def main():
     param_cols = param_table.colnames
     param_data = np.asarray(param_table._data)
 
+
+    print('cnm temp columns', param_cols)
+    print('avg temp columns', avg_temp_table.colnames)
     #avg_temp_cols = np.asarray(avg_temp_table.colnames)
     #avg_temp_data = np.asarray(avg_temp_table._data)
 
@@ -101,6 +104,7 @@ def main():
         t_int_list = []
         t_cnm_error_list = []
         avg_tspin_list = []
+        avg_tspin_error_list = []
         cloud_t_cnm_list = []
         source_list = []
         weights = []
@@ -126,7 +130,15 @@ def main():
                     avg_temp = \
                         avg_temp_data[avg_temp_sources == source][0]
 
+                    # for error see section 3.1 of Kim et al. (2014) who
+                    # describe the harmonic mean temperature is within 10% of
+                    # the observed optical depth weighted spin temperature. This
+                    # may be due to multiple clouds with varying optical depths
+                    # along the LOS.
+                    avg_temp_error = 0.1 * avg_temp
+
                     avg_tspin_list.append(avg_temp)
+                    avg_tspin_error_list.append(avg_temp_error)
 
                 #avg_temp = np.mean(TB) / np.mean(tau)
                 if 0:
@@ -172,10 +184,12 @@ def main():
                         t_int_list.append(Tk)
 
         temp_dict[cloud]['Ts_list'] = t_cnm_list
+        temp_dict[cloud]['Ts_error_list'] = t_cnm_error_list
         #avg_tspin_list = []
         #for source in avg_temp_dict:
         #    avg_tspin_list.append(avg_temp_dict[source])
         temp_dict[cloud]['Ts_avg_list'] = avg_tspin_list
+        temp_dict[cloud]['Ts_avg_error_list'] = avg_tspin_error_list
 
         print avg_tspin_list
 

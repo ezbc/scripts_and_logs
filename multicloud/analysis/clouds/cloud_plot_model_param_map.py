@@ -627,12 +627,23 @@ def plot_cdfs(core_dict, df):
 
     # concatenate the temps from each cloud
     Ts_list = []
+    Ts_error_list = []
     Ts_avg_list = []
+    Ts_avg_error_list = []
     for cloud in temp_dict:
         for Ts in temp_dict[cloud]['Ts_list']:
             Ts_list.append(Ts)
+        for Ts_error in temp_dict[cloud]['Ts_error_list']:
+            Ts_error_list.append(Ts_error)
         for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
             Ts_avg_list.append(Ts_avg)
+        for Ts_avg_error in temp_dict[cloud]['Ts_avg_error_list']:
+            Ts_avg_error_list.append(Ts_avg_error)
+
+    Ts_list = np.array(Ts_list)
+    Ts_error_list = np.array(Ts_error_list)
+    Ts_avg_list = np.array(Ts_avg_list)
+    Ts_avg_error_list = np.array(Ts_avg_error_list)
 
     print '\nNumber of LOS:', len(Ts_avg_list)
 
@@ -680,7 +691,8 @@ def plot_cdfs(core_dict, df):
                       r'Stanimirovi$\acute{c}$+14' + '\n' + r'$<T_{\rm s}>$',
                       r'$T_{\rm CNM}$',
                       r'$T_H$']
-    linestyles = ['--', '-.', '-.', '-']
+
+    linestyles = ['--', '-.', ':', '-']
 
     # Plot MC sim of error?
     include_errors = True
@@ -691,13 +703,19 @@ def plot_cdfs(core_dict, df):
     for i, data in enumerate(data_list):
         data = np.array(data)
         if i < 2:
-            include_errors = False
+            include_errors = True
         else:
             include_errors = True
 
         if include_errors:
-            if i < 2:
-                n = P / data
+            if i == 0:
+                #n = P / data
+                T = Ts_list
+                T_error = Ts_error_list
+            elif i == 1:
+                #n = P / data
+                T = Ts_avg_list
+                T_error = Ts_avg_error_list
             elif i == 2:
                 n = n_cnms
                 n_error = n_cnm_errors[:, 0]
@@ -708,7 +726,6 @@ def plot_cdfs(core_dict, df):
                 n_error = n_H_errors[:, 0]
                 T = T_Hs
                 T_error = T_H_errors[:, 0]
-
             if 0:
                 n_sim = 100
                 alpha = 1.0 / n_sim
@@ -727,17 +744,20 @@ def plot_cdfs(core_dict, df):
                                        plot_kwargs={#'label': label,
                                                     'color': c_cycle[i],
                                                     'alpha': alpha})
-            elif i >= 2:
+            else:
                 linestyle = linestyles[i]
                 label = data_names[i]
                 alpha = 0.3
+                nbins = 20
                 error = T_error
                 data = T
-                n_sim = 1000
+                n_sim = 100000
                 myplt.plot_cdf_confint(data,
                                        data_error=error,
                                        ax=ax,
                                        nsim=n_sim,
+                                       nbins=nbins,
+                                       #bin_limits=[0, None],
                                        plot_kwargs_line={'color': c_cycle[i],
                                                          'linestyle': linestyle,
                                                          'label': label,
@@ -748,7 +768,8 @@ def plot_cdfs(core_dict, df):
                                                 'linewidth': 0,
                                                 },
                                        )
-        if i < 2:
+        #if i < 2:
+        if 0:
             x = myplt.plot_cdf(data[data > 0],
                                ax=ax,
                                plot_kwargs={'label': data_names[i],
@@ -864,6 +885,7 @@ def plot_modelparam_cdfs(core_dict, df):
             else:
                 label = cloud.capitalize()
                 linestyle = linestyles[i]
+                nbins = 20
                 alpha = 0.3
                 axes[0].plot(0,0,
                              label=label,
@@ -873,6 +895,8 @@ def plot_modelparam_cdfs(core_dict, df):
                                        data_error=phi_cnms_error[:,0],
                                        ax=axes[0],
                                        nsim=n_sim,
+                                       nbins=nbins,
+                                       #bin_limits=[0, None],
                                        plot_kwargs_line={'color': c_cycle[i],
                                                          'linestyle': linestyle,
                                                          },
@@ -886,6 +910,7 @@ def plot_modelparam_cdfs(core_dict, df):
                                        data_error=alphaGs_error[:,0],
                                        ax=axes[1],
                                        nsim=n_sim,
+                                       nbins=nbins,
                                        plot_kwargs_line={'color': c_cycle[i],
                                                          'linestyle': linestyle,
                                                          },
