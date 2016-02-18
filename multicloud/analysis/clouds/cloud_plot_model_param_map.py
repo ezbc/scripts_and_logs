@@ -598,7 +598,7 @@ def load_cores():
 
     return core_dict
 
-def plot_cdfs(core_dict, df):
+def plot_temp_cdfs(core_dict, df):
 
     import myplotting as myplt
     import matplotlib.pyplot as plt
@@ -635,9 +635,12 @@ def plot_cdfs(core_dict, df):
             Ts_list.append(Ts)
         for Ts_error in temp_dict[cloud]['Ts_error_list']:
             Ts_error_list.append(Ts_error)
-        for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
+        #for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
+        for Ts_avg in temp_dict[cloud]['Tk_list']:
+            print Ts_avg
             Ts_avg_list.append(Ts_avg)
-        for Ts_avg_error in temp_dict[cloud]['Ts_avg_error_list']:
+        #for Ts_avg_error in temp_dict[cloud]['Ts_avg_error_list']:
+        for Ts_avg_error in temp_dict[cloud]['Tk_error_list']:
             Ts_avg_error_list.append(Ts_avg_error)
 
     Ts_list = np.array(Ts_list)
@@ -681,7 +684,7 @@ def plot_cdfs(core_dict, df):
     data_list = [Ts_list, Ts_avg_list, T_cnms, T_Hs]
     data_error_list = [stani_temp_errors, np.array(((5),)),
                        T_cnm_errors, T_H_errors]
-    if 0:
+    if 1:
         data_names = [r'Stanimirovic+14 $T_{\rm spin}$',
                       r'Stanimirovic+14 $T_K$',
                       r'$T_{\rm CNM}$',
@@ -786,9 +789,216 @@ def plot_cdfs(core_dict, df):
                                              'linestyle': linestyles[i]})
 
     ax.legend(loc='best')
-    ax.set_xscale('linear')
-    ax.set_xlim([7*10**-1, 10**4])
-    ax.set_xlim([-30, 1000])
+    if 1:
+        ax.set_xscale('linear')
+        ax.set_xlim([-30, 1000])
+    else:
+        ax.set_xscale('log')
+        ax.set_xlim([7*10**-1, 10**4])
+    ax.set_ylim([0,1])
+
+    ax.set_xlabel('Temperature [K]')
+    ax.set_ylabel('Cumulative Distribution')
+
+    #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
+    plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.pdf')
+
+def plot_density_cdfs(core_dict, df):
+
+    import myplotting as myplt
+    import matplotlib.pyplot as plt
+    import mystats
+
+    # load Stanimirovic temps
+    filename = \
+            '/d/bip3/ezbc/multicloud/data/python_output/tables/' + \
+            'stanimirovic14_temps.npy'
+    stani_temps = np.loadtxt(filename)
+    filename = \
+            '/d/bip3/ezbc/multicloud/data/python_output/tables/' + \
+            'stanimirovic14_temp_errors.npy'
+    stani_temp_errors = np.loadtxt(filename)
+    stani_temp_errors = np.array((stani_temp_errors, stani_temp_errors)).T
+    filename = \
+            '/d/bip3/ezbc/multicloud/data/python_output/tables/' + \
+            'stanimirovic14_int_temps.npy'
+    stani_tempKs = np.loadtxt(filename)
+
+    # load the dict
+    with open('/d/bip3/ezbc/multicloud/data/python_output/tables/' + \
+              'stanimirovic14_temps.pickle', 'rb') as f:
+        temp_dict = pickle.load(f)
+
+    # concatenate the temps from each cloud
+    Ts_list = []
+    Ts_error_list = []
+    Ts_avg_list = []
+    Ts_avg_error_list = []
+    for cloud in temp_dict:
+        for Ts in temp_dict[cloud]['Ts_list']:
+            Ts_list.append(Ts)
+        for Ts_error in temp_dict[cloud]['Ts_error_list']:
+            Ts_error_list.append(Ts_error)
+        #for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
+        for Ts_avg in temp_dict[cloud]['Tk_list']:
+            print Ts_avg
+            Ts_avg_list.append(Ts_avg)
+        #for Ts_avg_error in temp_dict[cloud]['Ts_avg_error_list']:
+        for Ts_avg_error in temp_dict[cloud]['Tk_error_list']:
+            Ts_avg_error_list.append(Ts_avg_error)
+
+    Ts_list = np.array(Ts_list)
+    Ts_error_list = np.array(Ts_error_list)
+    Ts_avg_list = np.array(Ts_avg_list)
+    Ts_avg_error_list = np.array(Ts_avg_error_list)
+
+    print '\nNumber of LOS:', len(Ts_avg_list)
+
+    # collect data
+    T_cnms = np.empty(len(core_dict))
+    T_Hs = np.empty(len(core_dict))
+    T_cnm_errors = np.empty((len(core_dict), 2))
+    T_H_errors = np.empty((len(core_dict), 2))
+    n_cnms = np.empty(len(core_dict))
+    n_Hs = np.empty(len(core_dict))
+    n_cnm_errors = np.empty((len(core_dict), 2))
+    n_H_errors = np.empty((len(core_dict), 2))
+
+
+    for i, core_name in enumerate(core_dict):
+        core = core_dict[core_name]
+        T_cnms[i] = core['T_cnm']
+        T_Hs[i] = core['T_H'] * 1000.0
+        T_cnm_errors[i] = core['T_cnm_error']
+        T_H_errors[i] = core['T_H_error'] * 1000.0
+        n_cnms[i] = core['n_cnm']
+        n_Hs[i] = core['n_H']
+        n_cnm_errors[i] = core['n_cnm_error']
+        n_H_errors[i] = core['n_H_error']
+
+    # Make plot
+    plt.close;plt.clf()
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 2.5))
+    ax = fig.add_subplot(111)
+    c_cycle = myplt.set_color_cycle(4, cmap_limits=(0.0, 0.9))
+
+    #data_list = [stani_temps, stani_tempKs, T_cnms, T_Hs]
+    data_list = [Ts_list, Ts_avg_list, T_cnms, T_Hs]
+    data_error_list = [stani_temp_errors, np.array(((5),)),
+                       T_cnm_errors, T_H_errors]
+    if 1:
+        data_names = [r'Stanimirovic+14 $T_{\rm spin}$',
+                      r'Stanimirovic+14 $T_K$',
+                      r'$T_{\rm CNM}$',
+                      r'$T_H$']
+    else:
+        data_names = [r'Stanimirovi$\acute{c}$+14' + '\n' + r'$T_{\rm s}$',
+                      r'Stanimirovi$\acute{c}$+14' + '\n' + r'$<T_{\rm s}>$',
+                      r'$T_{\rm CNM}$',
+                      r'$T_H$']
+
+    linestyles = ['--', '-.', ':', '-']
+
+    # Plot MC sim of error?
+    include_errors = True
+    P_low = 1960
+    P = 3580.
+    P_hi = 4810
+
+    for i, data in enumerate(data_list):
+        data = np.array(data)
+        if i < 2:
+            include_errors = True
+        else:
+            include_errors = True
+
+        if include_errors:
+            if i == 0:
+                #n = P / data
+                T = Ts_list
+                T_error = Ts_error_list
+            elif i == 1:
+                #n = P / data
+                T = Ts_avg_list
+                T_error = Ts_avg_error_list
+            elif i == 2:
+                n = n_cnms
+                n_error = n_cnm_errors[:, 0]
+                T = T_cnms
+                T_error = T_cnm_errors[:, 0]
+            elif i ==3:
+                n = n_Hs
+                n_error = n_H_errors[:, 0]
+                T = T_Hs
+                T_error = T_H_errors[:, 0]
+            if 0:
+                n_sim = 100
+                alpha = 1.0 / n_sim
+                alpha = 0.1
+                for j in xrange(n_sim):
+                    if 0:
+                        error = data_error_list[i]
+                        data_sim = data + np.random.normal(scale=error[:, 0])
+                    else:
+                        pressure = P + np.random.normal(scale=(P - P_low),
+                                                        size=data.size)
+                        data_sim = pressure / (n + np.random.normal(n_error))
+
+                    x = myplt.plot_cdf(data_sim,
+                                       ax=ax,
+                                       plot_kwargs={#'label': label,
+                                                    'color': c_cycle[i],
+                                                    'alpha': alpha})
+            else:
+                linestyle = linestyles[i]
+                label = data_names[i]
+                alpha = 0.3
+                nbins = 20
+                error = T_error
+                data = T
+                n_sim = 100000
+                myplt.plot_cdf_confint(data,
+                                       data_error=error,
+                                       ax=ax,
+                                       nsim=n_sim,
+                                       nbins=nbins,
+                                       #bin_limits=[0, None],
+                                       plot_kwargs_line={'color': c_cycle[i],
+                                                         'linestyle': linestyle,
+                                                         'label': label,
+                                                         },
+                                       plot_kwargs_fill_between=\
+                                               {'color': c_cycle[i],
+                                                'alpha': alpha,
+                                                'linewidth': 0,
+                                                },
+                                       )
+        #if i < 2:
+        if 0:
+            x = myplt.plot_cdf(data[data > 0],
+                               ax=ax,
+                               plot_kwargs={'label': data_names[i],
+                                            'color': c_cycle[i],
+                                            'linestyle': linestyles[i],
+                                            'linewidth': 2,
+                                            'zorder': 1000})
+        else:
+            if 0:
+                x = myplt.plot((0,0),
+                                ax=ax,
+                                plot_kwargs={'label': data_names[i],
+                                             'color': c_cycle[i],
+                                             'linestyle': linestyles[i]})
+
+    ax.legend(loc='best')
+    if 1:
+        ax.set_xscale('linear')
+        ax.set_xlim([-30, 1000])
+    else:
+        ax.set_xscale('log')
+        ax.set_xlim([7*10**-1, 10**4])
     ax.set_ylim([0,1])
 
     ax.set_xlabel('Temperature [K]')
@@ -960,9 +1170,13 @@ def main():
     # get av data
     av_data, av_header = load_av_data()
 
+    # compare cdfs of predicted vs. measured densities
+    print('\nPlotting Gas Density CDFs...')
+    plot_density_cdfs(core_dict, df)
+
     # compare cdfs of predicted vs. measured temperatures
     print('\nPlotting Temperature CDFs...')
-    plot_cdfs(core_dict, df)
+    plot_temp_cdfs(core_dict, df)
 
     print('\nPlotting Phicnm vs alphaG CDFs...')
     plot_modelparam_cdfs(core_dict, df)
