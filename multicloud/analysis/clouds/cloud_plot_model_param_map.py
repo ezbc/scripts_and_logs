@@ -808,6 +808,7 @@ def plot_density_cdfs(core_dict, df):
     import myplotting as myplt
     import matplotlib.pyplot as plt
     import mystats
+    import myscience
 
     # load Stanimirovic temps
     filename = \
@@ -864,7 +865,6 @@ def plot_density_cdfs(core_dict, df):
     n_cnm_errors = np.empty((len(core_dict), 2))
     n_H_errors = np.empty((len(core_dict), 2))
 
-
     for i, core_name in enumerate(core_dict):
         core = core_dict[core_name]
         T_cnms[i] = core['T_cnm']
@@ -903,9 +903,12 @@ def plot_density_cdfs(core_dict, df):
 
     # Plot MC sim of error?
     include_errors = True
-    P_low = 1960
-    P = 3580.
-    P_hi = 4810
+
+    # Define pressures
+    P = 3700.
+    P_error = [1200., 1200.]
+    P_low = P - P_error[0]
+    P_hi = P + P_error[1]
 
     for i, data in enumerate(data_list):
         data = np.array(data)
@@ -919,10 +922,22 @@ def plot_density_cdfs(core_dict, df):
                 #n = P / data
                 T = Ts_list
                 T_error = Ts_error_list
+                n, n_error = myscience.calc_density(T_H=T,
+                                                    pressure=P,
+                                                    pressure_error=P_error,
+                                                    T_H_error=T_error,
+                                                    calc_error=True,
+                                                    )
             elif i == 1:
                 #n = P / data
                 T = Ts_avg_list
                 T_error = Ts_avg_error_list
+                n, n_error = myscience.calc_density(T_H=T,
+                                                    pressure=P,
+                                                    pressure_error=P_error,
+                                                    T_H_error=T_error,
+                                                    calc_error=True,
+                                                    )
             elif i == 2:
                 n = n_cnms
                 n_error = n_cnm_errors[:, 0]
@@ -956,8 +971,8 @@ def plot_density_cdfs(core_dict, df):
                 label = data_names[i]
                 alpha = 0.3
                 nbins = 20
-                error = T_error
-                data = T
+                error = n_error
+                data = n
                 n_sim = 100000
                 myplt.plot_cdf_confint(data,
                                        data_error=error,
@@ -995,13 +1010,13 @@ def plot_density_cdfs(core_dict, df):
     ax.legend(loc='best')
     if 1:
         ax.set_xscale('linear')
-        ax.set_xlim([-30, 1000])
+        #ax.set_xlim([-30, 1000])
     else:
         ax.set_xscale('log')
         ax.set_xlim([7*10**-1, 10**4])
     ax.set_ylim([0,1])
 
-    ax.set_xlabel('Temperature [K]')
+    ax.set_xlabel(r'Neutral Gas Density [cm$^{-3}$]')
     ax.set_ylabel('Cumulative Distribution')
 
     #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
