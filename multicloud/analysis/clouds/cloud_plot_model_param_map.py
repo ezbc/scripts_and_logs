@@ -840,12 +840,11 @@ def plot_density_cdfs(core_dict, df):
             Ts_list.append(Ts)
         for Ts_error in temp_dict[cloud]['Ts_error_list']:
             Ts_error_list.append(Ts_error)
-        #for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
-        for Ts_avg in temp_dict[cloud]['Tk_list']:
-            print Ts_avg
+        for Ts_avg in temp_dict[cloud]['Ts_avg_list']:
+        #for Ts_avg in temp_dict[cloud]['Tk_list']:
             Ts_avg_list.append(Ts_avg)
-        #for Ts_avg_error in temp_dict[cloud]['Ts_avg_error_list']:
-        for Ts_avg_error in temp_dict[cloud]['Tk_error_list']:
+        for Ts_avg_error in temp_dict[cloud]['Ts_avg_error_list']:
+        #for Ts_avg_error in temp_dict[cloud]['Tk_error_list']:
             Ts_avg_error_list.append(Ts_avg_error)
 
     Ts_list = np.array(Ts_list)
@@ -889,10 +888,10 @@ def plot_density_cdfs(core_dict, df):
     data_error_list = [stani_temp_errors, np.array(((5),)),
                        T_cnm_errors, T_H_errors]
     if 1:
-        data_names = [r'Stanimirovic+14 $T_{\rm spin}$',
-                      r'Stanimirovic+14 $T_K$',
-                      r'$T_{\rm CNM}$',
-                      r'$T_H$']
+        data_names = [r'Stanimirovic+14 $n_{\rm s}$',
+                      r'Stanimirovic+14 $<n_s>$',
+                      r'$n_{\rm CNM}$',
+                      r'$n_H']
     else:
         data_names = [r'Stanimirovi$\acute{c}$+14' + '\n' + r'$T_{\rm s}$',
                       r'Stanimirovi$\acute{c}$+14' + '\n' + r'$<T_{\rm s}>$',
@@ -924,7 +923,7 @@ def plot_density_cdfs(core_dict, df):
                 T_error = Ts_error_list
                 n, n_error = myscience.calc_density(T_H=T,
                                                     pressure=P,
-                                                    pressure_error=P_error,
+                                                    pressure_error=P_error[0],
                                                     T_H_error=T_error,
                                                     calc_error=True,
                                                     )
@@ -934,7 +933,7 @@ def plot_density_cdfs(core_dict, df):
                 T_error = Ts_avg_error_list
                 n, n_error = myscience.calc_density(T_H=T,
                                                     pressure=P,
-                                                    pressure_error=P_error,
+                                                    pressure_error=P_error[0],
                                                     T_H_error=T_error,
                                                     calc_error=True,
                                                     )
@@ -943,7 +942,7 @@ def plot_density_cdfs(core_dict, df):
                 n_error = n_cnm_errors[:, 0]
                 T = T_cnms
                 T_error = T_cnm_errors[:, 0]
-            elif i ==3:
+            elif i == 3:
                 n = n_Hs
                 n_error = n_H_errors[:, 0]
                 T = T_Hs
@@ -974,22 +973,26 @@ def plot_density_cdfs(core_dict, df):
                 error = n_error
                 data = n
                 n_sim = 100000
-                myplt.plot_cdf_confint(data,
-                                       data_error=error,
-                                       ax=ax,
-                                       nsim=n_sim,
-                                       nbins=nbins,
-                                       #bin_limits=[0, None],
-                                       plot_kwargs_line={'color': c_cycle[i],
-                                                         'linestyle': linestyle,
-                                                         'label': label,
-                                                         },
-                                       plot_kwargs_fill_between=\
-                                               {'color': c_cycle[i],
-                                                'alpha': alpha,
-                                                'linewidth': 0,
-                                                },
-                                       )
+                mask = (error > data)
+                data = data[~mask]
+                error = error[~mask]
+                if 1:
+                    myplt.plot_cdf_confint(data,
+                                           data_error=error,
+                                           ax=ax,
+                                           nsim=n_sim,
+                                           nbins=nbins,
+                                           bin_limits=[-20, 300],
+                                           plot_kwargs_line={'color': c_cycle[i],
+                                                             'linestyle': linestyle,
+                                                             'label': label,
+                                                             },
+                                           plot_kwargs_fill_between=\
+                                                   {'color': c_cycle[i],
+                                                    'alpha': alpha,
+                                                    'linewidth': 0,
+                                                    },
+                                           )
         #if i < 2:
         if 0:
             x = myplt.plot_cdf(data[data > 0],
@@ -1010,7 +1013,7 @@ def plot_density_cdfs(core_dict, df):
     ax.legend(loc='best')
     if 1:
         ax.set_xscale('linear')
-        #ax.set_xlim([-30, 1000])
+        ax.set_xlim([-10, 200])
     else:
         ax.set_xscale('log')
         ax.set_xlim([7*10**-1, 10**4])
@@ -1020,7 +1023,7 @@ def plot_density_cdfs(core_dict, df):
     ax.set_ylabel('Cumulative Distribution')
 
     #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
-    plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.pdf')
+    plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/density_cdf.pdf')
 
 def plot_modelparam_cdfs(core_dict, df):
 
@@ -1168,8 +1171,8 @@ def plot_modelparam_cdfs(core_dict, df):
     axes[1].set_ylabel('Cumulative Distribution')
     axes[0].set_ylim([0,1])
     axes[1].set_ylim([0,1])
-    axes[0].set_xlim([-4,30])
-    axes[1].set_xlim([-20,60])
+    axes[0].set_xlim([0,25])
+    axes[1].set_xlim([0,60])
 
     #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
     plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/modelparams_cdf.pdf')
