@@ -1595,7 +1595,8 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
             ax.set_ylim(ylimits[0], ylimits[1])
             ylimits = None
 
-        if model_fits is not None:
+        #if model_fits is not None:
+        if 0:
             c_cycle = myplt.set_color_cycle(num_colors=2,
                                             cmap_limits=[0.4, 0.8])
 
@@ -3065,12 +3066,6 @@ def plot_multicloud_results(results):
             hi_dict[cloud]['hi_sd_median'].append(scipy.stats.nanmedian(hisd_cores_list[i][j]))
             hi_dict[cloud]['hi_sd_std'].append(np.nanstd(hisd_cores_list[i][j]))
 
-        if 0:
-            print(cloud_name)
-            print('vel range', data_products['hi_range_kwargs']['vel_range'])
-            print(results_dict['global_args']['vel_range_error'])
-
-
 
     # Print results
     # =========================================================================
@@ -3358,9 +3353,6 @@ def plot_multicloud_results(results):
                                 contour=False,
                                 limits=[2, 20, -6, 10]
                                 )
-
-
-
 
 '''
 Data Prep functions
@@ -3695,8 +3687,6 @@ def write_core_HI_table(hi_dict, filename,):
                 row_text = cloud.capitalize()
             else:
                 row_text = ''
-
-            print core_name
 
             row_text = add_row_element(row_text,
                                        core_name)
@@ -4111,8 +4101,6 @@ def add_core_mask(cores, data):
         except KeyError:
             cores[core]['mask'] = None
             cores[core]['indices_orig'] = None
-
-
 
 '''
 Modeling Functions
@@ -7113,7 +7101,7 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 10000,
+                'num_bootstraps': 100,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
