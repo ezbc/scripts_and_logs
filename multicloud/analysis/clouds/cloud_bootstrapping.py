@@ -4294,7 +4294,6 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
                          vary=krumholz_params['param_vary'],
                          bootstrap_residuals=bootstrap_residuals,
                          nboot=nboot,
-                         G0=G0,
                          rh2_error=rh2_error,
                          h_sd_error=h_sd_error,
                          odr_fit=odr_fit,
@@ -5287,7 +5286,6 @@ def bootstrap_worker(global_args, i):
                                     rh2_error=rh2_core_error,
                                     h_sd_error=h_sd_core_error,
                                     model_kwargs=model_kwargs,
-                                    G0=G0,
                                     )
 
         if plot_kwargs['plot_diagnostics']:
@@ -6457,15 +6455,12 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
     data_array = h_sd, rh2, h_sd_error, rh2_error
     h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
 
-    G0 = model_kwargs['krumholz_params']['G0'] + \
-         np.random.normal(model_kwargs['krumholz_params']['G0_error'])
     ss_model_result = \
         fit_steady_state_models(h_sd.ravel(),
                                 rh2.ravel(),
                                 rh2_error=rh2_error.ravel(),
                                 h_sd_error=h_sd_error.ravel(),
                                 model_kwargs=model_kwargs,
-                                G0=G0,
                                 )
     fitted_models = {}
     for model in ss_model_result:
@@ -7078,7 +7073,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -7101,7 +7096,7 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 100,
+                'num_bootstraps': 10,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
