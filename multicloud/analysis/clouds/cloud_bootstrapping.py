@@ -6455,6 +6455,11 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
     data_array = h_sd, rh2, h_sd_error, rh2_error
     h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
 
+    print 'h_sd', h_sd
+    print 'h_sd_error', h_sd_error
+    print 'rh2', rh2
+    print 'rh2_error', rh2_error
+
     ss_model_result = \
         fit_steady_state_models(h_sd.ravel(),
                                 rh2.ravel(),
