@@ -1595,8 +1595,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
             ax.set_ylim(ylimits[0], ylimits[1])
             ylimits = None
 
-        #if model_fits is not None:
-        if 0:
+        if model_fits is not None:
             c_cycle = myplt.set_color_cycle(num_colors=2,
                                             cmap_limits=[0.4, 0.8])
 
@@ -3726,7 +3725,6 @@ def add_row_element(row_text, element, text_format='{0:s}'):
         return row_text + ' & ' + text_format.format(element)
 
 
-
 '''
 Multiprocessing functions
 '''
@@ -4105,6 +4103,58 @@ def add_core_mask(cores, data):
 '''
 Modeling Functions
 '''
+
+def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
+
+    data_array = h_sd, rh2, h_sd_error, rh2_error
+    h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
+
+    if 0:
+        print 'h_sd', h_sd
+        print 'h_sd_error', h_sd_error
+        print 'rh2', rh2
+        print 'rh2_error', rh2_error
+
+    ss_model_result = \
+        fit_steady_state_models(h_sd.ravel(),
+                                rh2.ravel(),
+                                rh2_error=rh2_error.ravel(),
+                                h_sd_error=h_sd_error.ravel(),
+                                model_kwargs=model_kwargs,
+                                )
+    fitted_models = {}
+    for model in ss_model_result:
+        params = {}
+        for param in ss_model_result[model]:
+            params[param] = ss_model_result[model][param]
+
+        print params
+        if 0:
+            params['phi_cnm'] = 3
+            params['alphaG'] = 10
+            params['phi_g'] = 3
+            params['phi_mol'] = 10
+            params['Z'] = 1
+
+        if 'sternberg' in model:
+            model_fits = calc_sternberg(params,
+                                      h_sd_extent=(0.001, 200),
+                                      return_fractions=False,
+                                      return_hisd=True)
+        elif 'krumholz' in model:
+            model_fits = calc_krumholz(params,
+                                      h_sd_extent=(0.001, 200),
+                                      return_fractions=False,
+                                      return_hisd=True)
+
+        fitted_models[model] = {}
+        fits = fitted_models[model]
+        fits['rh2'] = model_fits[0]
+        fits['h_sd'] = model_fits[1]
+        fits['hi_sd'] = model_fits[2]
+
+    return fitted_models
+
 def fit_av_model(av, nhi, av_error=None, nhi_error=None, algebraic=False,
         nhi_background=None, plot_kwargs=None, init_guesses=[0.05, 0.05, 0],
         use_intercept=True, return_fit=False, fit_method='odr',
@@ -4268,8 +4318,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
                           radiation_type=sternberg_params['radiation_type'],
                           bootstrap_residuals=bootstrap_residuals,
                           nboot=nboot,
-                          rh2_error=rh2_error,
-                          h_sd_error=h_sd_error,
+                          rh2_error=np.abs(rh2_error),
+                          h_sd_error=np.abs(h_sd_error),
                           odr_fit=odr_fit,
                           )
 
@@ -4294,8 +4344,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
                          vary=krumholz_params['param_vary'],
                          bootstrap_residuals=bootstrap_residuals,
                          nboot=nboot,
-                         rh2_error=rh2_error,
-                         h_sd_error=h_sd_error,
+                         rh2_error=np.abs(rh2_error),
+                         h_sd_error=np.abs(h_sd_error),
                          odr_fit=odr_fit,
                          )
 
@@ -4418,7 +4468,7 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
 
     # Get large array of h_sd
     if h_sd is None:
-        h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
+        h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e3)
 
     params = [params['phi_cnm'], params['Z'], params['phi_mol']]
     if params[0] <= 0 or np.isnan(params[0]):
@@ -4474,7 +4524,8 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
     import mystats
     import scipy.odr as odr
 
-    if not odr_fit:
+    #if not odr_fit:
+    if 0:
         def chisq(params, h_sd, rh2):
             phi_cnm = params['phi_cnm'].value
             phi_mol = params['phi_mol'].value
@@ -4491,7 +4542,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
             phi_mol = params['phi_mol'].value
             Z = params['Z'].value
 
-            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol, G_0=G0)
+            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol,)
 
             residual = rh2 - rh2_model
 
@@ -4559,21 +4610,24 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
         else:
             rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
                     params['phi_mol'].value)
-    elif odr_fit:
 
-        phi_cnm, Z, phi_mol = guesses
-        def odr_func(phi_cnm, h_sd):
+    if not odr_fit:
+        h_sd_error = None
+        rh2_error = None
 
-            return k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol,
-                                return_fractions=False)
+    phi_cnm, Z, phi_mol = guesses
+    def odr_func(phi_cnm, h_sd):
 
-        model = odr.Model(odr_func)
-        data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
-        odr_instance = odr.ODR(data, model, beta0=[phi_cnm,])
-        output = odr_instance.run()
-        phi_cnm = output.beta[0]
+        return k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol,
+                            return_fractions=False)
 
-        rh2_fit_params = (phi_cnm, Z, phi_mol)
+    model = odr.Model(odr_func)
+    data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
+    odr_instance = odr.ODR(data, model, beta0=[phi_cnm,])
+    output = odr_instance.run()
+    phi_cnm = output.beta[0]
+
+    rh2_fit_params = (phi_cnm, Z, phi_mol)
 
     return rh2_fit_params
 
@@ -4647,7 +4701,7 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
 
     # Create large array of h_sd
     if h_sd is None:
-        h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e2)
+        h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e3)
 
     params = [params['alphaG'], params['Z'], params['phi_g']]
     if params[0] <= 0 or np.isnan(params[0]):
@@ -4707,20 +4761,8 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
     import mystats
     import scipy.odr as odr
 
-    if not odr_fit:
-        def chisq(params, h_sd, rh2):
-            alphaG = params['alphaG'].value
-            phi_g = params['phi_g'].value
-            Z = params['Z'].value
-
-            rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                     return_fractions=False,
-                                     radiation_type=radiation_type)
-
-            chisq = np.sum(np.abs(rh2 - rh2_model))
-
-            return chisq
-
+    #if not odr_fit:
+    if 0:
         def calc_residual(params, h_sd, rh2):
             alphaG = params['alphaG'].value
             phi_g = params['phi_g'].value
@@ -4755,8 +4797,8 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         result = minimize(calc_residual,
                           params,
                           args=(h_sd, rh2),
-                          #method='leastsq',
-                          method='anneal',
+                          method='leastsq',
+                          #method='anneal',
                           )
 
         if bootstrap_residuals:
@@ -4798,21 +4840,24 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         else:
             rh2_fit_params = (params['alphaG'].value, params['Z'].value,
                     params['phi_g'].value)
-    elif odr_fit:
 
-        alphaG, Z, phi_g = guesses
-        def odr_func(alphaG, h_sd):
+    if not odr_fit:
+        h_sd_error = None
+        rh2_error = None
 
-            return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                     return_fractions=False)
+    alphaG, Z, phi_g = guesses
+    def odr_func(alphaG, h_sd):
+        return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                 return_fractions=False)
 
-        model = odr.Model(odr_func)
-        data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
-        odr_instance = odr.ODR(data, model, beta0=[alphaG,])
-        output = odr_instance.run()
-        alphaG = output.beta[0]
+    h_sd_error, rh2_error = None, None
+    model = odr.Model(odr_func)
+    data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
+    odr_instance = odr.ODR(data, model, beta0=[alphaG,])
+    output = odr_instance.run()
+    alphaG = output.beta[0]
 
-        rh2_fit_params = (alphaG, Z, phi_g)
+    rh2_fit_params = (alphaG, Z, phi_g)
 
     return rh2_fit_params
 
@@ -5671,9 +5716,9 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     global_args = {}
     global_args['av'] = av
     global_args['av_unmasked'] = av_data
-    global_args['av_error'] = av_error
+    global_args['av_error'] = np.abs(av_error)
     global_args['rh2'] = rh2_image
-    global_args['rh2_error'] = rh2_image_error
+    global_args['rh2_error'] = np.abs(rh2_image_error)
     global_args['h_sd'] = h_sd_image
     global_args['nhi'] = nhi
     global_args['rotate_cores'] = rotate_cores
@@ -5685,7 +5730,7 @@ def bootstrap_residuals(av_data, nhi_image=None, hi_data=None, vel_axis=None,
     global_args['use_intercept'] = use_intercept
     global_args['probabilities'] = probabilities
     global_args['scale_kwargs'] = scale_kwargs
-    global_args['sim_hi_error'] = sim_hi_error
+    global_args['sim_hi_error'] = np.abs(sim_hi_error)
     global_args['ss_model_kwargs'] = ss_model_kwargs
     if sim_hi_error:
         global_args['hi_data'] = hi_data
@@ -6299,11 +6344,11 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
     data_products['hi_sd'] = hi_sd_image
     data_products['h_sd'] = h_sd_image
     data_products['rh2'] = rh2_image
-    data_products['nh2_error'] = nh2_image_error
-    data_products['h2_sd_error'] = h2_sd_image_error
-    data_products['hi_sd_error'] = hi_sd_image_error
-    data_products['h_sd_error'] = h_sd_image_error
-    data_products['rh2_error'] = rh2_image_error
+    data_products['nh2_error'] = np.abs(nh2_image_error)
+    data_products['h2_sd_error'] = np.abs(h2_sd_image_error)
+    data_products['hi_sd_error'] = np.abs(hi_sd_image_error)
+    data_products['h_sd_error'] = np.abs(h_sd_image_error)
+    data_products['rh2_error'] = np.abs(rh2_image_error)
 
     # Median sim errors
     # --------------------------------------------------------------------------
@@ -6449,48 +6494,6 @@ def calc_mc_analysis(mc_results, resid_results, data_products):
     # comment
 
     return mc_analysis
-
-def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
-
-    data_array = h_sd, rh2, h_sd_error, rh2_error
-    h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
-
-    print 'h_sd', h_sd
-    print 'h_sd_error', h_sd_error
-    print 'rh2', rh2
-    print 'rh2_error', rh2_error
-
-    ss_model_result = \
-        fit_steady_state_models(h_sd.ravel(),
-                                rh2.ravel(),
-                                rh2_error=rh2_error.ravel(),
-                                h_sd_error=h_sd_error.ravel(),
-                                model_kwargs=model_kwargs,
-                                )
-    fitted_models = {}
-    for model in ss_model_result:
-        params = {}
-        for param in ss_model_result[model]:
-            params[param] = ss_model_result[model][param]
-
-        if 'sternberg' in model:
-            model_fits = calc_sternberg(params,
-                                      h_sd_extent=(0.001, 200),
-                                      return_fractions=False,
-                                      return_hisd=True)
-        elif 'krumholz' in model:
-            model_fits = calc_krumholz(params,
-                                      h_sd_extent=(0.001, 200),
-                                      return_fractions=False,
-                                      return_hisd=True)
-
-        fitted_models[model] = {}
-        fits = fitted_models[model]
-        fits['rh2'] = model_fits[0]
-        fits['h_sd'] = model_fits[1]
-        fits['hi_sd'] = model_fits[2]
-
-    return fitted_models
 
 def add_results_analysis(results_dict):
 
@@ -7101,7 +7104,7 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 10,
+                'num_bootstraps': 10000,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
