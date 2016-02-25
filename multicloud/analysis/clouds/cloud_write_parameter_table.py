@@ -730,8 +730,8 @@ def write_model_params_table(core_dict):
 
         # add HI temp
         # -----------
-        param = core['T_H']
-        param_error = core['T_H_error']
+        param = core['T_H'] * 10.0 # convert from units of 1,000 K to 100 K
+        param_error = core['T_H_error'] * 10.0
         param_info = (param, param_error[1], param_error[0])
         row_text = \
             add_row_element(row_text,
