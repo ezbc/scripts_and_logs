@@ -563,6 +563,8 @@ def get_core_names():
 
 def write_model_params_table(core_dict):
 
+    from mystats import sigfig
+
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
     filename = table_dir + 'tables/modelparams_table.tex'
 
@@ -572,7 +574,7 @@ def write_model_params_table(core_dict):
     # Open file to be appended
     f = open(filename, 'wb')
 
-    text_param_format ='{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$'
+    text_param_format ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
     text_param_format_int ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
 
     #print_dict_keys(mc_analysis_dict)
@@ -668,6 +670,20 @@ def write_model_params_table(core_dict):
                             param_info,
                             text_format=text_param_format)
 
+        model = 'krumholz'
+        param_name = 'hi_transition'
+        param = \
+            core[model][param_name]
+        param_error = \
+            core[model][param_name + '_error']
+
+        param_info = (param, param_error[1], param_error[0])
+
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format_int)
+
         # add H vol dens
         # --------------
         param = core['n_cnm']
@@ -731,6 +747,8 @@ def write_model_params_table(core_dict):
 
         # add HI temp
         # -----------
+        #param = sigfig(core['T_H'] * 10.0, 2) # convert from units of 1,000 K to 100 K
+        #param_error = sigfig(core['T_H_error'] * 10.0, 2)
         param = core['T_H'] * 10.0 # convert from units of 1,000 K to 100 K
         param_error = core['T_H_error'] * 10.0
         param_info = (param, param_error[1], param_error[0])
