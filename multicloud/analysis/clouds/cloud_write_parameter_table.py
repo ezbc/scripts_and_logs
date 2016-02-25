@@ -573,6 +573,7 @@ def write_model_params_table(core_dict):
     f = open(filename, 'wb')
 
     text_param_format ='{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$'
+    text_param_format_int ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
 
     #print_dict_keys(mc_analysis_dict)
     params_to_write = ['phi_cnm', 'alphaG']
@@ -675,7 +676,7 @@ def write_model_params_table(core_dict):
         row_text = \
             add_row_element(row_text,
                             param_info,
-                            text_format=text_param_format)
+                            text_format=text_param_format_int)
 
         # add HI temp
         # -----------
@@ -685,7 +686,7 @@ def write_model_params_table(core_dict):
         row_text = \
             add_row_element(row_text,
                             param_info,
-                            text_format=text_param_format)
+                            text_format=text_param_format_int)
 
 
         # Sternberg parameters
@@ -716,7 +717,7 @@ def write_model_params_table(core_dict):
         row_text = \
             add_row_element(row_text,
                             param_info,
-                            text_format=text_param_format)
+                            text_format=text_param_format_int)
 
         # add H vol dens
         # --------------
@@ -726,7 +727,7 @@ def write_model_params_table(core_dict):
         row_text = \
             add_row_element(row_text,
                             param_info,
-                            text_format=text_param_format)
+                            text_format=text_param_format_int)
 
         # add HI temp
         # -----------
@@ -736,7 +737,7 @@ def write_model_params_table(core_dict):
         row_text = \
             add_row_element(row_text,
                             param_info,
-                            text_format=text_param_format)
+                            text_format=text_param_format_int)
 
 
         # Finish row
