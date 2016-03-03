@@ -3069,25 +3069,16 @@ def plot_multicloud_results(results):
         core_names_list.append(core_names)
         hisd_cores_list.append(hisd_core_list)
         hsd_cores_list.append(hsd_core_list)
+        rh2_cores_list.append(rh2_core_list)
         hisd_error_cores_list.append(hisd_error_core_list)
         hsd_error_cores_list.append(hsd_error_core_list)
         hisd_median_error_cores_list.append(hisd_median_error_core_list)
         hsd_median_error_cores_list.append(hsd_median_error_core_list)
 
-    # format hi_dict
-    hi_dict = {}
-    for i, cloud in enumerate(cloud_name_list):
-        hi_dict[cloud] = {}
-        hi_dict[cloud]['cores'] = []
-        hi_dict[cloud]['hi_sd_mean'] = []
-        hi_dict[cloud]['hi_sd_median'] = []
-        hi_dict[cloud]['hi_sd_std'] = []
-        for j in xrange(len(core_names_list[i])):
-            hi_dict[cloud]['cores'].append(core_names_list[i][j])
-            hi_dict[cloud]['hi_sd_mean'].append(np.nanmean(hisd_cores_list[i][j]))
-            hi_dict[cloud]['hi_sd_median'].append(scipy.stats.nanmedian(hisd_cores_list[i][j]))
-            hi_dict[cloud]['hi_sd_std'].append(np.nanstd(hisd_cores_list[i][j]))
-
+    # calculate statistics on hi
+    hi_dict = calc_hi_statistics(cloud_name_list, core_names_list,
+                                 hisd_cores_list, hsd_cores_list,
+                                 rh2_cores_list, model_analysis_dict)
 
     # Print results
     # =========================================================================
@@ -3389,6 +3380,43 @@ def plot_multicloud_results(results):
 '''
 Data Prep functions
 '''
+
+def calc_hi_statistics(cloud_name_list, core_names_list,
+                                 hisd_cores_list, h_sd_cores_list,
+                                 rh2_cores_list, model_analysis_dict):
+
+    hi_dict = {}
+    for i, cloud in enumerate(cloud_name_list):
+        hi_dict[cloud] = {}
+        hi_dict[cloud]['cores'] = []
+        hi_dict[cloud]['hi_sd_mean'] = []
+        hi_dict[cloud]['hi_sd_median'] = []
+        hi_dict[cloud]['hi_sd_std'] = []
+        hi_dict[cloud]['fraction_LOS_diffuse'] = []
+        hi_dict[cloud]['fraction_LOS_sf'] = []
+        for j, core in enumerate(core_names_list[i]):
+            hi = hisd_cores_list[i][j]
+            h = h_sd_cores_list[i][j]
+            rh2 = rh2_cores_list[i][j]
+            hi_dict[cloud]['cores'].append(core_names_list[i][j])
+            hi_dict[cloud]['hi_sd_mean'].append(np.nanmean(hi))
+            hi_dict[cloud]['hi_sd_median'].append(scipy.stats.nanmedian(hi))
+            hi_dict[cloud]['hi_sd_std'].append(np.nanstd(hi))
+
+            # frac of diffuse LOS
+            indices_diffuse = np.where(rh2 < 1.0)[0]
+            frac_diffuse = np.size(indices_diffuse) / float(np.size(rh2))
+            hi_dict[cloud]['fraction_LOS_diffuse'].append(frac_diffuse)
+
+            #frac above sf threshold
+            model = model_analysis_dict[cloud]['cores'][core]
+            sf_threshold = model['sternberg_results']['sf_threshold']
+            indices_sf = np.where(h > sf_threshold)[0]
+            frac_sf = np.size(indices_sf) / float(np.size(h))
+            hi_dict[cloud]['fraction_LOS_sf'].append(frac_sf)
+
+    return hi_dict
+
 
 def collect_hi_transition_results(model_analysis_list, cloud_list,
         filename=None):
@@ -3704,9 +3732,11 @@ def write_core_HI_table(hi_dict, filename,):
     # Open file to be appended
     f = open(filename, 'wb')
 
-    text_param_format ='{0:.1f}'
+    text_param_format_sd ='{0:.1f}'
+    text_param_format_frac ='{0:.0f}'
 
-    params_to_write = ['hi_sd_mean', 'hi_sd_median', 'hi_sd_std']
+    params_to_write = ['hi_sd_mean', 'hi_sd_median', 'hi_sd_std',
+    'fraction_LOS_diffuse', 'fraction_LOS_sf']
 
     # Collect parameter names for each model for each core
     for cloud in ('california', 'perseus', 'taurus'):
@@ -3728,6 +3758,14 @@ def write_core_HI_table(hi_dict, filename,):
                     core_dict[param_name][cloud_row]
 
                 param_info = param
+
+                if 'fraction' in param_name:
+                    text_param_format = text_param_format_frac
+                    print param_info
+                    param_info = param_info * 100.0
+                else:
+                    text_param_format = text_param_format_sd
+
 
                 #if param_name == 'alphaG':
                     #print core_name, param_info
@@ -4140,10 +4178,11 @@ Modeling Functions
 def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         h_sd_fit=None):
 
-    if h_sd_fit is not None and np.size(h_sd_fit) == np.size(h_sd):
-        data_array = h_sd, rh2, h_sd_error, rh2_error, h_sd_fit
-        h_sd, rh2, h_sd_error, rh2_error, h_sd_fit = mask_nans(data_array)
-    else:
+    #if h_sd_fit is not None and np.size(h_sd_fit) == np.size(h_sd):
+        #data_array = h_sd, rh2, h_sd_error, rh2_error, h_sd_fit
+        #h_sd, rh2, h_sd_error, rh2_error, h_sd_fit = mask_nans(data_array)
+    #else:
+    if 1:
         data_array = h_sd, rh2, h_sd_error, rh2_error
         h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
 
@@ -4173,6 +4212,9 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
             params['phi_mol'] = 10
             params['Z'] = 1
 
+
+
+        # Calculate sum of residuals
         if 'sternberg' in model:
             model_fits = calc_sternberg(params,
                                       h_sd_extent=(0.001, 200),
@@ -4185,14 +4227,29 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                                       h_sd=h_sd,
                                       return_fractions=False,
                                       return_hisd=True)
-
         fitted_models[model] = {}
         fits = fitted_models[model]
+        fits['sum_of_resid'] = np.sum((rh2 - model_fits[0])**2)
+
+        # use fitted h_sd
+        # ---------------
+        if 'sternberg' in model:
+            model_fits = calc_sternberg(params,
+                                      h_sd_extent=(0.001, 200),
+                                      h_sd=h_sd_fit,
+                                      return_fractions=False,
+                                      return_hisd=True)
+        elif 'krumholz' in model:
+            model_fits = calc_krumholz(params,
+                                      h_sd_extent=(0.001, 200),
+                                      h_sd=h_sd_fit,
+                                      return_fractions=False,
+                                      return_hisd=True)
+
         fits['rh2'] = model_fits[0]
         fits['h_sd'] = model_fits[1]
         fits['hi_sd'] = model_fits[2]
 
-        fits['sum_of_resid'] = np.sum((rh2 - fits['rh2'])**2)
 
     return fitted_models
 
