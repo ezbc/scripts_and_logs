@@ -2047,7 +2047,7 @@ def plot_hi_cdf_grid(hsd_list, hisd_list, core_names=None,
 def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
         model_results=None, model_analysis=None, xlimits=None, ylimits=None,
         scale=('linear', 'linear'), filename=None, show_params=False,
-        levels=5, ncols=2):
+        levels=5, ncols=2, plot_sf_threshold=True):
 
     # Import external modules
     import numpy as np
@@ -2279,6 +2279,14 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
 
         # Annotations
         anno_xpos = 0.95
+
+        if plot_sf_threshold:
+            ax.axvline(model_analysis[core]['sternberg_results']['sf_threshold'],
+                       color='k',
+                       linewidth=2,
+                       linestyle='--',
+                       alpha=0.75,
+                       )
 
         if show_params:
             alphaG_text = r'\noindent$\alpha G$ =' + \
