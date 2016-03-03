@@ -5866,6 +5866,7 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
                 {'alphaG': empty(),
                  'Z': empty(),
                  'phi_g': empty(),
+                 'sf_threshold': empty(),
                  'hi_transition': empty(),
                  }
     mc_results['data_params'] = \
