@@ -2967,6 +2967,8 @@ def plot_multicloud_results(results):
     core_names_list = []
     core_list = []
     cloud_model_fits_list = []
+    stats_list = {'krumholz_results': {'sum_of_resid': []},
+                  'sternberg_results': {'sum_of_resid': []}}
     for i, cloud_name in enumerate(results):
         results_dict = results[cloud_name]
         figure_dir = results_dict['filenames']['figure_dir']
@@ -3036,6 +3038,19 @@ def plot_multicloud_results(results):
                                               )
                                    )
 
+            # get the residual sum of squares
+            for model in model_fits_list[j]:
+                fits = refit_data(hsd_core_list[j],
+                                  rh2_core_list[j],
+                                  h_sd_error=hsd_error_core_list[j],
+                                  rh2_error=rh2_error_core_list[j],
+                                  h_sd_fit=hsd_core_list[j],
+                                  model_kwargs=model_kwargs,
+                                  )
+                stats_list[model]['sum_of_resid'].append(\
+                        fits[model]['sum_of_resid'])
+
+
             if 0:
                 rh2_copy = rh2_list[i].copy()
                 rh2_copy[core_indices] = 1000
@@ -3070,6 +3085,16 @@ def plot_multicloud_results(results):
     # =========================================================================
     # Write results to a
     #print_av_error_stats(av_list[0], av_error_list[0])
+
+    print('Average difference between K+09 and S+14 models:')
+    print('median')
+    print(np.median(stats_list['krumholz_results']['sum_of_resid']),
+          np.median(stats_list['sternberg_results']['sum_of_resid']))
+    print('std')
+    print(np.std(stats_list['krumholz_results']['sum_of_resid']),
+          np.std(stats_list['sternberg_results']['sum_of_resid']))
+    print(np.median(np.array(stats_list['krumholz_results']['sum_of_resid']) - \
+                  np.array(stats_list['sternberg_results']['sum_of_resid'])))
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
@@ -4104,10 +4129,15 @@ def add_core_mask(cores, data):
 Modeling Functions
 '''
 
-def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
+def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
+        h_sd_fit=None):
 
-    data_array = h_sd, rh2, h_sd_error, rh2_error
-    h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
+    if h_sd_fit is not None and np.size(h_sd_fit) == np.size(h_sd):
+        data_array = h_sd, rh2, h_sd_error, rh2_error, h_sd_fit
+        h_sd, rh2, h_sd_error, rh2_error, h_sd_fit = mask_nans(data_array)
+    else:
+        data_array = h_sd, rh2, h_sd_error, rh2_error
+        h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
 
     if 0:
         print 'h_sd', h_sd
@@ -4128,7 +4158,6 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
         for param in ss_model_result[model]:
             params[param] = ss_model_result[model][param]
 
-        print params
         if 0:
             params['phi_cnm'] = 3
             params['alphaG'] = 10
@@ -4139,11 +4168,13 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
         if 'sternberg' in model:
             model_fits = calc_sternberg(params,
                                       h_sd_extent=(0.001, 200),
+                                      h_sd=h_sd,
                                       return_fractions=False,
                                       return_hisd=True)
         elif 'krumholz' in model:
             model_fits = calc_krumholz(params,
                                       h_sd_extent=(0.001, 200),
+                                      h_sd=h_sd,
                                       return_fractions=False,
                                       return_hisd=True)
 
@@ -4152,6 +4183,8 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None):
         fits['rh2'] = model_fits[0]
         fits['h_sd'] = model_fits[1]
         fits['hi_sd'] = model_fits[2]
+
+        fits['sum_of_resid'] = np.sum((rh2 - fits['rh2'])**2)
 
     return fitted_models
 
@@ -4301,6 +4334,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
         h_sd_error=None, bootstrap_residuals=False, nboot=100, G0=1.0,
         odr_fit=False,):
 
+    from myscience import bialy16
+
     # Fit R_H2
     #---------
     sternberg_params = model_kwargs['sternberg_params']
@@ -4368,6 +4403,13 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
     sternberg_results['alphaG'] = alphaG
     sternberg_results['Z'] = Z_s14
     sternberg_results['phi_g'] = phi_g
+
+    # sigma_g = 1.9 * 10^-21 phi_g * Z cm^2
+    # sigma_g,gal is relative to galactic, and so is phi_g in this case, so
+    # sigma_g,gal propto phi_g.
+    sigma_g = phi_g
+    sternberg_results['sf_threshold'] = bialy16.calc_sf_threshold(alphaG,
+                                                                  sigma_g)
 
     # keep results
     krumholz_results['phi_cnm'] = phi_cnm
