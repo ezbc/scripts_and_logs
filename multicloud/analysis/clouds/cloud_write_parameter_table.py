@@ -286,8 +286,8 @@ def print_cloud_temps(cloud_temps):
                       cloud_temps[cloud]['rad_field_habing_median_error'])
 
         print('\nRadiation Fields medians in cloud:' + cloud)
-        print('\tDraine: {0:.1f} +/- {1:.1f}'.format(*rad_draine))
-        print('\tHabing: {0:.1f} +/- {1:.1f}'.format(*rad_habing))
+        print('\tDraine: {0:.2f} +/- {1:.2f}'.format(*rad_draine))
+        print('\tHabing: {0:.2f} +/- {1:.2f}'.format(*rad_habing))
 
 def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
         beta_data, beta_error_data):
@@ -451,7 +451,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
 
     return cloud_temps
 
-def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
+def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
 
     # Get the data
     # ------------
@@ -501,6 +501,14 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
                         cloud_temps[cloud]['dust_temp_median']
                     core_dict[core_name]['dust_temp_median_error'] = \
                         cloud_temps[cloud]['dust_temp_median_error']
+                    core_dict[core_name]['rad_field_draine_median'] = \
+                        cloud_temps[cloud]['rad_field_draine_median']
+                    core_dict[core_name]['rad_field_draine_median_error'] = \
+                        cloud_temps[cloud]['rad_field_draine_median_error']
+                    core_dict[core_name]['rad_field_habing_median'] = \
+                        cloud_temps[cloud]['rad_field_habing_median']
+                    core_dict[core_name]['rad_field_habing_median_error'] = \
+                        cloud_temps[cloud]['rad_field_habing_median_error']
         else:
             cloud_temps = calc_cloud_dust_temp(core_dict,
                                                wcs_header,
@@ -510,10 +518,11 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
                                                beta_error_data,
                                                )
 
-            print_cloud_temps(cloud_temps)
 
             with open(cloud_temp_filename, 'wb') as f:
                 pickle.dump(cloud_temps, f)
+
+            print_cloud_temps(cloud_temps)
 
             plot_dust_histogram(cloud_temps,
                                 limits=[[14, 20], [-0.05, 1.05]],
