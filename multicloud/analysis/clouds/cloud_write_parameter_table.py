@@ -166,8 +166,8 @@ def add_model_analysis(core_dict):
     for core_name in core_dict:
         core = core_dict[core_name]
 
-        temp = core['dust_temp_avg']
-        temp_error = core['dust_temp_error_avg']
+        temp = core['dust_temp_median']
+        temp_error = core['dust_temp_error_median']
         core['rad_field'], core['rad_field_error'] = \
                 calc_radiation_field(temp,
                                      T_dust_error=temp_error)
@@ -177,8 +177,8 @@ def add_model_analysis(core_dict):
             if cloud not in clouds_printed:
                 print ''
                 print cloud + ' dust temp and error:'
-                print core['dust_temp_avg']
-                print core['dust_temp_error_avg']
+                print core['dust_temp_median']
+                print core['dust_temp_error_median']
                 print 'rad field and error:'
                 print core['rad_field']
                 print core['rad_field_error']
@@ -384,36 +384,35 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
                 rad_mc[j] = np.median(rad_field[~region_mask])
 
             # Calculate average temp
-            #core_dict[core_name]['dust_temp_avg'] = \
+            #core_dict[core_name]['dust_temp_median'] = \
             #    np.nanmean(temp_data[~region_mask])
-            #core_dict[core_name]['dust_temp_error_avg'] = \
+            #core_dict[core_name]['dust_temp_error_median'] = \
             #    np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
             #        temp_error_data[~region_mask].size
-            dust_temp_avg = np.nanmean(temp_mc)
-            dust_temp_error_avg = \
-                np.sqrt(np.nansum(np.mean(temp_error_mc)**2 + \
-                                  np.std(temp_mc)**2))
+            dust_temp_median, mc_error = mystats.calc_cdf_error(temp_mc)
+            dust_temp_error_median = np.mean(mc_error)
+            dust_beta_median, mc_error = mystats.calc_cdf_error(beta_mc)
+            dust_beta_error_median = np.mean(mc_error)
+            rad_field_median, mc_error = mystats.calc_cdf_error(rad_mc)
+            rad_field_error_median = np.mean(mc_error)
 
-            dust_temp_avg, mc_error = mystats.calc_cdf_error(temp_mc)
-            mc_error = np.array(mc_error)
-            dust_temp_error_avg = \
-                np.sqrt(np.nansum(np.mean(temp_error_mc)**2 + \
-                                  mc_error**2))
-
-            core_dict[core_name]['dust_temp_avg'] = dust_temp_avg
-            core_dict[core_name]['dust_temp_error_avg'] = \
-                dust_temp_error_avg
+            core_dict[core_name]['dust_temp_median'] = dust_temp_median
+            core_dict[core_name]['dust_temp_error_median'] = dust_temp_error_median
+            core_dict[core_name]['dust_beta_median'] = dust_temp_median
+            core_dict[core_name]['dust_beta_error_median'] = dust_temp_error_median
+            core_dict[core_name]['rad_field_median'] = dust_temp_median
+            core_dict[core_name]['rad_field_error_median'] = dust_temp_error_median
 
             cloud_temps[cloud] = \
-                    {'dust_temp_avg': dust_temp_avg,
-                     'dust_temp_error_avg': dust_temp_error_avg,
+                    {'dust_temp_median': dust_temp_median,
+                     'dust_temp_error_median': dust_temp_error_median,
                      'dust_temps': temps
                      }
         else:
-            core_dict[core_name]['dust_temp_avg'] = \
-                cloud_temps[cloud]['dust_temp_avg']
-            core_dict[core_name]['dust_temp_error_avg'] = \
-                cloud_temps[cloud]['dust_temp_error_avg']
+            core_dict[core_name]['dust_temp_median'] = \
+                cloud_temps[cloud]['dust_temp_median']
+            core_dict[core_name]['dust_temp_error_median'] = \
+                cloud_temps[cloud]['dust_temp_error_median']
 
     return cloud_temps
 
@@ -463,10 +462,10 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
                 cloud_temps = pickle.load(f)
                 for core_name in core_dict:
                     cloud = core_dict[core_name]['cloud']
-                    core_dict[core_name]['dust_temp_avg'] = \
-                        cloud_temps[cloud]['dust_temp_avg']
-                    core_dict[core_name]['dust_temp_error_avg'] = \
-                        cloud_temps[cloud]['dust_temp_error_avg']
+                    core_dict[core_name]['dust_temp_median'] = \
+                        cloud_temps[cloud]['dust_temp_median']
+                    core_dict[core_name]['dust_temp_error_median'] = \
+                        cloud_temps[cloud]['dust_temp_error_median']
         else:
             cloud_temps = calc_cloud_dust_temp(core_dict,
                                                wcs_header,
@@ -515,9 +514,9 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
             # Calculate average temp
             dust_temp, dust_temp_error = \
                 mystats.calc_cdf_error(temp_data[~region_mask])
-            core_dict[core_name]['dust_temp_avg'] = \
+            core_dict[core_name]['dust_temp_median'] = \
                 dust_temp
-            core_dict[core_name]['dust_temp_error_avg'] = \
+            core_dict[core_name]['dust_temp_error_median'] = \
                 np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
                     temp_error_data[~region_mask].size
 
@@ -645,8 +644,8 @@ def write_model_params_table(core_dict):
         if 0:
             # add dust temp
             # -------------
-            param = core['dust_temp_avg']
-            param_error = core['dust_temp_error_avg']
+            param = core['dust_temp_median']
+            param_error = core['dust_temp_error_median']
             param_error = [param_error, param_error]
             param_info = (param, param_error[1], param_error[0])
             row_text = \
