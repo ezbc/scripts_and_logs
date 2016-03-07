@@ -328,8 +328,12 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
         N_mc = 10
-        temps_mc = np.empty(N_mc)
-        temp_errors_mc = np.empty(N_mc)
+        temp_mc = np.empty(N_mc)
+        temp_error_mc = np.empty(N_mc)
+        beta_mc = np.empty(N_mc)
+        beta_error_mc = np.empty(N_mc)
+        rad_mc = np.empty(N_mc)
+        rad_error_mc = np.empty(N_mc)
         if cloud not in cloud_temps:
             for j in xrange(N_mc):
                 if j != 0:
@@ -361,10 +365,18 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
                 if j == 0:
                     temps = temp_data[~region_mask]
 
-                # Grab the temperatures
-                temps_mc[j] = np.median(temp_data[~region_mask])
+                # Calculate the radiation field
+                # -----------------------------
+                rad_field, rad_field_error = \
+                    calc_radiation_field(temp_data,
+                                         T_dust_error=temp_error_data,
+                                         beta=beta_data,
+                                         beta_error=beta_error_data)
 
-                temp_errors_mc[j] = \
+                # Grab the temperatures
+                temp_mc[j] = np.median(temp_data[~region_mask])
+
+                temp_error_mc[j] = \
                     np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
                     temp_error_data[~region_mask].size
 
@@ -374,15 +386,15 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
             #core_dict[core_name]['dust_temp_error_avg'] = \
             #    np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
             #        temp_error_data[~region_mask].size
-            dust_temp_avg = np.nanmean(temps_mc)
+            dust_temp_avg = np.nanmean(temp_mc)
             dust_temp_error_avg = \
-                np.sqrt(np.nansum(np.mean(temp_errors_mc)**2 + \
-                                  np.std(temps_mc)**2))
+                np.sqrt(np.nansum(np.mean(temp_error_mc)**2 + \
+                                  np.std(temp_mc)**2))
 
-            dust_temp_avg, mc_error = mystats.calc_cdf_error(temps_mc)
+            dust_temp_avg, mc_error = mystats.calc_cdf_error(temp_mc)
             mc_error = np.array(mc_error)
             dust_temp_error_avg = \
-                np.sqrt(np.nansum(np.mean(temp_errors_mc)**2 + \
+                np.sqrt(np.nansum(np.mean(temp_error_mc)**2 + \
                                   mc_error**2))
 
             core_dict[core_name]['dust_temp_avg'] = dust_temp_avg
