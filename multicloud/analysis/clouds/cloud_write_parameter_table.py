@@ -276,6 +276,18 @@ def add_model_analysis(core_dict):
 
         core['alt_name'] = get_alt_name(core_name)
 
+
+def print_cloud_temps(cloud_temps):
+
+    rad_draine = cloud_temps['rad_field_draine_median'],
+                 cloud_temps['rad_field_draine_median_error']
+    rad_habing = cloud_temps['rad_field_habing_median'],
+                 cloud_temps['rad_field_habing_median_error']
+
+    print('\nRadiation Fields medians:')
+    print('\tDraine: {0:.1f} +/- {1.1f}'.format(rad_draine)
+    print('\tHabing: {0:.1f} +/- {1.1f}'.format(rad_habing)
+
 def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
         beta_data, beta_error_data):
 
@@ -496,6 +508,9 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
                                                beta_data,
                                                beta_error_data,
                                                )
+
+            print_cloud_temps(cloud_temps)
+
             with open(cloud_temp_filename, 'wb') as f:
                 pickle.dump(cloud_temps, f)
 
