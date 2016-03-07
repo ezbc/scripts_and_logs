@@ -276,7 +276,10 @@ def add_model_analysis(core_dict):
 
         core['alt_name'] = get_alt_name(core_name)
 
-def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data):
+def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
+        beta_data, beta_error_data):
+
+    from myscience import calc_radiation_field
 
     cloud_temps = {}
     for core_name in core_dict:
@@ -416,6 +419,25 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
     dust_hist_filename = '/d/bip3/ezbc/multicloud/figures/temps/' + \
                          'multicloud_dust_hist.png'
 
+    # Define filenames
+    # ------------
+    DIR_DUST = '/d/bip3/ezbc/multicloud/data/dust_temp/'
+    DIR_RAD = '/d/bip3/ezbc/multicloud/data/radiation_field/'
+    FILENAME_TEMPERATURE = DIR_DUST + 'multicloud_dust_temp_5arcmin.fits'
+    FILENAME_TEMPERATURE_ERROR = DIR_DUST + \
+            'multicloud_dust_temp_error_5arcmin.fits'
+    FILENAME_BETA = DIR_DUST + 'multicloud_dust_beta_5arcmin.fits'
+    FILENAME_BETA_ERROR = DIR_DUST + 'multicloud_dust_beta_error_5arcmin.fits'
+    FILENAME_RAD = DIR_RAD + 'multicloud_rad_field_5arcmin.fits'
+    FILENAME_RAD_ERROR = DIR_RAD + 'multicloud_rad_field_error_5arcmin.fits'
+
+    # Get the data
+    # ------------
+    temp_data, temp_header = fits.getdata(FILENAME_TEMPERATURE, header=True)
+    temp_error_data = fits.getdata(FILENAME_TEMPERATURE_ERROR)
+    beta_data, beta_header = fits.getdata(FILENAME_TEMPERATURE, header=True)
+    beta_error_data = fits.getdata(FILENAME_TEMPERATURE_ERROR)
+
     # Get the mask for each core
     # --------------------------
     # Create WCS object
@@ -435,6 +457,8 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
                                                wcs_header,
                                                temp_data,
                                                temp_error_data,
+                                               beta_data,
+                                               beta_error_data,
                                                )
             with open(cloud_temp_filename, 'wb') as f:
                 pickle.dump(cloud_temps, f)
