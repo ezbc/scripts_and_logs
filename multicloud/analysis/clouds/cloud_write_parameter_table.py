@@ -279,14 +279,15 @@ def add_model_analysis(core_dict):
 
 def print_cloud_temps(cloud_temps):
 
-    rad_draine = cloud_temps['rad_field_draine_median'],
-                 cloud_temps['rad_field_draine_median_error']
-    rad_habing = cloud_temps['rad_field_habing_median'],
-                 cloud_temps['rad_field_habing_median_error']
+    for cloud in cloud_temps:
+        rad_draine = (cloud_temps[cloud]['rad_field_draine_median'],
+                      cloud_temps[cloud]['rad_field_draine_median_error'])
+        rad_habing = (cloud_temps[cloud]['rad_field_habing_median'],
+                      cloud_temps[cloud]['rad_field_habing_median_error'])
 
-    print('\nRadiation Fields medians:')
-    print('\tDraine: {0:.1f} +/- {1.1f}'.format(rad_draine)
-    print('\tHabing: {0:.1f} +/- {1.1f}'.format(rad_habing)
+        print('\nRadiation Fields medians in cloud:' + cloud)
+        print('\tDraine: {0:.1f} +/- {1:.1f}'.format(*rad_draine))
+        print('\tHabing: {0:.1f} +/- {1:.1f}'.format(*rad_habing))
 
 def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
         beta_data, beta_error_data):
@@ -339,7 +340,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
 
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
-        N_mc = 10
+        N_mc = 1000
         temp_mc = np.empty(N_mc)
         temp_error_mc = np.empty(N_mc)
         beta_mc = np.empty(N_mc)
@@ -414,7 +415,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
 
             # calculate habing field from draine:
             rad_field_habing_median = rad_field_draine_median / 1.71
-            rad_field_habing_median = rad_field_draine_median_error / 1.71
+            rad_field_habing_median_error = rad_field_draine_median_error / 1.71
 
             core_dict[core_name]['dust_temp_median'] = dust_temp_median
             core_dict[core_name]['dust_temp_median_error'] = \
@@ -430,17 +431,17 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
                     {
                      'dust_temp_median': dust_temp_median,
                      'dust_temp_median_error': dust_temp_median_error,
-                     'dust_temps': temps
+                     'dust_temps': temps,
                      'dust_beta_median': dust_beta_median,
                      'dust_beta_median_error': dust_beta_median_error,
-                     'dust_betas': betas
+                     'dust_betas': betas,
                      'rad_field_draine_median': rad_field_draine_median,
                      'rad_field_draine_median_error': \
                         rad_field_draine_median_error,
                      'rad_field_habing_median': rad_field_habing_median,
                      'rad_field_habing_median_error': \
                         rad_field_habing_median_error,
-                     'rad_field_map': rads
+                     'rad_field_map': rads,
                      }
         else:
             core_dict[core_name]['dust_temp_median'] = \
