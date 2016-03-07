@@ -365,20 +365,23 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
                 if j == 0:
                     temps = temp_data[~region_mask]
 
+                # simulate new observation of temperature and beta
+                temp_sim = temp_data + np.random.normal(0,
+                                                        scale=temp_error_data,)
+                beta_sim = beta_data + np.random.normal(0,
+                                                        scale=beta_error_data,)
+
                 # Calculate the radiation field
                 # -----------------------------
-                rad_field, rad_field_error = \
-                    calc_radiation_field(temp_data,
-                                         T_dust_error=temp_error_data,
-                                         beta=beta_data,
-                                         beta_error=beta_error_data)
+                rad_field = \
+                    calc_radiation_field(temp_sim,
+                                         beta=beta_sim,
+                                         )
 
-                # Grab the temperatures
-                temp_mc[j] = np.median(temp_data[~region_mask])
-
-                temp_error_mc[j] = \
-                    np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
-                    temp_error_data[~region_mask].size
+                # Grab the median values of temp, beta, and rad field
+                temp_mc[j] = np.median(temp_sim[~region_mask])
+                beta_mc[j] = np.median(beta_sim[~region_mask])
+                rad_mc[j] = np.median(rad_field[~region_mask])
 
             # Calculate average temp
             #core_dict[core_name]['dust_temp_avg'] = \
