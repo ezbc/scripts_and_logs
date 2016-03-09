@@ -8,12 +8,7 @@ import myimage_analysis as myia
 from multiprocessing.queues import Queue
 import mygeometry as myg
 import scipy
-from local_module_plotting import *
-from local_module_dataprep import *
-from local_module_multiprocessing import *
-from local_module_regions import *
-from local_module_fitting import *
-from local_module_bootstrapping import *
+import cloud_bootstrapping as cloud_boot
 
 def plot_av_vs_nhi(av, nhi, fit_params=None, filename=None, av_error=None,
         contour_plot=True, levels=10, plot_median=True, limits=None,
@@ -1374,7 +1369,7 @@ def plot_results(results_dict):
     global_args = results_dict['global_args']
     boot_result = results_dict['boot_result']
 
-    av_cloud = create_cloud_model(av_data,
+    av_cloud = cloud_boot.create_cloud_model(av_data,
                                   nhi_image_background,
                                   dgr_background,)
 
@@ -1651,7 +1646,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                                               return_hisd=True)
                     color = 'b'
                 elif 'krumholz' in model:
-                    model_fits = calc_krumholz(params,
+                    model_fits = cloud_boot.calc_krumholz(params,
                                               h_sd_extent=(0, 300),
                                               return_fractions=False,
                                               return_hisd=True)
@@ -1750,8 +1745,8 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                                 )
 
         if hsd_error_list[i] is not None:
-            print hsd_error_list[i]
-            print hisd_error_list[i]
+           # print hsd_error_list[i]
+           # print hisd_error_list[i]
             ax.errorbar(90,
                         np.max(hi_sd_nonans) * 1.1,
                         xerr=np.median(hsd_error_list[i]),
@@ -1849,6 +1844,504 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                    mode="expand",
                    bbox_to_anchor=(0.3, 1.0, 0.5, 0.1),
                    borderaxespad=0.0)
+
+    if filename is not None:
+        if filename[-3:] == 'pdf':
+            dpi = 600
+        else:
+            dpi = 100
+        plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+
+def plot_hi_vs_h2_grid(hsd_list, hisd_list, core_names=None, model_results=None,
+        model_analysis=None, xlimits=None, ylimits=None, model_fits=None,
+        scale=('linear', 'linear'), filename=None, show_params=False, levels=5,
+        ncols=2, hsd_error_list=None, hisd_error_list=None):
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Determine size of figure and number of grids
+    # --------------------------------------------
+    n = len(core_names)
+    nrows = (n + 1) / ncols
+    if n > nrows * ncols:
+        nrows += 1
+    y_scaling = nrows / 2.0
+    x_scaling = ncols / 2.0
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+
+    figsize = (3.6*x_scaling, 3.6*y_scaling)
+
+    # Create figure instance
+    fig = plt.figure(figsize=figsize)
+
+    if n == 1:
+        n = 2
+
+    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
+
+    if xlimits is not None and ylimits is not None:
+        aspect = (xlimits[1] - xlimits[0]) / (ylimits[1] - ylimits[0])
+    else:
+        aspect = False
+
+    if 1:
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+        axes = np.ravel(axes)
+    else:
+        axes = AxesGrid(fig, (1,1,1),
+                        nrows_ncols=(nrows, ncols),
+                        ngrids=n,
+                        #axes_pad=0.1,
+                        axes_pad=0.3,
+                        aspect=False,
+                        label_mode='all',
+                        share_all=False,
+                        )
+
+
+    # Cycle through lists
+    # -------------------
+    for i, core in enumerate(core_names):
+        hi_sd = hisd_list[i]
+        h_sd = hsd_list[i]
+        h2_sd = h_sd - hi_sd
+
+        # Load parameters
+        alphaG = model_analysis[core]['sternberg_results']['alphaG']
+        alphaG_error = \
+                model_analysis[core]['sternberg_results']['alphaG_error']
+        phi_cnm = model_analysis[core]['krumholz_results']['phi_cnm']
+        phi_cnm_error = \
+                model_analysis[core]['krumholz_results']['phi_cnm_error']
+
+        # Drop the NaNs from the images
+        indices = np.where((hi_sd == hi_sd) &\
+                           (h2_sd == h2_sd))
+
+        hi_sd_nonans = hi_sd[indices]
+        h2_sd_nonans = h2_sd[indices]
+
+        # Create plot
+        ax = axes[i]
+
+        #ax.set_xticks([0, 40, 80, 120])
+
+        if xlimits is None:
+            xmin = np.min(h2_sd_nonans)
+            xmax = np.max(h2_sd_nonans)
+            xscalar = 0.15 * xmax
+            xlimits = [xmin - xscalar, xmax + xscalar]
+        if ylimits is None:
+            ymin = np.min(hi_sd_nonans)
+            ymax = np.max(hi_sd_nonans)
+            yscalar = 0.15 * ymax
+            ylimits = [ymin - yscalar, ymax + yscalar]
+
+        cmap = myplt.truncate_colormap(plt.cm.gray_r,
+                                       minval=0.2,
+                                       maxval=1)
+
+        l1 = myplt.scatter_contour(h2_sd_nonans.ravel(),
+                             hi_sd_nonans.ravel(),
+                             threshold=2,
+                             log_counts=0,
+                             levels=levels,
+                             ax=ax,
+                             histogram2d_args=dict(bins=20,
+                                    range=(((xlimits)[0], xlimits[1]),
+                                            (ylimits[0], ylimits[1]))),
+                             plot_args=dict(marker='o',
+                                            linestyle='none',
+                                            markeredgewidth=0,
+                                            color='black',
+                                            alpha=0.4,
+                                            markersize=2.5,
+                                            ),
+                             contour_args=dict(
+                                               cmap=cmap,
+                                               ),
+                             )
+
+        if xlimits is not None:
+            ax.set_xlim(xlimits[0], xlimits[1])
+        if ylimits is not None:
+            ax.set_ylim(ylimits[0], ylimits[1])
+            ylimits = None
+
+        if model_fits is not None:
+            c_cycle = myplt.set_color_cycle(num_colors=2,
+                                            cmap_limits=[0.4, 0.8])
+
+            for model in ('krumholz', 'sternberg'):
+                if 'krumholz' in model:
+                    label = 'K+09'
+                    color = c_cycle[0]
+                    alpha = 0.5
+                else:
+                    label = 'S+14'
+                    color = c_cycle[1]
+                    alpha = 0.5
+                h_sd_fit = model_fits[i][model + '_results']['h_sd']
+                hi_sd_fit = model_fits[i][model + '_results']['hi_sd']
+                h2_sd_fit = h_sd_fit - hi_sd_fit
+                l3 = ax.plot(h2_sd_fit,
+                             hi_sd_fit,
+                             linestyle='-',
+                             label=label,
+                             color=color,
+                             linewidth=1,
+                             zorder=1000,
+                             alpha=1
+                             )
+
+        if 0:
+            if hsd_error_list[i] is not None:
+                ax.errorbar(90,
+                            np.max(hi_sd_nonans) * 1.1,
+                            xerr=np.median(h2sd_error_list[i]),
+                            yerr=np.median(hisd_error_list[i]),
+                            #markersize=1.5,
+                            marker='',
+                            alpha=0.3,
+                            color='k',
+                            )
+
+        if i == 0:
+            ax.legend(loc='upper right')
+
+        # Annotations
+        anno_xpos = 0.95
+
+        if show_params:
+            alphaG_text = r'\noindent$\alpha G$ =' + \
+                           r' %.2f' % (alphaG) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (alphaG_error[0],
+                                                       alphaG_error[1])
+            phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
+                           r' %.2f' % (phi_cnm) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
+                                                       phi_cnm_error[1])
+
+            ax.annotate(alphaG_text + phi_cnm_text,
+                    xytext=(anno_xpos, 0.05),
+                    xy=(anno_xpos, 0.05),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=8,
+                    color='k',
+                    bbox=dict(boxstyle='round',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='bottom',
+                    )
+
+        ax.annotate(core,
+                    xytext=(0.9, 0.1),
+                    xy=(0, 0),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    verticalalignment='bottom',
+                    horizontalalignment='right',
+                    zorder=10000,
+                    )
+
+        ax.set_xscale(scale[0])
+        ax.set_yscale(scale[1])
+
+        # turn labels on or off
+        if i % ncols == 0:
+            ylabel = True
+        else:
+            #ax.yaxis.set_ticklabels([])
+            ylabel = False
+
+        if i >= len(core_names) - ncols:
+            #ax.set_xlabel(labels[x_i])
+            xlabel = True
+        else:
+            xlabel = False
+
+        if len(core_names) % ncols > 0 and i == len(core_names) - 1:
+            axes[i + 1].axis('off')
+
+        # Adjust asthetics
+        if xlabel:
+            ax.set_xlabel(r'$\Sigma_{\rm H_2}$ ' + \
+                           '[M$_\odot$ pc$^{-2}$]',)
+        if ylabel:
+            ax.set_ylabel(r'$\Sigma_{\rm H\,I}$ [M$_\odot$ pc$^{-2}$]',)
+
+        if 'log' not in scale:
+            ax.locator_params(nbins=5)
+
+    if filename is not None:
+        if filename[-3:] == 'pdf':
+            dpi = 600
+        else:
+            dpi = 100
+        plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+
+def plot_h2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
+        model_analysis=None, xlimits=None, ylimits=None, model_fits=None,
+        scale=('linear', 'linear'), filename=None, show_params=False, levels=5,
+        ncols=2, hsd_error_list=None, hisd_error_list=None):
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Determine size of figure and number of grids
+    # --------------------------------------------
+    n = len(core_names)
+    nrows = (n + 1) / ncols
+    if n > nrows * ncols:
+        nrows += 1
+    y_scaling = nrows / 2.0
+    x_scaling = ncols / 2.0
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 4)]
+    font_scale = 9
+
+    figsize = (3.6*x_scaling, 3.6*y_scaling)
+
+    # Create figure instance
+    fig = plt.figure(figsize=figsize)
+
+    if n == 1:
+        n = 2
+
+    c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.8])
+
+    if xlimits is not None and ylimits is not None:
+        aspect = (xlimits[1] - xlimits[0]) / (ylimits[1] - ylimits[0])
+    else:
+        aspect = False
+
+    if 1:
+        fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+        axes = np.ravel(axes)
+    else:
+        axes = AxesGrid(fig, (1,1,1),
+                        nrows_ncols=(nrows, ncols),
+                        ngrids=n,
+                        #axes_pad=0.1,
+                        axes_pad=0.3,
+                        aspect=False,
+                        label_mode='all',
+                        share_all=False,
+                        )
+
+
+    # Cycle through lists
+    # -------------------
+    for i, core in enumerate(core_names):
+        hi_sd = hisd_list[i]
+        h_sd = hsd_list[i]
+        h2_sd = h_sd - hi_sd
+
+        # Load parameters
+        alphaG = model_analysis[core]['sternberg_results']['alphaG']
+        alphaG_error = \
+                model_analysis[core]['sternberg_results']['alphaG_error']
+        phi_cnm = model_analysis[core]['krumholz_results']['phi_cnm']
+        phi_cnm_error = \
+                model_analysis[core]['krumholz_results']['phi_cnm_error']
+
+        # Drop the NaNs from the images
+        indices = np.where((h_sd == h_sd) &\
+                           (h2_sd == h2_sd))
+
+        h_sd_nonans = h_sd[indices]
+        h2_sd_nonans = h2_sd[indices]
+
+        # Create plot
+        ax = axes[i]
+
+        #ax.set_xticks([0, 40, 80, 120])
+
+        if xlimits is None:
+            xmin = np.min(h_sd_nonans)
+            xmax = np.max(h_sd_nonans)
+            xscalar = 0.15 * xmax
+            xlimits = [xmin - xscalar, xmax + xscalar]
+        if ylimits is None:
+            ymin = np.min(h2_sd_nonans)
+            ymax = np.max(h2_sd_nonans)
+            yscalar = 0.15 * ymax
+            ylimits = [ymin - yscalar, ymax + yscalar]
+
+        cmap = myplt.truncate_colormap(plt.cm.gray_r,
+                                       minval=0.2,
+                                       maxval=1)
+
+        l1 = myplt.scatter_contour(h_sd_nonans.ravel(),
+                             h2_sd_nonans.ravel(),
+                             threshold=2,
+                             log_counts=0,
+                             levels=levels,
+                             ax=ax,
+                             histogram2d_args=dict(bins=15,
+                                    range=(((xlimits)[0], xlimits[1]),
+                                            (ylimits[0], ylimits[1]))),
+                             plot_args=dict(marker='o',
+                                            linestyle='none',
+                                            markeredgewidth=0,
+                                            color='black',
+                                            alpha=0.4,
+                                            markersize=2.5,
+                                            ),
+                             contour_args=dict(
+                                               cmap=cmap,
+                                               ),
+                             )
+
+        if xlimits is not None:
+            ax.set_xlim(xlimits[0], xlimits[1])
+        if ylimits is not None:
+            ax.set_ylim(ylimits[0], ylimits[1])
+            ylimits = None
+
+        if model_fits is not None:
+            c_cycle = myplt.set_color_cycle(num_colors=2,
+                                            cmap_limits=[0.4, 0.8])
+
+            for model in ('krumholz', 'sternberg'):
+                if 'krumholz' in model:
+                    label = 'K+09'
+                    color = c_cycle[0]
+                    alpha = 0.5
+                else:
+                    label = 'S+14'
+                    color = c_cycle[1]
+                    alpha = 0.5
+                h_sd_fit = model_fits[i][model + '_results']['h_sd']
+                hi_sd_fit = model_fits[i][model + '_results']['hi_sd']
+                h2_sd_fit = h_sd_fit - hi_sd_fit
+                l3 = ax.plot(h_sd_fit,
+                             h2_sd_fit,
+                             linestyle='-',
+                             label=label,
+                             color=color,
+                             linewidth=1,
+                             zorder=1000,
+                             alpha=1
+                             )
+
+        if 0:
+            if hsd_error_list[i] is not None:
+                ax.errorbar(90,
+                            np.max(h_sd_nonans) * 1.1,
+                            xerr=np.median(h2sd_error_list[i]),
+                            yerr=np.median(hisd_error_list[i]),
+                            #markersize=1.5,
+                            marker='',
+                            alpha=0.3,
+                            color='k',
+                            )
+
+        if i == 0:
+            ax.legend(loc='lower right')
+
+        # Annotations
+        anno_xpos = 0.95
+
+        if show_params:
+            alphaG_text = r'\noindent$\alpha G$ =' + \
+                           r' %.2f' % (alphaG) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (alphaG_error[0],
+                                                       alphaG_error[1])
+            phi_cnm_text = r'\noindent$\phi_{\rm CNM}$ =' + \
+                           r' %.2f' % (phi_cnm) + \
+                           r'$^{+%.2f}_{-%.2f}$ \\' % (phi_cnm_error[0],
+                                                       phi_cnm_error[1])
+
+            ax.annotate(alphaG_text + phi_cnm_text,
+                    xytext=(anno_xpos, 0.95),
+                    xy=(anno_xpos, 0.95),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=8,
+                    color='k',
+                    bbox=dict(boxstyle='round',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='bottom',
+                    )
+
+        ax.annotate(core,
+                    xytext=(0.1, 0.9),
+                    xy=(0, 0),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    verticalalignment='top',
+                    horizontalalignment='left',
+                    zorder=10000,
+                    )
+
+        ax.set_xscale(scale[0])
+        ax.set_yscale(scale[1])
+
+        # turn labels on or off
+        if i % ncols == 0:
+            ylabel = True
+        else:
+            #ax.yaxis.set_ticklabels([])
+            ylabel = False
+
+        if i >= len(core_names) - ncols:
+            #ax.set_xlabel(labels[x_i])
+            xlabel = True
+        else:
+            xlabel = False
+
+        if len(core_names) % ncols > 0 and i == len(core_names) - 1:
+            axes[i + 1].axis('off')
+
+        # Adjust asthetics
+        if xlabel:
+            ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
+                           '[M$_\odot$ pc$^{-2}$]',)
+        if ylabel:
+            ax.set_ylabel(r'$\Sigma_{\rm H_2}$ [M$_\odot$ pc$^{-2}$]',)
+
+        if 'log' not in scale:
+            ax.locator_params(nbins=5)
 
     if filename is not None:
         if filename[-3:] == 'pdf':
@@ -2050,7 +2543,7 @@ def plot_hi_cdf_grid(hsd_list, hisd_list, core_names=None,
 def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
         model_results=None, model_analysis=None, xlimits=None, ylimits=None,
         scale=('linear', 'linear'), filename=None, show_params=False,
-        levels=5, ncols=2):
+        levels=5, ncols=2, plot_sf_threshold=True):
 
     # Import external modules
     import numpy as np
@@ -2229,7 +2722,7 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
                                               return_fractions=False,
                                               return_hisd=True)
                 elif 'krumholz' in model:
-                    model_fits = calc_krumholz(params,
+                    model_fits = cloud_boot.calc_krumholz(params,
                                               h_sd_extent=(0, limits[1]),
                                               return_fractions=False,
                                               return_hisd=True)
@@ -2282,6 +2775,14 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
 
         # Annotations
         anno_xpos = 0.95
+
+        if plot_sf_threshold:
+            ax.axvline(model_analysis[core]['sternberg_results']['sf_threshold'],
+                       color='k',
+                       linewidth=2,
+                       linestyle='--',
+                       alpha=0.75,
+                       )
 
         if show_params:
             alphaG_text = r'\noindent$\alpha G$ =' + \
@@ -2524,7 +3025,7 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
 
             hist_range=((xlimits[0], xlimits[1]),
                         (np.log10(ylimits[0]), np.log10(ylimits[1])))
-            print bins
+           # print bins
 
             l1 = myplt.scatter_contour(h_sd_nonans.ravel(),
                                  rh2.ravel(),
@@ -2581,7 +3082,7 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
                                               return_fractions=False,
                                               return_hisd=True)
                 elif 'krumholz' in model:
-                    model_fits = calc_krumholz(params,
+                    model_fits = cloud_boot.calc_krumholz(params,
                                               h_sd_extent=(0, limits[1]),
                                               return_fractions=False,
                                               return_hisd=True)
@@ -2822,7 +3323,7 @@ def plot_rh2_vs_h_diagnostic(h_sd, rh2, h_sd_error=None, rh2_error=None,
                     alpha=alpha,
                     )
 
-        model_fits = calc_krumholz(k09,
+        model_fits = cloud_boot.calc_krumholz(k09,
                                   h_sd=h_sd_extent,
                                   return_fractions=False,
                                   return_hisd=True)
@@ -2902,7 +3403,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                   'phi_mol': analysis['phi_mol'],
                   'Z': analysis['Z'],
                   }
-        h_sd, hi_sd = calc_krumholz(params,
+        h_sd, hi_sd = cloud_boot.calc_krumholz(params,
                                   h_sd_extent=(0, 200),
                                   h_sd=hsd,
                                   return_fractions=False,
@@ -2912,7 +3413,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                   'phi_mol': analysis['phi_mol'],
                   'Z': analysis['Z'],
                   }
-        hi_sd_low = calc_krumholz(params,
+        hi_sd_low = cloud_boot.calc_krumholz(params,
                                   h_sd_extent=(0, 200),
                                   h_sd=hsd,
                                   return_fractions=False,
@@ -2922,7 +3423,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                   'phi_mol': analysis['phi_mol'],
                   'Z': analysis['Z'],
                   }
-        hi_sd_high = calc_krumholz(params,
+        hi_sd_high = cloud_boot.calc_krumholz(params,
                                   h_sd_extent=(0, 200),
                                   h_sd=hsd,
                                   return_fractions=False,
@@ -2930,417 +3431,5 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
 
     return h_sd, hi_sd, hi_sd_low, hi_sd_high
 
-def plot_multicloud_results(results):
-
-    print('\nPlotting multicloud results...')
-
-    # Collect Data
-    # =========================================================================
-
-    spectra_list = []
-    hi_range_kwargs_list = []
-    av_list = []
-    av_error_list = []
-    nhi_list = []
-    nh2_list = []
-    rh2_list = []
-    hsd_list = []
-    hisd_list = []
-    nhi_error_list = []
-    nh2_error_list = []
-    rh2_error_list = []
-    hsd_error_list = []
-    hisd_error_list = []
-    hsd_median_error_list = []
-    hisd_median_error_list = []
-    hisd_cores_list = []
-    hsd_cores_list = []
-    rh2_cores_list = []
-    hisd_error_cores_list = []
-    hsd_error_cores_list = []
-    hisd_median_error_cores_list = []
-    hsd_median_error_cores_list = []
-    rh2_error_cores_list = []
-    model_results_list = []
-    model_analysis_list = []
-    model_analysis_dict = {}
-    dgr_list = []
-    fit_params_list = []
-    cloud_name_list = []
-    core_names_list = []
-    core_list = []
-    cloud_model_fits_list = []
-    for i, cloud_name in enumerate(results):
-        results_dict = results[cloud_name]
-        figure_dir = results_dict['filenames']['figure_dir']
-        results_dir = results_dict['filenames']['results_dir']
-        plot_kwargs = results_dict['plot_kwargs']
-        data_products = results_dict['data_products']
-        spectra_list.append((data_products['hi_spectrum'],
-                             data_products['hi_std_spectrum'],
-                             data_products['co_spectrum'],)
-                             )
-        cloud_name_list.append(cloud_name)
-        hi_range_kwargs_list.append(data_products['hi_range_kwargs'])
-        #av_list.append(data_products['av_data_backsub'])
-        av_list.append(data_products['av'])
-        av_error_list.append(results_dict['data']['av_error_data'])
-        nhi_list.append(data_products['nhi'])
-        nh2_list.append(data_products['nh2'])
-        rh2_list.append(data_products['rh2'])
-        hsd_list.append(data_products['h_sd'])
-        hisd_list.append(data_products['hi_sd'])
-        nhi_error_list.append(data_products['nhi_error'])
-        nh2_error_list.append(data_products['nh2_error'])
-        rh2_error_list.append(data_products['rh2_error'])
-        hsd_error_list.append(data_products['h_sd_error'])
-        hisd_error_list.append(data_products['hi_sd_error'])
-        hsd_median_error_list.append(data_products['h_sd_median_error'])
-        hisd_median_error_list.append(data_products['hi_sd_median_error'])
-        dgr_list.append(results_dict['mc_analysis']['dgr'])
-        #fit_params_list.append(results_dict['params_summary'])
-        model_results_list.append(results_dict['mc_results']['ss_model_results'])
-        model_analysis_list.append(results_dict['mc_analysis'])
-        model_analysis_dict[cloud_name] = results_dict['mc_analysis']
-
-        # Modeling and cores
-        global_args = results_dict['global_args']
-        cores = global_args['ss_model_kwargs']['cores']
-        cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
-        model_kwargs = global_args['ss_model_kwargs']['model_kwargs']
-        rh2_core_list = []
-        hsd_core_list = []
-        hisd_core_list = []
-        rh2_error_core_list = []
-        hsd_error_core_list = []
-        hsd_median_error_core_list = []
-        hisd_error_core_list = []
-        hisd_median_error_core_list = []
-        core_names = []
-        model_fits_list = []
-        core_list.append(cores)
-        for j, core in enumerate(cores_to_plot):
-            core_indices = cores[core]['indices_orig']
-            core_names.append(core)
-            hisd_core_list.append(hisd_list[i][core_indices])
-            hsd_core_list.append(hsd_list[i][core_indices])
-            rh2_core_list.append(rh2_list[i][core_indices])
-            hisd_error_core_list.append(hisd_error_list[i][core_indices])
-            hsd_error_core_list.append(hsd_error_list[i][core_indices])
-            hisd_median_error_core_list.append(hisd_median_error_list[i])
-            hsd_median_error_core_list.append(hsd_median_error_list[i])
-            rh2_error_core_list.append(rh2_error_list[i][core_indices])
-
-            model_fits_list.append(refit_data(hsd_core_list[j],
-                                              rh2_core_list[j],
-                                              h_sd_error=hsd_error_core_list[j],
-                                              rh2_error=rh2_error_core_list[j],
-                                              model_kwargs=model_kwargs,
-                                              )
-                                   )
-
-            if 0:
-                rh2_copy = rh2_list[i].copy()
-                rh2_copy[core_indices] = 1000
-                plt.imshow(rh2_copy, origin='lower')
-                plt.savefig('/d/bip3/ezbc/scratch/core_' + core + '.png')
-
-        cloud_model_fits_list.append(model_fits_list)
-        core_names_list.append(core_names)
-        hisd_cores_list.append(hisd_core_list)
-        hsd_cores_list.append(hsd_core_list)
-        hisd_error_cores_list.append(hisd_error_core_list)
-        hsd_error_cores_list.append(hsd_error_core_list)
-        hisd_median_error_cores_list.append(hisd_median_error_core_list)
-        hsd_median_error_cores_list.append(hsd_median_error_core_list)
-
-        if 0:
-            print(cloud_name)
-            print('vel range', data_products['hi_range_kwargs']['vel_range'])
-            print(results_dict['global_args']['vel_range_error'])
-
-
-
-    # Print results
-    # =========================================================================
-    # Write results to a
-    #print_av_error_stats(av_list[0], av_error_list[0])
-
-    filename = results_dir + 'tables/multicloud_model_params.tex'
-    write_model_params_table(model_analysis_dict,
-                             filename,
-                             models=('krumholz','sternberg'))
-
-    # Write param summary to dataframe for ease of use
-    filename = results_dir + 'tables/multicloud_model_params.csv'
-    write_param_csv(model_analysis_dict,
-                    core_list,
-                    cloud_name_list,
-                    filename,
-                    )
-
-    # Write nhi properties
-    filename = results_dir + 'tables/nhi_properties.csv'
-    write_nhi_properties_csv(nhi_list,
-                             cloud_name_list,
-                             filename,
-                             )
-
-    # Write param summary to dataframe for ease of use
-    filename = results_dir + 'tables/multicloud_model_summary.pickle'
-    write_fit_summary_dict(model_analysis_dict,
-                           core_list,
-                           cloud_name_list,
-                           filename,
-                           )
-
-    # Write table for
-    filename = results_dir + 'tables/multicloud_hi_transitions.csv'
-    hi_trans_dict = collect_hi_transition_results(model_analysis_list,
-                                                  cloud_name_list,
-                                                  filename=filename,)
-
-    # Plot the results
-    # =========================================================================
-
-    # Plot HI spectra
-    # -------------------------------------------------------------------------
-    hi_vel_axis = results_dict['data']['hi_vel_axis']
-    co_vel_axis = results_dict['data']['co_vel_axis']
-
-
-    filetypes = ['png', 'pdf']
-    for filetype in filetypes:
-        filename = plot_kwargs['figure_dir'] + \
-                   'spectra/multicloud_spectra.' + filetype
-
-        plot_spectra_grid(spectra_list,
-                     hi_range_kwargs_list=hi_range_kwargs_list,
-                     names_list=cloud_name_list,
-                     hi_vel_axis=hi_vel_axis,
-                     co_vel_axis=co_vel_axis,
-                     filename=filename,
-                     limits=[-30, 30, -10, 59],
-                     )
-
-        filename = results_dir + 'tables/multicloud_vel_ranges.tex'
-        write_hi_vel_range_table(cloud_name_list,
-                                 hi_range_kwargs_list,
-                                 filename)
-
-        # Plot N(HI) vs. Av
-        # ---------------------------------------------------------------------
-        filename = plot_kwargs['figure_dir'] + \
-                   'av_nhi/multicloud_av_vs_nhi.' + filetype
-        plot_av_vs_nhi_grid(av_list,
-                            nhi_list,
-                            av_error_list=av_error_list,
-                            fit_params_list=model_analysis_list,
-                            names_list=cloud_name_list,
-                            filename=filename,
-                            levels=(0.99, 0.98, 0.95, 0.86, 0.59),
-                            poly_fit=False,
-                            limits=[-2, 19, 0, 20]
-                            )
-
-        # Plot Av PDF
-        # ---------------------------------------------------------------------
-        filename = plot_kwargs['figure_dir'] + \
-                   'pdfs/multicloud_pdfs.' + filetype
-        plot_pdf_grid(av_list,
-                  nhi_list=nhi_list,
-                  nh2_list=nh2_list,
-                  dgr_list=dgr_list,
-                  hi_trans_dict=hi_trans_dict,
-                  #limits = [-4,3,1,10000],
-                  names_list=cloud_name_list,
-                  #limits = [0.07,14,7,6000],
-                  limits=[10**-2, 3 * 10**1, 5 * 10**-4, 3 * 10**-1],
-                  scale=(1,1),
-                  filename=filename,
-                  #core_names=core_name_list,
-                  show=False)
-
-        # Plot HI vs H
-        # ---------------------------------------------------------------------
-        levels = (0.9, 0.8, 0.6, 0.3)
-        for i, cloud in enumerate(cloud_name_list):
-            core_names = core_names_list[i]
-            print('\n\tPlotting Models')
-            if len(core_names) > 10:
-                ncols = 5
-                if 0:
-                    filename = plot_kwargs['figure_dir'] + \
-                               'models/' + cloud + '_hisd_vs_hsd_1.' + filetype
-                    plot_hi_vs_h_grid(hsd_cores_list[i][:10],
-                                      hisd_cores_list[i][:10],
-                                      core_names=core_names[:10],
-                                      model_results=model_results_list[i],
-                                      model_analysis=\
-                                              model_analysis_list[i]['cores'],
-                                      model_fits=model_fits_list,
-                                      limits=[-9, 159, -1.5, 15],
-                                      scale=('linear', 'linear'),
-                                      levels=levels,
-                                      filename=filename,
-                                      )
-                    filename = plot_kwargs['figure_dir'] + \
-                               'models/' + cloud + '_hisd_vs_hsd_2.' + filetype
-                    plot_hi_vs_h_grid(hsd_cores_list[i][10:],
-                                      hisd_cores_list[i][10:],
-                                      core_names=core_names[10:],
-                                      model_results=model_results_list[i],
-                                      model_analysis=\
-                                          model_analysis_list[i]['cores'],
-                                      model_fits=cloud_model_fits_list,
-                                      limits=[-9, 159, -1.5, 15],
-                                      levels=levels,
-                                      scale=('linear', 'linear'),
-                                      filename=filename,
-                                      )
-            else:
-                ncols = 2
-
-
-            # RH2 vs. H SD for L1478
-            # -----------------------------------------------------------------
-            if cloud == 'taurus':
-                single_core = 'G169.32-16.17'
-                filename = plot_kwargs['figure_dir'] + \
-                           'models/' + cloud + '_rh2_vs_hsd_' + \
-                           single_core + '.' + filetype
-                index = core_names.index(single_core)
-                plot_rh2_vs_h((hsd_cores_list[i][index],),
-                              (hisd_cores_list[i][index],),
-                              core_names=(core_names[index],),
-                              model_results=model_results_list[i],
-                              model_analysis=\
-                                  model_analysis_list[i]['cores'],
-                              #limits=[-9, 100, 2, 14],
-                              #limits=[-9, 159, 3, 14],
-                              xlimits=[-9, 100],
-                              ylimits=[10**-3, 10**2],
-                              levels=levels,
-                              #scale=('log', 'linear'),
-                              scale=('linear', 'log'),
-                              filename=filename,
-                              ncols=ncols
-                              )
-
-                filename = plot_kwargs['figure_dir'] + \
-                           'models/' + cloud + '_rh2_vs_hsd_' + \
-                           single_core + '.ps'
-                plot_rh2_vs_h((hsd_cores_list[i][index],),
-                              (hisd_cores_list[i][index],),
-                              core_names=(core_names[index],),
-                              model_results=model_results_list[i],
-                              model_analysis=\
-                                  model_analysis_list[i]['cores'],
-                              #limits=[-9, 100, 2, 14],
-                              #limits=[-9, 159, 3, 14],
-                              xlimits=[-9, 100],
-                              ylimits=[10**-3, 10**2],
-                              levels=levels,
-                              #scale=('log', 'linear'),
-                              scale=('linear', 'log'),
-                              filename=filename,
-                              ncols=ncols
-                              )
-
-            # HI SD vs. H SD
-            # -----------------------------------------------------------------
-            filename = plot_kwargs['figure_dir'] + \
-                       'models/' + cloud + '_hisd_vs_hsd.' + filetype
-            plot_hi_vs_h_grid(hsd_cores_list[i],
-                              hisd_cores_list[i],
-                              core_names=core_names,
-                              model_results=model_results_list[i],
-                              model_analysis=\
-                                  model_analysis_list[i]['cores'],
-                              model_fits=cloud_model_fits_list[i],
-                              hsd_error_list=hsd_median_error_cores_list[i],
-                              hisd_error_list=hisd_median_error_cores_list[i],
-                              #limits=[-9, 100, 2, 14],
-                              #limits=[-9, 159, 3, 14],
-                              xlimits=[-9, 100],
-                              levels=levels,
-                              #scale=('log', 'linear'),
-                              #scale=('linear', 'log'),
-                              scale=('linear', 'linear'),
-                              filename=filename,
-                              ncols=ncols
-                              )
-            # HI CDF
-            # -----------------------------------------------------------------
-            filename = plot_kwargs['figure_dir'] + \
-                       'models/' + cloud + '_hisd_cdf.' + filetype
-            plot_hi_cdf_grid(hsd_cores_list[i],
-                              hisd_cores_list[i],
-                              core_names=core_names,
-                              model_results=model_results_list[i],
-                              model_analysis=\
-                                  model_analysis_list[i]['cores'],
-                              #limits=[-9, 100, 2, 14],
-                              #limits=[-9, 159, 3, 14],
-                              #xlimits=[-1, 20],
-                              levels=levels,
-                              #scale=('log', 'linear'),
-                              #scale=('linear', 'log'),
-                              scale=('linear', 'linear'),
-                              filename=filename,
-                              ncols=ncols
-                              )
-
-            # RH2 vs. H SD
-            # -----------------------------------------------------------------
-            filename = plot_kwargs['figure_dir'] + \
-                       'models/' + cloud + '_rh2_vs_hsd.' + filetype
-            plot_rh2_vs_h_grid(hsd_cores_list[i],
-                              hisd_cores_list[i],
-                              core_names=core_names,
-                              model_results=model_results_list[i],
-                              model_analysis=\
-                                  model_analysis_list[i]['cores'],
-                              model_fits=cloud_model_fits_list[i],
-                              #limits=[-9, 100, 2, 14],
-                              #limits=[-9, 159, 3, 14],
-                              xlimits=[-9, 100],
-                              ylimits=[10**-3, 10**2],
-                              levels=levels,
-                              #scale=('log', 'linear'),
-                              scale=('linear', 'log'),
-                              filename=filename,
-                              ncols=ncols
-                              )
-
-        if 0:
-            filename = plot_kwargs['figure_dir'] + \
-                       'av_nhi/multicloud_av_vs_nhi_log.' + filetype
-            plot_av_vs_nhi_grid(av_list,
-                                nhi_list,
-                                av_error_list=av_error_list,
-                                fit_params_list=fit_params_list,
-                                names_list=cloud_name_list,
-                                filename=filename,
-                                levels=(0.99, 0.98, 0.95, 0.86, 0.59),
-                                poly_fit=True,
-                                scale=['log','log'],
-                                #limits=[2, 20, -13, 20]
-                                limits=[0.1, 100, 0.01, 100]
-                                )
-
-            filename = plot_kwargs['figure_dir'] + \
-                       'av_nhi/multicloud_av_vs_nhi_scatter.' + filetype
-            plot_av_vs_nhi_grid(av_list,
-                                nhi_list,
-                                av_error_list=av_error_list,
-                                fit_params_list=fit_params_list,
-                                names_list=cloud_name_list,
-                                filename=filename,
-                                levels=(0.99, 0.98, 0.95, 0.86, 0.59),
-                                poly_fit=True,
-                                contour=False,
-                                limits=[2, 20, -6, 10]
-                                )
 
 
