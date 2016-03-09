@@ -158,11 +158,12 @@ def load_results(filename, load_fits=True):
 
     return results
 
-def main()
+def main():
 
     # define constants
     DIR_FIGURES = '/d/bip3/ezbc/multicloud/figures/'
-    FILENAME_EXT = '_planck_noint_gaussrange_isotropic.pickle'
+    DIR_RESULTS = '/d/bip3/ezbc/multicloud/python_output/bootstrap_results/'
+    FILENAME_EXT = '_planck_noint_gaussrange_isotropic_results.pickle'
     FILENAME_PLOT_BASE = DIR_FIGURES + 'maps/h2_maps'
     PLOT_FILETYPES = ['png', 'pdf']
     CLOUD_NAMES = ['california', 'perseus', 'taurus']
