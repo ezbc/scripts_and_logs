@@ -4431,6 +4431,9 @@ def main():
             results[global_args['cloud_name']] = \
                     get_results(global_args)
 
+            save_results(results[global_args['cloud_name']],
+                         global_args['results_filename'])
+
             print('\n\tPlotting')
             lm_plt.plot_results(results[global_args['cloud_name']])
 
