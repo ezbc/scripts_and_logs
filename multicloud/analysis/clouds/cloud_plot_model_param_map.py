@@ -25,7 +25,7 @@ def plot_params_map(header=None, av_image=None, df=None, limits=None,
 
     # Set up plot aesthetics
     # ----------------------
-    plt.close;plt.clf()
+    #plt.close;plt.clf()
 
     # Color map
     cmap = plt.cm.copper
@@ -134,7 +134,7 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
 
     # Set up plot aesthetics
     # ----------------------
-    plt.close;plt.clf()
+    #plt.close;plt.clf()
 
     # Color map
     cmap = plt.cm.copper
@@ -247,7 +247,7 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
 
     # Set up plot aesthetics
     # ----------------------
-    plt.close;plt.clf()
+    #plt.close;plt.clf()
 
     # Color map
     cmap = plt.cm.copper
@@ -673,7 +673,7 @@ def plot_temp_cdfs(core_dict, df):
         n_H_errors[i] = core['n_H_error']
 
     # Make plot
-    plt.close;plt.clf()
+    #plt.close;plt.clf()
 
     # Create figure instance
     fig = plt.figure(figsize=(3.5, 2.5))
@@ -876,7 +876,7 @@ def plot_density_cdfs(core_dict, df):
         n_H_errors[i] = core['n_H_error']
 
     # Make plot
-    plt.close;plt.clf()
+    #plt.close;plt.clf()
 
     # Create figure instance
     fig = plt.figure(figsize=(3.5, 2.5))
@@ -891,7 +891,7 @@ def plot_density_cdfs(core_dict, df):
         data_names = [r'Stanimirovic+14 $n_{\rm s}$',
                       r'Stanimirovic+14 $<n_s>$',
                       r'$n_{\rm CNM}$',
-                      r'$n_H']
+                      r'$n_H$']
     else:
         data_names = [r'Stanimirovi$\acute{c}$+14' + '\n' + r'$T_{\rm s}$',
                       r'Stanimirovi$\acute{c}$+14' + '\n' + r'$<T_{\rm s}>$',
@@ -1040,7 +1040,7 @@ def plot_modelparam_cdfs(core_dict, df):
 
     # Set up plot aesthetics
     # ----------------------
-    plt.close;plt.clf()
+    #plt.close;plt.clf()
 
     # Color map
     cmap = plt.cm.copper
