@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 ''' Plotting Functions
 '''
 
-def plot_h2_sd(plot_dict, contour_image=None,
+def plot_h2_sd(plot_dict, contour_image=None, limits=None,
         filename=None, show=True, hi_vlimits=None, av_vlimits=None,):
 
     # Import external modules
@@ -47,7 +47,7 @@ def plot_h2_sd(plot_dict, contour_image=None,
         nrows_ncols=(3, 1)
         ngrids=3
         figsize = (3.6, 10)
-        fig = pywcsgrid2.figure(figsize=figsize)
+        fig = pywcsgrid2.plt.figure(figsize=figsize)
     else:
         nrows_ncols=(1,1)
         ngrids=1
@@ -68,8 +68,10 @@ def plot_h2_sd(plot_dict, contour_image=None,
                      share_all=True)
 
     for i, cloud_name in enumerate(plot_dict):
+        header = plot_dict[cloud_name]['header']
+        ax = pywcsgrid2.subplot(311+i, header=header)
 
-        ax = fig.subplot((3,1,i), header=plot_dict[cloud_name]['header'])
+        #ax = fig.add_subplot(311 + i, header=)
 
         h2_sd = plot_dict[cloud_name]['h2_sd']
         # create axes
@@ -93,8 +95,13 @@ def plot_h2_sd(plot_dict, contour_image=None,
 
         ax.locator_params(nbins=6)
 
+
+        cb = plt.colorbar(im)
+        #cb_axes.colorbar(im)
+        #cb_axes.axis["right"].toggle(ticklabels=False)
+
         # colorbar
-        cb = ax.cax.colorbar(im)
+        #cb = ax.cax.colorbar(im)
         cmap.set_bad(color='w')
 
         # plot limits
@@ -108,7 +115,8 @@ def plot_h2_sd(plot_dict, contour_image=None,
             ax.contour(contour_image, levels=contours, colors='r')
 
         # Write label to colorbar
-        cb.set_label_text(r'$\Sigma_{\rm H_2} [M_\odot$\,pc$^{-2}$]',)
+        #cb.set_label_text(r'$\Sigma_{\rm H_2} [M_\odot$\,pc$^{-2}$]',)
+        cb.ax.set_ylabel(r'$\Sigma_{\rm H_2} [M_\odot$\,pc$^{-2}$]',)
 
         if 0:
             if regions is not None:
@@ -119,8 +127,6 @@ def plot_h2_sd(plot_dict, contour_image=None,
                             facecolor='none',
                             edgecolor='w'))
 
-    if title is not None:
-        fig.suptitle(title, fontsize=font_scale)
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight')
     if show:
@@ -162,8 +168,8 @@ def main():
 
     # define constants
     DIR_FIGURES = '/d/bip3/ezbc/multicloud/figures/'
-    DIR_RESULTS = '/d/bip3/ezbc/multicloud/python_output/bootstrap_results/'
-    FILENAME_EXT = '_planck_noint_gaussrange_isotropic_results.pickle'
+    DIR_RESULTS = '/d/bip3/ezbc/multicloud/data/python_output/bootstrap_results/'
+    FILENAME_EXT = '_planck_noint_gaussrange_isotropic_bootstrap_results.pickle'
     FILENAME_PLOT_BASE = DIR_FIGURES + 'maps/h2_maps'
     PLOT_FILETYPES = ['png', 'pdf']
     CLOUD_NAMES = ['california', 'perseus', 'taurus']
@@ -175,12 +181,11 @@ def main():
         cloud_dict = plot_dict[cloud_name]
 
         # load the analysis
-        results = load_results(cloud_name + FILENAME_EXT)
+        results = load_results(DIR_RESULTS + cloud_name + FILENAME_EXT)
 
-        hi_sd = results['data_products']['hi_sd']
+        #hi_sd = results['data_products']['hi_sd']
         h2_sd = results['data_products']['h2_sd']
 
-        cloud_dict['hi_sd'] = hi_sd
         cloud_dict['h2_sd'] = h2_sd
         cloud_dict['header'] = results['data']['av_header']
 
