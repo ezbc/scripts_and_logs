@@ -196,11 +196,11 @@ def add_model_analysis(core_dict):
 
         # calculate n_H and error
         core['n_H'], core['n_H_error'] = \
-                calc_n_H(I_UV=core['rad_field'],
+                calc_n_H(I_UV=core['rad_field_draine_median'],
                          alphaG=core['sternberg']['alphaG'],
                          phi_g=core['sternberg']['phi_g'],
                          Z_g=core['sternberg']['Z'],
-                         I_UV_error=core['rad_field_error'],
+                         I_UV_error=core['rad_field_draine_median_error'],
                          alphaG_error=core['sternberg']['alphaG_error'],
                          Z_g_error=core['sternberg']['Z_error'],
                          )
@@ -240,8 +240,9 @@ def add_model_analysis(core_dict):
         if krumholz_pressure_calc:
             # get the minimum CNM density, calculate n_CNM with phi_CNM, then
             # calculate temperature given galactic pressure between WNM and CNM
-            n_min, n_min_error = myk09.calc_n_min(G_0=core['rad_field'] / 1.7,
-                               G_0_error=core['rad_field_error'] / 1.7,
+            n_min, n_min_error = \
+                myk09.calc_n_min(G_0=core['rad_field_habing_median'],
+                               G_0_error=core['rad_field_habing_median_error'],
                                Z=1.0,
                                calc_error=True,
                                )
@@ -251,7 +252,7 @@ def add_model_analysis(core_dict):
             core['n_cnm_error'] = ((phi_cnm * n_min_error)**2 + \
                                    (n_min * phi_cnm_error)**2)**0.5
 
-            print core['n_cnm_error']
+            #print core['n_cnm_error']
 
             core['T_cnm'], core['T_cnm_error'] = \
                 calc_temperature(n_H=core['n_cnm'],
@@ -276,18 +277,54 @@ def add_model_analysis(core_dict):
 
         core['alt_name'] = get_alt_name(core_name)
 
+def write_cloud_temps_table(cloud_temps):
 
-def print_cloud_temps(cloud_temps):
+    table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    filename = table_dir + 'tables/cloud_params_table.tex'
 
-    for cloud in cloud_temps:
-        rad_draine = (cloud_temps[cloud]['rad_field_draine_median'],
-                      cloud_temps[cloud]['rad_field_draine_median_error'])
-        rad_habing = (cloud_temps[cloud]['rad_field_habing_median'],
-                      cloud_temps[cloud]['rad_field_habing_median_error'])
+    text_param_format ='{0:.0f}\,$\pm$\,{1:.0f}'
 
-        print('\nRadiation Fields medians in cloud:' + cloud)
-        print('\tDraine: {0:.2f} +/- {1:.2f}'.format(*rad_draine))
-        print('\tHabing: {0:.2f} +/- {1:.2f}'.format(*rad_habing))
+    params = [
+        'dust_temp_median',
+        'dust_beta_median',
+        'rad_field_mathis_median',
+        'rad_field_draine_median',
+        'rad_field_habing_median',
+        ]
+
+    # latex names
+    param_names_pretty = [r'T$_{dust}$ [K]',
+                          r'$\beta$',
+                          r'$U_{M83} [U_{M83,0}$]',
+                          r'$I_{\rm UV} [I_{D,0}$]',
+                          r'$G^\prime_{0} [G_{0}$]',
+                          ]
+
+    f = open(filename, 'wb')
+
+    for i, param_name in enumerate(params):
+        row_text = ''
+        param_name_pretty = param_names_pretty[i]
+        add_row_element(row_text, param_name_pretty)
+
+        for cloud in cloud_temps:
+
+            # get the parameter
+            param = cloud_temps[cloud][param_name]
+            param_error = cloud_temps[cloud][param_name + '_error']
+
+            print param
+            add_row_element(row_text,
+                            (param, param_error),
+                            text_format=text_param_format,
+                            )
+
+            # finish row
+            row_text += ' \\\\[0.1cm] \n'
+
+        f.write(row_text)
+
+    f.close()
 
 def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
         beta_data, beta_error_data):
@@ -416,13 +453,15 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
             # calculate habing field from draine:
             rad_field_habing_median = rad_field_draine_median / 1.71
             rad_field_habing_median_error = rad_field_draine_median_error / 1.71
+            rad_field_mathis_median = rad_field_draine_median / 1.48
+            rad_field_mathis_median_error = rad_field_draine_median_error / 1.48
 
             core_dict[core_name]['dust_temp_median'] = dust_temp_median
             core_dict[core_name]['dust_temp_median_error'] = \
                 dust_temp_median_error
-            core_dict[core_name]['dust_beta_median'] = dust_temp_median
+            core_dict[core_name]['dust_beta_median'] = dust_beta_median
             core_dict[core_name]['dust_beta_median_error'] = \
-                dust_temp_median_error
+                dust_beta_median_error
             core_dict[core_name]['rad_field_median'] = dust_temp_median
             core_dict[core_name]['rad_field_median_error'] = \
                 dust_temp_median_error
@@ -441,6 +480,9 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
                      'rad_field_habing_median': rad_field_habing_median,
                      'rad_field_habing_median_error': \
                         rad_field_habing_median_error,
+                     'rad_field_mathis_median': rad_field_mathis_median,
+                     'rad_field_mathis_median_error': \
+                        rad_field_mathis_median_error,
                      'rad_field_map': rads,
                      }
         else:
@@ -484,8 +526,8 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
     # ------------
     temp_data, temp_header = fits.getdata(FILENAME_TEMPERATURE, header=True)
     temp_error_data = fits.getdata(FILENAME_TEMPERATURE_ERROR)
-    beta_data, beta_header = fits.getdata(FILENAME_TEMPERATURE, header=True)
-    beta_error_data = fits.getdata(FILENAME_TEMPERATURE_ERROR)
+    beta_data, beta_header = fits.getdata(FILENAME_BETA, header=True)
+    beta_error_data = fits.getdata(FILENAME_BETA_ERROR)
 
     # Get the mask for each core
     # --------------------------
@@ -522,11 +564,11 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
             with open(cloud_temp_filename, 'wb') as f:
                 pickle.dump(cloud_temps, f)
 
-            print_cloud_temps(cloud_temps)
 
             plot_dust_histogram(cloud_temps,
                                 limits=[[14, 20], [-0.05, 1.05]],
                                 filename=dust_hist_filename)
+        write_cloud_temps_table(cloud_temps)
 
     else:
         for core_name in core_dict:
