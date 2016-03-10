@@ -18,7 +18,8 @@ warnings.filterwarnings('ignore')
 '''
 
 def plot_h2_sd(plot_dict, contour_image=None, limits=None,
-        filename=None, show=True, hi_vlimits=None, av_vlimits=None,):
+        filename=None, show=True, vlimits=None, av_vlimits=None,
+        cloud_names=('california', 'perseus', 'taurus'),):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -37,21 +38,22 @@ def plot_h2_sd(plot_dict, contour_image=None, limits=None,
     plt.clf(); plt.close()
 
     cmap = plt.cm.copper
+    norm = matplotlib.colors.LogNorm()
+
 
     # Create figure instance
-    fig = plt.figure(figsize=(3.6, 10))
+    fig = plt.figure(figsize=(3.6, 9))
 
     if 1:
         nrows = 3
         ncols = 1
         nrows_ncols=(3, 1)
         ngrids=3
-        figsize = (3.6, 10)
+        figsize = (3.6, 8)
         fig = pywcsgrid2.plt.figure(figsize=figsize)
     else:
         nrows_ncols=(1,1)
         ngrids=1
-
 
         axes = AxesGrid(fig, (1,1,1),
                      nrows_ncols=nrows_ncols,
@@ -67,9 +69,17 @@ def plot_h2_sd(plot_dict, contour_image=None, limits=None,
                      label_mode='L',
                      share_all=True)
 
-    for i, cloud_name in enumerate(plot_dict):
+    colorbar_axes = [0.05, 0.97, 0.95, 0.02,]
+    map_axes = np.array([0.05, 0.69, 0.95, 0.25])
+
+    for i, cloud_name in enumerate(cloud_names):
         header = plot_dict[cloud_name]['header']
-        ax = pywcsgrid2.subplot(311+i, header=header)
+        limits = plot_dict[cloud_name]['limits']
+        contour_image = plot_dict[cloud_name]['contour_image']
+        contours = plot_dict[cloud_name]['contours']
+
+        #ax = pywcsgrid2.subplot(311+i, header=header)
+        ax = pywcsgrid2.axes(map_axes, header=header)
 
         #ax = fig.add_subplot(311 + i, header=)
 
@@ -81,8 +91,8 @@ def plot_h2_sd(plot_dict, contour_image=None, limits=None,
                 interpolation='nearest',
                 origin='lower',
                 cmap=cmap,
-                #vmin=hi_vlimits[0],
-                #vmax=hi_vlimits[1],
+                vmin=vlimits[0],
+                vmax=vlimits[1],
                 #norm=matplotlib.colors.LogNorm()
                 )
 
@@ -90,13 +100,16 @@ def plot_h2_sd(plot_dict, contour_image=None, limits=None,
         ax.set_display_coord_system("fk5")
         ax.set_ticklabel_type("hms", "dms")
 
+        if i == 2:
+            ax.set_xlabel('Right Ascension [J2000]',)
+        else:
+            ax.set_xlabel('')
         ax.set_xlabel('Right Ascension [J2000]',)
+
         ax.set_ylabel('Declination [J2000]',)
 
         ax.locator_params(nbins=6)
 
-
-        cb = plt.colorbar(im)
         #cb_axes.colorbar(im)
         #cb_axes.axis["right"].toggle(ticklabels=False)
 
@@ -112,11 +125,10 @@ def plot_h2_sd(plot_dict, contour_image=None, limits=None,
 
         # Plot Av contours
         if contour_image is not None:
-            ax.contour(contour_image, levels=contours, colors='r')
+            ax.contour(contour_image, levels=contours, colors='w')
 
         # Write label to colorbar
         #cb.set_label_text(r'$\Sigma_{\rm H_2} [M_\odot$\,pc$^{-2}$]',)
-        cb.ax.set_ylabel(r'$\Sigma_{\rm H_2} [M_\odot$\,pc$^{-2}$]',)
 
         if 0:
             if regions is not None:
@@ -126,6 +138,33 @@ def plot_h2_sd(plot_dict, contour_image=None, limits=None,
                             vertices[:, ::-1],
                             facecolor='none',
                             edgecolor='w'))
+
+        ax.annotate(cloud_name.capitalize(),
+                    xytext=(0.96, 0.94),
+                    xy=(0.96, 0.94),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    )
+
+        # create new box for plot
+        map_axes[1] -= 0.3
+        #map_axes[3] -= 0.3
+
+    ax = plt.axes(colorbar_axes,
+                  )
+    cb = plt.colorbar(im,
+                      cax=ax,
+                      orientation='horizontal',
+                      )
+    cb.ax.set_xlabel(r'$\Sigma_{\rm H_2} [{\rm M_\odot}$\,pc$^{-2}$]',)
+    cb.ax.xaxis.set_label_position('top')
 
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight')
@@ -183,16 +222,26 @@ def main():
         # load the analysis
         results = load_results(DIR_RESULTS + cloud_name + FILENAME_EXT)
 
-        #hi_sd = results['data_products']['hi_sd']
+        hi_sd = results['data_products']['hi_sd']
         h2_sd = results['data_products']['h2_sd']
 
+        cloud_dict['contour_image'] = None# hi_sd
+        cloud_dict['contours'] = [4, 8]
         cloud_dict['h2_sd'] = h2_sd
         cloud_dict['header'] = results['data']['av_header']
+
+        if cloud_name == 'california':
+            plot_dict[cloud_name]['limits'] = [75, 60, 30, 38]
+        if cloud_name == 'perseus':
+            plot_dict[cloud_name]['limits'] = [61, 45, 24, 36]
+        if cloud_name == 'taurus':
+            plot_dict[cloud_name]['limits'] = [75, 57, 20, 33]
 
     # plot the 3-panel H2 surface density map
     for filetype in PLOT_FILETYPES:
         plot_h2_sd(plot_dict,
-                   filename=FILENAME_PLOT_BASE + filetype,
+                   filename=FILENAME_PLOT_BASE + '.' + filetype,
+                   vlimits=[-0.1, 50],
                    )
 
 
