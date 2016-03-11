@@ -5,9 +5,9 @@ set data = (GALFA_HI_RA+DEC_020.00+18.35_N.fits GALFA_HI_RA+DEC_020.00+26.35_N.f
 
 # Create DR1 cube
 # ------------------------------------------------------------------------------
-set data_dir = /d/bip2/lee/perseus_cloud/galfa/
+#set data_dir = /d/bip2/lee/perseus_cloud/galfa/
+set data_dir = /d/bip3/ezbc/galfa/DR1/
 cd /d/bip3/ezbc/perseus/data/hi/DR1_archive_files/
-
 
 foreach filename ($data)
     ls $data_dir$filename
@@ -42,7 +42,6 @@ op=xyout
 # ------------------------------------------------------------------------------
 
 cd /d/bip3/ezbc/perseus/data/hi/DR2_archive_files/
-
 
 set data_dir = /d/bip2/DR2W_v1/Narrow/
 
