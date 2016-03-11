@@ -764,6 +764,7 @@ def plot_temp_cdfs(core_dict, df):
                                        plot_kwargs_line={'color': c_cycle[i],
                                                          'linestyle': linestyle,
                                                          'label': label,
+                                                         'linewidth': 1.5,
                                                          },
                                        plot_kwargs_fill_between=\
                                                {'color': c_cycle[i],
@@ -986,6 +987,7 @@ def plot_density_cdfs(core_dict, df):
                                            plot_kwargs_line={'color': c_cycle[i],
                                                              'linestyle': linestyle,
                                                              'label': label,
+                                                             'linewidth' : 1.5,
                                                              },
                                            plot_kwargs_fill_between=\
                                                    {'color': c_cycle[i],
@@ -1178,6 +1180,9 @@ def plot_modelparam_cdfs(core_dict, df):
     plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/modelparams_cdf.pdf')
 
 def main():
+
+    import matplotlib
+    print matplotlib.__version__
 
     # get core data
     df = load_table()
