@@ -242,6 +242,9 @@ def plot_multicloud_results(results):
                                  hisd_cores_list, hsd_cores_list,
                                  rh2_cores_list, model_analysis_dict)
 
+    # plot CDFs of diffuse fraction LOS
+    lm_plt.plot_diffusefraction_cdfs(hi_dict)
+
     # Print results
     # =========================================================================
     # Write results to a
