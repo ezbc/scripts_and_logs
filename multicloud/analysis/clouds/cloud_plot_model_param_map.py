@@ -366,238 +366,6 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=100)
 
-def get_patches(df, header):
-
-    df = add_pix_coords(df, header)
-
-    from matplotlib.patches import Circle
-
-    patches = []
-    for i in xrange(len(df['ra_pix'])):
-        patches.append(Circle((df['ra_pix'][i], df['dec_pix'][i]), radius=4))
-
-    return patches
-
-def calc_model_color_cycle(df):
-
-    phi_cnm_max = np.max(df['phi_cnm'])
-    phi_cnm_min = np.min(df['phi_cnm'])
-
-    color_cycle = myplt.set_color_cycle(num_colors=len(df['phi_cnm']),
-                                        cmap=plt.cm.gnuplot2,
-                                        )
-
-def add_pix_coords(df, header):
-
-    from astropy.coordinates import SkyCoord
-    from astropy import units as u
-    from astropy.io import fits
-    from astropy.wcs import WCS
-
-    wcs_header = WCS(header)
-
-    df['ra_pix'] = np.empty(len(df['ra']))
-    df['dec_pix'] = np.empty(len(df['dec']))
-
-    coords_wcs = SkyCoord(df['ra'], df['dec'], unit='deg', frame='fk5')
-    coords_pix = coords_wcs.to_pixel(wcs_header)
-    df['ra_pix'], df['dec_pix'] = coords_pix
-
-    return df
-
-def load_table():
-
-    # Load the table with the cores
-    results_dir =  '/d/bip3/ezbc/multicloud/data/python_output/'
-    filename = results_dir + 'tables/multicloud_model_params.pickle'
-
-    df = pd.load(filename)
-
-    return df
-
-def check_region(pos, regions):
-
-    selected_region = None
-    if pos[1] > 0:
-        for region in regions:
-            within_region = myg.point_in_polygon(pos,
-                                                 regions[region]['vertices']['wcs'])
-            if within_region:
-                selected_region = region
-
-            within_region = False
-
-
-
-    result = selected_region
-
-    return result
-
-def load_regions():
-
-    import pyregion as pyr
-
-    data_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
-
-    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
-    filename = region_dir + 'multicloud_divisions_coldcore_selection.reg'
-
-    # region[0] in following format:
-    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
-    # [ra center, dec center, width, height, rotation angle]
-
-    regions = pyr.open(filename)
-
-    region_dict = {}
-
-    for region in regions:
-        # Cores defined in following format: 'tag={L1495A}'
-        tag = region.comment
-        region_name = tag[tag.find('{')+1:tag.find('}')].lower()
-
-        if region_name in ('taurus', 'california', 'perseus'):
-            # Format vertices to be 2 x N array
-            poly_verts = []
-            for i in xrange(0, len(region.coord_list)/2):
-                poly_verts.append((region.coord_list[2*i],
-                                   region.coord_list[2*i+1]))
-
-            if 0:
-                poly_verts_pix = []
-                for i in xrange(0, len(poly_verts)):
-                    poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
-                                        dec=poly_verts[i][1],
-                                        header=header)[:-1][::-1].tolist())
-
-            region_dict[region_name] = {}
-            region_dict[region_name]['vertices'] = {}
-            region_dict[region_name]['vertices']['wcs'] = np.array(poly_verts)
-            #region_dict['regions'][region_name]['poly_verts']['pixel'] = \
-            #    poly_verts_pix
-
-    return region_dict
-
-def load_cold_cores():
-
-    # summary of cold clump data
-    # http://wiki.cosmos.esa.int/planckpla2015/index.php/Catalogues#Individual_catalogues
-
-    table_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
-    df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
-    filename = table_dir + 'HFI_PCCS_GCC_R2.02.fits'
-
-    if 0:
-        print('\nAnalyzing table...')
-        cc_hdu = fits.open(filename)
-
-        cc_data = cc_hdu[1].data
-
-        # get the region vertices
-        regions = load_regions()
-
-        df = dict()
-        df['Glon'] = []
-        df['Glat'] = []
-        df['ra'] = []
-        df['dec'] = []
-        df['Region'] = []
-        df['SNR'] = []
-        for i in xrange(len(cc_data)):
-            #if myg.point_in_polygon(ra, region_vertices):
-            ra = cc_data[i][3]
-            dec = cc_data[i][4]
-            #if ra < 80 and ra > 40 and dec < 45 and dec > 15:
-            region_check = check_region((ra, dec), regions)
-            if region_check is not None:
-                df['Glon'].append(cc_data.field('GLON')[i])
-                df['Glat'].append(cc_data.field('GLAT')[i])
-                df['ra'].append(cc_data.field('RA')[i])
-                df['dec'].append(cc_data.field('DEC')[i])
-                df['SNR'].append(cc_data.field('SNR')[i])
-                df['Region'].append(region_check)
-
-        df = pd.DataFrame(df)
-
-        df.save(df_dir + 'multicloud_cold_clumps.pickle')
-    else:
-        df = pd.load(df_dir + 'multicloud_cold_clumps.pickle')
-
-    print('\nFinished loading...')
-
-    return df
-
-def load_av_data():
-
-    data_dir = '/d/bip3/ezbc/multicloud/data/av/'
-    filename = data_dir + 'multicloud_av_planck_tau353_5arcmin.fits'
-
-    av_data, av_header = fits.getdata(filename,
-                                      header=True)
-
-    return av_data, av_header
-
-def calc_core_pixel_locations(df, header):
-
-    # Make a galactic coords object and convert to Ra/dec
-    coords_gal = SkyCoord(df['Glon'] * u.deg, df['Glat'] * u.deg,
-                        frame='galactic',
-                        )
-    coords_fk5 = coords_gal.transform_to('fk5')
-
-    # Create WCS object
-    wcs_header = WCS(header)
-
-    # convert to pixel
-    coords_pixel = coords_fk5.to_pixel(wcs_header)
-
-    # write data to dataframe
-    df['ra'] = coords_fk5.ra.deg
-    df['dec'] = coords_fk5.dec.deg
-    df['xpix'] = coords_pixel[0]
-    df['ypix'] = coords_pixel[1]
-
-    return df
-
-def crop_to_random_cores(df):
-
-    core_sample = {}
-
-    if 0:
-        df.sort(['SNR'], ascending=[True])
-        df = df._slice(slice(0, 40))
-    #for region in ('TMC', 'PMC', 'CMC'):
-    for region in ('taurus', 'california', 'perseus'):
-        row_indices = np.where((df.Region == region))[0]
-        if 0:
-            row_indices = np.random.choice(row_indices,
-                                           replace=False,
-                                           size=15,
-                                           #size=len(row_indices)
-                                           )
-            core_sample[region] = df._slice(row_indices)
-        else:
-            core_sample[region] = df._slice(row_indices)
-            core_sample[region].sort(['SNR'], ascending=[True])
-            core_sample[region] = core_sample[region]._slice(slice(0, 15))
-
-    return core_sample
-
-def load_cores():
-
-    import pickle
-
-    table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
-    filename = table_dir + 'tables/multicloud_model_summary.pickle'
-
-    with open(filename, 'rb') as f:
-        core_dict = pickle.load(f)
-
-    if 'n_H' not in core_dict[core_dict.keys()[0]]:
-        raise ValueError('Need interpretation, run' + \
-                         'cloud_write_parameter_table.py first')
-
-    return core_dict
-
 def plot_temp_cdfs(core_dict, df):
 
     import myplotting as myplt
@@ -1178,6 +946,238 @@ def plot_modelparam_cdfs(core_dict, df):
 
     #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
     plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/modelparams_cdf.pdf')
+
+def get_patches(df, header):
+
+    df = add_pix_coords(df, header)
+
+    from matplotlib.patches import Circle
+
+    patches = []
+    for i in xrange(len(df['ra_pix'])):
+        patches.append(Circle((df['ra_pix'][i], df['dec_pix'][i]), radius=4))
+
+    return patches
+
+def calc_model_color_cycle(df):
+
+    phi_cnm_max = np.max(df['phi_cnm'])
+    phi_cnm_min = np.min(df['phi_cnm'])
+
+    color_cycle = myplt.set_color_cycle(num_colors=len(df['phi_cnm']),
+                                        cmap=plt.cm.gnuplot2,
+                                        )
+
+def add_pix_coords(df, header):
+
+    from astropy.coordinates import SkyCoord
+    from astropy import units as u
+    from astropy.io import fits
+    from astropy.wcs import WCS
+
+    wcs_header = WCS(header)
+
+    df['ra_pix'] = np.empty(len(df['ra']))
+    df['dec_pix'] = np.empty(len(df['dec']))
+
+    coords_wcs = SkyCoord(df['ra'], df['dec'], unit='deg', frame='fk5')
+    coords_pix = coords_wcs.to_pixel(wcs_header)
+    df['ra_pix'], df['dec_pix'] = coords_pix
+
+    return df
+
+def load_table():
+
+    # Load the table with the cores
+    results_dir =  '/d/bip3/ezbc/multicloud/data/python_output/'
+    filename = results_dir + 'tables/multicloud_model_params.pickle'
+
+    df = pd.load(filename)
+
+    return df
+
+def check_region(pos, regions):
+
+    selected_region = None
+    if pos[1] > 0:
+        for region in regions:
+            within_region = myg.point_in_polygon(pos,
+                                                 regions[region]['vertices']['wcs'])
+            if within_region:
+                selected_region = region
+
+            within_region = False
+
+
+
+    result = selected_region
+
+    return result
+
+def load_regions():
+
+    import pyregion as pyr
+
+    data_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
+
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    filename = region_dir + 'multicloud_divisions_coldcore_selection.reg'
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    regions = pyr.open(filename)
+
+    region_dict = {}
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        region_name = tag[tag.find('{')+1:tag.find('}')].lower()
+
+        if region_name in ('taurus', 'california', 'perseus'):
+            # Format vertices to be 2 x N array
+            poly_verts = []
+            for i in xrange(0, len(region.coord_list)/2):
+                poly_verts.append((region.coord_list[2*i],
+                                   region.coord_list[2*i+1]))
+
+            if 0:
+                poly_verts_pix = []
+                for i in xrange(0, len(poly_verts)):
+                    poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                        dec=poly_verts[i][1],
+                                        header=header)[:-1][::-1].tolist())
+
+            region_dict[region_name] = {}
+            region_dict[region_name]['vertices'] = {}
+            region_dict[region_name]['vertices']['wcs'] = np.array(poly_verts)
+            #region_dict['regions'][region_name]['poly_verts']['pixel'] = \
+            #    poly_verts_pix
+
+    return region_dict
+
+def load_cold_cores():
+
+    # summary of cold clump data
+    # http://wiki.cosmos.esa.int/planckpla2015/index.php/Catalogues#Individual_catalogues
+
+    table_dir = '/d/bip3/ezbc/multicloud/data/cold_clumps/'
+    df_dir = '/d/bip3/ezbc/multicloud/data/python_output/tables/'
+    filename = table_dir + 'HFI_PCCS_GCC_R2.02.fits'
+
+    if 0:
+        print('\nAnalyzing table...')
+        cc_hdu = fits.open(filename)
+
+        cc_data = cc_hdu[1].data
+
+        # get the region vertices
+        regions = load_regions()
+
+        df = dict()
+        df['Glon'] = []
+        df['Glat'] = []
+        df['ra'] = []
+        df['dec'] = []
+        df['Region'] = []
+        df['SNR'] = []
+        for i in xrange(len(cc_data)):
+            #if myg.point_in_polygon(ra, region_vertices):
+            ra = cc_data[i][3]
+            dec = cc_data[i][4]
+            #if ra < 80 and ra > 40 and dec < 45 and dec > 15:
+            region_check = check_region((ra, dec), regions)
+            if region_check is not None:
+                df['Glon'].append(cc_data.field('GLON')[i])
+                df['Glat'].append(cc_data.field('GLAT')[i])
+                df['ra'].append(cc_data.field('RA')[i])
+                df['dec'].append(cc_data.field('DEC')[i])
+                df['SNR'].append(cc_data.field('SNR')[i])
+                df['Region'].append(region_check)
+
+        df = pd.DataFrame(df)
+
+        df.save(df_dir + 'multicloud_cold_clumps.pickle')
+    else:
+        df = pd.load(df_dir + 'multicloud_cold_clumps.pickle')
+
+    print('\nFinished loading...')
+
+    return df
+
+def load_av_data():
+
+    data_dir = '/d/bip3/ezbc/multicloud/data/av/'
+    filename = data_dir + 'multicloud_av_planck_tau353_5arcmin.fits'
+
+    av_data, av_header = fits.getdata(filename,
+                                      header=True)
+
+    return av_data, av_header
+
+def calc_core_pixel_locations(df, header):
+
+    # Make a galactic coords object and convert to Ra/dec
+    coords_gal = SkyCoord(df['Glon'] * u.deg, df['Glat'] * u.deg,
+                        frame='galactic',
+                        )
+    coords_fk5 = coords_gal.transform_to('fk5')
+
+    # Create WCS object
+    wcs_header = WCS(header)
+
+    # convert to pixel
+    coords_pixel = coords_fk5.to_pixel(wcs_header)
+
+    # write data to dataframe
+    df['ra'] = coords_fk5.ra.deg
+    df['dec'] = coords_fk5.dec.deg
+    df['xpix'] = coords_pixel[0]
+    df['ypix'] = coords_pixel[1]
+
+    return df
+
+def crop_to_random_cores(df):
+
+    core_sample = {}
+
+    if 0:
+        df.sort(['SNR'], ascending=[True])
+        df = df._slice(slice(0, 40))
+    #for region in ('TMC', 'PMC', 'CMC'):
+    for region in ('taurus', 'california', 'perseus'):
+        row_indices = np.where((df.Region == region))[0]
+        if 0:
+            row_indices = np.random.choice(row_indices,
+                                           replace=False,
+                                           size=15,
+                                           #size=len(row_indices)
+                                           )
+            core_sample[region] = df._slice(row_indices)
+        else:
+            core_sample[region] = df._slice(row_indices)
+            core_sample[region].sort(['SNR'], ascending=[True])
+            core_sample[region] = core_sample[region]._slice(slice(0, 15))
+
+    return core_sample
+
+def load_cores():
+
+    import pickle
+
+    table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    filename = table_dir + 'tables/multicloud_model_summary.pickle'
+
+    with open(filename, 'rb') as f:
+        core_dict = pickle.load(f)
+
+    if 'n_H' not in core_dict[core_dict.keys()[0]]:
+        raise ValueError('Need interpretation, run' + \
+                         'cloud_write_parameter_table.py first')
+
+    return core_dict
 
 def main():
 
