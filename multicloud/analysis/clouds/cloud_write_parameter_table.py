@@ -326,7 +326,7 @@ def write_cloud_temps_table(cloud_temps):
     f.close()
 
 def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
-        beta_data, beta_error_data):
+        beta_data, beta_error_data, N_mc=10):
 
     from myscience import calc_radiation_field
 
@@ -365,7 +365,6 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
-        N_mc = 10
         temp_mc = np.empty(N_mc)
         temp_error_mc = np.empty(N_mc)
         beta_mc = np.empty(N_mc)
@@ -445,6 +444,7 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
             rad_field_mathis_median_error = rad_field_draine_median_error / 1.48
 
 
+            # write results to cloud
             cloud_temps[cloud] = \
                     {
                      'dust_temp_median': dust_temp_median,
@@ -467,16 +467,16 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
             for param_name in cloud_temps[cloud]:
                 core_dict[core_name][param_name] = \
-                    cloud_temps[cloud][param_name]
+                        np.copy(cloud_temps[cloud][param_name])
         else:
             core_dict[core_name]['dust_temp_median'] = \
                 cloud_temps[cloud]['dust_temp_median']
             core_dict[core_name]['dust_temp_median_error'] = \
                 cloud_temps[cloud]['dust_temp_median_error']
 
-    return cloud_temps
+    return cloud_temps, core_dict
 
-def add_cloud_params(core_dict, cloud_average=True, load_results=0):
+def add_cloud_params(core_dict, cloud_average=True, load_results=0, N_mc=10,):
 
     # Get the data
     # ------------
@@ -517,7 +517,7 @@ def add_cloud_params(core_dict, cloud_average=True, load_results=0):
     # Create WCS object
     wcs_header = WCS(temp_header)
     if cloud_average:
-        if load_cloud_average:
+        if load_results:
             with open(cloud_temp_filename, 'rb') as f:
                 cloud_temps = pickle.load(f)
                 for core_name in core_dict:
@@ -535,12 +535,13 @@ def add_cloud_params(core_dict, cloud_average=True, load_results=0):
                     core_dict[core_name]['rad_field_habing_median_error'] = \
                         cloud_temps[cloud]['rad_field_habing_median_error']
         else:
-            cloud_temps = run_mc_simulations(core_dict,
+            cloud_temps, core_dict = run_mc_simulations(core_dict,
                                                wcs_header,
                                                temp_data,
                                                temp_error_data,
                                                beta_data,
                                                beta_error_data,
+                                               N_mc=N_mc,
                                                )
 
 
@@ -932,12 +933,13 @@ def save_core_dict(core_dict):
 def main():
 
     LOAD_MC_RESULTS = 0
+    N_MC = 10
 
     # load core summary file
     core_dict = load_cores()
 
     # average dust temperatures over each core region
-    add_cloud_params(core_dict, load_results=LOAD_MC_RESULTS)
+    add_cloud_params(core_dict, load_results=LOAD_MC_RESULTS, N_mc=N_MC,)
 
     # Add model_analysis
     add_model_params(core_dict)
