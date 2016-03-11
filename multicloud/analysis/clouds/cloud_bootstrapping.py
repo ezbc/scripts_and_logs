@@ -979,6 +979,10 @@ def write_coldens_maps(results_dict, global_args):
                   global_args['cloud_name'] + '_hisurfdens.fits'
     FILENAME_H2 = '/d/bip3/ezbc/multicloud/data/nh2/' + \
                   global_args['cloud_name'] + '_h2surfdens.fits'
+    FILENAME_HI_ERROR = '/d/bip3/ezbc/multicloud/data/nhi/' + \
+                  global_args['cloud_name'] + '_hisurfdens_error.fits'
+    FILENAME_H2_ERROR = '/d/bip3/ezbc/multicloud/data/nh2/' + \
+                  global_args['cloud_name'] + '_h2surfdens_error.fits'
 
     # get av_header
     header = results_dict['data']['av_header'].copy()
@@ -986,9 +990,16 @@ def write_coldens_maps(results_dict, global_args):
 
     hi_sd_image = results_dict['data_products']['hi_sd']
     h2_sd_image = results_dict['data_products']['h2_sd']
+    hi_sd_error_image = results_dict['data_products']['hi_sd_error']
+    h2_sd_error_image = results_dict['data_products']['h2_sd_error']
+
+    print('median h2 error:', scipy.stats.nanmedian(h2_sd_error_image.ravel()))
+    print('median hi error:', scipy.stats.nanmedian(hi_sd_error_image.ravel()))
 
     fits.writeto(FILENAME_HI, hi_sd_image, header=header, clobber=True)
     fits.writeto(FILENAME_H2, h2_sd_image, header=header, clobber=True)
+    fits.writeto(FILENAME_HI_ERROR, hi_sd_error_image, header=header, clobber=True)
+    fits.writeto(FILENAME_H2_ERROR, h2_sd_error_image, header=header, clobber=True)
 
 '''
 Multiprocessing functions
