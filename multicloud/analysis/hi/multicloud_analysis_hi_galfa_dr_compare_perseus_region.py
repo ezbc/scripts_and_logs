@@ -602,6 +602,7 @@ def run_cloud_analysis(global_args,):
     load = global_args['load']
     data_type = global_args['data_type']
     background_subtract = global_args['background_subtract']
+    region = global_args['region']
 
     # define directory locations
     # --------------------------
@@ -626,10 +627,18 @@ def run_cloud_analysis(global_args,):
     # define filenames
     prop_filename = property_dir + \
        cloud_name + '_global_properties.txt'
-    hi_filename = '/d/bip2/DR2W_v1/Narrow/' + \
-            'GALFA_HI_RA+DEC_060.00+26.35_N.fits'
-    hi_dr1_filename = '/d/bip3/ezbc/galfa/DR1/' + \
-            'GALFA_HI_RA+DEC_060.00+26.35_N.fits'
+
+    if region == 'east':
+	    hi_filename = '/d/bip2/DR2W_v1/Narrow/' + \
+		    'GALFA_HI_RA+DEC_060.00+26.35_N.fits'
+	    hi_dr1_filename = '/d/bip3/ezbc/galfa/DR1/' + \
+		    'GALFA_HI_RA+DEC_060.00+26.35_N.fits'
+    else:
+        hi_filename = '/d/bip2/DR2W_v1/Narrow/' + \
+          'GALFA_HI_RA+DEC_052.00+26.35_N.fits'
+        hi_dr1_filename = '/d/bip3/ezbc/galfa/DR1/' + \
+		    'GALFA_HI_RA+DEC_052.00+26.35_N.fits'
+
     hi_error_filename = hi_dir + \
        cloud_name + '_hi_galfa_cube_regrid_planckres_noise.fits'
     co_filename = co_dir + \
@@ -677,7 +686,7 @@ def run_cloud_analysis(global_args,):
     # Plot residuals between nhi maps
     filename = plot_kwargs['figure_dir'] + \
                'maps/' + plot_kwargs['filename_base'] + \
-               '_nhi_dr2_dr1_residuals_perseus.png'
+               '_nhi_dr2_dr1_residuals_perseus_' + region + '.png'
     print('Saving\neog ' + filename + ' &')
     plot_nhi_image(nhi_image=nhi_image / nhi_image_dr1,
                    header=hi_header,
@@ -745,7 +754,7 @@ def main():
                          #2.5,
                          )
 
-    regions = (None,
+    regions = ('east', 'west',
                #'1',
                #'2'
                )
