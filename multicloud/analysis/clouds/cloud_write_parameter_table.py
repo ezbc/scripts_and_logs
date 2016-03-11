@@ -166,6 +166,8 @@ def add_model_params(core_dict):
     for core_name in core_dict:
         core = core_dict[core_name]
 
+        print 'core keys later', core.keys()
+
         temp = core['dust_temp_median']
         temp_error = core['dust_temp_median_error']
         core['rad_field'], core['rad_field_error'] = \
@@ -173,16 +175,6 @@ def add_model_params(core_dict):
                                      T_dust_error=temp_error)
 
         cloud = core_dict[core_name]['cloud']
-        if 0:
-            if cloud not in clouds_printed:
-                print ''
-                print cloud + ' dust temp and error:'
-                print core['dust_temp_median']
-                print core['dust_temp_median_error']
-                print 'rad field and error:'
-                print core['rad_field']
-                print core['rad_field_error']
-                clouds_printed.append(cloud)
 
         #rad_error = np.sort((calc_radiation_field(temp + temp_error),
         #                     calc_radiation_field(temp - temp_error)))
