@@ -142,7 +142,7 @@ def load_cores():
 
     return core_dict
 
-def add_model_analysis(core_dict):
+def add_model_params(core_dict):
 
     from myscience import calc_radiation_field, calc_temperature
     from myscience.sternberg14 import calc_n_H
@@ -951,7 +951,7 @@ def main():
     add_cloud_params(core_dict, load_results=LOAD_MC_RESULTS)
 
     # Add model_analysis
-    add_model_analysis(core_dict)
+    add_model_params(core_dict)
 
     # write the latex table
     write_model_params_table(core_dict)
