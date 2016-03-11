@@ -487,7 +487,7 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
     return cloud_temps
 
-def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
+def add_cloud_params(core_dict, cloud_average=True, load_results=0):
 
     # Get the data
     # ------------
@@ -942,11 +942,13 @@ def save_core_dict(core_dict):
 
 def main():
 
+    LOAD_MC_RESULTS = 0
+
     # load core summary file
     core_dict = load_cores()
 
     # average dust temperatures over each core region
-    add_dust_temps(core_dict)
+    add_cloud_params(core_dict, load_results=LOAD_MC_RESULTS)
 
     # Add model_analysis
     add_model_analysis(core_dict)
