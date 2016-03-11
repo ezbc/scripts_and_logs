@@ -3431,5 +3431,61 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
 
     return h_sd, hi_sd, hi_sd_low, hi_sd_high
 
+def plot_diffusefraction_cdfs(hi_dict):
 
+    import myplotting as myplt
+    import matplotlib.pyplot as plt
+    import mystats
+    # Import external modules
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import AxesGrid
+    import pywcsgrid2 as wcs
+    from matplotlib.patches import Polygon
+    import matplotlib.patheffects as PathEffects
+    import myplotting as myplt
+
+    FILENAME = '/d/bip3/ezbc/multicloud/figures/models/diffuse_fraction.pdf'
+
+    # Set up plot aesthetics
+    # ----------------------
+    #plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    c_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 3.5))
+
+    parameters = ['fraction_LOS_diffuse',]
+
+    fig, axes = plt.subplots(1,1,figsize=(3.5, 5))
+
+    clouds = 'california', 'perseus', 'taurus'
+    linestyles = ['-', '--', '-.']
+    alpha = 1
+
+    include_errors = True
+    for i, cloud in enumerate(clouds):
+        diffuse_los_fraction = hi_dict[cloud]['fraction_LOS_diffuse']
+
+        x = myplt.plot_cdf(diffuse_los_fraction,
+                           ax=axes[0],
+                           plot_kwargs={#'label': label,
+                                        'color': c_cycle[i],
+                                        'linestyle': linestyles[i],
+                                        'linewidth': 2,
+                                        'alpha': alpha,
+                                        })
+
+    axes[0].legend(loc='lower right')
+    #ax.set_xscale('log')
+    axes[0].set_xlabel(r'Fraction of Diffuse LOS')
+    axes[0].set_ylabel('Cumulative Distribution')
+    axes[0].set_ylim([0,1])
+    axes[0].set_xlim([0,1])
+
+    plt.savefig(FILENAME)
 
