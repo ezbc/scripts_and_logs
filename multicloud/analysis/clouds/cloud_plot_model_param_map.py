@@ -897,6 +897,7 @@ def plot_modelparam_cdfs(core_dict, df):
                                        #bin_limits=[0, None],
                                        plot_kwargs_line={'color': c_cycle[i],
                                                          'linestyle': linestyle,
+                                                         'linestyle': linestyles[i],
                                                          },
                                        plot_kwargs_fill_between=\
                                                {'color': c_cycle[i],
