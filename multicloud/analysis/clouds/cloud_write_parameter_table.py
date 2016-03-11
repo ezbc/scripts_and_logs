@@ -70,7 +70,7 @@ def plot_dust_histogram(dust_temps, limits=None, filename=None):
                 bin_centers = np.append(bin_centers,
                                         bin_centers[-1] + bin_size)
             while bin_centers[0] > limits[0][0]:
-                print 'start bin:', bin_centers[0]
+                print ':', bin_centers[0]
                 n = np.append(0, n)
                 bin_centers = np.append(bin_centers[0] - bin_size,
                                         bin_centers,
@@ -325,7 +325,7 @@ def write_cloud_temps_table(cloud_temps):
 
     f.close()
 
-def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
+def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
         beta_data, beta_error_data):
 
     from myscience import calc_radiation_field
@@ -376,7 +376,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
 
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
-        N_mc = 50
+        N_mc = 10
         temp_mc = np.empty(N_mc)
         temp_error_mc = np.empty(N_mc)
         beta_mc = np.empty(N_mc)
@@ -455,15 +455,6 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
             rad_field_mathis_median = rad_field_draine_median / 1.48
             rad_field_mathis_median_error = rad_field_draine_median_error / 1.48
 
-            core_dict[core_name]['dust_temp_median'] = dust_temp_median
-            core_dict[core_name]['dust_temp_median_error'] = \
-                dust_temp_median_error
-            core_dict[core_name]['dust_beta_median'] = dust_beta_median
-            core_dict[core_name]['dust_beta_median_error'] = \
-                dust_beta_median_error
-            core_dict[core_name]['rad_field_median'] = dust_temp_median
-            core_dict[core_name]['rad_field_median_error'] = \
-                dust_temp_median_error
 
             cloud_temps[cloud] = \
                     {
@@ -484,6 +475,10 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
                         rad_field_mathis_median_error,
                      'rad_field_map': rads,
                      }
+
+            for param_name in cloud_temps[cloud]:
+                core_dict[core_name][param_name] = \
+                    cloud_temps[cloud][param_name]
         else:
             core_dict[core_name]['dust_temp_median'] = \
                 cloud_temps[cloud]['dust_temp_median']
@@ -551,7 +546,7 @@ def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
                     core_dict[core_name]['rad_field_habing_median_error'] = \
                         cloud_temps[cloud]['rad_field_habing_median_error']
         else:
-            cloud_temps = calc_cloud_dust_temp(core_dict,
+            cloud_temps = run_mc_simulations(core_dict,
                                                wcs_header,
                                                temp_data,
                                                temp_error_data,
@@ -964,3 +959,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
