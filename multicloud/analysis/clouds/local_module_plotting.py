@@ -2543,7 +2543,7 @@ def plot_hi_cdf_grid(hsd_list, hisd_list, core_names=None,
 def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
         model_results=None, model_analysis=None, xlimits=None, ylimits=None,
         scale=('linear', 'linear'), filename=None, show_params=False,
-        levels=5, ncols=2, plot_sf_threshold=True):
+        levels=5, ncols=2, plot_sf_threshold=False):
 
     # Import external modules
     import numpy as np
@@ -3461,7 +3461,7 @@ def plot_diffusefraction_cdfs(hi_dict):
 
     parameters = ['fraction_LOS_diffuse',]
 
-    fig, axes = plt.subplots(1,1,figsize=(3.5, 5))
+    fig, ax = plt.subplots(1,1,figsize=(3.5, 2))
 
     clouds = 'california', 'perseus', 'taurus'
     linestyles = ['-', '--', '-.']
@@ -3472,20 +3472,22 @@ def plot_diffusefraction_cdfs(hi_dict):
         diffuse_los_fraction = hi_dict[cloud]['fraction_LOS_diffuse']
 
         x = myplt.plot_cdf(diffuse_los_fraction,
-                           ax=axes[0],
+                           ax=ax,
                            plot_kwargs={#'label': label,
                                         'color': c_cycle[i],
                                         'linestyle': linestyles[i],
                                         'linewidth': 2,
                                         'alpha': alpha,
+                                        'label': cloud.capitalize(),
                                         })
 
-    axes[0].legend(loc='lower right')
-    #ax.set_xscale('log')
-    axes[0].set_xlabel(r'Fraction of Diffuse LOS')
-    axes[0].set_ylabel('Cumulative Distribution')
-    axes[0].set_ylim([0,1])
-    axes[0].set_xlim([0,1])
+    ax.legend(loc='best')
+    #a_xscale('log')
+    ax.set_xlabel(r'Fraction of Diffuse LOS')
+    ax.set_ylabel('Cumulative Distribution')
+    ax.set_ylim([0,1])
+    ax.set_xlim([0,1])
 
+    plt.show()
     plt.savefig(FILENAME)
 
