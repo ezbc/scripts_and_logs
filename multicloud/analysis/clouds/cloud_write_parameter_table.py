@@ -363,17 +363,6 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
         core_dict[core_name]['dust_temp_errors'] = \
             temp_error_data[~region_mask]
 
-        if 0:
-            import matplotlib.pyplot as plt
-            import myplotting as myplt
-            plt.close(); plt.clf()
-            myplt.plot_cdf(core_dict[core_name]['dust_temps'])
-            cloud = core_dict[core_name]['cloud']
-            plt.xlabel('Dust Temperature [K]')
-            plt.xlim([12, 24])
-            plt.savefig('/d/bip3/ezbc/multicloud/figures/dust/' + \
-                        cloud + '_temp_hist.png')
-
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
         N_mc = 10
