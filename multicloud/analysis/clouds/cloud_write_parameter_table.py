@@ -166,8 +166,6 @@ def add_model_params(core_dict):
     for core_name in core_dict:
         core = core_dict[core_name]
 
-        print 'core keys later', core.keys()
-
         temp = core['dust_temp_median']
         temp_error = core['dust_temp_median_error']
         core['rad_field'], core['rad_field_error'] = \
@@ -457,14 +455,16 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
                      'rad_field_map': rads,
                      }
 
-            for param_name in cloud_temps[cloud]:
-                core_dict[core_name][param_name] = \
-                        np.copy(cloud_temps[cloud][param_name])
         else:
             core_dict[core_name]['dust_temp_median'] = \
                 cloud_temps[cloud]['dust_temp_median']
             core_dict[core_name]['dust_temp_median_error'] = \
                 cloud_temps[cloud]['dust_temp_median_error']
+
+        # copy cloud params to core dict
+        for param_name in cloud_temps[cloud]:
+            core_dict[core_name][param_name] = \
+                    np.copy(cloud_temps[cloud][param_name])
 
     return cloud_temps, core_dict
 
