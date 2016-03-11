@@ -170,6 +170,19 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # create axes
     ax = axes[0]
 
+    # plot limits
+    if limits is not None:
+        limits_pix = myplt.convert_wcs_limits(limits, header, frame='fk5')
+        limits_pix = np.array(limits_pix, dtype=int)
+        ax.set_xlim(limits_pix[0],limits_pix[1])
+        ax.set_ylim(limits_pix[2],limits_pix[3])
+
+        # set pixels outside of limits to be nan for correct Vscaling
+        nhi_image[:limits_pix[2]] = np.nan
+        nhi_image[limits_pix[3]:] = np.nan
+        nhi_image[:, :limits_pix[0]] = np.nan
+        nhi_image[:, limits_pix[1]:] = np.nan
+
     # show the image
     im = ax.imshow(nhi_image,
             interpolation='nearest',origin='lower',
@@ -191,12 +204,6 @@ def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
     # colorbar
     cb = ax.cax.colorbar(im)
     cmap.set_bad(color='w')
-
-    # plot limits
-    if limits is not None:
-        limits_pix = myplt.convert_wcs_limits(limits, header, frame='fk5')
-        ax.set_xlim(limits_pix[0],limits_pix[1])
-        ax.set_ylim(limits_pix[2],limits_pix[3])
 
     # Plot Av contours
     if contour_image is not None:
@@ -665,9 +672,9 @@ def run_cloud_analysis(global_args,):
     co_data, co_header = fits.getdata(co_filename, header=True)
 
 
-    hi_data[:, region_mask] = np.nan
-    hi_dr1_data[:, region_mask] = np.nan
-    co_data[:, region_mask] = np.nan
+    #hi_data[:, region_mask] = np.nan
+    #hi_dr1_data[:, region_mask] = np.nan
+    #co_data[:, region_mask] = np.nan
 
     hi_vel_axis = make_velocity_axis(hi_header)
     co_vel_axis = make_velocity_axis(co_header)
@@ -808,6 +815,8 @@ def run_cloud_analysis(global_args,):
                  limits=[-50, 30, -10, 70],
                  )
 
+    velocity_range = [0, 15]
+    velocity_range_dr1 = [0, 15]
     # use the vel range to derive N(HI)
     nhi_image, nhi_image_error = \
         calculate_nhi(cube=hi_data,
@@ -835,11 +844,11 @@ def run_cloud_analysis(global_args,):
     print('Saving\neog ' + filename + ' &')
     plot_nhi_image(nhi_image=nhi_image / nhi_image_dr1,
                    header=hi_header,
-                   limits=None,
+                   limits=[65, 45, 25, 35],
                    filename=filename,
                    show=0,
-                   cb_text='DR2 / DR1'
-                   #hi_vlimits=None,
+                   cb_text='DR2 / DR1',
+                   #hi_vlimits=[0.91, 0.93],
                    )
 
 def main():
@@ -849,9 +858,9 @@ def main():
     results = {}
 
     clouds = (
+              'perseus',
               'taurus',
               'california',
-              'perseus',
               )
 
     data_types = (
