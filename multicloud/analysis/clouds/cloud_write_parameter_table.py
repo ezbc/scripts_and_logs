@@ -282,7 +282,7 @@ def write_cloud_temps_table(cloud_temps):
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
     filename = table_dir + 'tables/cloud_params_table.tex'
 
-    text_param_format ='{0:.0f}\,$\pm$\,{1:.0f}'
+    text_param_format ='{0:.2f}\,$\pm$\,{1:.2f}'
 
     params = [
         'dust_temp_median',
@@ -293,11 +293,11 @@ def write_cloud_temps_table(cloud_temps):
         ]
 
     # latex names
-    param_names_pretty = [r'T$_{dust}$ [K]',
+    param_names_pretty = [r'T$_{\rm dust}$\,[K]',
                           r'$\beta$',
-                          r'$U_{M83} [U_{M83,0}$]',
-                          r'$I_{\rm UV} [I_{D,0}$]',
-                          r'$G^\prime_{0} [G_{0}$]',
+                          r'$U_{M83}\,[U_{M83,0}$]',
+                          r'$I_{\rm UV}\,[I_{D,0}$]',
+                          r'$G^\prime_{0}\,[G_{0}$]',
                           ]
 
     f = open(filename, 'wb')
@@ -305,22 +305,21 @@ def write_cloud_temps_table(cloud_temps):
     for i, param_name in enumerate(params):
         row_text = ''
         param_name_pretty = param_names_pretty[i]
-        add_row_element(row_text, param_name_pretty)
+        row_text += param_name_pretty
 
-        for cloud in cloud_temps:
+        for cloud in ('california', 'perseus', 'taurus'):
 
             # get the parameter
             param = cloud_temps[cloud][param_name]
             param_error = cloud_temps[cloud][param_name + '_error']
 
-            print param
-            add_row_element(row_text,
-                            (param, param_error),
-                            text_format=text_param_format,
-                            )
+            row_text = add_row_element(row_text,
+                                       (param, param_error),
+                                       text_format=text_param_format,
+                                       )
 
-            # finish row
-            row_text += ' \\\\[0.1cm] \n'
+        # finish row
+        row_text += ' \\\\[0.1cm] \n'
 
         f.write(row_text)
 
@@ -377,7 +376,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
 
         # adjust vertices to get errors on mean T_dust
         cloud = core_dict[core_name]['cloud']
-        N_mc = 1000
+        N_mc = 50
         temp_mc = np.empty(N_mc)
         temp_error_mc = np.empty(N_mc)
         beta_mc = np.empty(N_mc)
@@ -493,7 +492,7 @@ def calc_cloud_dust_temp(core_dict, wcs_header, temp_data, temp_error_data,
 
     return cloud_temps
 
-def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=1):
+def add_dust_temps(core_dict, cloud_average=True, load_cloud_average=0):
 
     # Get the data
     # ------------
