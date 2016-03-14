@@ -8,6 +8,7 @@ import myimage_analysis as myia
 from multiprocessing.queues import Queue
 import mygeometry as myg
 import scipy
+import pickle
 
 '''
 Plotting
@@ -293,6 +294,7 @@ def plot_multicloud_results(results):
                            core_list,
                            cloud_name_list,
                            filename,
+                           hi_dict=hi_dict,
                            )
 
     # Write table for
@@ -603,7 +605,7 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
 
     # save the dict?
     if filename is not None:
-        pickle.dump(open(filename, 'w'), hi_dict)
+        pickle.dump(hi_dict, open(filename, 'w'),)
 
     return hi_dict
 
@@ -646,7 +648,7 @@ def print_dict_keys(d):
             print_dict_keys(d[key])
 
 def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
-        filename):
+        filename, hi_dict=None,):
 
     import pandas as pd
     import pickle
@@ -682,6 +684,9 @@ def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
                 core_new['temp'], core_new['temp_error'] = 17, 1
             core_new['region_vertices'] = core_props['poly_verts']['wcs']
 
+            if hi_dict is not None:
+                core_new['hi_props'] = hi_dict[core]
+
             # append model params and errors to row
             for model in ('krumholz', 'sternberg'):
                 if model == 'krumholz':
@@ -691,7 +696,7 @@ def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
                     params_to_write = ['alphaG', 'Z', 'phi_g',
                                        'hi_transition']
                 core_new[model] = {}
-                for i, param_name in enumerate(params_to_write):
+                for j, param_name in enumerate(params_to_write):
                     param = \
                         core[model + '_results'][param_name]
                     param_error = \
@@ -4114,7 +4119,7 @@ def run_cloud_analysis(global_args,):
     filename = plot_kwargs['figure_dir'] + \
                'spectra/' + plot_kwargs['filename_base'] + \
                '_spectra.png'
-    plot_spectra(hi_spectrum,
+    lm_plt.plot_spectra(hi_spectrum,
                  hi_vel_axis,
                  hi_std_spectrum=hi_std_spectrum,
                  gauss_fits=gauss_fits,
@@ -4435,7 +4440,7 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 10000,
+                'num_bootstraps': 100,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
