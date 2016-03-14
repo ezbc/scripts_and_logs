@@ -366,6 +366,126 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=100)
 
+def plot_diffuseLOS_map(header=None, av_image=None, df=None, core_dict=None,
+        limits=None, filename=None, vlimits=(None,None), contours=None,
+        parameter='phi_cnm', models=['krumholz', 'sternberg']):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import AxesGrid
+    import pywcsgrid2 as wcs
+    from matplotlib.patches import Polygon
+    import matplotlib.patheffects as PathEffects
+    import myplotting as myplt
+
+    # Set up plot aesthetics
+    # ----------------------
+    #plt.close;plt.clf()
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
+    font_scale = 9
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 10))
+
+
+    if 0:
+        parameters = []
+        #if 'krumholz' in models:
+        #    parameters.append('phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
+
+    parameters = ['fraction_diffuse',]
+
+    ngrids=len(parameters)
+    nrows_ncols=(ngrids,1)
+    axesgrid = AxesGrid(fig, (1,1,1),
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
+                 cbar_location='right',
+                 cbar_pad="2%",
+                 cbar_size='3%',
+                 axes_pad=0.1,
+                 axes_class=(wcs.Axes,
+                             dict(header=header)),
+                 aspect=True,
+                 label_mode='L',
+                 share_all=False)
+
+    # ------------------
+    # Av image
+    # ------------------
+    for i in xrange(ngrids):
+        # create axes
+        ax = axesgrid[i]
+        # show the image
+        X, Y = np.meshgrid(np.arange(av_image.shape[1]),
+                           np.arange(av_image.shape[0]))
+
+        im = ax.contour(X, Y, av_image,
+                origin='lower',
+                levels=contours,
+                cmap=myplt.truncate_colormap(plt.cm.binary, minval=0.3,)
+                #vmin=vlimits[0],
+                #vmax=vlimits[1],
+                #norm=matplotlib.colors.LogNorm()
+                )
+
+        # Asthetics
+        ax.set_display_coord_system("fk5")
+        ax.set_ticklabel_type("hms", "dms")
+
+        ax.set_xlabel('Right Ascension [J2000]',)
+        ax.set_ylabel('Declination [J2000]',)
+
+        ax.locator_params(nbins=4)
+
+        # plot limits
+        if limits is not None:
+            limits_pix = myplt.convert_wcs_limits(limits, header)
+            ax.set_xlim(limits_pix[0],limits_pix[1])
+            ax.set_ylim(limits_pix[2],limits_pix[3])
+
+        # Plot cores for each cloud
+        # -------------------------
+        from matplotlib.patches import Circle
+        from matplotlib.collections import PatchCollection
+
+        parameter = parameters[i]
+        patches = get_patches(df, header)
+        cmap = myplt.truncate_colormap(plt.cm.copper, minval=0.1, maxval=1.0)
+        collection = PatchCollection(patches,
+                                     cmap=cmap,
+                                     edgecolors='none',
+                                     zorder=1000,
+                                     )
+
+        # set values in collection
+        collection_values = []
+        if parameter in ['fraction_diffuse',]:
+            collection.set_array(df[parameter])
+        else:
+            for core in df['core']:
+                collection_values.append(core_dict[core][parameter])
+
+            collection.set_array(np.array(collection_values))
+
+        ax.add_collection(collection,
+                          )
+
+        # colorbar
+        #cbar = axesgrid.cbar_axes[i].colorbar(collection)
+        cbar = ax.cax.colorbar(collection)
+        if parameter == 'fraction_diffuse':
+            cbar.set_label_text(r'Fraction of Diffuse LOS',)
+
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight', dpi=100)
+
 def plot_temp_cdfs(core_dict, df):
 
     import myplotting as myplt
@@ -1185,6 +1305,8 @@ def main():
     import matplotlib
     print matplotlib.__version__
 
+    PLOT_CDFS = False
+
     # get core data
     df = load_table()
 
@@ -1194,16 +1316,17 @@ def main():
     # get av data
     av_data, av_header = load_av_data()
 
-    # compare cdfs of predicted vs. measured densities
-    print('\nPlotting Gas Density CDFs...')
-    plot_density_cdfs(core_dict, df)
+    if PLOT_CDFS:
+        # compare cdfs of predicted vs. measured densities
+        print('\nPlotting Gas Density CDFs...')
+        plot_density_cdfs(core_dict, df)
 
-    # compare cdfs of predicted vs. measured temperatures
-    print('\nPlotting Temperature CDFs...')
-    plot_temp_cdfs(core_dict, df)
+        # compare cdfs of predicted vs. measured temperatures
+        print('\nPlotting Temperature CDFs...')
+        plot_temp_cdfs(core_dict, df)
 
-    print('\nPlotting Phicnm vs alphaG CDFs...')
-    plot_modelparam_cdfs(core_dict, df)
+        print('\nPlotting Phicnm vs alphaG CDFs...')
+        plot_modelparam_cdfs(core_dict, df)
 
     # plot the cores
     print('\nPlotting maps...')
@@ -1224,6 +1347,19 @@ def main():
                            )
 
         elif 1:
+            filename = figure_dir + 'maps/fraction_diffuse_map.' + \
+                       filetype
+            plot_diffuseLOS_map(header=av_header,
+                               av_image=av_data,
+                               df=df,
+                               core_dict=core_dict,
+                               #limits=[75, 50, 20, 37,],
+                               limits=[76, 43.5, 19.5, 38,],
+                               filename=filename,
+                               contours=[2, 4, 8, 16],
+                               #vlimits=[-0.1,18]
+                               )
+
             filename = figure_dir + 'maps/multicloud_av_ISMparams_map.' + \
                        filetype
             plot_ISMparams_map(header=av_header,
@@ -1264,6 +1400,7 @@ def main():
                                #vlimits=[-0.1,18]
                                models='sternberg',
                                )
+
 
 if __name__ == '__main__':
     main()
