@@ -406,9 +406,9 @@ def plot_diffuseLOS_map(header=None, av_image=None, df=None, core_dict=None,
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
                  cbar_mode="each",
-                 cbar_location='right',
+                 cbar_location='top',
                  cbar_pad="2%",
-                 cbar_size='3%',
+                 cbar_size='6%',
                  axes_pad=0.1,
                  axes_class=(wcs.Axes,
                              dict(header=header)),
@@ -1303,7 +1303,6 @@ def load_cores():
 def main():
 
     import matplotlib
-    print matplotlib.__version__
 
     PLOT_CDFS = False
 
