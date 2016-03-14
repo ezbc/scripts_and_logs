@@ -279,6 +279,7 @@ def plot_multicloud_results(results):
                     core_list,
                     cloud_name_list,
                     filename,
+                    hi_dict=hi_dict,
                     )
 
     # Write nhi properties
@@ -685,7 +686,18 @@ def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
             core_new['region_vertices'] = core_props['poly_verts']['wcs']
 
             if hi_dict is not None:
-                core_new['hi_props'] = hi_dict[core]
+                hi_cloud_dict = hi_dict[cloud]
+                index = np.where(hi_cloud_dict['cores'] == core)[0]
+                keys = hi_cloud_dict.keys()
+
+                # remove cores from dict
+                keys.pop(keys.index('cores'))
+
+                hi_core_dict = {}
+                for param in hi_cloud_dict:
+                    hi_core_dict[param] = hi_cloud_dict[param]
+
+                core_new['hi_props'] = hi_core_dict
 
             # append model params and errors to row
             for model in ('krumholz', 'sternberg'):
@@ -712,7 +724,8 @@ def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
     with open(filename, 'wb') as f:
         pickle.dump(d, f)
 
-def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
+def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename,
+        hi_dict=None,):
 
     import pandas as pd
 
@@ -726,6 +739,8 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
     d['ra'] = []
     d['dec'] = []
     d['region_vertices'] = []
+    if hi_dict is not None:
+        d['fraction_diffuse'] = []
     for param in params_to_write:
         d[param] = []
         d[param + '_error_low'] = []
@@ -753,6 +768,12 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename):
             d['ra'].append(ra_deg)
             d['dec'].append(dec_deg)
             d['region_vertices'].append(core_props['poly_verts']['wcs'])
+
+            if hi_dict is not None:
+                hi_cloud_dict = hi_dict[cloud]
+                index = hi_cloud_dict['cores'].index(core_name)
+                d['fraction_diffuse'].append(\
+                    hi_cloud_dict['fraction_LOS_diffuse'][index])
 
             # append model params and errors to row
             for model in ('krumholz', 'sternberg'):
@@ -4417,7 +4438,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4440,7 +4461,7 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 100,
+                'num_bootstraps': 1000,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
