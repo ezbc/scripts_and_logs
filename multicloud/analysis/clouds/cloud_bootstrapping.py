@@ -240,7 +240,9 @@ def plot_multicloud_results(results):
     # calculate statistics on hi
     hi_dict = calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, hsd_cores_list,
-                                 rh2_cores_list, model_analysis_dict)
+                                 rh2_cores_list, model_analysis_dict,
+                                 filename=global_args['hi_properties_filename'],
+                                 )
 
     # plot CDFs of diffuse fraction LOS
     lm_plt.plot_diffusefraction_cdfs(hi_dict)
@@ -560,10 +562,13 @@ Data Prep functions
 
 def calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, h_sd_cores_list,
-                                 rh2_cores_list, model_analysis_dict):
+                                 rh2_cores_list, model_analysis_dict,
+                                 filename=None):
 
     hi_dict = {}
     for i, cloud in enumerate(cloud_name_list):
+
+        # initialize hi properties
         hi_dict[cloud] = {}
         hi_dict[cloud]['cores'] = []
         hi_dict[cloud]['hi_sd_mean'] = []
@@ -572,6 +577,8 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
         hi_dict[cloud]['fraction_LOS_diffuse'] = []
         hi_dict[cloud]['fraction_LOS_sf'] = []
         hi_dict[cloud]['sf_threshold'] = []
+
+        # add a row for each core
         for j, core in enumerate(core_names_list[i]):
             hi = hisd_cores_list[i][j]
             h = h_sd_cores_list[i][j]
@@ -594,8 +601,11 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
             frac_sf = np.size(indices_sf) / float(np.size(h))
             hi_dict[cloud]['fraction_LOS_sf'].append(frac_sf)
 
-    return hi_dict
+    # save the dict?
+    if filename is not None:
+        pickle.dump(open(filename, 'w'), hi_dict)
 
+    return hi_dict
 
 def collect_hi_transition_results(model_analysis_list, cloud_list,
         filename=None):
@@ -4392,6 +4402,10 @@ def main():
 
     permutations = list(itertools.product(*elements))
 
+    FILENAME_HI_DICT = '/d/bip3/ezbc/multicloud/data/' + \
+                        'python_output/' + \
+                        'core_properties/hi_properties.pickle'
+
     print('Number of permutations to run: ' + str(len(permutations)))
 
     #for cloud in clouds:
@@ -4429,6 +4443,7 @@ def main():
                 'radiation_type': permutation[12],
                 'rotate_cores': permutation[13],
                 'vary_phi_g': permutation[14],
+                'hi_dict_filename': FILENAME_HI_DICT,
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
