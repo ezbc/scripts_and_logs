@@ -241,7 +241,7 @@ def plot_multicloud_results(results):
     hi_dict = calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, hsd_cores_list,
                                  rh2_cores_list, model_analysis_dict,
-                                 filename=global_args['hi_properties_filename'],
+                                 filename=global_args['filename_hi_props'],
                                  )
 
     # plot CDFs of diffuse fraction LOS
@@ -4443,7 +4443,7 @@ def main():
                 'radiation_type': permutation[12],
                 'rotate_cores': permutation[13],
                 'vary_phi_g': permutation[14],
-                'hi_dict_filename': FILENAME_HI_DICT,
+                'filename_hi_props': FILENAME_HI_DICT,
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
