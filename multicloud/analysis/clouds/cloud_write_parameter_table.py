@@ -459,9 +459,6 @@ def write_model_params_table(core_dict):
                             text_format=text_param_format_int)
 
 
-        print('T_cnm', core['T_cnm'])
-
-
         # Sternberg parameters
         # -------------------
         model = 'sternberg'
