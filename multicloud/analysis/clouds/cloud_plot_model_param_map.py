@@ -460,7 +460,8 @@ def plot_diffuseLOS_map(header=None, av_image=None, df=None, core_dict=None,
         cmap = myplt.truncate_colormap(plt.cm.copper, minval=0.1, maxval=1.0)
         collection = PatchCollection(patches,
                                      cmap=cmap,
-                                     edgecolors='none',
+                                     edgecolors='k',
+                                     linewidth=0.75,
                                      zorder=1000,
                                      )
 
@@ -484,7 +485,7 @@ def plot_diffuseLOS_map(header=None, av_image=None, df=None, core_dict=None,
             cbar.set_label_text(r'Fraction of Diffuse LOS',)
 
     if filename is not None:
-        plt.savefig(filename, bbox_inches='tight', dpi=100)
+        plt.savefig(filename, bbox_inches='tight', dpi=600)
 
 def plot_temp_cdfs(core_dict, df):
 
