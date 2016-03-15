@@ -16,7 +16,7 @@ foreach filename ($data)
   fits in=$data_dir${filename} op=xyin out=${base}.mir
 end
 
-foreach filename (GALFA*.fits)
+foreach filename ($data)
   set base=`basename ${filename} .fits`
   puthd in=${base}.mir/restfreq value=1.420405752E+09 type='double'
 end

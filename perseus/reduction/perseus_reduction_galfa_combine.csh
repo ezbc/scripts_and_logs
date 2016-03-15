@@ -1,24 +1,25 @@
 #!/bin/csh
 
 # Define the cubes needed to stitch together
-set data = (GALFA_HI_RA+DEC_020.00+18.35_N GALFA_HI_RA+DEC_020.00+26.35_N GALFA_HI_RA+DEC_020.00+34.35_N GALFA_HI_RA+DEC_028.00+18.35_N GALFA_HI_RA+DEC_028.00+26.35_N GALFA_HI_RA+DEC_028.00+34.35_N GALFA_HI_RA+DEC_036.00+18.35_N GALFA_HI_RA+DEC_036.00+26.35_N GALFA_HI_RA+DEC_036.00+34.35_N GALFA_HI_RA+DEC_044.00+18.35_N GALFA_HI_RA+DEC_044.00+26.35_N GALFA_HI_RA+DEC_044.00+34.35_N GALFA_HI_RA+DEC_052.00+18.35_N GALFA_HI_RA+DEC_052.00+26.35_N GALFA_HI_RA+DEC_052.00+34.35_N GALFA_HI_RA+DEC_060.00+18.35_N GALFA_HI_RA+DEC_060.00+26.35_N GALFA_HI_RA+DEC_060.00+34.35_N)
+set data = (GALFA_HI_RA+DEC_020.00+18.35_N.fits GALFA_HI_RA+DEC_020.00+26.35_N.fits GALFA_HI_RA+DEC_020.00+34.35_N.fits GALFA_HI_RA+DEC_028.00+18.35_N.fits GALFA_HI_RA+DEC_028.00+26.35_N.fits GALFA_HI_RA+DEC_028.00+34.35_N.fits GALFA_HI_RA+DEC_036.00+18.35_N.fits GALFA_HI_RA+DEC_036.00+26.35_N.fits GALFA_HI_RA+DEC_036.00+34.35_N.fits GALFA_HI_RA+DEC_044.00+18.35_N.fits GALFA_HI_RA+DEC_044.00+26.35_N.fits GALFA_HI_RA+DEC_044.00+34.35_N.fits GALFA_HI_RA+DEC_052.00+18.35_N.fits GALFA_HI_RA+DEC_052.00+26.35_N.fits GALFA_HI_RA+DEC_052.00+34.35_N.fits GALFA_HI_RA+DEC_060.00+18.35_N.fits GALFA_HI_RA+DEC_060.00+26.35_N.fits GALFA_HI_RA+DEC_060.00+34.35_N.fits)
 
 # Create DR2 cube
 # ------------------------------------------------------------------------------
 
 cd /d/bip3/ezbc/perseus/data/hi/DR2_archive_files/
 
-set data_dir = /d/bip2/DR2W_v1/Narrow
+set data_dir = /d/bip2/DR2W_v1/Narrow/
 
 foreach filename ($data)
-  set base=`basename $data_dir/${filename}`
-  echo loading cube: $data_dir/${filename}
+  set base=`basename $data_dir${filename} .fits`
+  echo loading: $data_dir${filename}
   echo to: ${base}.mir
-  fits in=$data_dir/${filename}.fits op=xyin out=${base}.mir
+  fits in=$data_dir${filename} op=xyin out=${base}.mir
 end
 
-foreach filename (GALFA*.fits)
+foreach filename ($data)
   set base=`basename ${filename} .fits`
+  echo loading cube: ${base}.mir
   puthd in=${base}.mir/restfreq value=1.420405752E+09 type='double'
 end
 
