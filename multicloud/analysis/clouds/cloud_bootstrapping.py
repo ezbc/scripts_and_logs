@@ -255,18 +255,7 @@ def plot_multicloud_results(results):
     # Write results to a
     #print_av_error_stats(av_list[0], av_error_list[0])
 
-    print('Average difference between K+09 and S+14 models:')
-    print('median')
-    print(np.median(stats_list['krumholz_results']['sum_of_resid']),
-          np.median(stats_list['sternberg_results']['sum_of_resid']))
-    print('std')
-    print(np.std(stats_list['krumholz_results']['sum_of_resid']),
-          np.std(stats_list['sternberg_results']['sum_of_resid']))
-    print(np.median(np.array(stats_list['krumholz_results']['sum_of_resid']) - \
-                  np.array(stats_list['sternberg_results']['sum_of_resid'])))
-    print('median difference in BIC between k09 and s14 models:')
-    print(np.median(np.array(stats_list['krumholz_results']['BIC']) - \
-                    np.array(stats_list['sternberg_results']['BIC'])))
+    print_BIC_results(stats_list)
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
@@ -567,6 +556,11 @@ def plot_multicloud_results(results):
 '''
 Data Prep functions
 '''
+
+def print_BIC_results(stats_list):
+    print('Median difference in BIC between k09 and s14 models:')
+    print(np.median(np.array(stats_list['krumholz_results']['BIC']) - \
+                    np.array(stats_list['sternberg_results']['BIC'])))
 
 def calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, h_sd_cores_list,
@@ -1510,29 +1504,6 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         N = np.size(rh2)
         BIC = k * np.log(N) - 2 * fits['logL']
         fits['BIC'] = BIC
-
-    # calculate probability between two models
-    from scipy.stats import chisqprob
-    logL_k09 = fitted_models['krumholz_results']['logL']
-    logL_s14 = fitted_models['sternberg_results']['logL']
-    print 'k09 logL', logL_k09
-    print 's14 logL', logL_s14
-    dof = np.size(rh2) - 1
-    chi2 = -2*np.log(logL_s14 / logL_k09)
-    chi2 = 2 * (logL_s14 - logL_k09)
-    k = 1 # number of parameters
-    N = np.size(rh2)
-    BIC_k09 = k * np.log(N) - 2 * logL_k09
-    BIC_s14 = k * np.log(N) - 2 * logL_s14
-
-    print 'bic k09 - s14', BIC_k09 - BIC_s14
-
-    if BIC_s14 < BIC_k09:
-        prob = np.exp((BIC_s14 - BIC_k09)/2.0)
-        print 's14 vs k09', prob
-    else:
-        prob = np.exp((BIC_k09 - BIC_s14)/2.0)
-        print 'k09 vs s14', prob
 
     return fitted_models
 
