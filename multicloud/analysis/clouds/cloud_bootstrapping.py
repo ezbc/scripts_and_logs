@@ -138,8 +138,8 @@ def plot_multicloud_results(results):
     core_names_list = []
     core_list = []
     cloud_model_fits_list = []
-    stats_list = {'krumholz_results': {'sum_of_resid': []},
-                  'sternberg_results': {'sum_of_resid': []}}
+    stats_list = {'krumholz_results': {'sum_of_resid': [], 'BIC': []},
+            'sternberg_results': {'sum_of_resid': [], 'BIC': []}}
     for i, cloud_name in enumerate(results):
         results_dict = results[cloud_name]
         figure_dir = results_dict['filenames']['figure_dir']
@@ -220,6 +220,8 @@ def plot_multicloud_results(results):
                                   )
                 stats_list[model]['sum_of_resid'].append(\
                         fits[model]['sum_of_resid'])
+                stats_list[model]['BIC'].append(\
+                        fits[model]['BIC'])
 
 
             if 0:
@@ -262,6 +264,9 @@ def plot_multicloud_results(results):
           np.std(stats_list['sternberg_results']['sum_of_resid']))
     print(np.median(np.array(stats_list['krumholz_results']['sum_of_resid']) - \
                   np.array(stats_list['sternberg_results']['sum_of_resid'])))
+    print('median difference in BIC between k09 and s14 models:')
+    print(np.median(np.array(stats_list['krumholz_results']['BIC']) - \
+                    np.array(stats_list['sternberg_results']['BIC'])))
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
@@ -1422,6 +1427,8 @@ Modeling Functions
 def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         h_sd_fit=None):
 
+    import mystats
+
     #if h_sd_fit is not None and np.size(h_sd_fit) == np.size(h_sd):
         #data_array = h_sd, rh2, h_sd_error, rh2_error, h_sd_fit
         #h_sd, rh2, h_sd_error, rh2_error, h_sd_fit = mask_nans(data_array)
@@ -1471,9 +1478,13 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                                       h_sd=h_sd,
                                       return_fractions=False,
                                       return_hisd=True)
+
+        # calculate resid sum of squares and log likelihood
         fitted_models[model] = {}
         fits = fitted_models[model]
         fits['sum_of_resid'] = np.sum((rh2 - model_fits[0])**2)
+        fits['logL'] = mystats.calc_logL(model_fits[0], rh2, rh2_error)
+
 
         # use fitted h_sd
         # ---------------
@@ -1494,6 +1505,34 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         fits['h_sd'] = model_fits[1]
         fits['hi_sd'] = model_fits[2]
 
+        # calculate bayesian information criterion
+        k = 1 # number of parameters
+        N = np.size(rh2)
+        BIC = k * np.log(N) - 2 * fits['logL']
+        fits['BIC'] = BIC
+
+    # calculate probability between two models
+    from scipy.stats import chisqprob
+    logL_k09 = fitted_models['krumholz_results']['logL']
+    logL_s14 = fitted_models['sternberg_results']['logL']
+    print 'k09 logL', logL_k09
+    print 's14 logL', logL_s14
+    dof = np.size(rh2) - 1
+    chi2 = -2*np.log(logL_s14 / logL_k09)
+    chi2 = 2 * (logL_s14 - logL_k09)
+    k = 1 # number of parameters
+    N = np.size(rh2)
+    BIC_k09 = k * np.log(N) - 2 * logL_k09
+    BIC_s14 = k * np.log(N) - 2 * logL_s14
+
+    print 'bic k09 - s14', BIC_k09 - BIC_s14
+
+    if BIC_s14 < BIC_k09:
+        prob = np.exp((BIC_s14 - BIC_k09)/2.0)
+        print 's14 vs k09', prob
+    else:
+        prob = np.exp((BIC_k09 - BIC_s14)/2.0)
+        print 'k09 vs s14', prob
 
     return fitted_models
 
@@ -4438,7 +4477,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
