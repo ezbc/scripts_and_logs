@@ -820,21 +820,44 @@ def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename):
     # Open file to be appended
     f = open(filename, 'wb')
 
-    for i in xrange(0, len(names_list)):
-        cloud_name = names_list[i]
-        hi_range_kwargs = hi_range_kwargs_list[i]
-        vel_range = hi_range_kwargs['vel_range']
-        vel_range_error = hi_range_kwargs['hi_range_error']
+    if 0:
+        for i in xrange(0, len(names_list)):
+            cloud_name = names_list[i]
+            hi_range_kwargs = hi_range_kwargs_list[i]
+            vel_range = hi_range_kwargs['vel_range']
+            vel_range_error = hi_range_kwargs['hi_range_error']
 
-        row_text = cloud_name.capitalize()
+            row_text = cloud_name.capitalize()
 
-        row_text = add_row_element(row_text,
-                        vel_range,
-                        text_format='[{0:.0f}, {1:.0f}]')
-        row_text = add_row_element(row_text,
-                        vel_range_error,
-                        text_format='{0:.0f}')
+            row_text = add_row_element(row_text,
+                            vel_range,
+                            text_format='[{0:.0f}, {1:.0f}]')
+            row_text = add_row_element(row_text,
+                            vel_range_error,
+                            text_format='{0:.0f}')
+            row_text += ' \\\\[0.1cm] \n'
+
+            f.write(row_text)
+    else:
+        row_text = ''
+        for cloud in names_list:
+            row_text = add_row_element(row_text, cloud.capitalize())
         row_text += ' \\\\[0.1cm] \n'
+        f.write(row_text)
+
+        for i in xrange(len(names_list)):
+            hi_range_kwargs = hi_range_kwargs_list[i]
+            vel_range = hi_range_kwargs['vel_range']
+            vel_range_error = hi_range_kwargs['hi_range_error']
+
+            row_text = cloud_name.capitalize()
+
+            row_text = add_row_element(row_text,
+                            vel_range,
+                            text_format='[{0:.0f}, {1:.0f}]')
+            row_text = add_row_element(row_text,
+                            vel_range_error,
+                            text_format='{0:.0f}')
 
         f.write(row_text)
 
@@ -4448,7 +4471,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
