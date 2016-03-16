@@ -84,9 +84,9 @@ def plot_dust_histogram(dust_temps, limits=None, filename=None):
 
     for i, cloud_name in enumerate(['california', 'perseus', 'taurus']):
 
-        cloud_temps = dust_temps[cloud_name]['dust_temps']
+        cloud_props = dust_temps[cloud_name]['dust_temps']
 
-        n, bin_centers = hist(cloud_temps)
+        n, bin_centers = hist(cloud_props)
 
         ax = axes[i]
         ax.locator_params(nbins = 6)
@@ -267,7 +267,7 @@ def add_model_params(core_dict):
 
         core['alt_name'] = get_alt_name(core_name)
 
-def write_cloud_temps_table(cloud_temps):
+def write_cloud_props_table(cloud_props):
 
     table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
     filename = table_dir + 'tables/cloud_params_table.tex'
@@ -300,8 +300,8 @@ def write_cloud_temps_table(cloud_temps):
         for cloud in ('california', 'perseus', 'taurus'):
 
             # get the parameter
-            param = cloud_temps[cloud][param_name]
-            param_error = cloud_temps[cloud][param_name + '_error']
+            param = cloud_props[cloud][param_name]
+            param_error = cloud_props[cloud][param_name + '_error']
 
             row_text = add_row_element(row_text,
                                        (param, param_error),
@@ -528,7 +528,7 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
     from myscience import calc_radiation_field
 
-    cloud_temps = {}
+    cloud_props = {}
     for core_name in core_dict:
         # load cloud regions
         core_dict = add_cloud_region(core_dict)
@@ -569,7 +569,7 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
         beta_error_mc = np.empty(N_mc)
         rad_mc = np.empty(N_mc)
         rad_error_mc = np.empty(N_mc)
-        if cloud not in cloud_temps:
+        if cloud not in cloud_props:
             for j in xrange(N_mc):
                 if j != 0:
                     new_vertices_wcs = vertices_wcs + \
@@ -643,7 +643,7 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
 
             # write results to cloud
-            cloud_temps[cloud] = \
+            cloud_props[cloud] = \
                     {
                      'dust_temp_median': dust_temp_median,
                      'dust_temp_median_error': dust_temp_median_error,
@@ -665,16 +665,16 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
         else:
             core_dict[core_name]['dust_temp_median'] = \
-                cloud_temps[cloud]['dust_temp_median']
+                cloud_props[cloud]['dust_temp_median']
             core_dict[core_name]['dust_temp_median_error'] = \
-                cloud_temps[cloud]['dust_temp_median_error']
+                cloud_props[cloud]['dust_temp_median_error']
 
         # copy cloud params to core dict
-        for param_name in cloud_temps[cloud]:
+        for param_name in cloud_props[cloud]:
             core_dict[core_name][param_name] = \
-                    np.copy(cloud_temps[cloud][param_name])
+                    np.copy(cloud_props[cloud][param_name])
 
-    return cloud_temps, core_dict
+    return cloud_props, core_dict
 
 def add_cloud_params(core_dict, cloud_average=True, load_results=0, N_mc=10,):
 
@@ -719,23 +719,23 @@ def add_cloud_params(core_dict, cloud_average=True, load_results=0, N_mc=10,):
     if cloud_average:
         if load_results:
             with open(cloud_temp_filename, 'rb') as f:
-                cloud_temps = pickle.load(f)
+                cloud_props = pickle.load(f)
                 for core_name in core_dict:
                     cloud = core_dict[core_name]['cloud']
                     core_dict[core_name]['dust_temp_median'] = \
-                        cloud_temps[cloud]['dust_temp_median']
+                        cloud_props[cloud]['dust_temp_median']
                     core_dict[core_name]['dust_temp_median_error'] = \
-                        cloud_temps[cloud]['dust_temp_median_error']
+                        cloud_props[cloud]['dust_temp_median_error']
                     core_dict[core_name]['rad_field_draine_median'] = \
-                        cloud_temps[cloud]['rad_field_draine_median']
+                        cloud_props[cloud]['rad_field_draine_median']
                     core_dict[core_name]['rad_field_draine_median_error'] = \
-                        cloud_temps[cloud]['rad_field_draine_median_error']
+                        cloud_props[cloud]['rad_field_draine_median_error']
                     core_dict[core_name]['rad_field_habing_median'] = \
-                        cloud_temps[cloud]['rad_field_habing_median']
+                        cloud_props[cloud]['rad_field_habing_median']
                     core_dict[core_name]['rad_field_habing_median_error'] = \
-                        cloud_temps[cloud]['rad_field_habing_median_error']
+                        cloud_props[cloud]['rad_field_habing_median_error']
         else:
-            cloud_temps, core_dict = run_mc_simulations(core_dict,
+            cloud_props, core_dict = run_mc_simulations(core_dict,
                                                wcs_header,
                                                temp_data,
                                                temp_error_data,
@@ -746,13 +746,13 @@ def add_cloud_params(core_dict, cloud_average=True, load_results=0, N_mc=10,):
 
 
             with open(cloud_temp_filename, 'wb') as f:
-                pickle.dump(cloud_temps, f)
+                pickle.dump(cloud_props, f)
 
 
-            plot_dust_histogram(cloud_temps,
+            plot_dust_histogram(cloud_props,
                                 limits=[[14, 20], [-0.05, 1.05]],
                                 filename=dust_hist_filename)
-        write_cloud_temps_table(cloud_temps)
+        write_cloud_props_table(cloud_props)
 
     else:
         for core_name in core_dict:
