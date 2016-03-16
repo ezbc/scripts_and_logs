@@ -133,6 +133,7 @@ def plot_multicloud_results(results):
     model_analysis_list = []
     model_analysis_dict = {}
     dgr_list = []
+    dgr_error_list = []
     fit_params_list = []
     cloud_name_list = []
     core_names_list = []
@@ -168,6 +169,7 @@ def plot_multicloud_results(results):
         hsd_median_error_list.append(data_products['h_sd_median_error'])
         hisd_median_error_list.append(data_products['hi_sd_median_error'])
         dgr_list.append(results_dict['mc_analysis']['dgr'])
+        dgr_error_list.append(results_dict['mc_analysis']['dgr_error'])
         #fit_params_list.append(results_dict['params_summary'])
         model_results_list.append(results_dict['mc_results']['ss_model_results'])
         model_analysis_list.append(results_dict['mc_analysis'])
@@ -324,7 +326,9 @@ def plot_multicloud_results(results):
         filename = results_dir + 'tables/multicloud_vel_ranges.tex'
         write_hi_vel_range_table(cloud_name_list,
                                  hi_range_kwargs_list,
-                                 filename)
+                                 filename,
+                                 dgr_list=dgr_list,
+                                 dgr_error_list=dgr_error_list)
 
         # Plot N(HI) vs. Av
         # ---------------------------------------------------------------------
@@ -815,7 +819,8 @@ def write_param_csv(mc_analysis_dict, core_list, cloud_name_list, filename,
 
     df.save(filename.replace('csv', 'pickle'))
 
-def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename):
+def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename,
+        dgr_list=None, dgr_error_list=None,):
 
     # Open file to be appended
     f = open(filename, 'wb')
@@ -840,25 +845,46 @@ def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename):
             f.write(row_text)
     else:
         row_text = ''
+
         for cloud in names_list:
             row_text = add_row_element(row_text, cloud.capitalize())
         row_text += ' \\\\[0.1cm] \n'
         f.write(row_text)
 
+        if dgr_list is not None:
+            row_text = r'DGR'
+            for i in xrange(len(names_list)):
+                dgr = dgr_list[i]
+                dgr_error = dgr_error_list[i]
+
+                row_text = \
+                    add_row_element(row_text,
+                              (dgr*100, dgr_error[1]*100, dgr_error[0]*100),
+                              text_format=r'{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$')
+            row_text += ' \\\\[0.1cm] \n'
+            f.write(row_text)
+
+            # write next row with dgr units
+            row_text = r'[10$^{-22}$ cm$^{2}$ mag] & & & '
+            row_text += ' \\\\[0.1cm] \n'
+            f.write(row_text)
+
+        # write hi vel range row
+        row_text = r'\hi\ Range'
         for i in xrange(len(names_list)):
             hi_range_kwargs = hi_range_kwargs_list[i]
             vel_range = hi_range_kwargs['vel_range']
             vel_range_error = hi_range_kwargs['hi_range_error']
 
-            row_text = cloud_name.capitalize()
-
             row_text = add_row_element(row_text,
-                            vel_range,
-                            text_format='[{0:.0f}, {1:.0f}]')
-            row_text = add_row_element(row_text,
-                            vel_range_error,
-                            text_format='{0:.0f}')
+                            (vel_range[0], vel_range[1], vel_range_error),
+                            text_format=r'[{0:.0f}, {1:.0f}]\,$\pm$\,{2:.0f}')
+        row_text += ' \\\\[0.1cm] \n'
+        f.write(row_text)
 
+        # write second row for units
+        row_text = r'[\kms, \kms] & & & '
+        row_text += ' \\\\[0.1cm] \n'
         f.write(row_text)
 
     f.close()
@@ -2377,13 +2403,16 @@ def create_filename_base(global_args):
     else:
         vary_phi_g_name = ''
 
+    bootstrap_name = '{0:.0f}mcsim'.format(global_args['num_bootstraps'])
+
     filename_extension = global_args['cloud_name'] + '_' + global_args['data_type'] + \
             background_name + \
             bin_name + weights_name + \
             region_name + width_name + avthres_name + \
             intercept_name + error_name + compsub_name + backdgr_name + \
             '_' + hi_range_name + '_' + global_args['radiation_type'] + \
-            rotate_cores_name + vary_phi_g_name
+            rotate_cores_name + vary_phi_g_name + '_' + \
+            bootstrap_name
 
     return filename_extension, global_args
 
@@ -4494,7 +4523,7 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 10000,
+                'num_bootstraps': 100,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
