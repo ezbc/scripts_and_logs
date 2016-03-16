@@ -1305,7 +1305,7 @@ def main():
 
     import matplotlib
 
-    PLOT_CDFS = False
+    PLOT_CDFS = True
 
     # get core data
     df = load_table()
