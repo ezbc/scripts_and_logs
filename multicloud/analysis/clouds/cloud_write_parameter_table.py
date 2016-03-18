@@ -230,6 +230,8 @@ def add_model_params(core_dict):
         if krumholz_pressure_calc:
             # get the minimum CNM density, calculate n_CNM with phi_CNM, then
             # calculate temperature given galactic pressure between WNM and CNM
+
+
             n_min, n_min_error = \
                 myk09.calc_n_min(G_0=core['rad_field_habing_median'],
                                G_0_error=core['rad_field_habing_median_error'],
@@ -241,6 +243,10 @@ def add_model_params(core_dict):
             core['n_cnm'] = n_min * phi_cnm
             core['n_cnm_error'] = ((phi_cnm * n_min_error)**2 + \
                                    (n_min * phi_cnm_error)**2)**0.5
+            if cloud == 'perseus':
+                print 'habing median', core['rad_field_habing_median']
+                print 'phi_cnm', phi_cnm
+                print 'n_cnm', core['n_cnm']
 
             #print core['n_cnm_error']
 

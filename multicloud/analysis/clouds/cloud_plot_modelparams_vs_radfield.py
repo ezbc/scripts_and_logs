@@ -1305,8 +1305,6 @@ def main():
 
     import matplotlib
 
-    PLOT_CDFS = 0
-
     # get core data
     df = load_table()
 
@@ -1315,91 +1313,6 @@ def main():
 
     # get av data
     av_data, av_header = load_av_data()
-
-    if PLOT_CDFS:
-        # compare cdfs of predicted vs. measured densities
-        print('\nPlotting Gas Density CDFs...')
-        plot_density_cdfs(core_dict, df)
-
-        # compare cdfs of predicted vs. measured temperatures
-        print('\nPlotting Temperature CDFs...')
-        plot_temp_cdfs(core_dict, df)
-
-        print('\nPlotting Phicnm vs alphaG CDFs...')
-        plot_modelparam_cdfs(core_dict, df)
-
-    # plot the cores
-    print('\nPlotting maps...')
-    filetypes = ['png', 'pdf']
-    for filetype in filetypes:
-        figure_dir = '/d/bip3/ezbc/multicloud/figures/'
-        if 0:
-            filename = figure_dir + 'maps/multicloud_av_modelparams_map.' + \
-                       filetype
-            plot_params_map(header=av_header,
-                           av_image=av_data,
-                           df=df,
-                           #limits=[75, 50, 20, 37,],
-                           limits=[76, 43.5, 19.5, 38,],
-                           filename=filename,
-                           contours=[2, 4, 8, 16],
-                           #vlimits=[-0.1,18]
-                           )
-
-        elif 1:
-            filename = figure_dir + 'maps/fraction_diffuse_map.' + \
-                       filetype
-            plot_diffuseLOS_map(header=av_header,
-                               av_image=av_data,
-                               df=df,
-                               core_dict=core_dict,
-                               #limits=[75, 50, 20, 37,],
-                               limits=[76, 43.5, 19.5, 38,],
-                               filename=filename,
-                               contours=[2, 4, 8, 16],
-                               #vlimits=[-0.1,18]
-                               )
-
-            filename = figure_dir + 'maps/multicloud_av_ISMparams_map.' + \
-                       filetype
-            plot_ISMparams_map(header=av_header,
-                               av_image=av_data,
-                               df=df,
-                               core_dict=core_dict,
-                               #limits=[75, 50, 20, 37,],
-                               limits=[76, 43.5, 19.5, 38,],
-                               filename=filename,
-                               contours=[2, 4, 8, 16],
-                               #vlimits=[-0.1,18]
-                               )
-        else:
-            filename = figure_dir + 'maps/multicloud_av_ISMparams_K+09_map.' + \
-                       filetype
-            plot_ISMparams_map(header=av_header,
-                               av_image=av_data,
-                               df=df,
-                               core_dict=core_dict,
-                               #limits=[75, 50, 20, 37,],
-                               limits=[76, 43.5, 19.5, 38,],
-                               filename=filename,
-                               contours=[2, 4, 8, 16],
-                               #vlimits=[-0.1,18]
-                               models='krumholz',
-                               )
-
-            filename = figure_dir + 'maps/multicloud_av_ISMparams_S+14_map.' + \
-                       filetype
-            plot_ISMparams_map(header=av_header,
-                               av_image=av_data,
-                               df=df,
-                               core_dict=core_dict,
-                               #limits=[75, 50, 20, 37,],
-                               limits=[76, 43.5, 19.5, 38,],
-                               filename=filename,
-                               contours=[2, 4, 8, 16],
-                               #vlimits=[-0.1,18]
-                               models='sternberg',
-                               )
 
 
 if __name__ == '__main__':
