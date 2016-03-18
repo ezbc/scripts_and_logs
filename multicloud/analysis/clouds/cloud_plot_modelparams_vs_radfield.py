@@ -1304,15 +1304,21 @@ def load_cores():
 def main():
 
     import matplotlib
+    import local_module_plotting as lm_plt
 
-    # get core data
-    df = load_table()
+    DIR_FIGURE = '/d/bip3/ezbc/multicloud/figures/'
+    FILENAME_FIGURE = DIR_FIGURE + 'models/modelparams_vs_radfield'
 
     # get core dict
     core_dict = load_cores()
 
-    # get av data
-    av_data, av_header = load_av_data()
+    # plot
+    file_types = ['png', 'pdf']
+    for file_type in file_types:
+        lm_plt.plot_modelparams_vs_radfield(core_dict,
+                                            filename=FILENAME_FIGURE + '.' + \
+                                                     file_type)
+
 
 
 if __name__ == '__main__':

@@ -3491,3 +3491,58 @@ def plot_diffusefraction_cdfs(hi_dict):
     plt.show()
     plt.savefig(FILENAME)
 
+def plot_modelparams_vs_radfield(core_dict, filename=None):
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    c_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 3.5))
+
+    parameters = ['fraction_LOS_diffuse',]
+
+    fig, ax = plt.subplots(1,1,figsize=(3.5, 3.5))
+
+    clouds = 'california', 'perseus', 'taurus'
+    linestyles = ['-', '--', '-.']
+    alpha = 1
+
+    for core_name in core_dict:
+        core = core_dict[core_name]
+        dust_values = core['region_values']
+        rad_field = dust_values['rad_field_mathis_median']
+        rad_field_error = dust_values['rad_field_mathis_median_error']
+        phi_cnm = core['krumholz']['phi_cnm']
+        phi_cnm_error = core['krumholz']['phi_cnm_error']
+        alphaG = core['sternberg']['alphaG']
+        alphaG_error = core['sternberg']['alphaG_error']
+        cloud = core['cloud']
+        linestyle = linestyles[clouds.index(cloud)]
+
+        print phi_cnm_error, rad_field_error
+
+        image = ax.errorbar(phi_cnm,
+                            rad_field,
+                            xerr=rad_field_error,
+                            yerr=(np.transpose(phi_cnm_error),),
+                            alpha=alpha,
+                            color='k',
+                            marker='^',
+                            ecolor='k',
+                            linestyle='None',
+                            markersize=3
+                            )
+
+    ax.legend(loc='best')
+    #a_xscale('log')
+    ax.set_xlabel(r'$U_{M83}$ [$U_{M83,0}]$')
+    ax.set_ylabel(r'$\phi_{\rm CNM}$')
+    #ax.set_ylim([0,1])
+    #ax.set_xlim([0,1])
+
+    if filename is not None:
+        plt.savefig(filename, dpi=600)
+
