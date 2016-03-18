@@ -536,6 +536,7 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
     cloud_props = {}
     for core_name in core_dict:
+        print core_dict[core_name].keys()
         # load cloud regions
         core_dict = add_cloud_region(core_dict)
         vertices_wcs = core_dict[core_name]['cloud_region_vertices'].T
@@ -681,6 +682,162 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
                     np.copy(cloud_props[cloud][param_name])
 
     return cloud_props, core_dict
+
+def run_mc_simulations_cores(core_dict, wcs_header, temp_data, temp_error_data,
+        beta_data, beta_error_data, N_mc=10):
+
+    from myscience import calc_radiation_field
+
+    for core_name in core_dict:
+        # load cloud regions
+        vertices_wcs = core_dict[core_name]['region_vertices'].T
+
+        # Format vertices to be 2 x N array
+        #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
+
+        # Make a galactic coords object and convert to Ra/dec
+        coords_fk5 = SkyCoord(vertices_wcs[0] * u.deg,
+                              vertices_wcs[1] * u.deg,
+                              frame='fk5',
+                              )
+
+        # convert to pixel
+        coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+
+        # write data to dataframe
+        vertices_pix = np.array((coords_pixel[1], coords_pixel[0])).T
+
+        core_dict[core_name]['region_vertices_pix'] = vertices_pix
+
+        # Mask pixels outside of the region
+        region_mask = np.logical_not(myg.get_polygon_mask(temp_data,
+                                                          vertices_pix))
+        core_dict[core_name]['cloud_region_mask'] = region_mask
+
+        # Grab the temperatures
+        if 0:
+            core_dict[core_name]['dust_temps'] = temp_data[~region_mask]
+            core_dict[core_name]['dust_temp_errors'] = \
+                temp_error_data[~region_mask]
+
+        # adjust vertices to get errors on mean T_dust
+        cloud = core_dict[core_name]['cloud']
+        temp_mc = np.empty(N_mc)
+        temp_error_mc = np.empty(N_mc)
+        beta_mc = np.empty(N_mc)
+        beta_error_mc = np.empty(N_mc)
+        rad_mc = np.empty(N_mc)
+        rad_error_mc = np.empty(N_mc)
+
+        for j in xrange(N_mc):
+            if j != 0:
+                new_vertices_wcs = vertices_wcs + \
+                                   np.random.normal(scale=1.0 / 60.0 * 5,
+                                                    size=vertices_wcs.shape)
+            else:
+                new_vertices_wcs = vertices_wcs
+
+            # Make a galactic coords object and convert to Ra/dec
+            coords_fk5 = SkyCoord(new_vertices_wcs[0] * u.deg,
+                                  new_vertices_wcs[1] * u.deg,
+                                  frame='fk5',
+                                  )
+
+            # convert to pixel
+            coords_pixel = np.array(coords_fk5.to_pixel(wcs_header))
+
+            # write data to dataframe
+            vertices_pix = np.array((coords_pixel[1],
+                                     coords_pixel[0])).T
+
+            # Mask pixels outside of the region
+            region_mask = \
+                    np.logical_not(myg.get_polygon_mask(temp_data,
+                                                        vertices_pix))
+
+            # Get the region's temperature
+            if j == 0:
+                temps = temp_data[~region_mask]
+                betas = beta_data[~region_mask]
+                rads = calc_radiation_field(temps,
+                                         beta=betas,
+                                         )
+
+            temp_sim = temp_data[~region_mask]
+            temp_error_sim = temp_error_data[~region_mask]
+            beta_sim = beta_data[~region_mask]
+            beta_error_sim = beta_error_data[~region_mask]
+
+            # simulate new observation of temperature and beta
+            temp_sim += np.random.normal(0, scale=temp_error_sim,)
+            beta_sim += np.random.normal(0, scale=beta_error_sim,)
+
+            # Calculate the radiation field
+            # -----------------------------
+            rad_field = \
+                calc_radiation_field(temp_sim,
+                                     beta=beta_sim,
+                                     )
+
+            # Grab the median values of temp, beta, and rad field
+            temp_mc[j] = np.median(temp_sim[~region_mask])
+            beta_mc[j] = np.median(beta_sim[~region_mask])
+            rad_mc[j] = np.median(rad_field[~region_mask])
+
+        # Calculate average temp
+        #core_dict[core_name]['dust_temp_median'] = \
+        #    np.nanmean(temp_data[~region_mask])
+        #core_dict[core_name]['dust_temp_median_error'] = \
+        #    np.sqrt(np.nansum(temp_error_data[~region_mask]**2)) / \
+        #        temp_error_data[~region_mask].size
+        dust_temp_median, mc_error = mystats.calc_cdf_error(temp_mc)
+        dust_temp_median_error = np.mean(mc_error)
+        dust_beta_median, mc_error = mystats.calc_cdf_error(beta_mc)
+        dust_beta_median_error = np.mean(mc_error)
+        rad_field_draine_median, mc_error = mystats.calc_cdf_error(rad_mc)
+        rad_field_draine_median_error = np.mean(mc_error)
+
+        # calculate habing field from draine:
+        rad_field_habing_median = rad_field_draine_median / 1.71
+        rad_field_habing_median_error = rad_field_draine_median_error / 1.71
+        rad_field_mathis_median = rad_field_draine_median / 1.48
+        rad_field_mathis_median_error = rad_field_draine_median_error / 1.48
+
+
+            # write results to cloud
+            cloud_props[cloud] = \
+                    {
+                     'dust_temp_median': dust_temp_median,
+                     'dust_temp_median_error': dust_temp_median_error,
+                     'dust_temps': temps,
+                     'dust_beta_median': dust_beta_median,
+                     'dust_beta_median_error': dust_beta_median_error,
+                     'dust_betas': betas,
+                     'rad_field_draine_median': rad_field_draine_median,
+                     'rad_field_draine_median_error': \
+                        rad_field_draine_median_error,
+                     'rad_field_habing_median': rad_field_habing_median,
+                     'rad_field_habing_median_error': \
+                        rad_field_habing_median_error,
+                     'rad_field_mathis_median': rad_field_mathis_median,
+                     'rad_field_mathis_median_error': \
+                        rad_field_mathis_median_error,
+                     'rad_field_map': rads,
+                     }
+
+        else:
+            core_dict[core_name]['dust_temp_median'] = \
+                cloud_props[cloud]['dust_temp_median']
+            core_dict[core_name]['dust_temp_median_error'] = \
+                cloud_props[cloud]['dust_temp_median_error']
+
+        # copy cloud params to core dict
+        for param_name in cloud_props[cloud]:
+            core_dict[core_name][param_name] = \
+                    np.copy(cloud_props[cloud][param_name])
+
+    return cloud_props, core_dict
+
 
 def add_cloud_params(core_dict, cloud_average=True, load_results=0, N_mc=10,):
 
@@ -930,8 +1087,8 @@ def save_core_dict(core_dict):
 
 def main():
 
-    LOAD_MC_RESULTS = 1
-    N_MC = 1000
+    LOAD_MC_RESULTS = 0
+    N_MC = 10
 
     # load core summary file
     core_dict = load_cores()
