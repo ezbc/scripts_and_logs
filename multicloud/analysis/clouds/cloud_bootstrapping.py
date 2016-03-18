@@ -4523,7 +4523,7 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 1000,
+                'num_bootstraps': 10000,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
