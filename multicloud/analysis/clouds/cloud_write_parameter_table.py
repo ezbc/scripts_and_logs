@@ -704,7 +704,7 @@ def run_mc_simulations_cores(core_dict, wcs_header, temp_data, temp_error_data,
 
     for core_name in core_dict:
         # load cloud regions
-        vertices_wcs = core_dict[core_name]['region_vertices'].T
+        vertices_wcs = core_dict[core_name]['region_vertices']
 
         # Format vertices to be 2 x N array
         #vertices_wcs = np.array((vertices_wcs[0], vertices_wcs[1]))
@@ -769,6 +769,12 @@ def run_mc_simulations_cores(core_dict, wcs_header, temp_data, temp_error_data,
                     np.logical_not(myg.get_polygon_mask(temp_data,
                                                         vertices_pix))
 
+            if 0:
+                import matplotlib.pyplot as plt
+                plt.imshow(region_mask, origin='lower')
+                plt.title(core_name)
+                plt.show()
+
             # Get the region's temperature
             if j == 0:
                 temps = temp_data[~region_mask]
@@ -795,9 +801,9 @@ def run_mc_simulations_cores(core_dict, wcs_header, temp_data, temp_error_data,
                                      )
 
             # Grab the median values of temp, beta, and rad field
-            temp_mc[j] = np.median(temp_sim[~region_mask])
-            beta_mc[j] = np.median(beta_sim[~region_mask])
-            rad_mc[j] = np.median(rad_field[~region_mask])
+            temp_mc[j] = np.median(temp_sim)
+            beta_mc[j] = np.median(beta_sim)
+            rad_mc[j] = np.median(rad_field)
 
         # Calculate average temp
         #core_dict[core_name]['dust_temp_median'] = \
