@@ -3491,13 +3491,13 @@ def plot_diffusefraction_cdfs(hi_dict):
     plt.show()
     plt.savefig(FILENAME)
 
-def plot_modelparams_vs_radfield(core_dict, filename=None):
+def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
 
     # Color map
     cmap = plt.cm.copper
 
     # Color cycle, grabs colors from cmap
-    c_cycle = [cmap(i) for i in np.linspace(0, 0.8, 3)]
+    c_cycle = [cmap(i) for i in np.linspace(0, 1, 3)]
 
     # Create figure instance
     fig = plt.figure(figsize=(3.5, 3.5))
@@ -3506,9 +3506,11 @@ def plot_modelparams_vs_radfield(core_dict, filename=None):
 
     fig, ax = plt.subplots(1,1,figsize=(3.5, 3.5))
 
-    clouds = 'california', 'perseus', 'taurus'
+    clouds = ['california', 'perseus', 'taurus']
     linestyles = ['-', '--', '-.']
-    alpha = 1
+    markers = ['^', 'o', 's']
+    alpha = 0.5
+    clouds_labeled = []
 
     for core_name in core_dict:
         core = core_dict[core_name]
@@ -3519,29 +3521,41 @@ def plot_modelparams_vs_radfield(core_dict, filename=None):
         phi_cnm_error = core['krumholz']['phi_cnm_error']
         alphaG = core['sternberg']['alphaG']
         alphaG_error = core['sternberg']['alphaG_error']
+
+        # labeling
         cloud = core['cloud']
-        linestyle = linestyles[clouds.index(cloud)]
+        index = clouds.index(cloud)
+        linestyle = linestyles[index]
+        color = c_cycle[index]
+        marker = markers[index]
+        if cloud not in clouds_labeled:
+            label = cloud.capitalize()
+            clouds_labeled.append(cloud)
+        else:
+            label = None
 
-        print phi_cnm_error, rad_field_error
+        print phi_cnm_error
 
-        image = ax.errorbar(phi_cnm,
-                            rad_field,
+        image = ax.errorbar(rad_field,
+                            phi_cnm,
                             xerr=rad_field_error,
-                            yerr=(np.transpose(phi_cnm_error),),
+                            yerr=np.transpose(phi_cnm_error),
                             alpha=alpha,
-                            color='k',
-                            marker='^',
+                            color=color,
+                            label=label,
+                            marker=marker,
                             ecolor='k',
                             linestyle='None',
-                            markersize=3
+                            markersize=4
                             )
 
     ax.legend(loc='best')
     #a_xscale('log')
     ax.set_xlabel(r'$U_{M83}$ [$U_{M83,0}]$')
     ax.set_ylabel(r'$\phi_{\rm CNM}$')
-    #ax.set_ylim([0,1])
-    #ax.set_xlim([0,1])
+    if limits is not None:
+        ax.set_xlim([limits[0],limits[1]])
+        ax.set_ylim([limits[2],limits[3]])
 
     if filename is not None:
         plt.savefig(filename, dpi=600)

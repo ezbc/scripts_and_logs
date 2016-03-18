@@ -1316,6 +1316,7 @@ def main():
     file_types = ['png', 'pdf']
     for file_type in file_types:
         lm_plt.plot_modelparams_vs_radfield(core_dict,
+                                            limits=[0.6, 1.8, 0, 25],
                                             filename=FILENAME_FIGURE + '.' + \
                                                      file_type)
 
