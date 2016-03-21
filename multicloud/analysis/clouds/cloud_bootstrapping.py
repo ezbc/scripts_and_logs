@@ -257,7 +257,7 @@ def plot_multicloud_results(results):
     # Write results to a
     #print_av_error_stats(av_list[0], av_error_list[0])
 
-    print_BIC_results(stats_list)
+    print_BIC_results(stats_list, core_names_list)
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
@@ -561,14 +561,39 @@ def plot_multicloud_results(results):
 Data Prep functions
 '''
 
-def print_BIC_results(stats_list):
+def print_BIC_results(stats_list, core_names):
+
+    bayes_factor = np.array(stats_list['krumholz_results']['BIC']) - \
+                   np.array(stats_list['sternberg_results']['BIC'])
+
+    # cores gathers by cloud, unravel
+    core_names = np.ravel(core_names)
+
     print('Median difference in BIC between k09 and s14 models:')
-    print(np.median(np.array(stats_list['krumholz_results']['BIC']) - \
-                    np.array(stats_list['sternberg_results']['BIC'])))
+    print(np.median(bayes_factor))
 
     print('Bayes Factor for each core:')
-    print(np.array(stats_list['krumholz_results']['BIC']) - \
-          np.array(stats_list['sternberg_results']['BIC']))
+    print(bayes_factor)
+
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    import mystats
+
+    print('Confidence intervals on Bayes Factor')
+    print(mystats.calc_cdf_error(bayes_factor, alpha=0.5))
+    print(np.sort(bayes_factor))
+
+    print('Core with max BF of {0:.0f}'.format(np.max(bayes_factor)))
+    print(core_names[np.argmax(bayes_factor)])
+    print('Core with min BF of {0:.0f}'.format(np.min(bayes_factor)))
+    print(core_names[np.argmin(bayes_factor)])
+
+    plt.close(); plt.clf()
+    myplt.plot_cdf(bayes_factor)
+    plt.xlabel('K+09 - S+14')
+    plt.title('Bayes Factor CDF')
+    plt.savefig('/d/bip3/ezbc/multicloud/figures/models/bayes_factor_cdf.png')
+
 
 def calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, h_sd_cores_list,
