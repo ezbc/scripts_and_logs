@@ -566,6 +566,10 @@ def print_BIC_results(stats_list):
     print(np.median(np.array(stats_list['krumholz_results']['BIC']) - \
                     np.array(stats_list['sternberg_results']['BIC'])))
 
+    print('Bayes Factor for each core:')
+    print(np.array(stats_list['krumholz_results']['BIC']) - \
+          np.array(stats_list['sternberg_results']['BIC']))
+
 def calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, h_sd_cores_list,
                                  rh2_cores_list, model_analysis_dict,
@@ -4500,7 +4504,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
