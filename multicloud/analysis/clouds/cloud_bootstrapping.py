@@ -139,8 +139,15 @@ def plot_multicloud_results(results):
     core_names_list = []
     core_list = []
     cloud_model_fits_list = []
-    stats_list = {'krumholz_results': {'sum_of_resid': [], 'BIC': []},
-            'sternberg_results': {'sum_of_resid': [], 'BIC': []}}
+    stats_list = {'krumholz_results':  {'sum_of_resid': [],
+                                        'chisq_reduced': [],
+                                        'BIC': [],
+                                        },
+                  'sternberg_results':  {'sum_of_resid': [],
+                                        'chisq_reduced': [],
+                                        'BIC': [],
+                                        },
+                  }
     for i, cloud_name in enumerate(results):
         results_dict = results[cloud_name]
         figure_dir = results_dict['filenames']['figure_dir']
@@ -222,9 +229,10 @@ def plot_multicloud_results(results):
                                   )
                 stats_list[model]['sum_of_resid'].append(\
                         fits[model]['sum_of_resid'])
+                stats_list[model]['chisq_reduced'].append(\
+                        fits[model]['chisq_reduced'])
                 stats_list[model]['BIC'].append(\
                         fits[model]['BIC'])
-
 
             if 0:
                 rh2_copy = rh2_list[i].copy()
@@ -247,6 +255,7 @@ def plot_multicloud_results(results):
                                  hisd_cores_list, hsd_cores_list,
                                  rh2_cores_list, model_analysis_dict,
                                  filename=global_args['filename_hi_props'],
+                                 stats_list=stats_list,
                                  )
 
     # plot CDFs of diffuse fraction LOS
@@ -588,6 +597,10 @@ def print_BIC_results(stats_list, core_names):
     print('Core with min BF of {0:.0f}'.format(np.min(bayes_factor)))
     print(core_names[np.argmin(bayes_factor)])
 
+    print('Core BF')
+    index = np.where(core_names == 'G158.39-20.72')[0]
+    print(core_names[index], bayes_factor[index])
+
     plt.close(); plt.clf()
     myplt.plot_cdf(bayes_factor)
     plt.xlabel('K+09 - S+14')
@@ -598,7 +611,7 @@ def print_BIC_results(stats_list, core_names):
 def calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, h_sd_cores_list,
                                  rh2_cores_list, model_analysis_dict,
-                                 filename=None):
+                                 filename=None, stats_list=None):
 
     hi_dict = {}
     for i, cloud in enumerate(cloud_name_list):
@@ -610,8 +623,8 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
         hi_dict[cloud]['hi_sd_median'] = []
         hi_dict[cloud]['hi_sd_std'] = []
         hi_dict[cloud]['fraction_LOS_diffuse'] = []
-        hi_dict[cloud]['fraction_LOS_sf'] = []
-        hi_dict[cloud]['sf_threshold'] = []
+        hi_dict[cloud]['chisq_reduced_krumholz'] = []
+        hi_dict[cloud]['chisq_reduced_sternberg'] = []
 
         # add a row for each core
         for j, core in enumerate(core_names_list[i]):
@@ -629,12 +642,19 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
             hi_dict[cloud]['fraction_LOS_diffuse'].append(frac_diffuse)
 
             #frac above sf threshold
-            model = model_analysis_dict[cloud]['cores'][core]
-            sf_threshold = model['sternberg_results']['sf_threshold']
-            hi_dict[cloud]['sf_threshold'].append(sf_threshold)
-            indices_sf = np.where(h > sf_threshold)[0]
-            frac_sf = np.size(indices_sf) / float(np.size(h))
-            hi_dict[cloud]['fraction_LOS_sf'].append(frac_sf)
+            if 0:
+                model = model_analysis_dict[cloud]['cores'][core]
+                sf_threshold = model['sternberg_results']['sf_threshold']
+                hi_dict[cloud]['sf_threshold'].append(sf_threshold)
+                indices_sf = np.where(h > sf_threshold)[0]
+                frac_sf = np.size(indices_sf) / float(np.size(h))
+                hi_dict[cloud]['fraction_LOS_sf'].append(frac_sf)
+
+            if stats_list is not None:
+                hi_dict[cloud]['chisq_reduced_krumholz'].append( \
+                    stats_list['krumholz_results']['chisq_reduced'])
+                hi_dict[cloud]['chisq_reduced_sternberg'].append( \
+                    stats_list['sternberg_results']['chisq_reduced'])
 
     # save the dict?
     if filename is not None:
@@ -1028,7 +1048,7 @@ def write_core_HI_table(hi_dict, filename,):
     text_param_format_frac ='{0:.0f}'
 
     params_to_write = ['hi_sd_mean', 'hi_sd_median', 'hi_sd_std',
-    'fraction_LOS_diffuse', 'fraction_LOS_sf', 'sf_threshold']
+    'fraction_LOS_diffuse', 'chisq_reduced_krumholz', 'chisq_reduced_sternberg']
 
     # Collect parameter names for each model for each core
     for cloud in ('california', 'perseus', 'taurus'):
@@ -1554,9 +1574,12 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         # calculate resid sum of squares and log likelihood
         fitted_models[model] = {}
         fits = fitted_models[model]
+        fits['dof'] = np.size(rh2) - 1
         fits['sum_of_resid'] = np.sum((rh2 - model_fits[0])**2)
         fits['logL'] = mystats.calc_logL(model_fits[0], rh2, rh2_error)
-
+        fits['chisq_reduced'] = \
+            mystats.calc_chisq(model_fits[0], rh2, rh2_error,
+                               dof=fits['dof'])
 
         # use fitted h_sd
         # ---------------
@@ -4530,6 +4553,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 1,
+                'num_bootstraps': 100,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4552,7 +4576,6 @@ def main():
                 'sim_hi_error': True,
                 'hi_range_calc': permutation[11],
                 #'num_bootstraps': 10000,
-                'num_bootstraps': 10000,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
                 'calculate_median_error': False,
