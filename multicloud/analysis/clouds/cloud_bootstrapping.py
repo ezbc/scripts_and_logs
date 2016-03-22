@@ -1053,13 +1053,19 @@ def write_core_HI_table(hi_dict, filename,):
     'fraction_LOS_diffuse', 'chisq_reduced_krumholz', 'chisq_reduced_sternberg']
 
     # Collect parameter names for each model for each core
+    row = 0
     for cloud in ('california', 'perseus', 'taurus'):
         core_dict = hi_dict[cloud]
-        core_names = np.sort(core_dict['cores'])
-        # each core correspond to a row
-        for cloud_row, core_name in enumerate(core_names):
+        core_indices = np.argsort(core_dict['cores'])
 
-            if cloud_row == 0:
+        row_core = 0
+
+        # each core correspond to a row
+        for core_index in core_indices:
+
+            core_name = core_dict['cores'][core_index]
+
+            if row_core == 0:
                 row_text = cloud.capitalize()
             else:
                 row_text = ''
@@ -1069,7 +1075,7 @@ def write_core_HI_table(hi_dict, filename,):
 
             for i, param_name in enumerate(params_to_write):
                 param = \
-                    core_dict[param_name][cloud_row]
+                    core_dict[param_name][core_index]
 
                 param_info = param
 
@@ -1090,14 +1096,17 @@ def write_core_HI_table(hi_dict, filename,):
 
 
             row_text += ' \\\\[0.1cm] \n'
-            if cloud_row == len(core_names) - 1 \
+            if core_index == len(core_indices) - 1 \
                 and cloud != 'taurus':
                 row_text += '\hline  \\\\[-0.2cm] \n'
-            elif cloud_row == len(core_names) - 1 and \
+            elif core_index == len(core_indices) - 1 and \
                     cloud == 'taurus':
                 row_text.replace(r'\\[0.1cm] \n', '')
 
             f.write(row_text)
+
+            row_core += 1
+            row += 1
 
     f.close()
 
