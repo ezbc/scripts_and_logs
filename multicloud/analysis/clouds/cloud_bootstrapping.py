@@ -275,8 +275,8 @@ def plot_multicloud_results(results):
 
     filename = results_dir + 'tables/multicloud_hi_core_properties.tex'
     write_core_HI_table(hi_dict,
-                             filename,
-                             )
+                        filename,
+                        )
 
     # Write param summary to dataframe for ease of use
     filename = results_dir + 'tables/multicloud_model_params.csv'
@@ -607,7 +607,6 @@ def print_BIC_results(stats_list, core_names):
     plt.title('Bayes Factor CDF')
     plt.savefig('/d/bip3/ezbc/multicloud/figures/models/bayes_factor_cdf.png')
 
-
 def calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, h_sd_cores_list,
                                  rh2_cores_list, model_analysis_dict,
@@ -631,7 +630,7 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
             hi = hisd_cores_list[i][j]
             h = h_sd_cores_list[i][j]
             rh2 = rh2_cores_list[i][j]
-            hi_dict[cloud]['cores'].append(core_names_list[i][j])
+            hi_dict[cloud]['cores'].append(core)
             hi_dict[cloud]['hi_sd_mean'].append(np.nanmean(hi))
             hi_dict[cloud]['hi_sd_median'].append(scipy.stats.nanmedian(hi))
             hi_dict[cloud]['hi_sd_std'].append(np.nanstd(hi))
@@ -652,9 +651,12 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
 
             if stats_list is not None:
                 hi_dict[cloud]['chisq_reduced_krumholz'].append( \
-                    stats_list['krumholz_results']['chisq_reduced'])
+                    stats_list['krumholz_results']['chisq_reduced'][j])
                 hi_dict[cloud]['chisq_reduced_sternberg'].append( \
-                    stats_list['sternberg_results']['chisq_reduced'])
+                    stats_list['sternberg_results']['chisq_reduced'][j])
+
+                print 'chisq:'
+                print stats_list['sternberg_results']['chisq_reduced'][j]
 
     # save the dict?
     if filename is not None:
@@ -1077,7 +1079,6 @@ def write_core_HI_table(hi_dict, filename,):
                     param_info = param_info * 100.0
                 else:
                     text_param_format = text_param_format_sd
-
 
                 #if param_name == 'alphaG':
                     #print core_name, param_info
@@ -2346,8 +2347,6 @@ def analyze_sternberg_model(sternberg_results):
                               'f_HI' : f_HI,})
 
     return sternberg_results
-
-
 
 
 '''
