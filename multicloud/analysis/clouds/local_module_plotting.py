@@ -2641,6 +2641,7 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
 
         rh2 = (h_sd_nonans - hi_sd_nonans) / hi_sd_nonans
 
+
         # Create plot
         ax = axes[i]
 
@@ -2846,7 +2847,7 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
             ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
                            '[M$_\odot$ pc$^{-2}$]',)
         if ylabel:
-            ax.set_ylabel(r'$R_{H2}$',)
+            ax.set_ylabel(r'$R_{\rm H_2}$',)
 
         if 'log' not in scale:
             ax.locator_params(nbins=5)
@@ -3504,13 +3505,15 @@ def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
 
     parameters = ['fraction_LOS_diffuse',]
 
-    fig, ax = plt.subplots(1,1,figsize=(3.5, 3.5))
+    fig, axes = plt.subplots(2,1,figsize=(3.5, 6))
 
     clouds = ['california', 'perseus', 'taurus']
     linestyles = ['-', '--', '-.']
     markers = ['^', 'o', 's']
     alpha = 0.5
     clouds_labeled = []
+
+    ax1, ax2 = axes
 
     for core_name in core_dict:
         core = core_dict[core_name]
@@ -3534,28 +3537,44 @@ def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
         else:
             label = None
 
-        print phi_cnm_error
-
-        image = ax.errorbar(rad_field,
+        image = ax1.errorbar(rad_field,
                             phi_cnm,
                             xerr=rad_field_error,
-                            yerr=np.transpose(phi_cnm_error),
+                            yerr=(phi_cnm_error,),
                             alpha=alpha,
                             color=color,
                             label=label,
                             marker=marker,
                             ecolor='k',
+                            capsize=0,
                             linestyle='None',
                             markersize=4
                             )
 
-    ax.legend(loc='best')
-    #a_xscale('log')
-    ax.set_xlabel(r'$U_{M83}$ [$U_{M83,0}]$')
-    ax.set_ylabel(r'$\phi_{\rm CNM}$')
-    if limits is not None:
-        ax.set_xlim([limits[0],limits[1]])
-        ax.set_ylim([limits[2],limits[3]])
+        image = ax2.errorbar(rad_field,
+                            alphaG,
+                            xerr=rad_field_error,
+                            yerr=(alphaG_error,),
+                            alpha=alpha,
+                            color=color,
+                            label=label,
+                            marker=marker,
+                            ecolor='k',
+                            capsize=0,
+                            linestyle='None',
+                            markersize=4
+                            )
+
+    for ax in [ax1, ax2]:
+        if limits is not None:
+            ax.set_xlim([limits[0],limits[1]])
+            #ax.set_ylim([limits[2],limits[3]])
+        ax.legend(loc='best')
+        #ax.set_xscale('log')
+        #ax.set_yscale('log')
+    ax2.set_xlabel(r'$U_{M83}$ [$U_{M83,0}]$')
+    ax1.set_ylabel(r'$\phi_{\rm CNM}$')
+    ax2.set_ylabel(r'$\alpha G$')
 
     if filename is not None:
         plt.savefig(filename, dpi=600)
