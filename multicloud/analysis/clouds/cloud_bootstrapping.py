@@ -215,6 +215,8 @@ def plot_multicloud_results(results):
                                               h_sd_error=hsd_error_core_list[j],
                                               rh2_error=rh2_error_core_list[j],
                                               model_kwargs=model_kwargs,
+                                  hi_sd_error=hisd_error_core_list[j],
+                                  hi_sd=hisd_core_list[j],
                                               )
                                    )
 
@@ -222,9 +224,11 @@ def plot_multicloud_results(results):
             for model in model_fits_list[j]:
                 fits = refit_data(hsd_core_list[j],
                                   rh2_core_list[j],
-                                  h_sd_error=hsd_error_core_list[j],
                                   rh2_error=rh2_error_core_list[j],
+                                  h_sd_error=hsd_error_core_list[j],
                                   h_sd_fit=hsd_core_list[j],
+                                  hi_sd_error=hisd_error_core_list[j],
+                                  hi_sd=hisd_core_list[j],
                                   model_kwargs=model_kwargs,
                                   )
                 stats_list[model]['sum_of_resid'].append(\
@@ -1096,10 +1100,10 @@ def write_core_HI_table(hi_dict, filename,):
 
 
             row_text += ' \\\\[0.1cm] \n'
-            if core_index == len(core_indices) - 1 \
+            if row_core == len(core_indices) - 1 \
                 and cloud != 'taurus':
                 row_text += '\hline  \\\\[-0.2cm] \n'
-            elif core_index == len(core_indices) - 1 and \
+            elif row_core == len(core_indices) - 1 and \
                     cloud == 'taurus':
                 row_text.replace(r'\\[0.1cm] \n', '')
 
@@ -1527,7 +1531,7 @@ Modeling Functions
 '''
 
 def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
-        h_sd_fit=None):
+        h_sd_fit=None, hi_sd=None, hi_sd_error=None):
 
     import mystats
 
@@ -1582,14 +1586,19 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                                       return_hisd=True)
 
         # calculate resid sum of squares and log likelihood
+        rh2_fit, hsd_fit, hisd_fit = model_fits
+
         fitted_models[model] = {}
         fits = fitted_models[model]
         fits['dof'] = np.size(rh2) - 1
         fits['sum_of_resid'] = np.sum((rh2 - model_fits[0])**2)
         fits['logL'] = mystats.calc_logL(model_fits[0], rh2, rh2_error)
-        fits['chisq_reduced'] = \
-            mystats.calc_chisq(model_fits[0], rh2, rh2_error,
-                               dof=fits['dof'])
+        try:
+            fits['chisq_reduced'] = \
+                mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
+                                   dof=fits['dof'])
+        except ValueError:
+            fits['chisq_reduced'] = np.nan
 
         # use fitted h_sd
         # ---------------
@@ -4561,7 +4570,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 1,
-                'num_bootstraps': 100,
+                'num_bootstraps': 10000,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
