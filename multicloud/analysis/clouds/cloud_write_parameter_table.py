@@ -239,10 +239,13 @@ def add_model_params(core_dict):
             # get the minimum CNM density, calculate n_CNM with phi_CNM, then
             # calculate temperature given galactic pressure between WNM and CNM
 
+            print('Cloud:', cloud)
+            print('Krumholz rad habing field:', core['rad_field_habing_median'])
+            print('Krumholz rad draine field:', core['rad_field_draine_median'])
 
             n_min, n_min_error = \
-                myk09.calc_n_min(G_0=core['rad_field_habing_median'],
-                               G_0_error=core['rad_field_habing_median_error'],
+                myk09.calc_n_min(G_0=core['rad_field_draine_median'],
+                               G_0_error=core['rad_field_draine_median_error'],
                                Z=1.0,
                                calc_error=True,
                                )
@@ -816,7 +819,8 @@ def run_mc_simulations_cores(core_dict, wcs_header, temp_data, temp_error_data,
         dust_beta_median, mc_error = mystats.calc_cdf_error(beta_mc)
         dust_beta_median_error = np.mean(mc_error)
         rad_field_draine_median, mc_error = mystats.calc_cdf_error(rad_mc)
-        rad_field_draine_median_error = np.mean(mc_error)
+        #rad_field_draine_median_error = np.mean(mc_error)
+        rad_field_draine_median_error = np.std(rads)
 
         # calculate habing field from draine:
         rad_field_habing_median = rad_field_draine_median / 1.71
@@ -1064,8 +1068,8 @@ def save_core_dict(core_dict):
 
 def main():
 
-    LOAD_MC_RESULTS = False
-    N_MC = 10
+    LOAD_MC_RESULTS = True
+    N_MC = 100
     WRITE_CORE_DICT = True
 
     # load core summary file
