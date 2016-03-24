@@ -743,17 +743,19 @@ def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
                 core_new['temp'], core_new['temp_error'] = 17, 1
             core_new['region_vertices'] = core_props['poly_verts']['wcs']
 
+            # Write HI properties
             if hi_dict is not None:
                 hi_cloud_dict = hi_dict[cloud]
-                index = np.where(hi_cloud_dict['cores'] == core)[0]
+                index = hi_cloud_dict['cores'].index(core_name)
                 keys = hi_cloud_dict.keys()
 
                 # remove cores from dict
-                keys.pop(keys.index('cores'))
+                #keys.pop(keys.index('cores'))
 
                 hi_core_dict = {}
                 for param in hi_cloud_dict:
-                    hi_core_dict[param] = hi_cloud_dict[param]
+                    #print hi_cloud_dict[param]
+                    hi_core_dict[param] = hi_cloud_dict[param][index]
 
                 core_new['hi_props'] = hi_core_dict
 
@@ -4055,6 +4057,10 @@ def run_cloud_analysis(global_args,):
     data_type = global_args['data_type']
     background_subtract = global_args['background_subtract']
 
+    # if region 1 or 2 specified remove numbers
+    cloud_region_name = np.copy(cloud_name)
+    for string in ['1', '2']:
+        cloud_name = cloud_name.replace(string, '')
 
     # define directory locations
     # --------------------------
@@ -4253,6 +4259,11 @@ def run_cloud_analysis(global_args,):
                                   ncomps=ncomps_in_cloud,
                                   )
         global_args['vel_range_error'] = hi_range_error
+
+        print('\nVelocity range and error:')
+        print('[{0:.2f}, {1:.2f}] +/- {2:.2f} km/s'.format(velocity_range[0],
+                                                           velocity_range[1],
+                                                           hi_range_error))
     else:
         velocity_range = [-5, 15]
         gauss_fits = None
@@ -4530,8 +4541,8 @@ def main():
                          )
 
     regions = (None,
+               #'2',
                #'1',
-               #'2'
                )
 
     subtract_comps = (#True,
@@ -4587,7 +4598,7 @@ def main():
                 'subtract_comps': permutation[9],
                 'plot_diagnostics': 0,
                 'use_background': permutation[10],
-                'clobber_spectra': 0,
+                'clobber_spectra': 1,
                 'smooth_hi_to_co_res': 1,
                 'clobber_hi_error': 0,
                 'sim_hi_error': True,
