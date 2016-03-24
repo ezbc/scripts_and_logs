@@ -3579,3 +3579,162 @@ def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
     if filename is not None:
         plt.savefig(filename, dpi=600)
 
+def plot_himean_vs_modelparams(core_dict, limits=None, filename=None):
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    c_cycle = [cmap(i) for i in np.linspace(0, 1, 3)]
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 3.5))
+
+    parameters = ['fraction_LOS_diffuse',]
+
+    fig, axes = plt.subplots(2,1,figsize=(3.5, 6))
+
+    clouds = ['california', 'perseus', 'taurus']
+    linestyles = ['-', '--', '-.']
+    markers = ['^', 'o', 's']
+    alpha = 0.5
+    clouds_labeled = []
+
+    ax1, ax2 = axes
+
+    for core_name in core_dict:
+        core = core_dict[core_name]
+        hi_props = core['hi_props']
+        hi_mean = hi_props['hi_sd_mean']
+        hi_std = hi_props['hi_sd_std']
+        phi_cnm = core['krumholz']['phi_cnm']
+        phi_cnm_error = core['krumholz']['phi_cnm_error']
+        alphaG = core['sternberg']['alphaG']
+        alphaG_error = core['sternberg']['alphaG_error']
+
+        # labeling
+        cloud = core['cloud']
+        index = clouds.index(cloud)
+        linestyle = linestyles[index]
+        color = c_cycle[index]
+        marker = markers[index]
+        if cloud not in clouds_labeled:
+            label = cloud.capitalize()
+            clouds_labeled.append(cloud)
+        else:
+            label = None
+
+        print hi_mean, hi_std
+
+        image = ax1.errorbar(hi_mean,
+                            phi_cnm,
+                            xerr=hi_std,
+                            yerr=(phi_cnm_error,),
+                            alpha=alpha,
+                            color=color,
+                            label=label,
+                            marker=marker,
+                            ecolor='k',
+                            capsize=0,
+                            linestyle='None',
+                            markersize=4
+                            )
+
+        image = ax2.errorbar(hi_mean,
+                            alphaG,
+                            xerr=hi_std,
+                            yerr=(alphaG_error,),
+                            alpha=alpha,
+                            color=color,
+                            label=label,
+                            marker=marker,
+                            ecolor='k',
+                            capsize=0,
+                            linestyle='None',
+                            markersize=4
+                            )
+
+    for ax in [ax1, ax2]:
+        if limits is not None:
+            ax.set_xlim([limits[0],limits[1]])
+            #ax.set_ylim([limits[2],limits[3]])
+        ax.legend(loc='best')
+        #ax.set_xscale('log')
+        #ax.set_yscale('log')
+    ax2.set_xlabel(r'$<\Sigma_{\rm H\,I}>$ [M$_\odot$ pc$^{-2}$]',)
+    ax1.set_ylabel(r'$\phi_{\rm CNM}$')
+    ax2.set_ylabel(r'$\alpha G$')
+
+    if filename is not None:
+        plt.savefig(filename, dpi=600)
+
+def plot_radfield_vs_himean(core_dict, limits=None, filename=None):
+
+    # Color map
+    cmap = plt.cm.copper
+
+    # Color cycle, grabs colors from cmap
+    c_cycle = [cmap(i) for i in np.linspace(0, 1, 3)]
+
+    # Create figure instance
+    fig = plt.figure(figsize=(3.5, 3.5))
+
+    parameters = ['fraction_LOS_diffuse',]
+
+    fig, axes = plt.subplots(1,1,figsize=(3.5, 3.5))
+
+    clouds = ['california', 'perseus', 'taurus']
+    linestyles = ['-', '--', '-.']
+    markers = ['^', 'o', 's']
+    alpha = 0.5
+    clouds_labeled = []
+
+    ax = axes
+
+    for core_name in core_dict:
+        core = core_dict[core_name]
+        hi_props = core['hi_props']
+        hi_mean = hi_props['hi_sd_mean']
+        hi_std = hi_props['hi_sd_std']
+        dust_values = core['region_values']
+        rad_field = dust_values['rad_field_draine_median']
+        rad_field_error = dust_values['rad_field_draine_median_error']
+
+        # labeling
+        cloud = core['cloud']
+        index = clouds.index(cloud)
+        linestyle = linestyles[index]
+        color = c_cycle[index]
+        marker = markers[index]
+        if cloud not in clouds_labeled:
+            label = cloud.capitalize()
+            clouds_labeled.append(cloud)
+        else:
+            label = None
+
+        image = ax.errorbar(rad_field,
+                            hi_mean,
+                            xerr=rad_field_error,
+                            yerr=hi_std,
+                            alpha=alpha,
+                            color=color,
+                            label=label,
+                            marker=marker,
+                            ecolor='k',
+                            capsize=0,
+                            linestyle='None',
+                            markersize=4
+                            )
+
+    if limits is not None:
+        ax.set_xlim([limits[0],limits[1]])
+        ax.set_ylim([limits[2],limits[3]])
+    ax.legend(loc='best')
+        #ax.set_xscale('log')
+        #ax.set_yscale('log')
+    ax.set_ylabel(r'$<\Sigma_{\rm H\,I}>$ [M$_\odot$ pc$^{-2}$]',)
+    ax.set_xlabel(r'$U$ [$U_{D78}]$')
+
+    if filename is not None:
+        plt.savefig(filename, dpi=600)
+
