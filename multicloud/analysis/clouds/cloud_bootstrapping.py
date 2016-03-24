@@ -9,6 +9,7 @@ from multiprocessing.queues import Queue
 import mygeometry as myg
 import scipy
 import pickle
+import local_module_science as lm_science
 
 '''
 Plotting
@@ -67,7 +68,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
         phi_cnm_high = phi_cnm + analysis['phi_cnm_error'][1]
 
         params = {'phi_cnm': phi_cnm,
-                  'phi_mol': analysis['phi_mol'],
+                  'sigma_d': analysis['sigma_d'],
                   'Z': analysis['Z'],
                   }
         h_sd, hi_sd = calc_krumholz(params,
@@ -77,7 +78,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                                   return_hisd=True)[1:3]
 
         params = {'phi_cnm': phi_cnm_high,
-                  'phi_mol': analysis['phi_mol'],
+                  'sigma_d': analysis['sigma_d'],
                   'Z': analysis['Z'],
                   }
         hi_sd_low = calc_krumholz(params,
@@ -87,7 +88,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                                   return_hisd=True)[2]
 
         params = {'phi_cnm': phi_cnm_low,
-                  'phi_mol': analysis['phi_mol'],
+                  'sigma_d': analysis['sigma_d'],
                   'Z': analysis['Z'],
                   }
         hi_sd_high = calc_krumholz(params,
@@ -762,7 +763,7 @@ def write_fit_summary_dict(mc_analysis_dict, core_list, cloud_name_list,
             # append model params and errors to row
             for model in ('krumholz', 'sternberg'):
                 if model == 'krumholz':
-                    params_to_write = ['phi_cnm', 'Z', 'phi_mol',
+                    params_to_write = ['phi_cnm', 'Z', 'sigma_d',
                                        'hi_transition']
                 else:
                     params_to_write = ['alphaG', 'Z', 'phi_g',
@@ -1552,7 +1553,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         print 'rh2_error', rh2_error
 
     ss_model_result = \
-        fit_steady_state_models(h_sd.ravel(),
+        lm_science.fit_steady_state_models(h_sd.ravel(),
                                 rh2.ravel(),
                                 rh2_error=rh2_error.ravel(),
                                 h_sd_error=h_sd_error.ravel(),
@@ -1568,7 +1569,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
             params['phi_cnm'] = 3
             params['alphaG'] = 10
             params['phi_g'] = 3
-            params['phi_mol'] = 10
+            params['sigma_d'] = 10
             params['Z'] = 1
 
 
@@ -1771,112 +1772,6 @@ def fit_av_model(av, nhi, av_error=None, nhi_error=None, algebraic=False,
     else:
         return results
 
-def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
-        h_sd_error=None, bootstrap_residuals=False, nboot=100, G0=1.0,
-        odr_fit=False,):
-
-    from myscience import bialy16
-
-    # Fit R_H2
-    #---------
-    sternberg_params = model_kwargs['sternberg_params']
-    sternberg_results = {}
-    krumholz_params = model_kwargs['krumholz_params']
-    krumholz_results = {}
-
-    # Fit to sternberg model
-    if rh2.size > 3:
-        result = \
-            fit_sternberg(h_sd,
-                          rh2,
-                          guesses=sternberg_params['guesses'],
-                          vary=sternberg_params['param_vary'],
-                          radiation_type=sternberg_params['radiation_type'],
-                          bootstrap_residuals=bootstrap_residuals,
-                          nboot=nboot,
-                          rh2_error=np.abs(rh2_error),
-                          h_sd_error=np.abs(h_sd_error),
-                          odr_fit=odr_fit,
-                          )
-
-
-
-        if bootstrap_residuals:
-            alphaG, alphaG_error, Z_s14, Z_s14_error, phi_g, phi_g_error = \
-                    result
-            sternberg_results['alphaG_error'] = alphaG_error
-            sternberg_results['Z_error'] = Z_s14_error
-            sternberg_results['phi_g_error'] = phi_g_error
-        else:
-            alphaG, Z_s14, phi_g = result
-            alphaG_error, Z_s14_error, phi_g_error = 3*[np.nan]
-
-
-        # Fit to krumholz model
-        result = \
-            fit_krumholz(h_sd,
-                         rh2,
-                         guesses=krumholz_params['guesses'],
-                         vary=krumholz_params['param_vary'],
-                         bootstrap_residuals=bootstrap_residuals,
-                         nboot=nboot,
-                         rh2_error=np.abs(rh2_error),
-                         h_sd_error=np.abs(h_sd_error),
-                         odr_fit=odr_fit,
-                         )
-
-
-        if bootstrap_residuals:
-            phi_cnm, phi_cnm_error,Z_k09, Z_k09_error,phi_mol, phi_mol_error= \
-                    result
-            krumholz_results['phi_cnm_error'] = phi_cnm_error
-            krumholz_results['Z_error'] = Z_k09_error
-            krumholz_results['phi_mol_error'] = phi_mol_error
-        else:
-            phi_cnm, Z_k09, phi_mol = result
-            phi_cnm_error, Z_k09_error, phi_mol_error = 3*[np.nan]
-    else:
-        alphaG, Z_s14, phi_g, phi_cnm, Z_k09, phi_mol = 6 * [np.nan]
-        alphaG_error, Z_s14_error, phi_g_error, \
-        phi_cnm_error, Z_k09_error, phi_mol_error = 6*[np.nan]
-
-    # keep results
-    sternberg_results['alphaG'] = alphaG
-    sternberg_results['Z'] = Z_s14
-    sternberg_results['phi_g'] = phi_g
-
-    # sigma_g = 1.9 * 10^-21 phi_g * Z cm^2
-    # sigma_g,gal is relative to galactic, and so is phi_g in this case, so
-    # sigma_g,gal propto phi_g.
-    sigma_g = phi_g
-    sternberg_results['sf_threshold'] = bialy16.calc_sf_threshold(alphaG,
-                                                                  sigma_g)
-
-    # keep results
-    krumholz_results['phi_cnm'] = phi_cnm
-    krumholz_results['Z'] = Z_k09
-    krumholz_results['phi_mol'] = phi_mol
-
-
-    # see eq 6 of sternberg+09
-    # alphaG is the number density of the CNM over the minimum number
-    # density required for pressure balance
-    # the lower alphaG values than for taurus mean that taurus
-    # has a more diffuse CNM
-
-    # By fitting the model to the observed R_H2 vs total H, you
-    # basically constrained psi in Equation (35) of sternberg+09.  This
-    # means that you can calculate f_H2 for a given total hydrogen
-    # surface density.  In this case, H2 surface density = f_H2 *
-    # total hydrogen surface density HI surface density = (1 - f_HI) *
-    # total hydrogen surface density
-
-    results = {}
-    results['sternberg_results'] = sternberg_results
-    results['krumholz_results'] = krumholz_results
-
-    return results
-
 def add_hi_transition_calc(ss_model_result):
 
     h_sd_fit = np.linspace(0, 100, 1000)
@@ -1899,7 +1794,7 @@ def add_hi_transition_calc(ss_model_result):
         elif 'krumholz' in model_name:
             params['phi_cnm'] = model['phi_cnm']
             params['Z'] = model['Z']
-            params['phi_mol'] = model['phi_mol']
+            params['sigma_d'] = model['sigma_d']
             model_fits = calc_krumholz(params,
                                       h_sd=h_sd_fit,
                                       return_fractions=False,
@@ -1953,14 +1848,14 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
     if h_sd is None:
         h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e3)
 
-    params = [params['phi_cnm'], params['Z'], params['phi_mol']]
+    params = [params['phi_cnm'], params['Z'], params['sigma_d']]
     if params[0] <= 0 or np.isnan(params[0]):
         rh2_fit, f_H2, f_HI = np.empty(1), np.empty(1), np.empty(1)
     else:
         rh2_fit, f_H2, f_HI = k09.calc_rh2(h_sd,
                                            phi_cnm=params[0],
                                            Z=params[1],
-                                           phi_mol=params[2],
+                                           sigma_d=params[2],
                                            return_fractions=True)
 
     output = [rh2_fit, h_sd]
@@ -2011,10 +1906,10 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
     if 0:
         def chisq(params, h_sd, rh2):
             phi_cnm = params['phi_cnm'].value
-            phi_mol = params['phi_mol'].value
+            sigma_d = params['sigma_d'].value
             Z = params['Z'].value
 
-            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
+            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d)
 
             chisq = np.sum(np.abs(rh2 - rh2_model))
 
@@ -2022,10 +1917,10 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
 
         def calc_residual(params, h_sd, rh2, G0):
             phi_cnm = params['phi_cnm'].value
-            phi_mol = params['phi_mol'].value
+            sigma_d = params['sigma_d'].value
             Z = params['Z'].value
 
-            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol,)
+            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d,)
 
             residual = rh2 - rh2_model
 
@@ -2038,16 +1933,16 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
                    min=0.001,
                    max=1000,
                    vary=vary[0])
-        params.add('phi_mol',
-                   value=guesses[2],
-                   min=1,
-                   max=20,
-                   vary=vary[2])
         params.add('Z',
                    value=guesses[1],
                    min=0.1,
                    max=4,
                    vary=vary[1])
+        params.add('sigma_d',
+                   value=guesses[2],
+                   min=1,
+                   max=20,
+                   vary=vary[2])
 
         # Perform the fit!
         result = minimize(calc_residual,
@@ -2061,14 +1956,14 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
                                         size=residuals.size,
                                         replace=True)
             phi_cnm = params['phi_cnm'].value
-            phi_mol = params['phi_mol'].value
+            sigma_d = params['sigma_d'].value
             Z = params['Z'].value
-            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol)
+            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d)
             residual = rh2 - rh2_model
 
             empty = np.empty(nboot)
             param_dict = {}
-            param_names = ('phi_cnm', 'Z', 'phi_mol')
+            param_names = ('phi_cnm', 'Z', 'sigma_d')
             for param_name in param_names:
                 param_dict[param_name] = empty.copy()
 
@@ -2092,16 +1987,16 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
                 #print param_name, conf
         else:
             rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
-                    params['phi_mol'].value)
+                    params['sigma_d'].value)
 
     if not odr_fit:
         h_sd_error = None
         rh2_error = None
 
-    phi_cnm, Z, phi_mol = guesses
+    phi_cnm, Z, sigma_d = guesses
     def odr_func(phi_cnm, h_sd):
 
-        return k09.calc_rh2(h_sd, phi_cnm, Z, phi_mol=phi_mol,
+        return k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d,
                             return_fractions=False)
 
     model = odr.Model(odr_func)
@@ -2110,7 +2005,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
     output = odr_instance.run()
     phi_cnm = output.beta[0]
 
-    rh2_fit_params = (phi_cnm, Z, phi_mol)
+    rh2_fit_params = (phi_cnm, Z, sigma_d)
 
     return rh2_fit_params
 
@@ -2715,7 +2610,7 @@ def bootstrap_worker(global_args, i):
                             plot_kwargs=plot_kwargs,
                             use_intercept=use_intercept)
 
-    # Calculate N(H2), then HI + H2 surf dens, fit relationship
+    # Calculate N(H2), then HI + H2 surf dens
     # -------------------------------------------------------------------------
     # calculate N(H2) maps
     nh2_image = calculate_nh2(nhi_image=nhi_sim,
@@ -2751,20 +2646,15 @@ def bootstrap_worker(global_args, i):
     ss_model_results = {}
 
     # scale phi_g by relative to the galactic DGR
+    # ---------------------------------------------------------------------------
     # Galactic DGR = 5.3 x 10^-22 cm^2 mag
     # our DGR in units of 10^-20 cm^2 mag
     # Galactic DGR in our units = 5.3 x 10^-22 / 10^-20 = 5.3 x 10^-2 = 0.053
-    if 1:
-        DGR = av_model_results['dgr_cloud']
-        #print 'DGR = ', DGR
-        phi_g = DGR / 0.053
-        Z = DGR / 0.053
-        #print 'phi_g', phi_g
-        new_model_kwargs = dict(model_kwargs)
-        new_model_kwargs['sternberg_params']['guesses'][2] = phi_g
-        #new_model_kwargs['sternberg_params']['guesses'][1] = Z
+    DGR = av_model_results['dgr_cloud']
+    new_model_kwargs = lm_science.scale_dust_areas(DGR, model_kwargs)
 
     # cycle through each core, bootstrapping the pixels
+    # ---------------------------------------------------------------------------
     for core in cores_to_plot:
         if rotate_cores:
             core_indices = get_rotated_core_indices(cores[core],
@@ -2772,15 +2662,12 @@ def bootstrap_worker(global_args, i):
                                                     corename=core,
                                                     iteration=i,
                                                     )
-            #if core == 'G168.54-6.22':
-            #    print np.sum(core_indices)
         else:
             # grab the indices of the core in the unraveled array
             core_indices = cores[core]['indices']
 
         if 0:
             assert av[core_indices] == cores[core]['test_pix']
-
 
         if 0:
             print('\n\tRegion size = ' + \
@@ -2792,30 +2679,30 @@ def bootstrap_worker(global_args, i):
         core_boot_indices = np.random.choice(core_indices.size,
                                              size=core_indices.size,)
         # get bootstrapped pixels
-        #h_sd_core = h_sd_image[core_boot_indices]
-        #rh2_core = rh2_image[core_boot_indices]
         h_sd_core = h_sd_image[core_indices]
         h_sd_core_error = h_sd_image_error[core_indices]
         rh2_core = rh2_image[core_indices]
         rh2_core_error = rh2_image_error[core_indices]
 
         # mask negative ratios
-        if 1:
-            mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
-            rh2_core = rh2_core[~mask_rh2]
-            rh2_core_error = rh2_core_error[~mask_rh2]
-            h_sd_core = h_sd_core[~mask_rh2]
-            h_sd_core_error = h_sd_core_error[~mask_rh2]
+        mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
+        rh2_core = rh2_core[~mask_rh2]
+        rh2_core_error = rh2_core_error[~mask_rh2]
+        h_sd_core = h_sd_core[~mask_rh2]
+        h_sd_core_error = h_sd_core_error[~mask_rh2]
 
         G0 = model_kwargs['krumholz_params']['G0'] + \
              np.random.normal(model_kwargs['krumholz_params']['G0_error'])
+
+        # Fit the models
+        # -----------------------------------------------------------------------
         ss_model_result = \
-            fit_steady_state_models(h_sd_core,
-                                    rh2_core,
-                                    rh2_error=rh2_core_error,
-                                    h_sd_error=h_sd_core_error,
-                                    model_kwargs=model_kwargs,
-                                    )
+            lm_science.fit_steady_state_models(h_sd_core,
+                                               rh2_core,
+                                               rh2_error=rh2_core_error,
+                                               h_sd_error=h_sd_core_error,
+                                               model_kwargs=new_model_kwargs,
+                                               )
 
         if plot_kwargs['plot_diagnostics']:
             filename = plot_kwargs['figure_dir'] + \
@@ -2829,16 +2716,11 @@ def bootstrap_worker(global_args, i):
                                      model_results=ss_model_result,
                                      filename=filename)
 
-        #print '\npost fit phi_g:'
-        #print ss_model_result['sternberg_results']['phi_g']
-
         # get HI transition result
         add_hi_transition_calc(ss_model_result)
         ss_model_results[core] = ss_model_result
 
         phi_cnm = ss_model_result['krumholz_results']['phi_cnm']
-        #if phi_cnm < 0:
-            #print 'core = ', core, ' phi_cnm =', phi_cnm
 
     # Write results
     # -------------------------------------------------------------------------
@@ -2853,55 +2735,6 @@ def bootstrap_worker(global_args, i):
     mc_results['ss_model_results'] = ss_model_results
     mc_results['sim_images'] = error_dict
 
-    # Plot distribution and fit
-    #if plot_kwargs['plot_diagnostics']:
-    if 0:
-        dgr_cloud = av_model_results['dgr_cloud']
-        dgr_background = av_model_results['dgr_background']
-        intercept = av_model_results['intercept']
-
-        filename = plot_kwargs['figure_dir'] + \
-                   'diagnostics/av_nhi/' + plot_kwargs['filename_base'] + \
-                   '_av_vs_nhi_bootstrap' + \
-                   '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
-        av_cloud = create_cloud_model(av_boot,
-                                     nhi_back_boot,
-                                     dgr_background,)
-        av_background = create_background_model(av_boot,
-                                     nhi_boot,
-                                     dgr_cloud,)
-        if nhi_back_boot is not None:
-            #nhi_total = nhi_boot + nhi_back_boot
-            #nhi_total = np.hstack((nhi_boot, nhi_back_boot))
-            #av_boot = np.hstack((av_cloud, av_background))
-            #av_images = (av_boot, av_cloud, av_background)
-            av_images = (av_cloud, av_background)
-            #nhi_images = (nhi_total, nhi_boot, nhi_back_boot)
-            nhi_images = (nhi_boot, nhi_back_boot)
-        else:
-            nhi_total = nhi_boot
-            av_images = (av_boot,)
-            nhi_images = (nhi_total,)
-
-        fit_params = {
-                      'dgr_cloud': dgr_cloud,
-                      'dgr_cloud_error': (0, 0),
-                      'dgr_background': dgr_background,
-                      'dgr_background_error': (0, 0),
-                      'intercept': intercept,
-                      'intercept_error': (0,0),
-                      }
-
-        #print('plotting')
-        plot_av_vs_nhi(av_images,
-                       nhi_images,
-                       av_error=av_error_boot,
-                       fit_params=fit_params,
-                       contour_plot=plot_kwargs['av_nhi_contour'],
-                       limits=plot_kwargs['av_nhi_limits'],
-                       filename=filename,
-                       )
-    #queue.put(result)
     return mc_results
 
 def bootstrap_worker_wrapper(args, i):
@@ -3083,7 +2916,7 @@ def residual_worker(global_args, core):
     h_sd_core = h_sd_core[~mask_rh2]
 
     ss_model_result = \
-        fit_steady_state_models(h_sd_core,
+        lm_science.fit_steady_state_models(h_sd_core,
                                 rh2_core,
                                 rh2_error=rh2_core_error,
                                 model_kwargs=model_kwargs,
@@ -3301,7 +3134,7 @@ def collect_bootstrap_results(processes, ss_model_kwargs, multiprocess=True):
         core_dict['krumholz_results'] = \
                 {'phi_cnm': empty(),
                  'Z': empty(),
-                 'phi_mol': empty(),
+                 'sigma_d': empty(),
                  'hi_transition': empty(),
                  }
         core_dict['sternberg_results'] = \
@@ -3748,22 +3581,22 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     # --------------------
     vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = False # Vary metallicity in K+09 fit?
-    vary_phi_mol = False # Vary phi_mol in K+09 fit?
+    vary_sigma_d = False # Vary sigma_d in K+09 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[8.0, 1.0, 10.0] # Guesses for (phi_cnm, Z, phi_mol)
+    guesses=[8.0, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
-    krumholz_params['param_vary'] = [vary_phi_cnm, vary_Z, vary_phi_mol]
+    krumholz_params['param_vary'] = [vary_phi_cnm, vary_Z, vary_sigma_d]
     krumholz_params['error_method'] = error_method
     krumholz_params['alpha'] = alpha
     krumholz_params['guesses'] = guesses
     krumholz_params['h_sd_fit_range'] = h_sd_fit_range
     krumholz_params['results_filename'] = results_filename
-    krumholz_params['parameters'] = ['phi_cnm', 'Z', 'phi_mol']
+    krumholz_params['parameters'] = ['phi_cnm', 'Z', 'sigma_d']
     if cloud_name == 'taurus':
         G0 = 0.6
         G0_error = 0.1
