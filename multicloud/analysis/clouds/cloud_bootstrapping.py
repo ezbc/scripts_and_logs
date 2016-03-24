@@ -188,6 +188,7 @@ def plot_multicloud_results(results):
         cores = global_args['ss_model_kwargs']['cores']
         cores_to_plot = global_args['ss_model_kwargs']['cores_to_plot']
         model_kwargs = global_args['ss_model_kwargs']['model_kwargs']
+        model_kwargs = lm_science.scale_dust_areas(dgr_list[i], model_kwargs)
         rh2_core_list = []
         hsd_core_list = []
         hisd_core_list = []
@@ -1546,12 +1547,6 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         data_array = h_sd, rh2, h_sd_error, rh2_error
         h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
 
-    if 0:
-        print 'h_sd', h_sd
-        print 'h_sd_error', h_sd_error
-        print 'rh2', rh2
-        print 'rh2_error', rh2_error
-
     ss_model_result = \
         lm_science.fit_steady_state_models(h_sd.ravel(),
                                 rh2.ravel(),
@@ -1849,6 +1844,8 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
         h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e3)
 
     params = [params['phi_cnm'], params['Z'], params['sigma_d']]
+    print 'calc_krumholz params', params
+
     if params[0] <= 0 or np.isnan(params[0]):
         rh2_fit, f_H2, f_HI = np.empty(1), np.empty(1), np.empty(1)
     else:
@@ -1869,184 +1866,6 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
         output.append(hi_sd)
 
     return output
-
-def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 10.0], h_sd_error=None,
-        rh2_error=None, verbose=False, vary=[True, True, True],
-        bootstrap_residuals=False, nboot=100, G0=1.0, odr_fit=True):
-
-    '''
-    Parameters
-    ----------
-    h_sd : array-like
-        Hydrogen surface density in units of solar mass per parsec**2
-    rh2 : array-like
-        Ratio between molecular and atomic hydrogen masses.
-    guesses : None, scalar, or M-length sequence.
-        Initial guess for the parameters. See scipy.optimize.curve_fit.
-    rh2_error : bool
-        Error in rh2 parameter. Calculates a more accurate chi^2 statistic
-    G0 : float
-        radiation field
-
-    Returns
-    -------
-    rh2_fit_params : array-like, optional
-        Model parameter fits.
-
-    '''
-
-    from scipy.optimize import curve_fit
-    from scipy import stats
-    from lmfit import minimize, Parameters, report_fit
-    from myscience import krumholz09 as k09
-    import mystats
-    import scipy.odr as odr
-
-    #if not odr_fit:
-    if 0:
-        def chisq(params, h_sd, rh2):
-            phi_cnm = params['phi_cnm'].value
-            sigma_d = params['sigma_d'].value
-            Z = params['Z'].value
-
-            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d)
-
-            chisq = np.sum(np.abs(rh2 - rh2_model))
-
-            return chisq
-
-        def calc_residual(params, h_sd, rh2, G0):
-            phi_cnm = params['phi_cnm'].value
-            sigma_d = params['sigma_d'].value
-            Z = params['Z'].value
-
-            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d,)
-
-            residual = rh2 - rh2_model
-
-            return residual
-
-        # Set parameter limits and initial guesses
-        params = Parameters()
-        params.add('phi_cnm',
-                   value=guesses[0],
-                   min=0.001,
-                   max=1000,
-                   vary=vary[0])
-        params.add('Z',
-                   value=guesses[1],
-                   min=0.1,
-                   max=4,
-                   vary=vary[1])
-        params.add('sigma_d',
-                   value=guesses[2],
-                   min=1,
-                   max=20,
-                   vary=vary[2])
-
-        # Perform the fit!
-        result = minimize(calc_residual,
-                          params,
-                          args=(h_sd, rh2, G0),
-                          method='leastsq')
-
-        if bootstrap_residuals:
-            def resample_residuals(residuals):
-                return np.random.choice(residuals,
-                                        size=residuals.size,
-                                        replace=True)
-            phi_cnm = params['phi_cnm'].value
-            sigma_d = params['sigma_d'].value
-            Z = params['Z'].value
-            rh2_model = k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d)
-            residual = rh2 - rh2_model
-
-            empty = np.empty(nboot)
-            param_dict = {}
-            param_names = ('phi_cnm', 'Z', 'sigma_d')
-            for param_name in param_names:
-                param_dict[param_name] = empty.copy()
-
-            for i in xrange(nboot):
-                rh2_resampled = rh2_model + resample_residuals(residual)
-                result = minimize(calc_residual,
-                                  params,
-                                  args=(h_sd, rh2_resampled),
-                                  #method='anneal',
-                                  method='leastsq',
-                                  )
-
-                for param_name in param_names:
-                    param_dict[param_name][i] = params[param_name].value
-
-            rh2_fit_params = []
-            for param_name in param_names:
-                conf = mystats.calc_cdf_error(param_dict[param_name])
-                rh2_fit_params.append(conf[0])
-                rh2_fit_params.append(conf[1])
-                #print param_name, conf
-        else:
-            rh2_fit_params = (params['phi_cnm'].value, params['Z'].value,
-                    params['sigma_d'].value)
-
-    if not odr_fit:
-        h_sd_error = None
-        rh2_error = None
-
-    phi_cnm, Z, sigma_d = guesses
-    def odr_func(phi_cnm, h_sd):
-
-        return k09.calc_rh2(h_sd, phi_cnm, Z, sigma_d=sigma_d,
-                            return_fractions=False)
-
-    model = odr.Model(odr_func)
-    data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
-    odr_instance = odr.ODR(data, model, beta0=[phi_cnm,])
-    output = odr_instance.run()
-    phi_cnm = output.beta[0]
-
-    rh2_fit_params = (phi_cnm, Z, sigma_d)
-
-    return rh2_fit_params
-
-def analyze_krumholz_model(krumholz_results):
-
-    ''' Calculates various properties of Krumholz model from fitted phi_cnm
-    values.
-
-    '''
-
-    from myscience.krumholz09 import calc_T_cnm
-
-    # Calculate T_cnm from Krumholz et al. (2009) Eq 19
-    phi_cnm, phi_cnm_error, Z = \
-        [krumholz_results[key] for key in ('phi_cnm', 'phi_cnm_error', 'Z')]
-    T_cnm = calc_T_cnm(phi_cnm, Z=Z)
-    T_cnm_error = []
-    T_cnm_error.append(\
-            T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[0], Z=Z))
-    T_cnm_error.append(\
-            T_cnm - calc_T_cnm(phi_cnm + phi_cnm_error[1], Z=Z))
-
-    krumholz_results.update({'T_cnm': T_cnm,
-                             'T_cnm_error': T_cnm_error})
-
-    # Get fitted surface density ratios...
-    params = [krumholz_results[param] for param in \
-              krumholz_results['parameters']]
-
-    rh2_fit, h_sd_fit, f_H2, f_HI = \
-           calc_krumholz(params=params,
-                          h_sd_extent=krumholz_results['h_sd_fit_range'],
-                          return_fractions=True)
-
-    krumholz_results.update({'rh2_fit': rh2_fit,
-                             'h_sd_fit' : h_sd_fit,
-                             'hi_sd_fit' : f_HI * h_sd_fit,
-                             'f_H2' : f_H2,
-                             'f_HI' : f_HI,})
-
-    return krumholz_results
 
 def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
         return_hisd=False, h_sd=None):
@@ -2082,6 +1901,8 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
         h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e3)
 
     params = [params['alphaG'], params['Z'], params['phi_g']]
+    print 'calc_sternberg params', params
+
     if params[0] <= 0 or np.isnan(params[0]):
         rh2_fit, f_H2, f_HI = np.empty(1), np.empty(1), np.empty(1)
     else:
@@ -2101,167 +1922,6 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
         output.append(hi_sd)
 
     return output
-
-def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
-        h_sd_error=None, verbose=False, vary=[True, True, True],
-        radiation_type='isotropic', bootstrap_residuals=False, nboot=100,
-        odr_fit=True):
-
-    '''
-    Parameters
-    ----------
-    h_sd : array-like
-        Hydrogen surface density in units of solar mass per parsec**2
-    rh2 : array-like
-        Ratio between molecular and atomic hydrogen masses.
-    guesses : None, scalar, or M-length sequence.
-        Initial guess for the parameters. See scipy.optimize.curve_fit.
-    rh2_error : bool
-        Error in rh2 parameter. Calculates a more accurate chi^2 statistic
-
-    Returns
-    -------
-    rh2_fit_params : array-like, optional
-        Model parameter fits.
-
-
-    Residual bootstrapping:
-    http://stats.stackexchange.com/questions/67519/bootstrapping-residuals-am-i-doing-it-right
-
-
-    '''
-
-    from scipy.optimize import curve_fit
-    from scipy import stats
-    from lmfit import minimize, Parameters, report_fit, Minimizer
-    import lmfit
-    from myscience import sternberg14 as s14
-    import mystats
-    import scipy.odr as odr
-
-    #if not odr_fit:
-    if 0:
-        def calc_residual(params, h_sd, rh2):
-            alphaG = params['alphaG'].value
-            phi_g = params['phi_g'].value
-            Z = params['Z'].value
-
-            rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                     return_fractions=False)
-
-            residual = rh2 - rh2_model
-
-            return residual
-
-        # Set parameter limits and initial guesses
-        params = Parameters()
-        params.add('alphaG',
-                   value=guesses[0],
-                   min=0.1,
-                   max=500,
-                   vary=vary[0])
-        params.add('phi_g',
-                   value=guesses[2],
-                   min=0.01,
-                   max=10,
-                   vary=vary[2])
-        params.add('Z',
-                   value=guesses[1],
-                   min=0.1,
-                   max=4,
-                   vary=vary[1])
-
-        # Perform the fit!
-        result = minimize(calc_residual,
-                          params,
-                          args=(h_sd, rh2),
-                          method='leastsq',
-                          #method='anneal',
-                          )
-
-        if bootstrap_residuals:
-            def resample_residuals(residuals):
-                return np.random.choice(residuals,
-                                        size=residuals.size,
-                                        replace=True)
-            alphaG = params['alphaG'].value
-            phi_g = params['phi_g'].value
-            Z = params['Z'].value
-            rh2_model = s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                     return_fractions=False)
-            residual = rh2 - rh2_model
-
-            empty = np.empty(nboot)
-            param_dict = {}
-            param_names = ('alphaG', 'Z', 'phi_g',)
-            for param_name in param_names:
-                param_dict[param_name] = empty.copy()
-
-            for i in xrange(nboot):
-                rh2_resampled = rh2_model + resample_residuals(residual)
-                result = minimize(calc_residual,
-                                  params,
-                                  args=(h_sd, rh2_resampled),
-                                  #method='leastsq',
-                                  method='anneal',
-                                  )
-
-                for param_name in param_names:
-                    param_dict[param_name][i] = params[param_name].value
-
-            rh2_fit_params = []
-            for param_name in param_names:
-                conf = mystats.calc_cdf_error(param_dict[param_name])
-                rh2_fit_params.append(conf[0])
-                rh2_fit_params.append(conf[1])
-                #print param_name, conf
-        else:
-            rh2_fit_params = (params['alphaG'].value, params['Z'].value,
-                    params['phi_g'].value)
-
-    if not odr_fit:
-        h_sd_error = None
-        rh2_error = None
-
-    alphaG, Z, phi_g = guesses
-    def odr_func(alphaG, h_sd):
-        return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                 return_fractions=False)
-
-    h_sd_error, rh2_error = None, None
-    model = odr.Model(odr_func)
-    data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
-    odr_instance = odr.ODR(data, model, beta0=[alphaG,])
-    output = odr_instance.run()
-    alphaG = output.beta[0]
-
-    rh2_fit_params = (alphaG, Z, phi_g)
-
-    return rh2_fit_params
-
-def analyze_sternberg_model(sternberg_results):
-
-    ''' Calculates various properties of Krumholz model from fitted phi_cnm
-    values.
-
-    '''
-
-    # Get fitted surface density ratios...
-    params = [sternberg_results[param] for param in \
-              sternberg_results['parameters']]
-
-    rh2_fit, h_sd_fit, f_H2, f_HI = \
-           calc_sternberg(params=params,
-                          h_sd_extent=sternberg_results['h_sd_fit_range'],
-                          return_fractions=True)
-
-    sternberg_results.update({'rh2_fit': rh2_fit,
-                              'h_sd_fit' : h_sd_fit,
-                              'hi_sd_fit' : (1 - f_H2) * h_sd_fit,
-                              'f_H2' : f_H2,
-                              'f_HI' : f_HI,})
-
-    return sternberg_results
 
 
 '''
@@ -2691,9 +2351,6 @@ def bootstrap_worker(global_args, i):
         h_sd_core = h_sd_core[~mask_rh2]
         h_sd_core_error = h_sd_core_error[~mask_rh2]
 
-        G0 = model_kwargs['krumholz_params']['G0'] + \
-             np.random.normal(model_kwargs['krumholz_params']['G0_error'])
-
         # Fit the models
         # -----------------------------------------------------------------------
         ss_model_result = \
@@ -2709,7 +2366,7 @@ def bootstrap_worker(global_args, i):
                        'diagnostics/models/' + plot_kwargs['filename_base'] + \
                        '_rh2_vs_h_bootstrap' + \
                        '{0:03d}.png'.format(plot_kwargs['bootstrap_num'])
-            plot_rh2_vs_h_diagnostic(h_sd_core,
+            lm_plt.plot_rh2_vs_h_diagnostic(h_sd_core,
                                      rh2_core,
                                      h_sd_error=h_sd_core_error,
                                      rh2_error=rh2_core_error,
@@ -2719,8 +2376,6 @@ def bootstrap_worker(global_args, i):
         # get HI transition result
         add_hi_transition_calc(ss_model_result)
         ss_model_results[core] = ss_model_result
-
-        phi_cnm = ss_model_result['krumholz_results']['phi_cnm']
 
     # Write results
     # -------------------------------------------------------------------------
@@ -3586,7 +3241,7 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[8.0, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
+    guesses=[0.5, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
@@ -4093,8 +3748,8 @@ def run_cloud_analysis(global_args,):
                                   )
         global_args['vel_range_error'] = hi_range_error
 
-        print('\nVelocity range and error:')
-        print('[{0:.2f}, {1:.2f}] +/- {2:.2f} km/s'.format(velocity_range[0],
+        print('\n\tVelocity range and error:')
+        print('\t\t[{0:.2f}, {1:.2f}] +/- {2:.2f} km/s'.format(velocity_range[0],
                                                            velocity_range[1],
                                                            hi_range_error))
     else:
@@ -4414,7 +4069,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 1,
-                'num_bootstraps': 10000,
+                'num_bootstraps': 10,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4429,9 +4084,9 @@ def main():
                 'likelihood_resolution': 'coarse',
                 'region': permutation[8],
                 'subtract_comps': permutation[9],
-                'plot_diagnostics': 0,
+                'plot_diagnostics': 1,
                 'use_background': permutation[10],
-                'clobber_spectra': 1,
+                'clobber_spectra': 0,
                 'smooth_hi_to_co_res': 1,
                 'clobber_hi_error': 0,
                 'sim_hi_error': True,
