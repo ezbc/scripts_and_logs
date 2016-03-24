@@ -1632,8 +1632,8 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                 params['phi_cnm'] = \
                     core_results['krumholz_results']['phi_cnm'][j]
                 params['Z'] = core_results['krumholz_results']['Z'][j]
-                params['phi_mol'] = \
-                    core_results['krumholz_results']['phi_mol'][j]
+                params['sigma_d'] = \
+                    core_results['krumholz_results']['sigma_d'][j]
                 params['alphaG'] = \
                     core_results['sternberg_results']['alphaG'][j]
                 params['Z'] = core_results['sternberg_results']['Z'][j]
@@ -1665,6 +1665,7 @@ def plot_hi_vs_h_grid(hsd_list, hisd_list, core_names=None, model_results=None,
                                color='r')
 
         elif 1:
+            print('\tFitting models to data')
             for model in ('krumholz', 'sternberg'):
                 analysis = model_analysis[core][model + '_results']
                 plot_fits = calc_model_plot_fit(analysis,
@@ -2715,8 +2716,8 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
                 params['phi_cnm'] = \
                     core_results['krumholz_results']['phi_cnm'][j]
                 params['Z'] = core_results['krumholz_results']['Z'][j]
-                params['phi_mol'] = \
-                    core_results['krumholz_results']['phi_mol'][j]
+                params['sigma_d'] = \
+                    core_results['krumholz_results']['sigma_d'][j]
                 if 'sternberg' in model:
                     model_fits = calc_sternberg(params,
                                               h_sd_extent=(0, limits[1]),
@@ -3075,8 +3076,8 @@ def plot_rh2_vs_h(hsd_list, hisd_list, core_names=None,
                 params['phi_cnm'] = \
                     core_results['krumholz_results']['phi_cnm'][j]
                 params['Z'] = core_results['krumholz_results']['Z'][j]
-                params['phi_mol'] = \
-                    core_results['krumholz_results']['phi_mol'][j]
+                params['sigma_d'] = \
+                    core_results['krumholz_results']['sigma_d'][j]
                 if 'sternberg' in model:
                     model_fits = calc_sternberg(params,
                                               h_sd_extent=(0, limits[1]),
@@ -3292,6 +3293,7 @@ def plot_rh2_vs_h_diagnostic(h_sd, rh2, h_sd_error=None, rh2_error=None,
                     xerr=h_sd_error,
                     yerr=rh2_error,
                     #markersize=1.5,
+                    linestyle='',
                     marker='^',
                     alpha=0.3,
                     color='k',
@@ -3307,11 +3309,11 @@ def plot_rh2_vs_h_diagnostic(h_sd, rh2, h_sd_error=None, rh2_error=None,
         s14 = model_results['sternberg_results']
         s14_params = (s14['alphaG'], s14['Z'], s14['phi_g'])
         k09 = model_results['krumholz_results']
-        k09_params = (k09['phi_cnm'], k09['Z'], k09['phi_mol'])
+        k09_params = (k09['phi_cnm'], k09['Z'], k09['sigma_d'])
         h_sd_extent = np.logspace(-2, 3, 1000)
 
         # Sternberg
-        model_fits = calc_sternberg(s14,
+        model_fits = cloud_boot.calc_sternberg(s14,
                                   h_sd=h_sd_extent,
                                   return_fractions=False,
                                   return_hisd=True)
@@ -3401,7 +3403,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
         phi_cnm_high = phi_cnm + analysis['phi_cnm_error'][1]
 
         params = {'phi_cnm': phi_cnm,
-                  'phi_mol': analysis['phi_mol'],
+                  'sigma_d': analysis['sigma_d'],
                   'Z': analysis['Z'],
                   }
         h_sd, hi_sd = cloud_boot.calc_krumholz(params,
@@ -3411,7 +3413,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                                   return_hisd=True)[1:3]
 
         params = {'phi_cnm': phi_cnm_high,
-                  'phi_mol': analysis['phi_mol'],
+                  'sigma_d': analysis['sigma_d'],
                   'Z': analysis['Z'],
                   }
         hi_sd_low = cloud_boot.calc_krumholz(params,
@@ -3421,7 +3423,7 @@ def calc_model_plot_fit(analysis, model='krumholz', hsd=None,):
                                   return_hisd=True)[2]
 
         params = {'phi_cnm': phi_cnm_low,
-                  'phi_mol': analysis['phi_mol'],
+                  'sigma_d': analysis['sigma_d'],
                   'Z': analysis['Z'],
                   }
         hi_sd_high = cloud_boot.calc_krumholz(params,
