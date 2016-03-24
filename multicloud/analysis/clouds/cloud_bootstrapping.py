@@ -663,6 +663,7 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
 
                 print 'chisq:'
                 print stats_list['sternberg_results']['chisq_reduced'][j]
+                print stats_list['krumholz_results']['chisq_reduced'][j]
 
     # save the dict?
     if filename is not None:
@@ -1560,15 +1561,6 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         for param in ss_model_result[model]:
             params[param] = ss_model_result[model][param]
 
-        if 0:
-            params['phi_cnm'] = 3
-            params['alphaG'] = 10
-            params['phi_g'] = 3
-            params['sigma_d'] = 10
-            params['Z'] = 1
-
-
-
         # Calculate sum of residuals
         if 'sternberg' in model:
             model_fits = calc_sternberg(params,
@@ -1844,7 +1836,7 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
         h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e3)
 
     params = [params['phi_cnm'], params['Z'], params['sigma_d']]
-    print 'calc_krumholz params', params
+    #print 'calc_krumholz params', params
 
     if params[0] <= 0 or np.isnan(params[0]):
         rh2_fit, f_H2, f_HI = np.empty(1), np.empty(1), np.empty(1)
@@ -1901,7 +1893,7 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
         h_sd = np.linspace(h_sd_extent[0], h_sd_extent[1], 1e3)
 
     params = [params['alphaG'], params['Z'], params['phi_g']]
-    print 'calc_sternberg params', params
+    #print 'calc_sternberg params', params
 
     if params[0] <= 0 or np.isnan(params[0]):
         rh2_fit, f_H2, f_HI = np.empty(1), np.empty(1), np.empty(1)
@@ -4068,8 +4060,8 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
-                'num_bootstraps': 10,
+                'load': 0,
+                'num_bootstraps': 200,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
