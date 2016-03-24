@@ -547,7 +547,6 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
 
     cloud_props = {}
     for core_name in core_dict:
-        print core_dict[core_name].keys()
         # load cloud regions
         core_dict = add_cloud_region(core_dict)
         vertices_wcs = core_dict[core_name]['cloud_region_vertices'].T
@@ -1068,7 +1067,7 @@ def save_core_dict(core_dict):
 
 def main():
 
-    LOAD_MC_RESULTS = True
+    LOAD_MC_RESULTS = False
     N_MC = 100
     WRITE_CORE_DICT = True
 
