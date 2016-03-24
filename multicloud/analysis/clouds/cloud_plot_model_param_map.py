@@ -265,24 +265,24 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
         #if 'krumholz' in models:
         #    parameters.append('phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
 
-    parameters = ['phi_cnm', 'alphaG', 'hi_transition', 'n_H', 'T_H']
+    parameters = ['hi_transition', 'n_H', 'n_cnm']
 
 
-    nrows_ncols=(5,1)
-    ngrids=5
+    ngrids=len(parameters)
+    nrows_ncols=(ngrids,1)
     axesgrid = AxesGrid(fig, (1,1,1),
                  nrows_ncols=nrows_ncols,
                  ngrids=ngrids,
                  cbar_mode="each",
-                 cbar_location='right',
+                 cbar_location='top',
                  cbar_pad="2%",
-                 cbar_size='3%',
-                 axes_pad=0.1,
+                 cbar_size='5%',
+                 axes_pad=0.4,
                  axes_class=(wcs.Axes,
                              dict(header=header)),
                  aspect=True,
                  label_mode='L',
-                 share_all=False)
+                 share_all=True)
 
     # ------------------
     # Av image
@@ -353,6 +353,8 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
             cbar.set_label_text(r'$I_{UV}$ [$I_{UV,D}$]',)
         elif parameter == 'n_H':
             cbar.set_label_text(r'$n_H$ [cm$^{-3}$]',)
+        elif parameter == 'n_cnm':
+            cbar.set_label_text(r'$n_{\rm CNM}$ [cm$^{-3}$]',)
         elif parameter == 'T_H':
             cbar.set_label_text(r'$T_H$ [1,000 K]',)
         elif parameter == 'phi_cnm':
@@ -360,8 +362,8 @@ def plot_ISMparams_map(header=None, av_image=None, df=None, core_dict=None,
         elif parameter == 'alphaG':
             cbar.set_label_text(r'$\alpha G$',)
         elif parameter == 'hi_transition':
-            cbar.set_label_text(r'$\Sigma_{\rm HI,trans}$ ' + \
-                                r'$[M_\odot\,{\rm pc}^{-2}]$',)
+            cbar.set_label_text(r'$\Sigma_{\rm H\,I,S+14}$ ' + \
+                                r'[M$_\odot\,{\rm pc}^{-2}]$',)
 
     if filename is not None:
         plt.savefig(filename, bbox_inches='tight', dpi=100)
@@ -1305,7 +1307,7 @@ def main():
 
     import matplotlib
 
-    PLOT_CDFS = 0
+    PLOT_CDFS = 1
 
     # get core data
     df = load_table()
