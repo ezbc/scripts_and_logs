@@ -246,6 +246,17 @@ def plot_multicloud_results(results):
                 plt.imshow(rh2_copy, origin='lower')
                 plt.savefig('/d/bip3/ezbc/scratch/core_' + core + '.png')
 
+
+            write_core_values_to_csv(core,
+                                     hisd=hisd_core_list[j],
+                                     hisd_error=hisd_error_core_list[j],
+                                     rh2=rh2_core_list[j],
+                                     rh2_error=rh2_error_core_list[j],
+                                     hsd=hsd_core_list[j],
+                                     hsd_error=hsd_error_core_list[j],
+                                     fits=model_fits_list[j],
+                                     )
+
         cloud_model_fits_list.append(model_fits_list)
         core_names_list.append(core_names)
         hisd_cores_list.append(hisd_core_list)
@@ -575,6 +586,47 @@ def plot_multicloud_results(results):
 '''
 Data Prep functions
 '''
+
+def collect_results(results):
+
+
+
+def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
+        rh2_error=None, hisd_error=None, hsd_error=None, fits=None,):
+
+    import pandas as pd
+
+    filename = '/d/bip3/ezbc/multicloud/data/python_output/tables/cores/' + \
+               'properties_' + core_name + '.csv'
+
+    data = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error,
+            fits['sternberg_results']['hisd_ind'],
+            fits['sternberg_results']['hsd_ind'],
+            fits['sternberg_results']['rh2_ind'],
+            fits['krumholz_results']['hisd_ind'],
+            fits['krumholz_results']['hsd_ind'],
+            fits['krumholz_results']['rh2_ind'],
+            ]
+
+    columns = ('HI_SD', 'HI_SD_ERR', 'H_SD', 'H_SD_ERR', 'RH2', 'RH2_ERR',
+               'HI_SD_S14FIT', 'H_SD_S14FIT', 'RH2_S14FIT',
+               'HI_SD_K09FIT', 'H_SD_K09FIT', 'RH2_K09FIT',
+               )
+
+    data[:5] = mask_nans(data[:5])
+    print core_name
+    for i, column in enumerate(columns):
+        print column, len(data[i])
+
+    data_dict = {}
+    for i, column in enumerate(columns):
+        data_dict[column] = data[i]
+
+    # WRite the data to a dataframe
+    df = pd.DataFrame(data_dict)
+
+    # csv
+    df.to_csv(filename, index=False)
 
 def print_BIC_results(stats_list, core_names):
 
@@ -1583,6 +1635,9 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         fits['dof'] = np.size(rh2) - 1
         fits['sum_of_resid'] = np.sum((rh2 - model_fits[0])**2)
         fits['logL'] = mystats.calc_logL(model_fits[0], rh2, rh2_error)
+        fits['rh2_ind'] = rh2_fit
+        fits['hsd_ind'] = hsd_fit
+        fits['hisd_ind'] = hisd_fit
         try:
             fits['chisq_reduced'] = \
                 mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
@@ -4060,8 +4115,8 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
-                'num_bootstraps': 200,
+                'load': 1,
+                'num_bootstraps': 300,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4114,6 +4169,7 @@ def main():
             print('\n\tPlotting')
             lm_plt.plot_results(results[global_args['cloud_name']])
 
+    collect_results(results)
     plot_multicloud_results(results)
 
 if __name__ == '__main__':
