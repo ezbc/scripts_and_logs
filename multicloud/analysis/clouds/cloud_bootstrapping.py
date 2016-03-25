@@ -163,7 +163,7 @@ def plot_multicloud_results(results):
         hi_range_kwargs_list.append(data_products['hi_range_kwargs'])
         #av_list.append(data_products['av_data_backsub'])
         av_list.append(data_products['av'])
-        av_error_list.append(results_dict['data']['av_error_data'])
+        av_error_list.append(data_products['av_error'])
         nhi_list.append(data_products['nhi'])
         nh2_list.append(data_products['nh2'])
         rh2_list.append(data_products['rh2'])
@@ -239,6 +239,10 @@ def plot_multicloud_results(results):
                         fits[model]['chisq_reduced'])
                 stats_list[model]['BIC'].append(\
                         fits[model]['BIC'])
+                print 'K+09 core params for ' + core
+                print fits['krumholz_results']['params']
+                print 'S+14 core params for ' + core
+                print fits['sternberg_results']['params']
 
             if 0:
                 rh2_copy = rh2_list[i].copy()
@@ -610,6 +614,7 @@ def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
 
     import pandas as pd
 
+    # core values
     filename = '/d/bip3/ezbc/multicloud/data/python_output/tables/cores/' + \
                'properties_' + core_name + '.csv'
 
@@ -627,17 +632,41 @@ def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
                'HI_SD_K09FIT', 'H_SD_K09FIT', 'RH2_K09FIT',
                )
 
+    # mask nans from data
     data[:6] = mask_nans(data[:6])
-    print core_name
-    for i, column in enumerate(columns):
-        print column, len(data[i])
 
     data_dict = {}
     for i, column in enumerate(columns):
         data_dict[column] = data[i]
 
     # WRite the data to a dataframe
-    df = pd.DataFrame(data_dict)
+    df = pd.DataFrame(data_dict, columns=columns)
+
+    # csv
+    df.to_csv(filename, index=False)
+
+
+
+    # core parameters
+    filename = '/d/bip3/ezbc/multicloud/data/python_output/tables/cores/' + \
+               'modelparams_' + core_name + '.csv'
+
+    data = [
+            fits['sternberg_results']['params']['alphaG'],
+            fits['sternberg_results']['params']['phi_g'],
+            fits['krumholz_results']['params']['phi_cnm'],
+            fits['krumholz_results']['params']['sigma_d'],
+            ]
+
+    columns = ('ALHPHAG','PHI_G','PHI_CNM','SIGMA_D'
+               )
+
+    data_dict = {}
+    for i, column in enumerate(columns):
+        data_dict[column] = [data[i],]
+
+    # WRite the data to a dataframe
+    df = pd.DataFrame(data_dict, columns=columns)
 
     # csv
     df.to_csv(filename, index=False)
@@ -1724,6 +1753,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         fits['rh2'] = model_fits[0]
         fits['h_sd'] = model_fits[1]
         fits['hi_sd'] = model_fits[2]
+        fits['params'] = params
 
         # calculate bayesian information criterion
         k = 1 # number of parameters
@@ -4177,7 +4207,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 1,
-                'num_bootstraps': 300,
+                'num_bootstraps': 100,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
