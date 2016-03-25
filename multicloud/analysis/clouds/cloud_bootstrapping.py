@@ -587,7 +587,23 @@ def plot_multicloud_results(results):
 Data Prep functions
 '''
 
-def collect_results(results):
+def collect_results(results_dict):
+
+    clouds_dict = {}
+    final_product = {}
+    final_product['clouds'] = {}
+
+    for i, cloud_name in enumerate(results):
+        results = results_dict[cloud_name]
+        clouds_dict[cloud_name] = {}
+        cloud = clouds_dict[cloud_name]
+
+        cloud['filenames'] = results['filenames']
+        cloud['plot_kwargs'] = results['plot_kwargs']
+        cloud['data_products'] = results['data_products']
+        cloud['mc_results'] = results_dict['mc_results']
+        cloud['mc_analysis'] = results_dict['mc_analysis']
+        cloud[''] = results['']
 
 
 
@@ -1178,35 +1194,55 @@ def add_row_element(row_text, element, text_format='{0:s}'):
     else:
         return row_text + ' & ' + text_format.format(element)
 
-def write_coldens_maps(results_dict, global_args):
+def write_final_maps(results_dict, global_args):
 
     from astropy.io import fits
+
 
     FILENAME_HI = '/d/bip3/ezbc/multicloud/data/nhi/' + \
                   global_args['cloud_name'] + '_hisurfdens.fits'
     FILENAME_H2 = '/d/bip3/ezbc/multicloud/data/nh2/' + \
                   global_args['cloud_name'] + '_h2surfdens.fits'
+    FILENAME_RH2 = '/d/bip3/ezbc/multicloud/data/rh2/' + \
+                  global_args['cloud_name'] + '_rh2.fits'
     FILENAME_HI_ERROR = '/d/bip3/ezbc/multicloud/data/nhi/' + \
                   global_args['cloud_name'] + '_hisurfdens_error.fits'
     FILENAME_H2_ERROR = '/d/bip3/ezbc/multicloud/data/nh2/' + \
                   global_args['cloud_name'] + '_h2surfdens_error.fits'
+    FILENAME_RH2_ERROR = '/d/bip3/ezbc/multicloud/data/rh2/' + \
+                  global_args['cloud_name'] + '_rh2_error.fits'
+
+    DIR_FIGURES = '/d/bip3/ezbc/multicloud/data/final_products/'
+    FILENAME_BASE = DIR_FIGURES + global_args['cloud_name']
+
+    FILENAME_AV = FILENAME_BASE + '_av.fits'
+    FILENAME_AV_ERROR = FILENAME_BASE + '_av_error.fits'
+    FILENAME_HI = FILENAME_BASE + '_hisurfdens.fits'
+    FILENAME_H2 = FILENAME_BASE + '_h2surfdens.fits'
+    FILENAME_RH2 = FILENAME_BASE + '_rh2.fits'
+    FILENAME_HI_ERROR = FILENAME_BASE + '_hisurfdens_error.fits'
+    FILENAME_H2_ERROR = FILENAME_BASE + '_h2surfdens_error.fits'
+    FILENAME_RH2_ERROR = FILENAME_BASE + '_rh2_error.fits'
 
     # get av_header
     header = results_dict['data']['av_header'].copy()
     header['BUNIT'] = 'Msun.pc2'
 
+    av_image = results_dict['data_products']['av']
+    av_error_image = results_dict['data_products']['av_error']
     hi_sd_image = results_dict['data_products']['hi_sd']
     h2_sd_image = results_dict['data_products']['h2_sd']
+    rh2_image = results_dict['data_products']['rh2']
     hi_sd_error_image = results_dict['data_products']['hi_sd_error']
     h2_sd_error_image = results_dict['data_products']['h2_sd_error']
-
-    print('median h2 error:', scipy.stats.nanmedian(h2_sd_error_image.ravel()))
-    print('median hi error:', scipy.stats.nanmedian(hi_sd_error_image.ravel()))
+    rh2_error_image = results_dict['data_products']['rh2_error']
 
     fits.writeto(FILENAME_HI, hi_sd_image, header=header, clobber=True)
     fits.writeto(FILENAME_H2, h2_sd_image, header=header, clobber=True)
+    fits.writeto(FILENAME_RH2, rh2_image, header=header, clobber=True)
     fits.writeto(FILENAME_HI_ERROR, hi_sd_error_image, header=header, clobber=True)
     fits.writeto(FILENAME_H2_ERROR, h2_sd_error_image, header=header, clobber=True)
+    fits.writeto(FILENAME_RH2_ERROR, rh2_error_image, header=header, clobber=True)
 
 '''
 Multiprocessing functions
@@ -3567,7 +3603,7 @@ def get_results(global_args):
     add_results_analysis(results_dict)
 
     # write N(HI) and N(H2) images for each cloud
-    write_coldens_maps(results_dict, global_args)
+    write_final_maps(results_dict, global_args)
 
     # calculate errors on dgrs and intercept
     results_dict['params_summary'] = calc_param_errors(results_dict)
