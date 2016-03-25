@@ -271,6 +271,11 @@ def plot_multicloud_results(results):
         hisd_median_error_cores_list.append(hisd_median_error_core_list)
         hsd_median_error_cores_list.append(hsd_median_error_core_list)
 
+    # print difference between "observed" data and median simulated parameters
+    print_modelparam_diff(core_names_list,
+                          cloud_model_fits_list,
+                          model_analysis_list)
+
     # calculate statistics on hi
     hi_dict = calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, hsd_cores_list,
@@ -646,8 +651,7 @@ def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
     df.to_csv(filename, index=False)
 
 
-
-    # core parameters
+    # core fitted parameters
     filename = '/d/bip3/ezbc/multicloud/data/python_output/tables/cores/' + \
                'modelparams_' + core_name + '.csv'
 
@@ -670,6 +674,27 @@ def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
 
     # csv
     df.to_csv(filename, index=False)
+
+def print_modelparam_diff(cores_list, fits_list, model_analysis_list,):
+
+    print('\n\tDifferences between fitted parameters to observed data and MC' +\
+            'median data:')
+    for i, cloud in enumerate(cores_list):
+        for j, core_name in enumerate(cores_list[i]):
+            core = model_analysis_list[i]['cores'][core_name]
+            print('\n\t' + core_name)
+
+            for model in ('krumholz', 'sternberg'):
+                #print fits_list[i][j][model + '_results']['params']
+                for param_name in fits_list[i][j][model + '_results']['params']:
+                    param_obs = \
+                        fits_list[i][j][model + \
+                        '_results']['params'][param_name]
+                    param_med = core[model + '_results'][param_name]
+
+                    diff = param_obs - param_med
+                    print('\t' + param_name + ': {0:.3f}'.format(diff))
+
 
 def print_BIC_results(stats_list, core_names):
 
