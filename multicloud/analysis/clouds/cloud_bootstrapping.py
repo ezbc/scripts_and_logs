@@ -593,7 +593,7 @@ def collect_results(results_dict):
     final_product = {}
     final_product['clouds'] = {}
 
-    for i, cloud_name in enumerate(results):
+    for i, cloud_name in enumerate(results_dict):
         results = results_dict[cloud_name]
         clouds_dict[cloud_name] = {}
         cloud = clouds_dict[cloud_name]
@@ -604,8 +604,6 @@ def collect_results(results_dict):
         cloud['mc_results'] = results_dict['mc_results']
         cloud['mc_analysis'] = results_dict['mc_analysis']
         cloud[''] = results['']
-
-
 
 def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
         rh2_error=None, hisd_error=None, hsd_error=None, fits=None,):
@@ -629,7 +627,7 @@ def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
                'HI_SD_K09FIT', 'H_SD_K09FIT', 'RH2_K09FIT',
                )
 
-    data[:5] = mask_nans(data[:5])
+    data[:6] = mask_nans(data[:6])
     print core_name
     for i, column in enumerate(columns):
         print column, len(data[i])
@@ -1196,6 +1194,11 @@ def add_row_element(row_text, element, text_format='{0:s}'):
 
 def write_final_maps(results_dict, global_args):
 
+
+    ''' Writes final data products.
+
+    '''
+
     from astropy.io import fits
 
 
@@ -1219,29 +1222,51 @@ def write_final_maps(results_dict, global_args):
     FILENAME_AV_ERROR = FILENAME_BASE + '_av_error.fits'
     FILENAME_HI = FILENAME_BASE + '_hisurfdens.fits'
     FILENAME_H2 = FILENAME_BASE + '_h2surfdens.fits'
+    FILENAME_NHI = FILENAME_BASE + '_hicoldens.fits'
+    FILENAME_NH2 = FILENAME_BASE + '_h2coldens.fits'
     FILENAME_RH2 = FILENAME_BASE + '_rh2.fits'
     FILENAME_HI_ERROR = FILENAME_BASE + '_hisurfdens_error.fits'
     FILENAME_H2_ERROR = FILENAME_BASE + '_h2surfdens_error.fits'
+    FILENAME_NHI_ERROR = FILENAME_BASE + '_hicoldens_error.fits'
+    FILENAME_NH2_ERROR = FILENAME_BASE + '_h2coldens_error.fits'
     FILENAME_RH2_ERROR = FILENAME_BASE + '_rh2_error.fits'
 
     # get av_header
     header = results_dict['data']['av_header'].copy()
-    header['BUNIT'] = 'Msun.pc2'
-
     av_image = results_dict['data_products']['av']
     av_error_image = results_dict['data_products']['av_error']
     hi_sd_image = results_dict['data_products']['hi_sd']
     h2_sd_image = results_dict['data_products']['h2_sd']
+    nhi_image = results_dict['data_products']['nhi']
+    nh2_image = results_dict['data_products']['nh2']
     rh2_image = results_dict['data_products']['rh2']
     hi_sd_error_image = results_dict['data_products']['hi_sd_error']
     h2_sd_error_image = results_dict['data_products']['h2_sd_error']
+    nhi_error_image = results_dict['data_products']['nhi_error']
+    nh2_error_image = results_dict['data_products']['nh2_error']
     rh2_error_image = results_dict['data_products']['rh2_error']
 
+    # Av map
+    fits.writeto(FILENAME_AV, av_image, header=header, clobber=True)
+    fits.writeto(FILENAME_AV_ERROR, av_error_image, header=header, clobber=True)
+
+    # Surface density maps
+    header['BUNIT'] = 'Msun/pc2'
     fits.writeto(FILENAME_HI, hi_sd_image, header=header, clobber=True)
-    fits.writeto(FILENAME_H2, h2_sd_image, header=header, clobber=True)
-    fits.writeto(FILENAME_RH2, rh2_image, header=header, clobber=True)
     fits.writeto(FILENAME_HI_ERROR, hi_sd_error_image, header=header, clobber=True)
+    fits.writeto(FILENAME_H2, h2_sd_image, header=header, clobber=True)
     fits.writeto(FILENAME_H2_ERROR, h2_sd_error_image, header=header, clobber=True)
+
+    # column density maps
+    header['BUNIT'] = '10e20 cm2'
+    fits.writeto(FILENAME_NHI, nhi_image, header=header, clobber=True)
+    fits.writeto(FILENAME_NHI_ERROR, nhi_error_image, header=header, clobber=True)
+    fits.writeto(FILENAME_NH2, nh2_image, header=header, clobber=True)
+    fits.writeto(FILENAME_NH2_ERROR, nh2_error_image, header=header, clobber=True)
+
+    # ratio map
+    header['BUNIT'] = ''
+    fits.writeto(FILENAME_RH2, rh2_image, header=header, clobber=True)
     fits.writeto(FILENAME_RH2_ERROR, rh2_error_image, header=header, clobber=True)
 
 '''
@@ -4205,7 +4230,7 @@ def main():
             print('\n\tPlotting')
             lm_plt.plot_results(results[global_args['cloud_name']])
 
-    collect_results(results)
+    #collect_results(results)
     plot_multicloud_results(results)
 
 if __name__ == '__main__':
