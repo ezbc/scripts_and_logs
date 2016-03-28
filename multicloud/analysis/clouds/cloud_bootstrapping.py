@@ -4231,8 +4231,8 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
-                'num_bootstraps': 100,
+                'load': 0,
+                'num_bootstraps': 10000,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
