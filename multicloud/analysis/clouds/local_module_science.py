@@ -17,6 +17,8 @@ def scale_dust_areas(DGR, model_kwargs):
 
     phi_g = DGR / 0.053
     sigma_d = DGR / 0.053 * 1.9
+    #phi_g = DGR / 0.053 / 1.9
+    #sigma_d = DGR / 0.053
     new_model_kwargs = dict(model_kwargs)
     new_model_kwargs['sternberg_params']['guesses'][2] = phi_g
     new_model_kwargs['krumholz_params']['guesses'][2] = sigma_d
