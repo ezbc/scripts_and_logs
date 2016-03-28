@@ -1010,6 +1010,7 @@ def plot_modelparam_cdfs(core_dict, df):
                 alpha = 0.3
                 axes[0].plot(0,0,
                              label=label,
+                             linestyle=linestyle,
                              color=c_cycle[i],
                              )
                 myplt.plot_cdf_confint(phi_cnms,
@@ -1020,7 +1021,6 @@ def plot_modelparam_cdfs(core_dict, df):
                                        #bin_limits=[0, None],
                                        plot_kwargs_line={'color': c_cycle[i],
                                                          'linestyle': linestyle,
-                                                         'linestyle': linestyles[i],
                                                          },
                                        plot_kwargs_fill_between=\
                                                {'color': c_cycle[i],
@@ -1065,7 +1065,7 @@ def plot_modelparam_cdfs(core_dict, df):
     axes[1].set_ylabel('Cumulative Distribution')
     axes[0].set_ylim([0,1])
     axes[1].set_ylim([0,1])
-    axes[0].set_xlim([0,25])
+    axes[0].set_xlim([0,14])
     axes[1].set_xlim([0,60])
 
     #plt.savefig('/d/bip3/ezbc/multicloud/figures/temps/temps_cdf.png')
