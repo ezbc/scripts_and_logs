@@ -201,16 +201,39 @@ def plot_multicloud_results(results):
         model_fits_list = []
         core_list.append(cores)
         for j, core in enumerate(cores_to_plot):
-            core_indices = cores[core]['indices_orig']
             core_names.append(core)
-            hisd_core_list.append(hisd_list[i][core_indices])
-            hsd_core_list.append(hsd_list[i][core_indices])
-            rh2_core_list.append(rh2_list[i][core_indices])
-            hisd_error_core_list.append(hisd_error_list[i][core_indices])
-            hsd_error_core_list.append(hsd_error_list[i][core_indices])
+
+            # get the pixels for the core
+            core_indices = cores[core]['indices_orig']
+
+            # get the data for each core
+            hisd = hisd_list[i][core_indices]
+            hisd_error = hisd_list[i][core_indices]
+            hsd = hsd_list[i][core_indices]
+            hsd_error = hsd_list[i][core_indices]
+            rh2 = rh2_list[i][core_indices]
+            rh2_error = rh2_list[i][core_indices]
+
+
+            # mask the data based on nans and negative RH2
+            data_list = (hisd, hisd_error, hsd, hsd_error, rh2, rh2_error)
+            [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error] = \
+                mask_nans(data_list)
+            data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
+
+            [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error] = \
+                mask_neg_rh2(data_list, rh2=rh2)
+
+            data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
+
+            hisd_core_list.append(hisd)
+            hsd_core_list.append(hsd)
+            rh2_core_list.append(rh2)
+            hisd_error_core_list.append(hisd_error)
+            hsd_error_core_list.append(hsd_error)
+            rh2_error_core_list.append(rh2_error)
             hisd_median_error_core_list.append(hisd_median_error_list[i])
             hsd_median_error_core_list.append(hsd_median_error_list[i])
-            rh2_error_core_list.append(rh2_error_list[i][core_indices])
 
             model_fits_list.append(refit_data(hsd_core_list[j],
                                               rh2_core_list[j],
@@ -221,6 +244,14 @@ def plot_multicloud_results(results):
                                   hi_sd=hisd_core_list[j],
                                               )
                                    )
+
+            if core in ('G160.53-19.73','G172.93-16.73','G164.70-7.63'):
+                rh2 = rh2_core_list[j]
+                rh2_error = rh2_error_core_list[j]
+                print('core', core)
+                print('rh2 median:',scipy.stats.nanmedian(rh2))
+                print('rh2 error median:',scipy.stats.nanmedian(rh2_error))
+                print('rh2', rh2)
 
             # get the residual sum of squares
             for model in model_fits_list[j]:
@@ -239,10 +270,10 @@ def plot_multicloud_results(results):
                         fits[model]['chisq_reduced'])
                 stats_list[model]['BIC'].append(\
                         fits[model]['BIC'])
-                print 'K+09 core params for ' + core
-                print fits['krumholz_results']['params']
-                print 'S+14 core params for ' + core
-                print fits['sternberg_results']['params']
+                #print 'K+09 core params for ' + core
+                #print fits['krumholz_results']['params']
+                #print 'S+14 core params for ' + core
+                #print fits['sternberg_results']['params']
 
             if 0:
                 rh2_copy = rh2_list[i].copy()
@@ -637,6 +668,12 @@ def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
                'HI_SD_K09FIT', 'H_SD_K09FIT', 'RH2_K09FIT',
                )
 
+    #if core_name in ('G160.53-19.73','G172.93-16.73','G164.70-7.63'):
+        #print('rh2 median:',scipy.stats.nanmedian(rh2))
+        #print('rh2 error median:',scipy.stats.nanmedian(rh2_error))
+        #print('hsd median:',scipy.stats.nanmedian(hsd))
+        #print('hsd error median:',scipy.stats.nanmedian(hsd_error))
+
     # mask nans from data
     data[:6] = mask_nans(data[:6])
 
@@ -677,12 +714,12 @@ def write_core_values_to_csv(core_name, hisd=None, hsd=None, rh2=None,
 
 def print_modelparam_diff(cores_list, fits_list, model_analysis_list,):
 
-    print('\n\tDifferences between fitted parameters to observed data and MC' +\
-            'median data:')
+    #print('\n\tDifferences between fitted parameters to observed data and MC' +\
+            #'median data:')
     for i, cloud in enumerate(cores_list):
         for j, core_name in enumerate(cores_list[i]):
             core = model_analysis_list[i]['cores'][core_name]
-            print('\n\t' + core_name)
+            #print('\n\t' + core_name)
 
             for model in ('krumholz', 'sternberg'):
                 #print fits_list[i][j][model + '_results']['params']
@@ -693,7 +730,7 @@ def print_modelparam_diff(cores_list, fits_list, model_analysis_list,):
                     param_med = core[model + '_results'][param_name]
 
                     diff = param_obs - param_med
-                    print('\t' + param_name + ': {0:.3f}'.format(diff))
+                    #print('\t' + param_name + ': {0:.3f}'.format(diff))
 
 
 def print_BIC_results(stats_list, core_names):
@@ -1755,7 +1792,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         fits['hisd_ind'] = hisd_fit
         try:
             fits['chisq_reduced'] = \
-                mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
+                mystats.calc_chisq(rh2_fit, rh2, rh2_error,
                                    dof=fits['dof'])
         except ValueError:
             fits['chisq_reduced'] = np.nan
@@ -2217,10 +2254,36 @@ def mask_nans(arrays, return_mask=False):
 
     """
 
-    mask = np.zeros(arrays[0].shape, dtype=bool)
+    mask = np.zeros(np.shape(arrays[0]), dtype=bool)
 
     for array in arrays:
         mask[array != array] = 1
+
+    masked_arrays = []
+    for array in arrays:
+        if isinstance(array, np.ndarray):
+            masked_arrays.append(array[~mask])
+        else:
+            masked_arrays.append(array)
+
+    if return_mask:
+        return masked_arrays, mask
+    else:
+        return masked_arrays
+
+def mask_neg_rh2(arrays, rh2=None, return_mask=False):
+
+    """ Masks any positions where any array in the list has a NaN.
+
+    Parameters
+    ----------
+    arrays : tuple
+        Tuple of arrays. The mask will be the shape of the first array. The
+        last axes of the rest of the arrays will be masked.
+
+    """
+
+    mask = rh2 < 0.0
 
     masked_arrays = []
     for array in arrays:
@@ -4231,8 +4294,8 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
-                'num_bootstraps': 10000,
+                'load': 1,
+                'num_bootstraps': 100,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
