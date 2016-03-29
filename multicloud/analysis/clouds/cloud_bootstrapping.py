@@ -245,25 +245,29 @@ def plot_multicloud_results(results):
                                               )
                                    )
 
-            if core in ('G160.53-19.73','G172.93-16.73','G164.70-7.63'):
-                rh2 = rh2_core_list[j]
-                rh2_error = rh2_error_core_list[j]
-                print('core', core)
-                print('rh2 median:',scipy.stats.nanmedian(rh2))
-                print('rh2 error median:',scipy.stats.nanmedian(rh2_error))
-                print('rh2', rh2)
 
             # get the residual sum of squares
+            # -------------------------------------------------------------------
+            fits = refit_data(hsd_core_list[j],
+                              rh2_core_list[j],
+                              rh2_error=rh2_error_core_list[j],
+                              h_sd_error=hsd_error_core_list[j],
+                              h_sd_fit=hsd_core_list[j],
+                              hi_sd_error=hisd_error_core_list[j],
+                              hi_sd=hisd_core_list[j],
+                              model_kwargs=model_kwargs,
+                              )
             for model in model_fits_list[j]:
-                fits = refit_data(hsd_core_list[j],
-                                  rh2_core_list[j],
-                                  rh2_error=rh2_error_core_list[j],
-                                  h_sd_error=hsd_error_core_list[j],
-                                  h_sd_fit=hsd_core_list[j],
-                                  hi_sd_error=hisd_error_core_list[j],
-                                  hi_sd=hisd_core_list[j],
-                                  model_kwargs=model_kwargs,
-                                  )
+                if core in ('G160.53-19.73','G172.93-16.73','G164.70-7.63'):
+                    rh2 = rh2_core_list[j]
+                    rh2_error = rh2_error_core_list[j]
+                    print('core', core)
+                    print('rh2 median:',scipy.stats.nanmedian(rh2))
+                    print('rh2 error median:',scipy.stats.nanmedian(rh2_error))
+                    print('model fits')
+                    print(np.sum((rh2 - \
+                        model_fits_list[j]['krumholz_results']['rh2_ind'])**2))
+
                 stats_list[model]['sum_of_resid'].append(\
                         fits[model]['sum_of_resid'])
                 stats_list[model]['chisq_reduced'].append(\
@@ -3467,7 +3471,7 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[0.5, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
+    guesses=[3, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
@@ -4294,7 +4298,7 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
+                'load': 0,
                 'num_bootstraps': 100,
                 'load_props': 0,
                 'data_type' : permutation[1],
