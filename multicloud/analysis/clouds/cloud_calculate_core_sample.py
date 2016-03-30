@@ -805,7 +805,7 @@ def save_region_dict(region_dict):
 def main():
 
     load_gcc_data = 1
-    load_coresample_data = 0
+    load_coresample_data = 1
     N_cores = 10
     use_old_sample = 0
     load_regions = 1
@@ -855,7 +855,8 @@ def main():
                        av_image=av_data,
                        core_sample=core_sample,
                        region_dict=region_dict,
-                       limits=[76, 43.5, 19.5, 38,],
+                       #limits=[76, 43.5, 19.5, 38,],
+                       limits=[15*(5+20./60), 15*(2+30./60.), 17, 38.5],
                        filename=filename,
                        plot_regions=load_regions,
                        plot_names=True,

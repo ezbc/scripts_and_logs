@@ -34,7 +34,9 @@ def plot_cores_map(header=None, contour_image=None, av_image=None, cores=None,
 
     # Color map
     cmap = plt.cm.gnuplot
-    cmap = plt.cm.copper
+
+    import myplotting as myplt
+    cmap = myplt.truncate_colormap(plt.cm.copper, minval=0.2)
 
     # Color cycle, grabs colors from cmap
     color_cycle = [cmap(i) for i in np.linspace(0, 0.8, 2)]
@@ -1194,7 +1196,7 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
     co_dir = '/d/bip3/ezbc/multicloud/data/co/'
     core_dir = '/d/bip3/ezbc/multicloud/data/python_output/core_properties/'
     property_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
-    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    region_dir = '/d/bip3/ezbc/multicloud/data/python_output/regions/'
 
     # load Planck Av and GALFA HI images, on same grid
     if av_data_type == 'lee12_2mass':
@@ -1273,6 +1275,11 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
             header=hi_header,
             noise_cube=hi_noise_cube)
 
+    props['plot_limit']['wcs'] = (((5, 20, 0), (19, 0 ,0)),
+                                  ((2, 30, 0), (37, 0, 0))
+                                  )
+
+
     # Change WCS coords to pixel coords of images
     props = convert_limit_coordinates(props,
                                       header=av_header,
@@ -1334,7 +1341,7 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
             region_cloud = 'california'
         else:
             region_cloud = cloud
-        core_filename = region_dir.replace('multicloud',region_cloud) + \
+        core_filename = '/d/bip3/ezbc/' + region_cloud + '/data/python_output' + \
                         '/ds9_regions/{0:s}_av_poly_cores'.format(region_cloud)
 
         cores = load_ds9_core_region(cores,
@@ -1356,7 +1363,7 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
     # Plot
     figure_types = ['png', 'pdf']
     for figure_type in figure_types:
-        filename = 'multicloud_av_cores_map' + \
+        filename = 'av_cores_map' + \
                    '.{0:s}'.format(figure_type)
 
         print('\nSaving Av cores map to \n' + filename)

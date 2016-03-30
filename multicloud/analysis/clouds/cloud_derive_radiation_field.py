@@ -48,7 +48,7 @@ def write_rad_field():
 
     # create rad field header
     rad_field_header = beta_header.copy()
-    rad_field_header['BUNIT'] = 'Draine Field'
+    rad_field_header['BUNIT'] = ''
 
     # Write the radiation field to fits file
     fits.writeto(FILENAME_RAD, rad_field, header=rad_field_header, clobber=True)

@@ -94,6 +94,7 @@ def plot_av_image(header=None, contour_image=None,
     # plot limits
     if limits is not None:
         if limits_type == 'wcs':
+            print limits
             limits_pix = myplt.convert_wcs_limits(limits, header, frame='fk5')
         else:
             limits_pix = limits
@@ -1365,7 +1366,8 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                                               'plot_limit',
                                               'region_name_pos'))
 
-    props['plot_limit']['wcs'] = [15*(5+20./60), 15*(2+30./60.), 19, 37]
+    props['plot_limit']['wcs'] = [15*(5+20./60), 15*(2+30./60.), 17, 38.5]
+
 
     # Load cloud division regions from ds9
     props = load_ds9_region(props,
@@ -1424,7 +1426,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
 
         plot_av_image(av_image=av_image,
                        header=av_header,
-                       limits=props['plot_limit']['wcs'],
+                       limits=[15*(5+20./60), 15*(2+30./60.), 17, 38.5],
                        limits_type='wcs',
                        regions=props['regions'],
                        props=props,
@@ -1432,20 +1434,22 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                        filename=filename,
                        show=False)
 
-        filename = 'av_nhi_map'
-        filename = figure_dir + 'maps/' + filename + '.' + figure_type
-        print('\nSaving NHI + Av maps to \n' + filename)
-        plot_nhi_image(nhi_image=nhi_image,
-                       header=av_header,
-                       av_image=av_image,
-                       limits=props['plot_limit']['wcs'],
-                       regions=props['regions'],
-                       props=props,
-                       hi_vlimits=(0,20),
-                       av_vlimits=(0,15.5),
-                       #av_vlimits=(0.1,30),
-                       filename=filename,
-                       show=False)
+        if 0:
+            filename = 'av_nhi_map'
+            filename = figure_dir + 'maps/' + filename + '.' + figure_type
+            print('\nSaving NHI + Av maps to \n' + filename)
+            plot_nhi_image(nhi_image=nhi_image,
+                           header=av_header,
+                           av_image=av_image,
+                           limits=props['plot_limit']['wcs'],
+                           limits_type='wcs',
+                           regions=props['regions'],
+                           props=props,
+                           hi_vlimits=(0,20),
+                           av_vlimits=(0,15.5),
+                           #av_vlimits=(0.1,30),
+                           filename=filename,
+                           show=False)
 
 if __name__ == '__main__':
     dgrs = np.arange(0.05, 0.4, 0.025)

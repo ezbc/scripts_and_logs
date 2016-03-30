@@ -27,6 +27,7 @@ def plot_rad_map(header=None, contour_image=None, rad_field=None, cores=None,
     from pylab import cm # colormaps
     from matplotlib.patches import Polygon
     import matplotlib.patheffects as PathEffects
+    import myplotting as myplt
 
     # Set up plot aesthetics
     # ----------------------
@@ -105,6 +106,7 @@ def plot_rad_map(header=None, contour_image=None, rad_field=None, cores=None,
     cmap.set_bad(color='w')
 
     #ax.locator_params(nbins=6)
+    ax.locator_params(nbins=6)
 
     # colorbar
     from matplotlib.ticker import LogFormatter
@@ -123,7 +125,7 @@ def plot_rad_map(header=None, contour_image=None, rad_field=None, cores=None,
                              #format=LogFormatterMathtext(),
                              )
         #cb.set_label_text(r'log$_{10}$[$U_{0,M83}$]',)
-        cb.set_label_text(r'$U_{0,M83}$',)
+        cb.set_label_text(r'$U\,[U_{\rm D78}$]',)
     else:
         from mpl_toolkits.axes_grid1 import make_axes_locatable
         divider = make_axes_locatable(ax)
@@ -136,8 +138,9 @@ def plot_rad_map(header=None, contour_image=None, rad_field=None, cores=None,
 
     # plot limits
     if limits is not None:
-        ax.set_xlim(limits[0],limits[2])
-        ax.set_ylim(limits[1],limits[3])
+        limits_pix = myplt.convert_wcs_limits(limits, header, frame='fk5')
+        ax.set_xlim(limits_pix[0],limits_pix[1])
+        ax.set_ylim(limits_pix[2],limits_pix[3])
 
     # Plot Av contours
     if contour_image is not None:
@@ -412,6 +415,181 @@ def read_ds9_region(filename):
 
     return region
 
+
+
+''' DS9 Region and Coordinate Functions
+'''
+
+def convert_limit_coordinates(prop_dict,
+        coords=('region_limit', 'co_noise_limits', 'plot_limit'), header=None):
+
+    # Initialize pixel keys
+    for coord in coords:
+
+        if coord == 'region_limit' or coord == 'plot_limit':
+            prop_dict[coord].update({'pixel': []})
+            limit_wcs = prop_dict[coord]['wcs']
+
+            for limits in limit_wcs:
+                # convert centers to pixel coords
+                limit_pixels = get_pix_coords(ra=limits[0],
+                                             dec=limits[1],
+                                             header=header)[:2].tolist()
+
+                prop_dict[coord]['pixel'].append(limit_pixels[0])
+                prop_dict[coord]['pixel'].append(limit_pixels[1])
+        elif coord == 'co_noise_limits':
+            prop_dict[coord].update({'pixel': []})
+            region_limits = prop_dict[coord]['wcs']
+
+            # Cycle through each region, convert WCS limits to pixels
+            for region in region_limits:
+                region_pixels = []
+                for limits in region:
+                    # convert centers to pixel coords
+                    limit_pixels = get_pix_coords(ra=limits[0],
+                                                  dec=limits[1],
+                                                  header=header)[:2].tolist()
+                    region_pixels.append(limit_pixels)
+
+                # Append individual regions back to CO noise
+                prop_dict[coord]['pixel'].append(region_pixels)
+        elif coord == 'region_name_pos':
+
+            # convert centers to pixel coords
+            for region in prop_dict[coord]:
+                prop_dict[coord][region].update({'pixel': []})
+
+                coord_wcs = prop_dict[coord][region]['wcs']
+
+                coord_pixel = get_pix_coords(ra=coord_wcs[0],
+                                             dec=coord_wcs[1],
+                                             header=header)[:2].tolist()
+
+                prop_dict[coord][region]['pixel'].append(coord_pixel[0])
+                prop_dict[coord][region]['pixel'].append(coord_pixel[1])
+
+    return prop_dict
+
+def convert_core_coordinates(cores, header):
+
+    for core in cores:
+        cores[core].update({'box_pixel': 0})
+        cores[core].update({'center_pixel': 0})
+
+        #box_wcs = cores[core]['box_wcs']
+        #box_pixel = len(box_wcs) * [0,]
+        center_wcs = cores[core]['center_wcs']
+
+        # convert centers to pixel coords
+        center_pixel = get_pix_coords(ra=center_wcs[0],
+                                      dec=center_wcs[1],
+                                      header=header)[:2]
+        cores[core]['center_pixel'] = center_pixel.tolist()
+
+        # convert box corners to pixel coords
+        #for i in range(len(box_wcs)/2):
+        #    pixels = get_pix_coords(ra=box_wcs[2*i], dec=box_wcs[2*i + 1],
+        #            header=header)
+        #    box_pixel[2*i], box_pixel[2*i + 1] = int(pixels[0]), int(pixels[1])
+        #cores[core]['box_pixel'] = box_pixel
+
+    return cores
+
+def load_fits(filename,return_header=False):
+    ''' Loads a fits file.
+    '''
+
+    import pyfits as fits
+    from astropy.io import fits
+
+    f = fits.open(filename)
+    if return_header:
+        return f[0].data,f[0].header
+    else:
+        return f[0].data
+
+def get_sub_image(image, indices):
+
+    return image[indices[1]:indices[3],
+            indices[0]:indices[2]]
+
+def load_ds9_region(props, filename=None, header=None):
+
+    import pyregion as pyr
+
+    # region[0] in following format:
+    # [64.26975, 29.342033333333333, 1.6262027777777777, 3.32575, 130.0]
+    # [ra center, dec center, width, height, rotation angle]
+
+    regions = pyr.open(filename)
+
+    props['regions'] = {}
+
+
+    for region in regions:
+        # Cores defined in following format: 'tag={L1495A}'
+        tag = region.comment
+        region_name = tag[tag.find('text={')+6:tag.find('}')].lower()
+
+        # Format vertices to be 2 x N array
+        poly_verts = []
+        for i in xrange(0, len(region.coord_list)/2):
+            poly_verts.append((region.coord_list[2*i],
+                               region.coord_list[2*i+1]))
+
+        poly_verts_pix = []
+        for i in xrange(0, len(poly_verts)):
+            poly_verts_pix.append(get_pix_coords(ra=poly_verts[i][0],
+                                            dec=poly_verts[i][1],
+                                            header=header)[:-1][::-1].tolist())
+
+        props['regions'][region_name] = {}
+        props['regions'][region_name]['poly_verts'] = {}
+        props['regions'][region_name]['poly_verts']['wcs'] = poly_verts
+        props['regions'][region_name]['poly_verts']['pixel'] = poly_verts_pix
+
+    return props
+
+def get_pix_coords(ra=None, dec=None, header=None):
+
+    ''' Ra and dec in (hrs,min,sec) and (deg,arcmin,arcsec), or Ra in degrees
+    and dec in degrees.
+    '''
+
+    import pywcsgrid2 as wcs
+    import pywcs
+    from astropy.wcs import WCS
+
+    # convert to degrees if ra and dec are array-like
+    try:
+        if len(ra) == 3 and len(dec) == 3:
+            ra_deg, dec_deg = hrs2degs(ra=ra, dec=dec)
+        else:
+            raise ValueError('RA and Dec must be in (hrs,min,sec) and' + \
+                    ' (deg,arcmin,arcsec) or in degrees.')
+    except TypeError:
+        ra_deg, dec_deg = ra, dec
+
+    #wcs_header = pywcs.WCS(header)
+    wcs_header = WCS(header)
+    #pix_coords = wcs_header.wcs_sky2pix([[ra_deg, dec_deg, 0]], 0)[0]
+    pix_coords = wcs_header.wcs_world2pix([[ra_deg, dec_deg],], 0)[0]
+
+    return np.hstack((pix_coords, -1))
+
+def hrs2degs(ra=None, dec=None):
+    ''' Ra and dec tuples in hrs min sec and deg arcmin arcsec.
+    '''
+
+    ra_deg = 15*(ra[0] + ra[1]/60. + ra[2]/3600.)
+    dec_deg = dec[0] + dec[1]/60. + dec[2]/3600.
+
+    return (ra_deg, dec_deg)
+
+
+
+
 '''
 The main script
 '''
@@ -544,6 +722,11 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
     with open(property_dir + prop_file + '.txt', 'r') as f:
         props = json.load(f)
 
+    props['plot_limit']['wcs'] = (((5, 20, 0), (19, 0 ,0)),
+                                  ((2, 30, 0), (37, 0, 0))
+                                  )
+
+
     # Change WCS coords to pixel coords of images
     props = convert_limit_coordinates(props,
                                       header=rad_field_header,
@@ -617,13 +800,14 @@ def main(dgr=None, vel_range=(-5, 15), vel_range_type='single', region=None,
         plot_rad_map(header=rad_field_header,
                        #rad_field=np.log10(rad_field),
                        rad_field=rad_field,
-                       limits=props['plot_limit']['pixel'],
+                       #limits=props['plot_limit']['pixel'],
+                       limits=[15*(5+20./60), 15*(2+30./60.), 17, 38.5],
                        regions=props['regions'],
                        cloud_dict=cloud_dict,
                        cores_to_keep=cores_to_keep,
                        props=props,
                        #vlimits=(0.5,10),
-                       vlimits=(-0.5,9),
+                       vlimits=(-0.5/1.5,2.3),
                        vscale='linear',
                        #vlimits=(0.1,30),
                        savedir=figure_dir + 'maps/',
