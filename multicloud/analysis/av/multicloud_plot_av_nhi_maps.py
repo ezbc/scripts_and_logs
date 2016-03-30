@@ -16,6 +16,141 @@ warnings.filterwarnings('ignore')
 
 ''' Plotting Functions
 '''
+def plot_av_image(header=None, contour_image=None,
+        av_image=None, cores=None, props=None, regions=None, title=None,
+        limits=None, contours=None, boxes=False, filename=None,
+        limits_type='wcs',
+        show=True, av_vlimits=None,):
+
+    # Import external modules
+    import matplotlib.pyplot as plt
+    import matplotlib
+    import numpy as np
+    import pyfits as fits
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    import pywcsgrid2 as wcs
+    import pywcs
+    from pylab import cm # colormaps
+    from matplotlib.patches import Polygon
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Set up plot aesthetics
+    plt.clf(); plt.close()
+
+    # Color map
+    cmap = plt.cm.gnuplot
+    #cmap = myplt.reverse_colormap(plt.cm.copper)
+    cmap = plt.cm.copper
+
+    # Create figure instance
+    fig = plt.figure(figsize=(7.5, 3.6))
+
+    nrows_ncols=(1,1)
+    ngrids=1
+
+    axes = AxesGrid(fig, (1,1,1),
+                 nrows_ncols=nrows_ncols,
+                 ngrids=ngrids,
+                 cbar_mode="each",
+                 cbar_location='right',
+                 cbar_pad="2%",
+                 cbar_size='3%',
+                 axes_pad=0.1,
+                 axes_class=(wcs.Axes,
+                             dict(header=header)),
+                 aspect=True,
+                 label_mode='L',
+                 share_all=True)
+
+    # ------------------
+    # Av image
+    # ------------------
+    # create axes
+    ax = axes[0]
+    # show the image
+    im = ax.imshow(av_image,
+            interpolation='nearest',origin='lower',
+            cmap=cmap,
+            vmin=av_vlimits[0],
+            vmax=av_vlimits[1],
+            #norm=matplotlib.colors.LogNorm()
+            )
+
+    # Asthetics
+    ax.set_display_coord_system("fk5")
+    ax.set_ticklabel_type("hms", "dms")
+
+    ax.set_xlabel('Right Ascension [J2000]',)
+    ax.set_ylabel('Declination [J2000]',)
+    ax.axis[:].major_ticks.set_color("w")
+
+    ax.locator_params(nbins=6)
+
+    # colorbar
+    cb = ax.cax.colorbar(im)
+    cmap.set_bad(color='w')
+
+    # plot limits
+    if limits is not None:
+        if limits_type == 'wcs':
+            limits_pix = myplt.convert_wcs_limits(limits, header, frame='fk5')
+        else:
+            limits_pix = limits
+        ax.set_xlim(limits_pix[0],limits_pix[1])
+        ax.set_ylim(limits_pix[2],limits_pix[3])
+
+    ax.tick_params(axis='xy', which='major', colors='w')
+
+    # Plot Av contours
+    if contour_image is not None:
+        ax.contour(contour_image, levels=contours, colors='r')
+
+    # Write label to colorbar
+    cb.set_label_text(r'$A_V$ [mag]',)
+
+    # Convert sky to pix coordinates
+    #wcs_header = pywcs.WCS(header)
+    if type(cores) is dict:
+        for core in cores:
+            pix_coords = cores[core]['center_pixel']
+
+            anno_color = (0.3, 0.5, 1)
+
+            if boxes:
+                rect = ax.add_patch(Polygon(
+                    cores[core]['box_vertices'][:, ::-1],
+                        facecolor='none',
+                        edgecolor='w'))
+
+    if regions is not None:
+        for region in props['region_name_pos']:
+            vertices = np.copy(regions[region]['poly_verts']['pixel'])
+            rect = ax.add_patch(Polygon(
+                    vertices[:, ::-1],
+                    facecolor='none',
+                    edgecolor='w'))
+
+        if props is not None:
+            for region in props['region_name_pos']:
+                if region == 'taurus1':
+                    region = 'taurus 1'
+                if region == 'taurus2':
+                    region = 'taurus 2'
+                ax.annotate(region.capitalize(),
+                            xy=props['region_name_pos'][region]['pixel'],
+                            xytext=(0,0),
+                            textcoords='offset points',
+                            color='w',
+                            fontsize=10,
+                            zorder=10)
+
+    if title is not None:
+        fig.suptitle(title, fontsize=font_scale)
+    if filename is not None:
+        plt.savefig(filename, bbox_inches='tight')
+    if show:
+        fig.show()
 
 def plot_nhi_image(nhi_image=None, header=None, contour_image=None,
         av_image=None, cores=None, props=None, regions=None, title=None,
@@ -1197,6 +1332,7 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
     props['plot_limit']['wcs'] = (((5, 20, 0), (19, 0 ,0)),
                                   ((2, 30, 0), (37, 0, 0))
                                   )
+
     props['region_name_pos'] = {
              #'taurus 1' : {'wcs' : ((3, 50,  0),
              #                       (21.5, 0, 0)),
@@ -1228,6 +1364,8 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
                                               'co_noise_limits',
                                               'plot_limit',
                                               'region_name_pos'))
+
+    props['plot_limit']['wcs'] = [15*(5+20./60), 15*(2+30./60.), 19, 37]
 
     # Load cloud division regions from ds9
     props = load_ds9_region(props,
@@ -1280,14 +1418,27 @@ def main(dgr=None, vel_range=None, vel_range_type='single', region=None,
             filename = 'multicloud_av_model_map_region{0:.0f}'.format(region) + \
                        '.{0:s}'.format(figure_type)
 
-        filename = figure_dir + 'maps/' + filename
+        filename = 'av_map'
+        filename = figure_dir + 'maps/' + filename + '.' + figure_type
         print('\nSaving Av model image to \n' + filename)
 
+        plot_av_image(av_image=av_image,
+                       header=av_header,
+                       limits=props['plot_limit']['wcs'],
+                       limits_type='wcs',
+                       regions=props['regions'],
+                       props=props,
+                       av_vlimits=(0,15.5),
+                       filename=filename,
+                       show=False)
+
+        filename = 'av_nhi_map'
+        filename = figure_dir + 'maps/' + filename + '.' + figure_type
+        print('\nSaving NHI + Av maps to \n' + filename)
         plot_nhi_image(nhi_image=nhi_image,
                        header=av_header,
                        av_image=av_image,
-                       #limits=props['plot_limit']['pixel'],
-                       limits=[76, 43.5, 19.5, 38,],
+                       limits=props['plot_limit']['wcs'],
                        regions=props['regions'],
                        props=props,
                        hi_vlimits=(0,20),
