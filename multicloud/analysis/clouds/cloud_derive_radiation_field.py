@@ -43,9 +43,12 @@ def write_rad_field():
                                                       beta=beta_data,
                                                       beta_error=beta_error_data)
 
+    # convert Mathis field to Draine field
+    rad_field /= 1.48
+
     # create rad field header
     rad_field_header = beta_header.copy()
-    rad_field_header['BUNIT'] = 'Mathis'
+    rad_field_header['BUNIT'] = 'Draine Field'
 
     # Write the radiation field to fits file
     fits.writeto(FILENAME_RAD, rad_field, header=rad_field_header, clobber=True)
