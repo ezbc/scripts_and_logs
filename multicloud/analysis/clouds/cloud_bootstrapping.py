@@ -242,6 +242,7 @@ def plot_multicloud_results(results):
                                               model_kwargs=model_kwargs,
                                   hi_sd_error=hisd_error_core_list[j],
                                   hi_sd=hisd_core_list[j],
+                              odr_fitting=global_args['odr_fitting'],
                                               )
                                    )
 
@@ -256,6 +257,7 @@ def plot_multicloud_results(results):
                               hi_sd_error=hisd_error_core_list[j],
                               hi_sd=hisd_core_list[j],
                               model_kwargs=model_kwargs,
+                              odr_fitting=global_args['odr_fitting'],
                               )
             for model in model_fits_list[j]:
                 if core in ('G160.53-19.73','G172.93-16.73','G164.70-7.63'):
@@ -609,7 +611,7 @@ def plot_multicloud_results(results):
                                 levels=(0.99, 0.98, 0.95, 0.86, 0.59),
                                 poly_fit=True,
                                 scale=['log','log'],
-                                #limits=[2, 20, -13, 20]
+                                #limit=[2, 20, -13, 20]
                                 limits=[0.1, 100, 0.01, 100]
                                 )
 
@@ -1744,7 +1746,7 @@ Modeling Functions
 '''
 
 def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
-        h_sd_fit=None, hi_sd=None, hi_sd_error=None):
+        h_sd_fit=None, hi_sd=None, hi_sd_error=None, odr_fitting=False,):
 
     import mystats
 
@@ -1762,6 +1764,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                                 rh2_error=rh2_error.ravel(),
                                 h_sd_error=h_sd_error.ravel(),
                                 model_kwargs=model_kwargs,
+                                odr_fit=odr_fitting,
                                 )
     fitted_models = {}
     for model in ss_model_result:
@@ -2589,6 +2592,8 @@ def bootstrap_worker(global_args, i):
                                                rh2_error=rh2_core_error,
                                                h_sd_error=h_sd_core_error,
                                                model_kwargs=new_model_kwargs,
+                                               odr_fit=\
+                                                   global_args['odr_fitting'],
                                                )
 
         if plot_kwargs['plot_diagnostics']:
@@ -2641,7 +2646,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
         av_reference=None, nhi_image_background=None, num_bootstraps=100,
         plot_kwargs=None, scale_kwargs=None, use_intercept=True,
         sim_hi_error=False, ss_model_kwargs=None, multiprocess=True,
-        rotate_cores=False, calc_median_error=False):
+        rotate_cores=False, calc_median_error=False, odr_fitting=False,):
 
     import multiprocessing as mp
     import sys
@@ -2692,6 +2697,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
     global_args['sim_hi_error'] = sim_hi_error
     global_args['ss_model_kwargs'] = ss_model_kwargs
     global_args['calculate_median_error'] = calc_median_error
+    global_args['odr_fitting'] = odr_fitting
 
     # initialize errors on av and nhi
     error_dict = {}
@@ -2807,6 +2813,7 @@ def residual_worker(global_args, core):
                                 model_kwargs=model_kwargs,
                                 bootstrap_residuals=True,
                                 nboot=nboot,
+                                odr_fit=global_args['odr_fitting'],
                                 )
 
 
@@ -3517,11 +3524,18 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
                               av_image=av,
                               dgr=dgr)
 
-    # nh2 = (av * dgr - nhi) / 2
+    # nh2 = (av / dgr - nhi) / 2
     # nh2_error = ((nh2 * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5)**2 \
     #              - nhi_error**2.0)**0.5 / 2
     av_comp_error = nh2_image * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5
-    nh2_image_error = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
+    comp_av_error = av_error / dgr
+    comp_dgr_error = - av / dgr**2 * dgr_error
+    comp_nhi_error = nhi_error
+    nh2_image_error_before = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
+    nh2_image_error = nh2_image * (comp_av_error**2 + comp_dgr_error**2 + \
+                      comp_nhi_error**2)**0.5
+
+    print 'nh2 error before - after:', nh2_image_error_before - nh2_image_error
 
     # convert to column density to surface density
     hi_sd_image = calculate_sd(nhi,
@@ -3887,6 +3901,7 @@ def run_cloud_analysis(global_args,):
     av_data_ref[region_mask] = np.nan
 
     # Scale the data to the 2MASS K+09 data
+    # ---------------------------------------------------------------------------
     scale_kwargs = scale_av_with_refav(av_data, av_data_ref, av_error_data)
     av_data_backsub = av_data - scale_kwargs['intercept']
     avg_scalar = (scale_kwargs['av_scalar'] + 1) / 2.0
@@ -4181,7 +4196,8 @@ def run_cloud_analysis(global_args,):
                        ss_model_kwargs=global_args['ss_model_kwargs'],
                        multiprocess=global_args['multiprocess'],
                        rotate_cores=global_args['rotate_cores'],
-                       calc_median_error=global_args['calculate_median_error']
+                       calc_median_error=global_args['calculate_median_error'],
+                       odr_fitting=global_args['odr_fitting'],
                        )
     np.save(bootstrap_filename, boot_result)
 
@@ -4298,8 +4314,9 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
-                'num_bootstraps': 100,
+                'load': 1,
+                'num_bootstraps': 10,
+                'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
