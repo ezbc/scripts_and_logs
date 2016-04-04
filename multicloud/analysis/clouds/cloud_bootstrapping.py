@@ -242,7 +242,7 @@ def plot_multicloud_results(results):
                                               model_kwargs=model_kwargs,
                                   hi_sd_error=hisd_error_core_list[j],
                                   hi_sd=hisd_core_list[j],
-                              odr_fitting=global_args['odr_fitting'],
+                                  odr_fitting=global_args['odr_fitting'],
                                               )
                                    )
 
@@ -2235,6 +2235,10 @@ def create_filename_base(global_args):
         vary_phi_g_name = '_varyphig'
     else:
         vary_phi_g_name = ''
+    if global_args['odr_fitting']:
+        odr_name = '_odrfit'
+    else:
+        odr_name = ''
 
     bootstrap_name = '{0:.0f}mcsim'.format(global_args['num_bootstraps'])
 
@@ -2245,7 +2249,7 @@ def create_filename_base(global_args):
             intercept_name + error_name + compsub_name + backdgr_name + \
             '_' + hi_range_name + '_' + global_args['radiation_type'] + \
             rotate_cores_name + vary_phi_g_name + '_' + \
-            bootstrap_name
+            bootstrap_name + odr_name
 
     return filename_extension, global_args
 
@@ -3513,13 +3517,20 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
     from myimage_analysis import calculate_nhi, calculate_noise_cube, \
         calculate_sd, calculate_nh2, calculate_nh2_error
 
+    # Get data products
+    # ---------------------------------------------------------------------------
     nhi = data_products['nhi']
     nhi_error = data_products['nhi_error']
     av = data_products['av']
     av_error = data_products['av_error']
     dgr = mc_analysis['dgr']
     dgr_error = np.mean(np.abs(mc_analysis['dgr_error']))
+    dgr_error = mc_analysis['dgr_std']
+    print 'dgr', dgr
+    print 'dgr_error', dgr_error
 
+    # Calculate N(H2) and error
+    # ---------------------------------------------------------------------------
     nh2_image = calculate_nh2(nhi_image=nhi,
                               av_image=av,
                               dgr=dgr)
@@ -3527,17 +3538,23 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
     # nh2 = (av / dgr - nhi) / 2
     # nh2_error = ((nh2 * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5)**2 \
     #              - nhi_error**2.0)**0.5 / 2
-    av_comp_error = nh2_image * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5
     comp_av_error = av_error / dgr
     comp_dgr_error = - av / dgr**2 * dgr_error
     comp_nhi_error = nhi_error
-    nh2_image_error_before = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
-    nh2_image_error = nh2_image * (comp_av_error**2 + comp_dgr_error**2 + \
+    nh2_image_error = 0.5 * (comp_av_error**2 + comp_dgr_error**2 + \
                       comp_nhi_error**2)**0.5
 
-    print 'nh2 error before - after:', nh2_image_error_before - nh2_image_error
+    if 1:
+        av_comp_error = nh2_image * ((av_error / av)**2 + \
+                (dgr_error / dgr)**2)**0.5
+        nh2_image_error_before = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
+        mask = np.isnan(nh2_image_error_before)
+        mask[np.isnan(nh2_image_error)] = 1
+        print 'nh2 error before - after:', nh2_image_error_before[~mask] - \
+            nh2_image_error[~mask]
 
-    # convert to column density to surface density
+    # Convert to column density to surface density
+    # ---------------------------------------------------------------------------
     hi_sd_image = calculate_sd(nhi,
                                sd_factor=1/1.25)
     hi_sd_image_error = calculate_sd(nhi_error,
@@ -3552,10 +3569,23 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
     h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
 
     # Write ratio between H2 and HI
-    rh2_image = h2_sd_image / hi_sd_image
-    rh2_image_error = rh2_image * (h2_sd_image_error**2 / h2_sd_image**2 + \
-                      h_sd_image_error**2 / h_sd_image**2)**0.5
+    # ---------------------------------------------------------------------------
+    comp_hi_error = - h2_sd_image / hi_sd_image**2 * hi_sd_image_error
+    comp_h2_error = h2_sd_image_error / hi_sd_image
+    rh2_image_error = (comp_hi_error**2 + comp_h2_error**2)**0.5
 
+    if 1:
+        rh2_image = h2_sd_image / hi_sd_image
+        rh2_image_error_before = rh2_image * (h2_sd_image_error**2 / \
+                                 h2_sd_image**2 + \
+                                 h_sd_image_error**2 / h_sd_image**2)**0.5
+        mask = np.isnan(rh2_image_error_before)
+        mask[np.isnan(rh2_image_error)] = 1
+        print 'rh2 error before - after:', rh2_image_error_before[~mask] - \
+            rh2_image_error[~mask]
+
+    # Write products to dictionary
+    # ---------------------------------------------------------------------------
     data_products['nh2'] = nh2_image
     data_products['h2_sd'] = h2_sd_image
     data_products['hi_sd'] = hi_sd_image
@@ -3622,6 +3652,7 @@ def calc_mc_analysis(mc_results, resid_results, data_products):
     dgrs = mc_results['av_model_results']['dgr']
     dgr, dgr_error = mystats.calc_cdf_error(dgrs,
                                             alpha=0.32)
+    dgr_std = np.std(dgrs)
 
     if 1:
         import matplotlib.pyplot as plt
@@ -3705,6 +3736,7 @@ def calc_mc_analysis(mc_results, resid_results, data_products):
 
     mc_analysis = {'dgr': dgr,
                    'dgr_error': dgr_error,
+                   'dgr_std': dgr_std,
                    'cores': core_analysis,
                    }
 
@@ -4314,9 +4346,9 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
-                'num_bootstraps': 10,
-                'odr_fitting': False,
+                'load': 0,
+                'num_bootstraps': 100,
+                'odr_fitting': True,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
