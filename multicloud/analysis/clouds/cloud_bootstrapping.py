@@ -208,11 +208,11 @@ def plot_multicloud_results(results):
 
             # get the data for each core
             hisd = hisd_list[i][core_indices]
-            hisd_error = hisd_list[i][core_indices]
+            hisd_error = hisd_error_list[i][core_indices]
             hsd = hsd_list[i][core_indices]
-            hsd_error = hsd_list[i][core_indices]
+            hsd_error = hsd_error_list[i][core_indices]
             rh2 = rh2_list[i][core_indices]
-            rh2_error = rh2_list[i][core_indices]
+            rh2_error = rh2_error_list[i][core_indices]
 
 
             # mask the data based on nans and negative RH2
@@ -246,6 +246,8 @@ def plot_multicloud_results(results):
                                               )
                                    )
 
+            print('hi sd error',
+                    scipy.stats.nanmedian(hisd_error_core_list[j].ravel()))
 
             # get the residual sum of squares
             # -------------------------------------------------------------------
@@ -298,6 +300,8 @@ def plot_multicloud_results(results):
                                      fits=model_fits_list[j],
                                      )
 
+        print('hi sd median error', hisd_median_error_cores_list)
+
         cloud_model_fits_list.append(model_fits_list)
         core_names_list.append(core_names)
         hisd_cores_list.append(hisd_core_list)
@@ -330,6 +334,7 @@ def plot_multicloud_results(results):
     #print_av_error_stats(av_list[0], av_error_list[0])
 
     print_BIC_results(stats_list, core_names_list)
+    #print_RSS_results(stats_list, core_names_list)
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
@@ -744,6 +749,9 @@ def print_BIC_results(stats_list, core_names):
     bayes_factor = np.array(stats_list['krumholz_results']['BIC']) - \
                    np.array(stats_list['sternberg_results']['BIC'])
 
+    chisq_s14 = np.array(stats_list['sternberg_results']['chisq_reduced'])
+    chisq_k09 = np.array(stats_list['krumholz_results']['chisq_reduced'])
+
     # cores gathers by cloud, unravel
     core_names = np.ravel(core_names)
 
@@ -761,6 +769,16 @@ def print_BIC_results(stats_list, core_names):
     print(mystats.calc_cdf_error(bayes_factor, alpha=0.5))
     print(np.sort(bayes_factor))
 
+    print('Confidence intervals on reduced chi squared')
+    print('krumholz')
+    print(mystats.calc_cdf_error(chisq_k09, alpha=0.5))
+    print(np.sort(chisq_k09))
+    print('sternberg')
+    print(mystats.calc_cdf_error(chisq_k09, alpha=0.5))
+    print(np.sort(chisq_s14))
+    print('diff')
+    print(np.sort(chisq_k09 - chisq_s14))
+
     print('Core with max BF of {0:.0f}'.format(np.max(bayes_factor)))
     print(core_names[np.argmax(bayes_factor)])
     print('Core with min BF of {0:.0f}'.format(np.min(bayes_factor)))
@@ -775,6 +793,42 @@ def print_BIC_results(stats_list, core_names):
     plt.xlabel('K+09 - S+14')
     plt.title('Bayes Factor CDF')
     plt.savefig('/d/bip3/ezbc/multicloud/figures/models/bayes_factor_cdf.png')
+
+def print_RSS_results(stats_list, core_names):
+
+    RSS_s14 = np.array(stats_list['sternberg_results']['sum_of_resid'])
+    RSS_k09 = np.array(stats_list['krumholz_results']['sum_of_resid'])
+    RSS_diff = RSS_k09 - RSS_s14
+
+    # cores gathers by cloud, unravel
+    core_names = np.ravel(core_names)
+
+    print('Median difference in BIC between k09 and s14 models:')
+    print(np.median(RSS_k09 - RSS_s14))
+
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    import mystats
+
+    print('Confidence intervals on RSS K09 - S14 difference')
+    print(mystats.calc_cdf_error(RSS_diff, alpha=0.5))
+    print(np.sort(RSS_diff))
+
+    print('Core with max BF of {0:.0f}'.format(np.max(RSS_diff)))
+    print(core_names[np.argmax(RSS_diff)])
+    print('Core with min BF of {0:.0f}'.format(np.min(RSS_diff)))
+    print(core_names[np.argmin(RSS_diff)])
+
+    print('Core BF')
+    index = np.where(core_names == 'G158.39-20.72')[0]
+    print(core_names[index], RSS_diff[index])
+
+    plt.close(); plt.clf()
+    myplt.plot_cdf(RSS_diff)
+    plt.xlabel('K+09 - S+14')
+    plt.title('Bayes Factor CDF')
+    plt.savefig('/d/bip3/ezbc/multicloud/figures/models/RSS_diff_cdf.png')
+
 
 def calc_hi_statistics(cloud_name_list, core_names_list,
                                  hisd_cores_list, h_sd_cores_list,
@@ -824,9 +878,10 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
                 hi_dict[cloud]['chisq_reduced_sternberg'].append( \
                     stats_list['sternberg_results']['chisq_reduced'][j])
 
-                print 'chisq:'
-                print stats_list['sternberg_results']['chisq_reduced'][j]
-                print stats_list['krumholz_results']['chisq_reduced'][j]
+                if 0:
+                    print 'chisq:'
+                    print stats_list['sternberg_results']['chisq_reduced'][j]
+                    print stats_list['krumholz_results']['chisq_reduced'][j]
 
     # save the dict?
     if filename is not None:
@@ -1355,7 +1410,7 @@ def write_final_maps(results_dict, global_args):
     fits.writeto(FILENAME_H2_ERROR, h2_sd_error_image, header=header, clobber=True)
 
     # column density maps
-    header['BUNIT'] = '10e20 cm2'
+    header['BUNIT'] = '10e20/cm2'
     fits.writeto(FILENAME_NHI, nhi_image, header=header, clobber=True)
     fits.writeto(FILENAME_NHI_ERROR, nhi_error_image, header=header, clobber=True)
     fits.writeto(FILENAME_NH2, nh2_image, header=header, clobber=True)
@@ -1755,8 +1810,9 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         #h_sd, rh2, h_sd_error, rh2_error, h_sd_fit = mask_nans(data_array)
     #else:
     if 1:
-        data_array = h_sd, rh2, h_sd_error, rh2_error
-        h_sd, rh2, h_sd_error, rh2_error = mask_nans(data_array)
+        data_array = h_sd, rh2, h_sd_error, rh2_error, hi_sd, hi_sd_error
+        h_sd, rh2, h_sd_error, rh2_error, hi_sd, hi_sd_error = \
+            mask_nans(data_array)
 
     ss_model_result = \
         lm_science.fit_steady_state_models(h_sd.ravel(),
@@ -1794,12 +1850,18 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         fits['dof'] = np.size(rh2) - 1
         fits['sum_of_resid'] = np.sum((rh2 - model_fits[0])**2)
         fits['logL'] = mystats.calc_logL(model_fits[0], rh2, rh2_error)
+        fits['logL'] = mystats.calc_logL(hisd_fit, hi_sd, hi_sd_error)
         fits['rh2_ind'] = rh2_fit
         fits['hsd_ind'] = hsd_fit
         fits['hisd_ind'] = hisd_fit
         try:
             fits['chisq_reduced'] = \
                 mystats.calc_chisq(rh2_fit, rh2, rh2_error,
+                                   dof=fits['dof'])
+
+            print('hi_sd_error', np.median(hi_sd_error))
+            fits['chisq_reduced'] = \
+                mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
                                    dof=fits['dof'])
         except ValueError:
             fits['chisq_reduced'] = np.nan
@@ -1828,6 +1890,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
         k = 1 # number of parameters
         N = np.size(rh2)
         BIC = k * np.log(N) - 2 * fits['logL']
+        #BIC = N * np.log(RSS / N) + k * np.log(N)
         fits['BIC'] = BIC
 
     return fitted_models
@@ -3514,9 +3577,6 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
 
 def add_coldens_images(data_products, mc_analysis, mc_results):
 
-    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
-        calculate_sd, calculate_nh2, calculate_nh2_error
-
     # Get data products
     # ---------------------------------------------------------------------------
     nhi = data_products['nhi']
@@ -3524,116 +3584,93 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
     av = data_products['av']
     av_error = data_products['av_error']
     dgr = mc_analysis['dgr']
+    #dgr_error = mc_analysis['dgr_std']
     dgr_error = np.mean(np.abs(mc_analysis['dgr_error']))
-    dgr_error = mc_analysis['dgr_std']
-    print 'dgr', dgr
-    print 'dgr_error', dgr_error
 
     # Calculate N(H2) and error
     # ---------------------------------------------------------------------------
-    nh2_image = calculate_nh2(nhi_image=nhi,
-                              av_image=av,
-                              dgr=dgr)
-
-    # nh2 = (av / dgr - nhi) / 2
-    # nh2_error = ((nh2 * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5)**2 \
-    #              - nhi_error**2.0)**0.5 / 2
-    comp_av_error = av_error / dgr
-    comp_dgr_error = - av / dgr**2 * dgr_error
-    comp_nhi_error = nhi_error
-    nh2_image_error = 0.5 * (comp_av_error**2 + comp_dgr_error**2 + \
-                      comp_nhi_error**2)**0.5
-
-    if 1:
-        av_comp_error = nh2_image * ((av_error / av)**2 + \
-                (dgr_error / dgr)**2)**0.5
-        nh2_image_error_before = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
-        mask = np.isnan(nh2_image_error_before)
-        mask[np.isnan(nh2_image_error)] = 1
-        print 'nh2 error before - after:', nh2_image_error_before[~mask] - \
-            nh2_image_error[~mask]
-
-    # Convert to column density to surface density
-    # ---------------------------------------------------------------------------
-    hi_sd_image = calculate_sd(nhi,
-                               sd_factor=1/1.25)
-    hi_sd_image_error = calculate_sd(nhi_error,
-                                     sd_factor=1/1.25)
-
-    h2_sd_image = calculate_sd(nh2_image,
-                               sd_factor=1/0.625)
-    h2_sd_image_error = calculate_sd(nh2_image_error,
-                               sd_factor=1/0.625)
-
-    h_sd_image = hi_sd_image + h2_sd_image
-    h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
-
-    # Write ratio between H2 and HI
-    # ---------------------------------------------------------------------------
-    comp_hi_error = - h2_sd_image / hi_sd_image**2 * hi_sd_image_error
-    comp_h2_error = h2_sd_image_error / hi_sd_image
-    rh2_image_error = (comp_hi_error**2 + comp_h2_error**2)**0.5
-
-    if 1:
-        rh2_image = h2_sd_image / hi_sd_image
-        rh2_image_error_before = rh2_image * (h2_sd_image_error**2 / \
-                                 h2_sd_image**2 + \
-                                 h_sd_image_error**2 / h_sd_image**2)**0.5
-        mask = np.isnan(rh2_image_error_before)
-        mask[np.isnan(rh2_image_error)] = 1
-        print 'rh2 error before - after:', rh2_image_error_before[~mask] - \
-            rh2_image_error[~mask]
+    ((nhi,
+      nh2,
+      hi_sd,
+      h2_sd,
+      h_sd,
+      rh2),
+     (nhi_error,
+      nh2_error,
+      hi_sd_error,
+      h2_sd_error,
+      h_sd_error,
+      rh2_error)) = \
+        lm_science.calc_coldens_products(nhi, av, dgr, nhi_error=nhi_error,
+                                         av_error=av_error, dgr_error=dgr_error)
 
     # Write products to dictionary
     # ---------------------------------------------------------------------------
-    data_products['nh2'] = nh2_image
-    data_products['h2_sd'] = h2_sd_image
-    data_products['hi_sd'] = hi_sd_image
-    data_products['h_sd'] = h_sd_image
-    data_products['rh2'] = rh2_image
-    data_products['nh2_error'] = np.abs(nh2_image_error)
-    data_products['h2_sd_error'] = np.abs(h2_sd_image_error)
-    data_products['hi_sd_error'] = np.abs(hi_sd_image_error)
-    data_products['h_sd_error'] = np.abs(h_sd_image_error)
-    data_products['rh2_error'] = np.abs(rh2_image_error)
+    data_products['nh2'] = nh2
+    data_products['h2_sd'] = h2_sd
+    data_products['hi_sd'] = hi_sd
+    data_products['h_sd'] = h_sd
+    data_products['rh2'] = rh2
+    data_products['nh2_error'] = np.abs(nh2_error)
+    data_products['h2_sd_error'] = np.abs(h2_sd_error)
+    data_products['hi_sd_error'] = np.abs(hi_sd_error)
+    data_products['h_sd_error'] = np.abs(h_sd_error)
+    data_products['rh2_error'] = np.abs(rh2_error)
 
     # Median sim errors
     # --------------------------------------------------------------------------
     if mc_results['sim_images'] is not None:
         av_error = np.median(np.nanstd(mc_results['sim_images']['av_sim']))
-        nhi_error = np.median(np.nanstd(mc_results['sim_images']['nhi_sim']))
+        nhi_error = nhi_error + \
+            np.median(np.nanstd(mc_results['sim_images']['nhi_sim']))
+        dgr_error = np.mean(np.abs(mc_analysis['dgr_error']))
 
-        # nh2 = (av * dgr - nhi) / 2
-        # nh2_error = ((nh2 * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5)**2 \
-        #              - nhi_error**2.0)**0.5 / 2
-        av_comp_error = nh2_image * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.
-        nh2_image_error = (av_comp_error**2 + nhi_error**2)**0.5 / 2.0
+        ((nhi,
+          nh2,
+          hi_sd,
+          h2_sd,
+          h_sd,
+          rh2),
+         (nhi_error,
+          nh2_error,
+          hi_sd_error,
+          h2_sd_error,
+          h_sd_error,
+          rh2_error)) = \
+            lm_science.calc_coldens_products(nhi, av, dgr, nhi_error=nhi_error,
+                                             av_error=av_error, dgr_error=dgr_error)
 
-        # convert to column density to surface density
-        hi_sd_image = calculate_sd(nhi,
-                                   sd_factor=1/1.25)
-        hi_sd_image_error = calculate_sd(nhi_error,
-                                         sd_factor=1/1.25)
-
-        h2_sd_image = calculate_sd(nh2_image,
-                                   sd_factor=1/0.625)
-        h2_sd_image_error = calculate_sd(nh2_image_error,
-                                   sd_factor=1/0.625)
-
-        h_sd_image = hi_sd_image + h2_sd_image
-        h_sd_image_error = (hi_sd_image_error**2 + h2_sd_image_error**2)**0.5
-
-        # Write ratio between H2 and HI
-        rh2_image = h2_sd_image / hi_sd_image
-        rh2_image_error = rh2_image * (h2_sd_image_error**2 / h2_sd_image**2 + \
-                          h_sd_image_error**2 / h_sd_image**2)**0.5
 
         data_products['h_sd_median_error'] = \
-            scipy.stats.nanmedian(h_sd_image_error.ravel())
+            scipy.stats.nanmedian(h_sd_error.ravel())
         data_products['hi_sd_median_error'] = \
-                scipy.stats.nanmedian(hi_sd_image_error.ravel())
+                scipy.stats.nanmedian(hi_sd_error.ravel())
         data_products['rh2_median_error'] = \
-                scipy.stats.nanmedian(rh2_image_error.ravel())
+                scipy.stats.nanmedian(rh2_error.ravel())
+
+        if 1:
+            rh2 = h2_sd / hi_sd
+            rh2_error_before = rh2 * (h2_sd_error**2 / \
+                                     h2_sd**2 + \
+                                     h_sd_error**2 / h_sd**2)**0.5
+            mask = np.isnan(rh2_error_before)
+            mask[np.isnan(rh2_error)] = 1
+            print 'rh2 error before - after:', rh2_error_before[~mask] - \
+                rh2_error[~mask]
+
+            data_products['nh2'] = nh2
+            data_products['h2_sd'] = h2_sd
+            data_products['hi_sd'] = hi_sd
+            data_products['h_sd'] = h_sd
+            data_products['rh2'] = rh2
+            data_products['nh2_error'] = np.abs(nh2_error)
+            data_products['h2_sd_error'] = np.abs(h2_sd_error)
+            data_products['hi_sd_error'] = np.abs(hi_sd_error)
+            data_products['h_sd_error'] = np.abs(h_sd_error)
+            data_products['rh2_error'] = np.abs(rh2_error)
+            print('hi_sd_error', scipy.stats.nanmedian(hi_sd_error.ravel()))
+
+
     else:
         data_products['h_sd_median_error'] = None
         data_products['hi_sd_median_error'] = None
@@ -4346,9 +4383,9 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
-                'num_bootstraps': 100,
-                'odr_fitting': True,
+                'load': 1,
+                'num_bootstraps': 1000,
+                'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
                 'background_subtract': 0,
@@ -4373,7 +4410,7 @@ def main():
                 #'num_bootstraps': 10000,
                 'num_resid_bootstraps': 100,
                 'bootstrap_fit_residuals': False,
-                'calculate_median_error': False,
+                'calculate_median_error': 0,
                 'multiprocess': 1,
                 'radiation_type': permutation[12],
                 'rotate_cores': permutation[13],
