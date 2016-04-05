@@ -1094,7 +1094,7 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         ax.set_ylim(limits[2],limits[3])
 
         # Adjust asthetics
-        ax.set_ylabel(r'$N($H$\textsc{i}) \times\,10^{20}$ cm$^{-2}$')
+        ax.set_ylabel(r'$N($H$\textsc{i}) [10^{20}$ cm$^{-2}$]')
         ax.set_xlabel(r'$A_V$ [mag]')
         if 1:
             loc = 'lower right'
