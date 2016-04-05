@@ -275,7 +275,7 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
             return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
                                      return_fractions=False)
 
-        h_sd_error, rh2_error = None, None
+        #h_sd_error, rh2_error = None, None
         model = odr.Model(odr_func)
         data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
         odr_instance = odr.ODR(data, model, beta0=[alphaG,])
@@ -285,4 +285,53 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         rh2_fit_params = (alphaG, Z, phi_g)
 
     return rh2_fit_params
+
+def calc_coldens_products(nhi, av, dgr, nhi_error=0.0, av_error=0.0,
+        dgr_error=0.0, ):
+
+    from myimage_analysis import calculate_nhi, calculate_noise_cube, \
+        calculate_sd, calculate_nh2, calculate_nh2_error
+
+    # Calculate N(H2) and error
+    # ---------------------------------------------------------------------------
+    nh2 = calculate_nh2(nhi_image=nhi,
+                              av_image=av,
+                              dgr=dgr)
+
+    # nh2 = (av / dgr - nhi) / 2
+    # nh2_error = ((nh2 * ((av_error / av)**2 + (dgr_error / dgr)**2)**0.5)**2 \
+    #              - nhi_error**2.0)**0.5 / 2
+    comp_av_error = av_error / dgr
+    comp_dgr_error = - av / dgr**2 * dgr_error
+    comp_nhi_error = nhi_error
+    nh2_error = 0.5 * (comp_av_error**2 + comp_dgr_error**2 + \
+                      comp_nhi_error**2)**0.5
+
+    # Convert to column density to surface density
+    # ---------------------------------------------------------------------------
+    hi_sd = calculate_sd(nhi,
+                               sd_factor=1/1.25)
+    hi_sd_error = calculate_sd(nhi_error,
+                                     sd_factor=1/1.25)
+
+    h2_sd = calculate_sd(nh2,
+                               sd_factor=1/0.625)
+    h2_sd_error = calculate_sd(nh2_error,
+                               sd_factor=1/0.625)
+
+    h_sd = hi_sd + h2_sd
+    h_sd_error = (hi_sd_error**2 + h2_sd_error**2)**0.5
+
+    # Write ratio between H2 and HI
+    # ---------------------------------------------------------------------------
+    rh2 = h2_sd / hi_sd
+    comp_hi_error = - h2_sd / hi_sd**2 * hi_sd_error
+    comp_h2_error = h2_sd_error / hi_sd
+    rh2_error = (comp_hi_error**2 + comp_h2_error**2)**0.5
+
+    return ((nhi, nh2, hi_sd, h2_sd, h_sd, rh2),
+            (nhi_error, nh2_error, hi_sd_error, h2_sd_error, h_sd_error,
+                rh2_error))
+
+
 
