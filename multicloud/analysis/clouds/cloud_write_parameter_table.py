@@ -332,7 +332,7 @@ def write_cloud_props_table(cloud_props):
 
     f.close()
 
-def write_model_params_table(core_dict):
+def write_model_params_table(core_dict, include_temperatures=False,):
 
     from mystats import sigfig
 
@@ -467,13 +467,14 @@ def write_model_params_table(core_dict):
 
         # add HI temp
         # -----------
-        param = core['T_cnm']
-        param_error = core['T_cnm_error']
-        param_info = (param, param_error[1], param_error[0])
-        row_text = \
-            add_row_element(row_text,
-                            param_info,
-                            text_format=text_param_format_int)
+        if include_temperatures:
+            param = core['T_cnm']
+            param_error = core['T_cnm_error']
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format_int)
 
 
         # Sternberg parameters
@@ -518,15 +519,16 @@ def write_model_params_table(core_dict):
 
         # add HI temp
         # -----------
-        #param = sigfig(core['T_H'] * 10.0, 2) # convert from units of 1,000 K to 100 K
-        #param_error = sigfig(core['T_H_error'] * 10.0, 2)
-        param = core['T_H'] * 10.0 # convert from units of 1,000 K to 100 K
-        param_error = core['T_H_error'] * 10.0
-        param_info = (param, param_error[1], param_error[0])
-        row_text = \
-            add_row_element(row_text,
-                            param_info,
-                            text_format=text_param_format_int)
+        if include_temperatures:
+            #param = sigfig(core['T_H'] * 10.0, 2) # convert from units of 1,000 K to 100 K
+            #param_error = sigfig(core['T_H_error'] * 10.0, 2)
+            param = core['T_H'] * 10.0 # convert from units of 1,000 K to 100 K
+            param_error = core['T_H_error'] * 10.0
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format_int)
 
 
         # Finish row
@@ -653,10 +655,10 @@ def run_mc_simulations(core_dict, wcs_header, temp_data, temp_error_data,
             rad_field_draine_median_error = np.mean(mc_error)
 
             # calculate habing field from draine:
-            rad_field_habing_median = rad_field_draine_median / 1.71
-            rad_field_habing_median_error = rad_field_draine_median_error / 1.71
-            rad_field_mathis_median = rad_field_draine_median / 1.48
-            rad_field_mathis_median_error = rad_field_draine_median_error / 1.48
+            rad_field_habing_median = rad_field_draine_median * 1.71
+            rad_field_habing_median_error = rad_field_draine_median_error * 1.71
+            rad_field_mathis_median = rad_field_draine_median * 1.48
+            rad_field_mathis_median_error = rad_field_draine_median_error * 1.48
 
 
             # write results to cloud
@@ -822,10 +824,10 @@ def run_mc_simulations_cores(core_dict, wcs_header, temp_data, temp_error_data,
         rad_field_draine_median_error = np.std(rads)
 
         # calculate habing field from draine:
-        rad_field_habing_median = rad_field_draine_median / 1.71
-        rad_field_habing_median_error = rad_field_draine_median_error / 1.71
-        rad_field_mathis_median = rad_field_draine_median / 1.48
-        rad_field_mathis_median_error = rad_field_draine_median_error / 1.48
+        rad_field_habing_median = rad_field_draine_median * 1.71
+        rad_field_habing_median_error = rad_field_draine_median_error * 1.71
+        rad_field_mathis_median = rad_field_draine_median * 1.48
+        rad_field_mathis_median_error = rad_field_draine_median_error * 1.48
 
         # write results to cloud
         core_dict[core_name]['region_values'] = \
@@ -1067,7 +1069,7 @@ def save_core_dict(core_dict):
 
 def main():
 
-    LOAD_MC_RESULTS = True
+    LOAD_MC_RESULTS = False
     N_MC = 100
     WRITE_CORE_DICT = True
 
