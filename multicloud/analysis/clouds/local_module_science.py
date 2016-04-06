@@ -38,6 +38,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
     krumholz_params = model_kwargs['krumholz_params']
     krumholz_results = {}
 
+    print 'parameter vary:', sternberg_params['param_vary']
+
     # Fit to sternberg model
     if rh2.size > 3:
         result = \
@@ -171,18 +173,34 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 1.0], h_sd_error=None,
         rh2_error = None
 
     phi_cnm, Z, sigma_d = guesses
-    def odr_func(phi_cnm, h_sd):
+    if vary[0]:
+        def odr_func(phi_cnm, h_sd):
 
-        return k09.calc_rh2(h_sd, phi_cnm, Z=Z, sigma_d=sigma_d,
-                            return_fractions=False)
+            return k09.calc_rh2(h_sd, phi_cnm, Z=Z, sigma_d=sigma_d,
+                                return_fractions=False)
+        beta0 = [phi_cnm,]
+    if vary[1]:
+        def odr_func(Z, h_sd):
+
+            return k09.calc_rh2(h_sd, phi_cnm, Z=Z, sigma_d=sigma_d,
+                                return_fractions=False)
+        beta0 = [Z,]
+
+
+    print 'fit krumholz vary:', vary
 
     model = odr.Model(odr_func)
     data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
-    odr_instance = odr.ODR(data, model, beta0=[phi_cnm,])
+    odr_instance = odr.ODR(data, model, beta0=beta0)
     output = odr_instance.run()
-    phi_cnm = output.beta[0]
+
+    if vary[0]:
+        phi_cnm = output.beta[0]
+    if vary[1]:
+        Z = output.beta[0]
 
     rh2_fit_params = (phi_cnm, Z, sigma_d)
+    print 'k09 fit params:', rh2_fit_params
 
     return rh2_fit_params
 
@@ -271,18 +289,31 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
             rh2_error = None
 
         alphaG, Z, phi_g = guesses
-        def odr_func(alphaG, h_sd):
-            return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                     return_fractions=False)
+        if vary[0]:
+            def odr_func(alphaG, h_sd):
+                return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                         return_fractions=False)
+            beta0 = [alphaG,]
+        if vary[1]:
+            def odr_func(Z, h_sd):
+                return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
+                                         return_fractions=False)
+            beta0 = [Z,]
 
         #h_sd_error, rh2_error = None, None
         model = odr.Model(odr_func)
         data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
-        odr_instance = odr.ODR(data, model, beta0=[alphaG,])
+        odr_instance = odr.ODR(data, model, beta0=beta0)
         output = odr_instance.run()
-        alphaG = output.beta[0]
+
+        if vary[0]:
+            alphaG = output.beta[0]
+        if vary[1]:
+            Z = output.beta[0]
 
         rh2_fit_params = (alphaG, Z, phi_g)
+
+        print 'S14 fit params:', rh2_fit_params
 
     return rh2_fit_params
 

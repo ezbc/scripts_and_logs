@@ -121,41 +121,44 @@ def plot_core_regions(ax, region_dict, core_sample):
         for i, index in enumerate(df.index):
             region_name = df['Name'][index]
 
+            #if region_name in ('G174.70-15.47', 'G158.26-21.81'):
             if 1:
-                xpix = df['xpix'][index]
-                ypix = df['ypix'][index]
-                print(df['Name'][index].replace('PGCC ',''))# + \
-                      #': {0:.2f} deg'.format(df['ra'][index]) + \
-                      #': {0:.2f} deg'.format(df['dec'][index]))
 
-            region = region_dict[region_name]
-            vertices = np.array((region['xpix'], region['ypix'])).T
+                if 1:
+                    xpix = df['xpix'][index]
+                    ypix = df['ypix'][index]
+                    print(df['Name'][index].replace('PGCC ',''))# + \
+                          #': {0:.2f} deg'.format(df['ra'][index]) + \
+                          #': {0:.2f} deg'.format(df['dec'][index]))
 
-            #[:, ::-1]
-            rects.append(ax.add_patch(Polygon(
-                            vertices,
-                            facecolor='none',
-                            edgecolor='w')
+                region = region_dict[region_name]
+                vertices = np.array((region['xpix'], region['ypix'])).T
+
+                #[:, ::-1]
+                rects.append(ax.add_patch(Polygon(
+                                vertices,
+                                facecolor='none',
+                                edgecolor='w')
+                                )
                             )
-                        )
-            core_labels.append(str(count) + ' - ' + region_name)
+                core_labels.append(str(count) + ' - ' + region_name)
 
-            n = float(vertices.shape[0])
-            center_xy = (np.sum(vertices[:, 0]) / n,
-                         np.sum(vertices[:, 1]) / n)
+                n = float(vertices.shape[0])
+                center_xy = (np.sum(vertices[:, 0]) / n,
+                             np.sum(vertices[:, 1]) / n)
 
-            ax.annotate(str(count),
-                    #xy=[pix_coords[0], pix_coords[1]],
-                    xy=center_xy,
-                    xytext=(-4,-4),
-                    label=region_name,
-                    textcoords='offset points',
-                    fontsize=9,
-                    color='k',
-                    path_effects=[PathEffects.withStroke(linewidth=2,
-                                             foreground="w")])
+                ax.annotate(str(count),
+                        #xy=[pix_coords[0], pix_coords[1]],
+                        xy=center_xy,
+                        xytext=(-4,-4),
+                        label=region_name,
+                        textcoords='offset points',
+                        fontsize=9,
+                        color='k',
+                        path_effects=[PathEffects.withStroke(linewidth=2,
+                                                 foreground="w")])
 
-            count += 1
+                count += 1
 
     ax.legend(rects,
               core_labels,
@@ -766,9 +769,14 @@ def load_wedges(av_image, core_sample, wedge_angle=40, wedge_radius=10,
 def calc_wedge_regions(core_sample, av_data, header):
 
     wedge_angle = 40.0 # degrees
+    #wedge_angle = 20.0 # degrees
+    scalar = 5
     wedge_radius = 10.0 / 0.43 # pixels,
+    #wedge_radius = scalar * 10.0 / 0.43 # pixels,
     wedge_width = 0.8 * wedge_radius # fraction of radius core is within wedge
+    #wedge_width = 1 * wedge_radius # fraction of radius core is within wedge
     core_rel_pos = 0.30 # fraction of radius core is within wedge
+    #core_rel_pos = 0.30 / scalar # fraction of radius core is within wedge
 
     if 0:
         region_dict = derive_ideal_wedge(av_data,

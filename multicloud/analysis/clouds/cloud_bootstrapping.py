@@ -246,8 +246,14 @@ def plot_multicloud_results(results):
                                               )
                                    )
 
-            print('hi sd error',
-                    scipy.stats.nanmedian(hisd_error_core_list[j].ravel()))
+            if 0:
+                print('hi sd error',
+                        scipy.stats.nanmedian(hisd_error_core_list[j].ravel()))
+            if 1:
+                if core in ('G174.70-15.47',):
+                    print('')
+                    print(core)
+                    print('Number of pixels: {0:.0f}'.format(len(hisd)))
 
             # get the residual sum of squares
             # -------------------------------------------------------------------
@@ -300,7 +306,7 @@ def plot_multicloud_results(results):
                                      fits=model_fits_list[j],
                                      )
 
-        print('hi sd median error', hisd_median_error_cores_list)
+        #print('hi sd median error', hisd_median_error_cores_list)
 
         cloud_model_fits_list.append(model_fits_list)
         core_names_list.append(core_names)
@@ -2630,6 +2636,8 @@ def bootstrap_worker(global_args, i):
             assert av[core_indices] == cores[core]['test_pix']
 
         if 0:
+            #if core in ('158.26-21.81','174.70-15.47',):
+            print core
             print('\n\tRegion size = ' + \
                   '{0:.0f} pix'.format(core_indices.size))
 
@@ -3510,14 +3518,14 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     '''
 
     '''
-    vary_alphaG = True # Vary alphaG in S+14 fit?
-    vary_Z = False # Vary metallicity in S+14 fit?
+    vary_alphaG = False # Vary alphaG in S+14 fit?
+    vary_Z = True # Vary metallicity in S+14 fit?
     vary_phi_g = vary_phi_g # Vary phi_g in S+14 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[10.0, 1.0, 1] # Guesses for (alphaG, Z, phi_g)
+    guesses=[6.0, 1.0, 1] # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
@@ -3538,14 +3546,14 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
 
     # Krumholz Parameters
     # --------------------
-    vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
-    vary_Z = False # Vary metallicity in K+09 fit?
+    vary_phi_cnm = False # Vary phi_cnm in K+09 fit?
+    vary_Z = True # Vary metallicity in K+09 fit?
     vary_sigma_d = False # Vary sigma_d in K+09 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[3, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
+    guesses=[8, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
@@ -4293,9 +4301,9 @@ def main():
     results = {}
 
     clouds = (
+              'perseus',
               'taurus',
               'california',
-              'perseus',
               )
 
     data_types = (
@@ -4383,8 +4391,8 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
-                'num_bootstraps': 1000,
+                'load': 0,
+                'num_bootstraps': 10,
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],

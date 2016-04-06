@@ -282,6 +282,15 @@ def add_model_params(core_dict):
                              calc_error=True,
                              )
 
+
+        core['T_cnm'], core['T_cnm_error'] = \
+            calc_temperature(n_H=core['n_cnm'],
+                             pressure=pressure,
+                             pressure_error=pressure_error,
+                             n_H_error=core['n_cnm_error'])
+
+
+
         core['alt_name'] = get_alt_name(core_name)
 
 def write_cloud_props_table(cloud_props):
@@ -464,6 +473,217 @@ def write_model_params_table(core_dict, include_temperatures=False,):
             add_row_element(row_text,
                             param_info,
                             text_format=text_param_format_int)
+
+        # add HI temp
+        # -----------
+        if include_temperatures:
+            param = core['T_cnm']
+            param_error = core['T_cnm_error']
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format_int)
+
+
+        # Sternberg parameters
+        # -------------------
+        model = 'sternberg'
+        param_name = 'alphaG'
+        param = \
+            core[model][param_name]
+        param_error = \
+            core[model][param_name + '_error']
+
+        param_info = (param, param_error[1], param_error[0])
+
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format)
+
+        model = 'sternberg'
+        param_name = 'hi_transition'
+        param = \
+            core[model][param_name]
+        param_error = \
+            core[model][param_name + '_error']
+
+        param_info = (param, param_error[1], param_error[0])
+
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format_int)
+
+        # add H vol dens
+        # --------------
+        param = core['n_H']
+        param_error = core['n_H_error']
+        param_info = (param, param_error[1], param_error[0])
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format_int)
+
+        # add HI temp
+        # -----------
+        if include_temperatures:
+            #param = sigfig(core['T_H'] * 10.0, 2) # convert from units of 1,000 K to 100 K
+            #param_error = sigfig(core['T_H_error'] * 10.0, 2)
+            param = core['T_H'] * 10.0 # convert from units of 1,000 K to 100 K
+            param_error = core['T_H_error'] * 10.0
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format_int)
+
+
+        # Finish row
+        row_text += ' \\\\[0.1cm] \n'
+        if cloud_old != cloud and cloud != 'california':
+            row_text = '\hline  \\\\[-0.2cm] \n' + row_text
+
+        cloud_old = cloud
+
+        f.write(row_text)
+
+    f.close()
+
+def write_temps_table(core_dict,):
+
+    from mystats import sigfig
+
+    table_dir = '/d/bip3/ezbc/multicloud/data/python_output/'
+    filename = table_dir + 'tables/temps_table.tex'
+
+    # get ordered core names
+    core_name_list = get_core_names()
+
+    # Open file to be appended
+    f = open(filename, 'wb')
+
+    text_param_format ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
+    text_param_format_int ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
+
+    #print_dict_keys(mc_analysis_dict)
+    params_to_write = ['phi_cnm', 'alphaG']
+
+    # Collect parameter names for each model for each core
+    cloud_old = ''
+    for cloud_row, core_name in enumerate(core_name_list):
+        core = core_dict[core_name]
+        cloud = core['cloud']
+
+        # add cloud name
+        # -------------
+        if cloud_old != cloud:
+            row_text = cloud.capitalize()
+        else:
+            row_text = ''
+
+        # add core name
+        # -------------
+        row_text = add_row_element(row_text,
+                                   core_name)
+
+        # add alternate core name
+        # -------------
+        row_text = add_row_element(row_text,
+                                   core['alt_name'])
+
+        if 0:
+            # add dust temp
+            # -------------
+            param = core['dust_temp_median']
+            param_error = core['dust_temp_median_error']
+            param_error = [param_error, param_error]
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format)
+
+            # add rad field
+            # -------------
+            param = core['rad_field']
+            param_error = core['rad_field_error']
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format)
+
+        # append model params and errors
+        # ------------------------------
+        if 0:
+            for model in ( 'krumholz', 'sternberg',):
+                if model == 'krumholz':
+                    params_to_write = ['phi_cnm',]
+                else:
+                    params_to_write = ['alphaG',
+                                       #'phi_g',
+                                       'hi_transition']
+
+
+                    #print '\nphi_g:'
+                    #print core[model]['phi_g']
+                    #print core[model]['phi_g_error']
+
+                for i, param_name in enumerate(params_to_write):
+                    param = \
+                        core[model][param_name]
+                    param_error = \
+                        core[model][param_name + '_error']
+
+                    param_info = (param, param_error[1], param_error[0])
+
+                    row_text = \
+                        add_row_element(row_text,
+                                        param_info,
+                                        text_format=text_param_format)
+
+
+            # Krumholz parameters
+            # -------------------
+            model = 'krumholz'
+            param_name = 'phi_cnm'
+            param = \
+                core[model][param_name]
+            param_error = \
+                core[model][param_name + '_error']
+
+            param_info = (param, param_error[1], param_error[0])
+
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format)
+
+            model = 'krumholz'
+            param_name = 'hi_transition'
+            param = \
+                core[model][param_name]
+            param_error = \
+                core[model][param_name + '_error']
+
+            param_info = (param, param_error[1], param_error[0])
+
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format_int)
+
+            # add H vol dens
+            # --------------
+            param = core['n_cnm']
+            param_error = core['n_cnm_error']
+            param_info = (param, param_error[1], param_error[0])
+            row_text = \
+                add_row_element(row_text,
+                                param_info,
+                                text_format=text_param_format_int)
 
         # add HI temp
         # -----------
@@ -1069,7 +1289,7 @@ def save_core_dict(core_dict):
 
 def main():
 
-    LOAD_MC_RESULTS = False
+    LOAD_MC_RESULTS = True
     N_MC = 100
     WRITE_CORE_DICT = True
 
