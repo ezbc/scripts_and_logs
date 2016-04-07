@@ -2649,11 +2649,13 @@ def bootstrap_worker(global_args, i):
         rh2_core_error = rh2_image_error[core_indices]
 
         # mask negative ratios
-        mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
-        rh2_core = rh2_core[~mask_rh2]
-        rh2_core_error = rh2_core_error[~mask_rh2]
-        h_sd_core = h_sd_core[~mask_rh2]
-        h_sd_core_error = h_sd_core_error[~mask_rh2]
+        if 0:
+            mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
+            print('rh2 neg size', np.sum(mask_rh2))
+            rh2_core = rh2_core[~mask_rh2]
+            rh2_core_error = rh2_core_error[~mask_rh2]
+            h_sd_core = h_sd_core[~mask_rh2]
+            h_sd_core_error = h_sd_core_error[~mask_rh2]
 
         # Fit the models
         # -----------------------------------------------------------------------
@@ -4126,9 +4128,9 @@ def run_cloud_analysis(global_args,):
                               )
 
     # mask for erroneous pixels
-    nhi_image[nhi_image < 0] = np.nan
-    nhi_image_error[nhi_image_error < 0] = np.nan
-    nhi_image_background[nhi_image_background < 0] = np.nan
+    #nhi_image[nhi_image < 0] = np.nan
+    #nhi_image_error[nhi_image_error < 0] = np.nan
+    #nhi_image_background[nhi_image_background < 0] = np.nan
 
     if not global_args['use_background']:
         nhi_image_background = None
@@ -4387,8 +4389,8 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 1,
-                'num_bootstraps': 1000,
+                'load': 0,
+                'num_bootstraps': 10,
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
