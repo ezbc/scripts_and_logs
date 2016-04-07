@@ -1223,7 +1223,7 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
     text_param_format ='{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$'
 
     #print_dict_keys(mc_analysis_dict)
-    params_to_write = ['phi_cnm', 'alphaG']
+    params_to_write = ['phi_cnm', 'Z', 'sigma_d', 'alphaG', 'Z', 'phi_g']
 
     # Collect parameter names for each model for each core
     for cloud in ('california', 'perseus', 'taurus'):
@@ -1242,9 +1242,9 @@ def write_model_params_table(mc_analysis_dict, filename, models=('krumholz',)):
             # append model params and errors to row
             for model in ('sternberg', 'krumholz',):
                 if model == 'krumholz':
-                    params_to_write = ['phi_cnm', 'hi_transition']
+                    params_to_write = ['phi_cnm', 'Z', 'sigma_d',]
                 else:
-                    params_to_write = ['alphaG',]
+                    params_to_write = ['alphaG', 'Z', 'phi_g']
                 for i, param_name in enumerate(params_to_write):
                     param = \
                         core[model + '_results'][param_name]
@@ -4392,7 +4392,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 0,
-                'num_bootstraps': 10,
+                'num_bootstraps': 100,
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
