@@ -38,8 +38,6 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
     krumholz_params = model_kwargs['krumholz_params']
     krumholz_results = {}
 
-    print 'parameter vary:', sternberg_params['param_vary']
-
     # Fit to sternberg model
     if rh2.size > 3:
         result = \
@@ -186,9 +184,6 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 1.0], h_sd_error=None,
                                 return_fractions=False)
         beta0 = [Z,]
 
-
-    print 'fit krumholz vary:', vary
-
     model = odr.Model(odr_func)
     data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
     odr_instance = odr.ODR(data, model, beta0=beta0)
@@ -200,7 +195,6 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 1.0], h_sd_error=None,
         Z = output.beta[0]
 
     rh2_fit_params = (phi_cnm, Z, sigma_d)
-    print 'k09 fit params:', rh2_fit_params
 
     return rh2_fit_params
 
@@ -312,8 +306,6 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
             Z = output.beta[0]
 
         rh2_fit_params = (alphaG, Z, phi_g)
-
-        print 'S14 fit params:', rh2_fit_params
 
     return rh2_fit_params
 

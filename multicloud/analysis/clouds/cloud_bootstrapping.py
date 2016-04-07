@@ -3553,7 +3553,7 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[8, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
+    guesses=[3, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
