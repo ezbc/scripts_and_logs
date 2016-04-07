@@ -239,9 +239,9 @@ def add_model_params(core_dict):
             # get the minimum CNM density, calculate n_CNM with phi_CNM, then
             # calculate temperature given galactic pressure between WNM and CNM
 
-            print('Cloud:', cloud)
-            print('Krumholz rad habing field:', core['rad_field_habing_median'])
-            print('Krumholz rad draine field:', core['rad_field_draine_median'])
+            #print('Cloud:', cloud)
+            #print('Krumholz rad habing field:', core['rad_field_habing_median'])
+            #print('Krumholz rad draine field:', core['rad_field_draine_median'])
 
             n_min, n_min_error = \
                 myk09.calc_n_min(G_0=core['rad_field_draine_median'],
@@ -251,6 +251,10 @@ def add_model_params(core_dict):
                                )
             phi_cnm = core['krumholz']['phi_cnm']
             phi_cnm_error = core['krumholz']['phi_cnm_error']
+            Z = core['krumholz']['Z']
+            Z_error = core['krumholz']['Z_error']
+            sigma_d = core['krumholz']['sigma_d']
+            sigma_d_error = core['krumholz']['sigma_d_error']
             core['n_cnm'] = n_min * phi_cnm
             core['n_cnm_error'] = ((phi_cnm * n_min_error)**2 + \
                                    (n_min * phi_cnm_error)**2)**0.5
@@ -266,6 +270,17 @@ def add_model_params(core_dict):
                                  pressure=pressure,
                                  pressure_error=pressure_error,
                                  n_H_error=core['n_cnm_error'])
+
+            core['chi'], core['chi_error'] =\
+                myk09.calc_chi(phi_cnm=phi_cnm,
+                               phi_cnm_error=phi_cnm_error,
+                               Z=Z,
+                               Z_error=Z_error,
+                               sigma_d=sigma_d,
+                               sigma_d_error=sigma_d_error,
+                               )
+
+            print core['chi'], core['chi_error']
 
         else:
             core['T_cnm'], core['T_cnm_error'] = \
@@ -347,6 +362,8 @@ def write_model_params_table(core_dict, include_temperatures=False,):
 
     text_param_format ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
     text_param_format_int ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
+    text_param_format ='{0:.2f}$^{{+{1:.2f}}}_{{-{2:.2f}}}$'
+    text_param_format_int ='{0:.2f}$^{{+{1:.2}}}_{{-{2:.2f}}}$'
 
     #print_dict_keys(mc_analysis_dict)
     params_to_write = ['phi_cnm', 'alphaG']
@@ -1069,7 +1086,7 @@ def save_core_dict(core_dict):
 
 def main():
 
-    LOAD_MC_RESULTS = False
+    LOAD_MC_RESULTS = True
     N_MC = 100
     WRITE_CORE_DICT = True
 

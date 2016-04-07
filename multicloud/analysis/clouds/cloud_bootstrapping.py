@@ -1275,6 +1275,7 @@ def write_core_HI_table(hi_dict, filename,):
 
     text_param_format_sd ='{0:.1f}'
     text_param_format_frac ='{0:.0f}'
+    text_param_format_chisq ='{0:.2g}'
 
     params_to_write = ['hi_sd_mean', 'hi_sd_median', 'hi_sd_std',
     'fraction_LOS_diffuse', 'chisq_reduced_krumholz', 'chisq_reduced_sternberg']
@@ -1310,6 +1311,8 @@ def write_core_HI_table(hi_dict, filename,):
                     text_param_format = text_param_format_frac
                     #print param_info
                     param_info = param_info * 100.0
+                elif 'chisq' in param_name:
+                    text_param_format = text_param_format_chisq
                 else:
                     text_param_format = text_param_format_sd
 
@@ -1859,10 +1862,11 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                 mystats.calc_chisq(rh2_fit, rh2, rh2_error,
                                    dof=fits['dof'])
 
-            print('hi_sd_error', np.median(hi_sd_error))
-            fits['chisq_reduced'] = \
-                mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
-                                   dof=fits['dof'])
+
+            #print('hi_sd_error', np.median(hi_sd_error))
+            #fits['chisq_reduced'] = \
+                #mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
+                                   #dof=fits['dof'])
         except ValueError:
             fits['chisq_reduced'] = np.nan
 
