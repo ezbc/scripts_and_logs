@@ -221,11 +221,6 @@ def plot_multicloud_results(results):
                 mask_nans(data_list)
             data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
 
-            [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error] = \
-                mask_neg_rh2(data_list, rh2=rh2)
-
-            data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
-
             hisd_core_list.append(hisd)
             hsd_core_list.append(hsd)
             rh2_core_list.append(rh2)
@@ -2520,7 +2515,7 @@ def bootstrap_worker(global_args, i):
     av_sim, av_scalar_sim = simulate_rescaling(av_sim, scalar=av_scalar)
 
     # remove background
-    if 0:
+    if 1:
         av_sim, av_background_sim = \
                 simulate_background_error(av_sim,
                                           scale=intercept_error)
@@ -2647,6 +2642,10 @@ def bootstrap_worker(global_args, i):
         h_sd_core_error = h_sd_image_error[core_indices]
         rh2_core = rh2_image[core_indices]
         rh2_core_error = rh2_image_error[core_indices]
+
+        if any(rh2_core) < 0:
+            print core
+            print 'number of R(H2) less than 0', np.sum(rh2_core < 0)
 
         # mask negative ratios
         if 0:
