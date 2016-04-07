@@ -407,8 +407,8 @@ def main():
     for filetype in PLOT_FILETYPES:
         plot_hi_h2_sd(plot_dict,
                       filename=FILENAME_PLOT_BASE + '.' + filetype,
-                      hi_vlimits=[5, 13],
-                      h2_vlimits=[-0.1, 50],
+                      hi_vlimits=[3, 13],
+                      h2_vlimits=[-7, 50],
                       )
         plot_h2_sd(plot_dict,
                    filename=FILENAME_PLOT_BASE_H2 + '.' + filetype,
