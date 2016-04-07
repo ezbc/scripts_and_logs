@@ -845,16 +845,19 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
         hi_dict[cloud]['fraction_LOS_diffuse'] = []
         hi_dict[cloud]['chisq_reduced_krumholz'] = []
         hi_dict[cloud]['chisq_reduced_sternberg'] = []
+        hi_dict[cloud]['rh2_neg_fraction'] = []
 
         # add a row for each core
         for j, core in enumerate(core_names_list[i]):
             hi = hisd_cores_list[i][j]
             h = h_sd_cores_list[i][j]
             rh2 = rh2_cores_list[i][j]
+            rh2_neg_fraction = np.sum(rh2 < 0) / float(np.size(rh2))
             hi_dict[cloud]['cores'].append(core)
             hi_dict[cloud]['hi_sd_mean'].append(np.nanmean(hi))
             hi_dict[cloud]['hi_sd_median'].append(scipy.stats.nanmedian(hi))
             hi_dict[cloud]['hi_sd_std'].append(np.nanstd(hi))
+            hi_dict[cloud]['rh2_neg_fraction'].append(rh2_neg_fraction)
 
             # frac of diffuse LOS
             indices_diffuse = np.where(rh2 < 1.0)[0]
@@ -1276,7 +1279,7 @@ def write_core_HI_table(hi_dict, filename,):
     text_param_format_chisq ='{0:.2g}'
 
     params_to_write = ['hi_sd_mean', 'hi_sd_median', 'hi_sd_std',
-    'fraction_LOS_diffuse', 'chisq_reduced_krumholz', 'chisq_reduced_sternberg']
+    'fraction_LOS_diffuse', 'rh2_neg_fraction'] #'chisq_reduced_krumholz', 'chisq_reduced_sternberg']
 
     # Collect parameter names for each model for each core
     row = 0
@@ -2620,7 +2623,10 @@ def bootstrap_worker(global_args, i):
         rh2_core = rh2_image[core_indices]
         rh2_core_error = rh2_image_error[core_indices]
 
-        if any(rh2_core) < 0:
+        #if any(rh2_core) < 0:
+        print 'fraction of neg rh2', np.sum(rh2_core < 0) / \
+            float(np.size(rh2_core))
+        if np.sum(rh2_core < 0) > 0:
             print core
             print 'number of R(H2) less than 0', np.sum(rh2_core < 0)
 
@@ -2728,6 +2734,8 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
     # initialize array for storing output
     boot_results = np.empty((3, num_bootstraps))
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
+
+    print av.size
 
     # Prep arguments
     global_args = {}
@@ -4103,10 +4111,10 @@ def run_cloud_analysis(global_args,):
                               velocity_range=(velocity_range[1],100),
                               )
 
-    # mask for erroneous pixels
-    #nhi_image[nhi_image < 0] = np.nan
-    #nhi_image_error[nhi_image_error < 0] = np.nan
-    #nhi_image_background[nhi_image_background < 0] = np.nan
+    # mask for erroneous pixel at RA,dec of 4h37m0s, 29d40m0s.
+    nhi_image[nhi_image < -10] = np.nan
+    #nhi_image_error[nhi_image_error < -10] = np.nan
+    #nhi_image_background[nhi_image_background < 10] = np.nan
 
     if not global_args['use_background']:
         nhi_image_background = None
@@ -4366,7 +4374,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 0,
-                'num_bootstraps': 100,
+                'num_bootstraps': 10,# 1000 w/ back, 1001 w/o
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
