@@ -221,6 +221,9 @@ def plot_multicloud_results(results):
                 mask_nans(data_list)
             data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
 
+
+            print('number of neg rh2 points:', np.sum(rh2 < 0))
+
             hisd_core_list.append(hisd)
             hsd_core_list.append(hsd)
             rh2_core_list.append(rh2)
@@ -241,8 +244,8 @@ def plot_multicloud_results(results):
                                               )
                                    )
 
-            print('hi sd error',
-                    scipy.stats.nanmedian(hisd_error_core_list[j].ravel()))
+            #print('hi sd error',
+            #        scipy.stats.nanmedian(hisd_error_core_list[j].ravel()))
 
             # get the residual sum of squares
             # -------------------------------------------------------------------
@@ -295,7 +298,7 @@ def plot_multicloud_results(results):
                                      fits=model_fits_list[j],
                                      )
 
-        print('hi sd median error', hisd_median_error_cores_list)
+        #print('hi sd median error', hisd_median_error_cores_list)
 
         cloud_model_fits_list.append(model_fits_list)
         core_names_list.append(core_names)
@@ -328,7 +331,7 @@ def plot_multicloud_results(results):
     # Write results to a
     #print_av_error_stats(av_list[0], av_error_list[0])
 
-    print_BIC_results(stats_list, core_names_list)
+    #print_BIC_results(stats_list, core_names_list)
     #print_RSS_results(stats_list, core_names_list)
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
@@ -2344,32 +2347,6 @@ def mask_nans(arrays, return_mask=False):
     else:
         return masked_arrays
 
-def mask_neg_rh2(arrays, rh2=None, return_mask=False):
-
-    """ Masks any positions where any array in the list has a NaN.
-
-    Parameters
-    ----------
-    arrays : tuple
-        Tuple of arrays. The mask will be the shape of the first array. The
-        last axes of the rest of the arrays will be masked.
-
-    """
-
-    mask = rh2 < 0.0
-
-    masked_arrays = []
-    for array in arrays:
-        if isinstance(array, np.ndarray):
-            masked_arrays.append(array[~mask])
-        else:
-            masked_arrays.append(array)
-
-    if return_mask:
-        return masked_arrays, mask
-    else:
-        return masked_arrays
-
 def simulate_noise(av, av_error):
 
     ''' Simulates noise of Av data
@@ -2515,7 +2492,7 @@ def bootstrap_worker(global_args, i):
     av_sim, av_scalar_sim = simulate_rescaling(av_sim, scalar=av_scalar)
 
     # remove background
-    if 1:
+    if 0:
         av_sim, av_background_sim = \
                 simulate_background_error(av_sim,
                                           scale=intercept_error)
@@ -4389,7 +4366,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 0,
-                'num_bootstraps': 10,
+                'num_bootstraps': 100,
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
