@@ -221,10 +221,8 @@ def plot_multicloud_results(results):
                 mask_nans(data_list)
             data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
 
-            [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error] = \
-                mask_neg_rh2(data_list, rh2=rh2)
 
-            data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
+            print('number of neg rh2 points:', np.sum(rh2 < 0))
 
             hisd_core_list.append(hisd)
             hsd_core_list.append(hsd)
@@ -249,7 +247,7 @@ def plot_multicloud_results(results):
             if 0:
                 print('hi sd error',
                         scipy.stats.nanmedian(hisd_error_core_list[j].ravel()))
-            if 1:
+            if 0:
                 if core in ('G174.70-15.47',):
                     print('')
                     print(core)
@@ -339,7 +337,7 @@ def plot_multicloud_results(results):
     # Write results to a
     #print_av_error_stats(av_list[0], av_error_list[0])
 
-    print_BIC_results(stats_list, core_names_list)
+    #print_BIC_results(stats_list, core_names_list)
     #print_RSS_results(stats_list, core_names_list)
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
@@ -853,16 +851,19 @@ def calc_hi_statistics(cloud_name_list, core_names_list,
         hi_dict[cloud]['fraction_LOS_diffuse'] = []
         hi_dict[cloud]['chisq_reduced_krumholz'] = []
         hi_dict[cloud]['chisq_reduced_sternberg'] = []
+        hi_dict[cloud]['rh2_neg_fraction'] = []
 
         # add a row for each core
         for j, core in enumerate(core_names_list[i]):
             hi = hisd_cores_list[i][j]
             h = h_sd_cores_list[i][j]
             rh2 = rh2_cores_list[i][j]
+            rh2_neg_fraction = np.sum(rh2 < 0) / float(np.size(rh2))
             hi_dict[cloud]['cores'].append(core)
             hi_dict[cloud]['hi_sd_mean'].append(np.nanmean(hi))
             hi_dict[cloud]['hi_sd_median'].append(scipy.stats.nanmedian(hi))
             hi_dict[cloud]['hi_sd_std'].append(np.nanstd(hi))
+            hi_dict[cloud]['rh2_neg_fraction'].append(rh2_neg_fraction)
 
             # frac of diffuse LOS
             indices_diffuse = np.where(rh2 < 1.0)[0]
@@ -1281,9 +1282,10 @@ def write_core_HI_table(hi_dict, filename,):
 
     text_param_format_sd ='{0:.1f}'
     text_param_format_frac ='{0:.0f}'
+    text_param_format_chisq ='{0:.2g}'
 
     params_to_write = ['hi_sd_mean', 'hi_sd_median', 'hi_sd_std',
-    'fraction_LOS_diffuse', 'chisq_reduced_krumholz', 'chisq_reduced_sternberg']
+    'fraction_LOS_diffuse', 'rh2_neg_fraction'] #'chisq_reduced_krumholz', 'chisq_reduced_sternberg']
 
     # Collect parameter names for each model for each core
     row = 0
@@ -1316,6 +1318,8 @@ def write_core_HI_table(hi_dict, filename,):
                     text_param_format = text_param_format_frac
                     #print param_info
                     param_info = param_info * 100.0
+                elif 'chisq' in param_name:
+                    text_param_format = text_param_format_chisq
                 else:
                     text_param_format = text_param_format_sd
 
@@ -1865,10 +1869,11 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                 mystats.calc_chisq(rh2_fit, rh2, rh2_error,
                                    dof=fits['dof'])
 
-            print('hi_sd_error', np.median(hi_sd_error))
-            fits['chisq_reduced'] = \
-                mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
-                                   dof=fits['dof'])
+
+            #print('hi_sd_error', np.median(hi_sd_error))
+            #fits['chisq_reduced'] = \
+                #mystats.calc_chisq(hisd_fit, hi_sd, hi_sd_error,
+                                   #dof=fits['dof'])
         except ValueError:
             fits['chisq_reduced'] = np.nan
 
@@ -2351,32 +2356,6 @@ def mask_nans(arrays, return_mask=False):
     else:
         return masked_arrays
 
-def mask_neg_rh2(arrays, rh2=None, return_mask=False):
-
-    """ Masks any positions where any array in the list has a NaN.
-
-    Parameters
-    ----------
-    arrays : tuple
-        Tuple of arrays. The mask will be the shape of the first array. The
-        last axes of the rest of the arrays will be masked.
-
-    """
-
-    mask = rh2 < 0.0
-
-    masked_arrays = []
-    for array in arrays:
-        if isinstance(array, np.ndarray):
-            masked_arrays.append(array[~mask])
-        else:
-            masked_arrays.append(array)
-
-    if return_mask:
-        return masked_arrays, mask
-    else:
-        return masked_arrays
-
 def simulate_noise(av, av_error):
 
     ''' Simulates noise of Av data
@@ -2522,7 +2501,7 @@ def bootstrap_worker(global_args, i):
     av_sim, av_scalar_sim = simulate_rescaling(av_sim, scalar=av_scalar)
 
     # remove background
-    if 0:
+    if 1:
         av_sim, av_background_sim = \
                 simulate_background_error(av_sim,
                                           scale=intercept_error)
@@ -2652,12 +2631,22 @@ def bootstrap_worker(global_args, i):
         rh2_core = rh2_image[core_indices]
         rh2_core_error = rh2_image_error[core_indices]
 
+        #if any(rh2_core) < 0:
+        if 0:
+            print 'fraction of neg rh2', np.sum(rh2_core < 0) / \
+                float(np.size(rh2_core))
+            if np.sum(rh2_core < 0) > 0:
+                print core
+                print 'number of R(H2) less than 0', np.sum(rh2_core < 0)
+
         # mask negative ratios
-        mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
-        rh2_core = rh2_core[~mask_rh2]
-        rh2_core_error = rh2_core_error[~mask_rh2]
-        h_sd_core = h_sd_core[~mask_rh2]
-        h_sd_core_error = h_sd_core_error[~mask_rh2]
+        if 0:
+            mask_rh2 = (rh2_core < 0) | (np.isnan(rh2_core))
+            print('rh2 neg size', np.sum(mask_rh2))
+            rh2_core = rh2_core[~mask_rh2]
+            rh2_core_error = rh2_core_error[~mask_rh2]
+            h_sd_core = h_sd_core[~mask_rh2]
+            h_sd_core_error = h_sd_core_error[~mask_rh2]
 
         # Fit the models
         # -----------------------------------------------------------------------
@@ -2754,6 +2743,8 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
     # initialize array for storing output
     boot_results = np.empty((3, num_bootstraps))
     init_guesses = [0.05, 0.05, 0.0] # dgr_cloud, dgr_background, intercept
+
+    print av.size
 
     # Prep arguments
     global_args = {}
@@ -3518,14 +3509,14 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
     '''
 
     '''
-    vary_alphaG = False # Vary alphaG in S+14 fit?
+    vary_alphaG = True # Vary alphaG in S+14 fit?
     vary_Z = True # Vary metallicity in S+14 fit?
     vary_phi_g = vary_phi_g # Vary phi_g in S+14 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[6.0, 1.0, 1] # Guesses for (alphaG, Z, phi_g)
+    guesses=[10, 0.5, 1] # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
@@ -3546,14 +3537,14 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
 
     # Krumholz Parameters
     # --------------------
-    vary_phi_cnm = False # Vary phi_cnm in K+09 fit?
+    vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
     vary_Z = True # Vary metallicity in K+09 fit?
     vary_sigma_d = False # Vary sigma_d in K+09 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[3, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
+    guesses=[4, 1.0, 1.0] # Guesses for (phi_cnm, Z, sigma_d)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     krumholz_params = {}
@@ -4129,10 +4120,10 @@ def run_cloud_analysis(global_args,):
                               velocity_range=(velocity_range[1],100),
                               )
 
-    # mask for erroneous pixels
-    nhi_image[nhi_image < 0] = np.nan
-    nhi_image_error[nhi_image_error < 0] = np.nan
-    nhi_image_background[nhi_image_background < 0] = np.nan
+    # mask for erroneous pixel at RA,dec of 4h37m0s, 29d40m0s.
+    nhi_image[nhi_image < -10] = np.nan
+    #nhi_image_error[nhi_image_error < -10] = np.nan
+    #nhi_image_background[nhi_image_background < 10] = np.nan
 
     if not global_args['use_background']:
         nhi_image_background = None
@@ -4392,7 +4383,8 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 0,
-                'num_bootstraps': 100,
+                #'num_bootstraps': 101, # 100 metal vary, 101 both vary
+                'num_bootstraps': 10000,# 1000 w/ back, 1001 w/o
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
@@ -4408,7 +4400,7 @@ def main():
                 'likelihood_resolution': 'coarse',
                 'region': permutation[8],
                 'subtract_comps': permutation[9],
-                'plot_diagnostics': 1,
+                'plot_diagnostics': 0,
                 'use_background': permutation[10],
                 'clobber_spectra': 0,
                 'smooth_hi_to_co_res': 1,

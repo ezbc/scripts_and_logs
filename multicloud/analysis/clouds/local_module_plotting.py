@@ -2642,6 +2642,8 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
 
         rh2 = (h_sd_nonans - hi_sd_nonans) / hi_sd_nonans
 
+        print('number of rh2 neg in plotting', np.sum(rh2 < 0))
+
 
         # Create plot
         ax = axes[i]
