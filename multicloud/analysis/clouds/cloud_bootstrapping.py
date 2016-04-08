@@ -2495,7 +2495,7 @@ def bootstrap_worker(global_args, i):
     av_sim, av_scalar_sim = simulate_rescaling(av_sim, scalar=av_scalar)
 
     # remove background
-    if 0:
+    if 1:
         av_sim, av_background_sim = \
                 simulate_background_error(av_sim,
                                           scale=intercept_error)
@@ -4374,7 +4374,7 @@ def main():
         global_args = {
                 'cloud_name':permutation[0],
                 'load': 0,
-                'num_bootstraps': 10,# 1000 w/ back, 1001 w/o
+                'num_bootstraps': 1000,# 1000 w/ back, 1001 w/o
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
