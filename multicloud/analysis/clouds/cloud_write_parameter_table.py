@@ -153,7 +153,7 @@ def write_cores(core_dict):
 def add_model_params(core_dict):
 
     from myscience import calc_radiation_field, calc_temperature
-    from myscience.sternberg14 import calc_n_H
+    import myscience.sternberg14 as mys14
     import myscience.krumholz09 as myk09
 
     ''' need the following parameters
@@ -192,9 +192,12 @@ def add_model_params(core_dict):
             if type(core['krumholz'][param]) is tuple:
                 core['krumholz'][param] = np.array(core['krumholz'][param])
 
+        # Sternberg params
+        # =======================================================================
         # calculate n_H and error
+        # -----------------------------------------------------------------------
         core['n_H'], core['n_H_error'] = \
-                calc_n_H(I_UV=core['rad_field_draine_median'],
+                mys14.calc_n_H(I_UV=core['rad_field_draine_median'],
                          alphaG=core['sternberg']['alphaG'],
                          phi_g=core['sternberg']['phi_g'],
                          Z_g=core['sternberg']['Z'],
@@ -202,6 +205,22 @@ def add_model_params(core_dict):
                          alphaG_error=core['sternberg']['alphaG_error'],
                          Z_g_error=core['sternberg']['Z_error'],
                          )
+
+        core['w'], core['w_error'] = \
+                mys14.calc_w(phi_g=core['sternberg']['phi_g'],
+                       phi_g_error=core['sternberg']['phi_g_error'],
+                       Z_g=core['sternberg']['Z'],
+                       Z_g_error=core['sternberg']['Z_error'],
+                       )
+
+        print core['w']
+
+        core['chi_s14'], core['chi_s14_error'] = \
+                mys14.calc_chi(alphaG=core['sternberg']['alphaG'],
+                               alphaG_error=core['sternberg']['alphaG_error'],
+                               w=core['w'],
+                               w_error=core['w_error'],
+                               )
 
         #if core['n_H'] <= 0:
         #    core['n_H'] = 10
@@ -220,8 +239,6 @@ def add_model_params(core_dict):
             if abs(core['T_H_error'][0]) > core['T_H']:
                 core['T_H_error'][0] = core['T_H']
 
-
-
         pressure = 3700.0
         pressure_error = (1200.0, 1200.0)
         core['T_H'], core['T_H_error'] = \
@@ -233,7 +250,8 @@ def add_model_params(core_dict):
         core['T_H'] /= 1000.0
         core['T_H_error'] = np.array(core['T_H_error']) / 1000.0
 
-        # calculate krumholz params
+        # Krumholz params
+        # =======================================================================
         krumholz_pressure_calc = True
         if krumholz_pressure_calc:
             # get the minimum CNM density, calculate n_CNM with phi_CNM, then
@@ -258,10 +276,11 @@ def add_model_params(core_dict):
             core['n_cnm'] = n_min * phi_cnm
             core['n_cnm_error'] = ((phi_cnm * n_min_error)**2 + \
                                    (n_min * phi_cnm_error)**2)**0.5
-            if cloud == 'perseus':
-                print 'habing median', core['rad_field_habing_median']
-                print 'phi_cnm', phi_cnm
-                print 'n_cnm', core['n_cnm']
+            if 0:
+                if cloud == 'perseus':
+                    print 'habing median', core['rad_field_habing_median']
+                    print 'phi_cnm', phi_cnm
+                    print 'n_cnm', core['n_cnm']
 
             #print core['n_cnm_error']
 
@@ -281,6 +300,7 @@ def add_model_params(core_dict):
                                )
 
             print core['chi'], core['chi_error']
+            print core['chi_s14'], core['chi_s14_error']
 
         else:
             core['T_cnm'], core['T_cnm_error'] = \
@@ -362,8 +382,8 @@ def write_model_params_table(core_dict, include_temperatures=False,):
 
     text_param_format ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
     text_param_format_int ='{0:.0f}$^{{+{1:.0f}}}_{{-{2:.0f}}}$'
-    text_param_format ='{0:.2f}$^{{+{1:.2f}}}_{{-{2:.2f}}}$'
-    text_param_format_int ='{0:.2f}$^{{+{1:.2}}}_{{-{2:.2f}}}$'
+    #text_param_format ='{0:.2f}$^{{+{1:.2f}}}_{{-{2:.2f}}}$'
+    #text_param_format_int ='{0:.2f}$^{{+{1:.2}}}_{{-{2:.2f}}}$'
 
     #print_dict_keys(mc_analysis_dict)
     params_to_write = ['phi_cnm', 'alphaG']
@@ -443,7 +463,9 @@ def write_model_params_table(core_dict, include_temperatures=False,):
                                         text_format=text_param_format)
 
         # Krumholz parameters
-        # -------------------
+        # -----------------------------------------------------------------------
+        # add phi_cnm
+        # -----------------
         model = 'krumholz'
         param_name = 'phi_cnm'
         param = \
@@ -458,6 +480,18 @@ def write_model_params_table(core_dict, include_temperatures=False,):
                             param_info,
                             text_format=text_param_format)
 
+        # add normalized radiation field, chi
+        # -----------------------------------
+        param = core['chi']
+        param_error = core['chi_error']
+        param_info = (param, param_error[1], param_error[0])
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format_int)
+
+        # add HI transition
+        # -----------------
         model = 'krumholz'
         param_name = 'hi_transition'
         param = \
@@ -495,7 +529,7 @@ def write_model_params_table(core_dict, include_temperatures=False,):
 
 
         # Sternberg parameters
-        # -------------------
+        # -----------------------------------------------------------------------
         model = 'sternberg'
         param_name = 'alphaG'
         param = \
@@ -510,6 +544,18 @@ def write_model_params_table(core_dict, include_temperatures=False,):
                             param_info,
                             text_format=text_param_format)
 
+        # add normalized radiation field, chi
+        # -----------------------------------
+        param = core['chi_s14']
+        param_error = core['chi_s14_error']
+        param_info = (param, param_error[1], param_error[0])
+        row_text = \
+            add_row_element(row_text,
+                            param_info,
+                            text_format=text_param_format_int)
+
+        # add HI transition
+        # -----------------
         model = 'sternberg'
         param_name = 'hi_transition'
         param = \
