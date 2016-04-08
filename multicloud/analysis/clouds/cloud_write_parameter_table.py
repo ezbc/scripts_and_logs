@@ -276,6 +276,8 @@ def add_model_params(core_dict):
             core['n_cnm'] = n_min * phi_cnm
             core['n_cnm_error'] = ((phi_cnm * n_min_error)**2 + \
                                    (n_min * phi_cnm_error)**2)**0.5
+
+            print 'sigma_d', sigma_d
             if 0:
                 if cloud == 'perseus':
                     print 'habing median', core['rad_field_habing_median']
