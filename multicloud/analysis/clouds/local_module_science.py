@@ -38,6 +38,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
     krumholz_params = model_kwargs['krumholz_params']
     krumholz_results = {}
 
+    #print 'rad type:', model_kwargs['sternberg_params']['radiation_type']
+
     # Fit to sternberg model
     if rh2.size > 3:
         result = \
@@ -112,8 +114,8 @@ def fit_steady_state_models(h_sd, rh2, model_kwargs, rh2_error=None,
     krumholz_results['sigma_d'] = sigma_d
 
 
-    print 'phi_cnm, Z', phi_cnm, Z_k09
-    print 'alphaG, Z', alphaG, Z_s14
+    #print 'phi_cnm, Z', phi_cnm, Z_k09
+    #print 'alphaG, Z', alphaG, Z_s14
 
     #print('sigma_d, phi_g', sigma_d, phi_g)
     #print('phi_cnm, alphaG', phi_cnm, alphaG)
@@ -300,17 +302,23 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
             def odr_func(params, h_sd):
                 alphaG, Z = params
                 return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                         return_fractions=False)
+                                         return_fractions=False,
+                                         radiation_type=radiation_type,
+                                         )
             beta0 = [alphaG,Z]
         elif vary[0]:
             def odr_func(alphaG, h_sd):
                 return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                         return_fractions=False)
+                                         return_fractions=False,
+                                         radiation_type=radiation_type,
+                                         )
             beta0 = [alphaG,]
         elif vary[1]:
             def odr_func(Z, h_sd):
                 return s14.calc_rh2(h_sd, alphaG, Z, phi_g=phi_g,
-                                         return_fractions=False)
+                                         return_fractions=False,
+                                         radiation_type=radiation_type,
+                                         )
             beta0 = [Z,]
 
         #h_sd_error, rh2_error = None, None
