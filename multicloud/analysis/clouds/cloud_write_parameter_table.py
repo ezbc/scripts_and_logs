@@ -213,8 +213,6 @@ def add_model_params(core_dict):
                        Z_g_error=core['sternberg']['Z_error'],
                        )
 
-        print core['w']
-
         core['chi_s14'], core['chi_s14_error'] = \
                 mys14.calc_chi(alphaG=core['sternberg']['alphaG'],
                                alphaG_error=core['sternberg']['alphaG_error'],
@@ -277,7 +275,6 @@ def add_model_params(core_dict):
             core['n_cnm_error'] = ((phi_cnm * n_min_error)**2 + \
                                    (n_min * phi_cnm_error)**2)**0.5
 
-            print 'sigma_d', sigma_d
             if 0:
                 if cloud == 'perseus':
                     print 'habing median', core['rad_field_habing_median']
@@ -300,9 +297,6 @@ def add_model_params(core_dict):
                                sigma_d=sigma_d,
                                sigma_d_error=sigma_d_error,
                                )
-
-            print core['chi'], core['chi_error']
-            print core['chi_s14'], core['chi_s14_error']
 
         else:
             core['T_cnm'], core['T_cnm_error'] = \
