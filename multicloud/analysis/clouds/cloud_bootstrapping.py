@@ -1833,6 +1833,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                                 odr_fit=odr_fitting,
                                 )
     fitted_models = {}
+    radiation_type = model_kwargs['sternberg_params']['radiation_type']
     for model in ss_model_result:
         params = {}
         for param in ss_model_result[model]:
@@ -1844,6 +1845,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                                       h_sd_extent=(0.001, 200),
                                       h_sd=h_sd,
                                       return_fractions=False,
+                                      radiation_type=radiation_type,
                                       return_hisd=True)
         elif 'krumholz' in model:
             model_fits = calc_krumholz(params,
@@ -1884,6 +1886,7 @@ def refit_data(h_sd, rh2, h_sd_error=None, rh2_error=None, model_kwargs=None,
                                       h_sd_extent=(0.001, 200),
                                       h_sd=h_sd_fit,
                                       return_fractions=False,
+                                      radiation_type=radiation_type,
                                       return_hisd=True)
         elif 'krumholz' in model:
             model_fits = calc_krumholz(params,
@@ -2149,7 +2152,7 @@ def calc_krumholz(params, h_sd_extent=(0.001, 500), return_fractions=True,
     return output
 
 def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
-        return_hisd=False, h_sd=None):
+        return_hisd=False, h_sd=None, radiation_type='beamed',):
 
     '''
     Parameters
@@ -2191,6 +2194,7 @@ def calc_sternberg(params, h_sd_extent=(0.001, 500), return_fractions=True,
                                            alphaG=params[0],
                                            Z=params[1],
                                            phi_g=params[2],
+                                           radiation_type=radiation_type,
                                            return_fractions=True)
 
     output = [rh2_fit, h_sd]
@@ -3675,7 +3679,7 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
         data_products['hi_sd_median_error'] = None
         data_products['rh2_median_error'] = None
 
-def calc_mc_analysis(mc_results, resid_results, data_products):
+def calc_mc_analysis(mc_results, resid_results, data_products, model_kwargs):
 
     import mystats
 
@@ -3701,6 +3705,8 @@ def calc_mc_analysis(mc_results, resid_results, data_products):
         plt.savefig('/d/bip3/ezbc/scratch/dgr_cdf.png')
 
     # Model params fit for each core:
+    radiation_type = \
+        model_kwargs['model_kwargs']['sternberg_params']['radiation_type']
     for core in mc_results['ss_model_results']['cores']:
         core_analysis[core] = {}
         for model in mc_results['ss_model_results']['cores'][core]:
@@ -3759,6 +3765,7 @@ def calc_mc_analysis(mc_results, resid_results, data_products):
                 model_fits = calc_sternberg(params,
                                           h_sd_extent=(0.001, 1000),
                                           return_fractions=False,
+                                          radiation_type=radiation_type,
                                           return_hisd=True)
             elif 'krumholz' in model:
                 model_fits = calc_krumholz(params,
@@ -3780,7 +3787,7 @@ def calc_mc_analysis(mc_results, resid_results, data_products):
 
     return mc_analysis
 
-def add_results_analysis(results_dict):
+def add_results_analysis(results_dict, global_args):
 
     if 0:
         for core in results_dict['mc_analysis']['cores']:
@@ -3790,7 +3797,9 @@ def add_results_analysis(results_dict):
     # calculate statistics of bootstrapped model values
     results_dict['mc_analysis'] = calc_mc_analysis(results_dict['mc_results'],
                                             results_dict['resid_mc_results'],
-                                            results_dict['data_products'])
+                                            results_dict['data_products'],
+                                            global_args['ss_model_kwargs'],
+                                            )
 
     # derive N(H2), N(H) etc...
     add_coldens_images(results_dict['data_products'],
@@ -3829,7 +3838,7 @@ def get_results(global_args):
         results_dict = run_cloud_analysis(global_args)
 
     # derive col dens images and statistics on MC sim
-    add_results_analysis(results_dict)
+    add_results_analysis(results_dict, global_args)
 
     # write N(HI) and N(H2) images for each cloud
     write_final_maps(results_dict, global_args)
@@ -4180,6 +4189,7 @@ def run_cloud_analysis(global_args,):
     model_fitting['sternberg_params']['radiation_type'] = \
             global_args['radiation_type']
 
+
     # Get cores params
     cores = get_core_properties(data, cloud_name)
 
@@ -4351,8 +4361,8 @@ def main():
                       False,
                       )
 
-    radiation_type = (#'beamed',
-                      'isotropic',
+    radiation_type = ('beamed',
+                      #'isotropic',
                       )
 
     rotate_cores = (
@@ -4384,7 +4394,7 @@ def main():
                 'cloud_name':permutation[0],
                 'load': 0,
                 #'num_bootstraps': 101, # 100 metal vary, 101 both vary
-                'num_bootstraps': 1000,# 1000 for metallicity
+                'num_bootstraps': 10,# 1000 for metallicity
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
