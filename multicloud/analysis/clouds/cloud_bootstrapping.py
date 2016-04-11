@@ -4384,7 +4384,7 @@ def main():
                 'cloud_name':permutation[0],
                 'load': 0,
                 #'num_bootstraps': 101, # 100 metal vary, 101 both vary
-                'num_bootstraps': 10000,# 1000 w/ back, 1001 w/o
+                'num_bootstraps': 1000,# 1000 for metallicity
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
