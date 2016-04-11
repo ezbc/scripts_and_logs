@@ -3527,7 +3527,7 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False,
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
     alpha = 0.32 # 1 - alpha = confidence
-    guesses=[10, 0.5, 1] # Guesses for (alphaG, Z, phi_g)
+    guesses=[20, 1.0, 1] # Guesses for (alphaG, Z, phi_g)
     h_sd_fit_range = [0.001, 1000] # range of fitted values for sternberg model
 
     # Monte carlo results file bases
@@ -4371,8 +4371,8 @@ def main():
                       False,
                       )
 
-    radiation_type = ('beamed',
-                      #'isotropic',
+    radiation_type = (#'beamed',
+                      'isotropic',
                       )
 
     rotate_cores = (
@@ -4387,8 +4387,8 @@ def main():
 
     # fit for (phi_cnm, Z, sigma_d) in K+09 model
     #         (alphaG,  Z, phi_g)   in S+14 model
-    param_vary = ((True, True, False),
-                  #(True, False, False),
+    param_vary = (#(True, True, False),
+                  (True, False, False),
                  )
 
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
@@ -4408,9 +4408,9 @@ def main():
     for permutation in permutations:
         global_args = {
                 'cloud_name':permutation[0],
-                'load': 0,
+                'load': 1,
                 #'num_bootstraps': 101, # 100 metal vary, 101 both vary
-                'num_bootstraps': 10,# 1000 for metallicity
+                'num_bootstraps': 10000,# 1000 for metallicity
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
