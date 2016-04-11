@@ -2317,6 +2317,12 @@ def create_filename_base(global_args):
         odr_name = '_odrfit'
     else:
         odr_name = ''
+    if global_args['param_vary'] == (True, True, False):
+        fit_name = '_fit-phicnm+alphaG+Z'
+    elif global_args['param_vary'] == (False, True, False):
+        fit_name = '_fitZ'
+    else:
+        fit_name = ''
 
     bootstrap_name = '{0:.0f}mcsim'.format(global_args['num_bootstraps'])
 
@@ -2327,7 +2333,7 @@ def create_filename_base(global_args):
             intercept_name + error_name + compsub_name + backdgr_name + \
             '_' + hi_range_name + '_' + global_args['radiation_type'] + \
             rotate_cores_name + vary_phi_g_name + '_' + \
-            bootstrap_name + odr_name
+            bootstrap_name + odr_name + fit_name
 
     return filename_extension, global_args
 
@@ -3508,14 +3514,15 @@ def save_results(results_dict, filename, write_fits=False):
         pickle.dump(results_dict, output)
     output.close()
 
-def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
+def get_model_fit_kwargs(cloud_name, vary_phi_g=False,
+        param_vary=(True,False,False),):
 
     '''
 
     '''
-    vary_alphaG = True # Vary alphaG in S+14 fit?
-    vary_Z = True # Vary metallicity in S+14 fit?
-    vary_phi_g = vary_phi_g # Vary phi_g in S+14 fit?
+    vary_alphaG = param_vary[0] # Vary alphaG in S+14 fit?
+    vary_Z = param_vary[1] # Vary metallicity in S+14 fit?
+    vary_phi_g = param_vary[2] # Vary phi_g in S+14 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
@@ -3541,9 +3548,9 @@ def get_model_fit_kwargs(cloud_name, vary_phi_g=False):
 
     # Krumholz Parameters
     # --------------------
-    vary_phi_cnm = True # Vary phi_cnm in K+09 fit?
-    vary_Z = True # Vary metallicity in K+09 fit?
-    vary_sigma_d = False # Vary sigma_d in K+09 fit?
+    vary_phi_cnm = param_vary[0] # Vary phi_cnm in K+09 fit?
+    vary_Z = param_vary[1] # Vary metallicity in K+09 fit?
+    vary_sigma_d = param_vary[2] # Vary sigma_d in K+09 fit?
     # Error method:
     # options are 'edges', 'bootstrap'
     error_method = 'edges'
@@ -3787,7 +3794,7 @@ def calc_mc_analysis(mc_results, resid_results, data_products, model_kwargs):
 
     return mc_analysis
 
-def add_results_analysis(results_dict, global_args):
+def add_results_analysis(results_dict):
 
     if 0:
         for core in results_dict['mc_analysis']['cores']:
@@ -3798,7 +3805,7 @@ def add_results_analysis(results_dict, global_args):
     results_dict['mc_analysis'] = calc_mc_analysis(results_dict['mc_results'],
                                             results_dict['resid_mc_results'],
                                             results_dict['data_products'],
-                                            global_args['ss_model_kwargs'],
+                                            results_dict['ss_model_kwargs'],
                                             )
 
     # derive N(H2), N(H) etc...
@@ -3838,7 +3845,7 @@ def get_results(global_args):
         results_dict = run_cloud_analysis(global_args)
 
     # derive col dens images and statistics on MC sim
-    add_results_analysis(results_dict, global_args)
+    add_results_analysis(results_dict)
 
     # write N(HI) and N(H2) images for each cloud
     write_final_maps(results_dict, global_args)
@@ -4185,7 +4192,9 @@ def run_cloud_analysis(global_args,):
 
     # Get model fitting params
     model_fitting = get_model_fit_kwargs(cloud_name,
-                                         vary_phi_g=global_args['vary_phi_g'])
+                                         vary_phi_g=global_args['vary_phi_g'],
+                                         param_vary=global_args['param_vary'],
+                                         )
     model_fitting['sternberg_params']['radiation_type'] = \
             global_args['radiation_type']
 
@@ -4287,6 +4296,7 @@ def run_cloud_analysis(global_args,):
                     'filenames': filenames,
                     'mc_results': mc_results,
                     'resid_mc_results': resid_mc_results,
+                    'ss_model_kwargs': global_args['ss_model_kwargs'],
                     }
 
     print('\n\tSaving results...')
@@ -4375,10 +4385,16 @@ def main():
                     False,
                     )
 
+    # fit for (phi_cnm, Z, sigma_d) in K+09 model
+    #         (alphaG,  Z, phi_g)   in S+14 model
+    param_vary = ((True, True, False),
+                  #(True, False, False),
+                 )
+
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
             regions, subtract_comps, use_background, hi_range_calc,
-            radiation_type, rotate_cores, vary_phi_g)
+            radiation_type, rotate_cores, vary_phi_g, param_vary)
 
     permutations = list(itertools.product(*elements))
 
@@ -4426,6 +4442,7 @@ def main():
                 'rotate_cores': permutation[13],
                 'vary_phi_g': permutation[14],
                 'filename_hi_props': FILENAME_HI_DICT,
+                'param_vary': permutation[15],
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
