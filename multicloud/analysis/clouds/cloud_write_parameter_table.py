@@ -1348,7 +1348,7 @@ def save_core_dict(core_dict):
 
 def main():
 
-    LOAD_MC_RESULTS = True
+    LOAD_MC_RESULTS = False
     N_MC = 100
     WRITE_CORE_DICT = True
 
