@@ -10,15 +10,18 @@ import mygeometry as myg
 import scipy
 import pickle
 
-def scale_dust_areas(DGR, model_kwargs):
+def scale_dust_areas(DGR, model_kwargs, dust_cross_section_type='sternberg',):
 
     ''' Scales the K+09 and S+14 dust cross sections.
     '''
 
-    phi_g = DGR / 0.053
-    sigma_d = DGR / 0.053 * 1.9
-    #phi_g = DGR / 0.053 / 1.9
-    #sigma_d = DGR / 0.053
+    if dust_cross_section_type == 'sternberg':
+        phi_g = DGR / 0.053
+        sigma_d = DGR / 0.053 * 1.9
+    elif dust_cross_section_type == 'krumholz':
+        phi_g = DGR / 0.053  / 1.9
+        sigma_d = DGR / 0.053
+
     new_model_kwargs = dict(model_kwargs)
     new_model_kwargs['sternberg_params']['guesses'][2] = phi_g
     new_model_kwargs['krumholz_params']['guesses'][2] = sigma_d
@@ -214,7 +217,7 @@ def fit_krumholz(h_sd, rh2, guesses=[10.0, 1.0, 1.0], h_sd_error=None,
 
 def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
         h_sd_error=None, verbose=False, vary=[True, True, True],
-        radiation_type='isotropic', bootstrap_residuals=False, nboot=100,
+        radiation_type='beamed', bootstrap_residuals=False, nboot=100,
         odr_fit=True):
 
     '''
@@ -321,7 +324,6 @@ def fit_sternberg(h_sd, rh2, guesses=[10.0, 1.0, 10.0], rh2_error=None,
                                          )
             beta0 = [Z,]
 
-        #h_sd_error, rh2_error = None, None
         model = odr.Model(odr_func)
         data = odr.RealData(h_sd, rh2, sx=h_sd_error, sy=rh2_error)
         odr_instance = odr.ODR(data, model, beta0=beta0)
