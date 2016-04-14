@@ -2642,7 +2642,7 @@ def plot_rh2_vs_h_grid(hsd_list, hisd_list, core_names=None, model_fits=None,
 
         rh2 = (h_sd_nonans - hi_sd_nonans) / hi_sd_nonans
 
-        print('number of rh2 neg in plotting', np.sum(rh2 < 0))
+        #print('number of rh2 neg in plotting', np.sum(rh2 < 0))
 
 
         # Create plot
@@ -3509,7 +3509,7 @@ def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
 
     parameters = ['fraction_LOS_diffuse',]
 
-    fig, axes = plt.subplots(2,1,figsize=(3.5, 6))
+    fig, axes = plt.subplots(4,1,figsize=(3.5, 9))
 
     clouds = ['california', 'perseus', 'taurus']
     linestyles = ['-', '--', '-.']
@@ -3517,7 +3517,7 @@ def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
     alpha = 0.5
     clouds_labeled = []
 
-    ax1, ax2 = axes
+    ax1, ax2, ax3, ax4 = axes
 
     for core_name in core_dict:
         core = core_dict[core_name]
@@ -3526,8 +3526,12 @@ def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
         rad_field_error = dust_values['rad_field_mathis_median_error']
         phi_cnm = core['krumholz']['phi_cnm']
         phi_cnm_error = core['krumholz']['phi_cnm_error']
+        chi_k09 = core['chi']
+        chi_k09_error = core['chi_error']
         alphaG = core['sternberg']['alphaG']
         alphaG_error = core['sternberg']['alphaG_error']
+        chi_s14 = core['chi_s14']
+        chi_s14_error = core['chi_s14_error']
 
         # labeling
         cloud = core['cloud']
@@ -3569,16 +3573,46 @@ def plot_modelparams_vs_radfield(core_dict, limits=None, filename=None):
                             markersize=4
                             )
 
-    for ax in [ax1, ax2]:
+        image = ax3.errorbar(rad_field,
+                            chi_k09,
+                            xerr=rad_field_error,
+                            yerr=(chi_k09_error,),
+                            alpha=alpha,
+                            color=color,
+                            label=label,
+                            marker=marker,
+                            ecolor='k',
+                            capsize=0,
+                            linestyle='None',
+                            markersize=4
+                            )
+
+        image = ax4.errorbar(rad_field,
+                            chi_s14,
+                            xerr=rad_field_error,
+                            yerr=(chi_s14_error,),
+                            alpha=alpha,
+                            color=color,
+                            label=label,
+                            marker=marker,
+                            ecolor='k',
+                            capsize=0,
+                            linestyle='None',
+                            markersize=4
+                            )
+
+    for ax in axes:
         if limits is not None:
             ax.set_xlim([limits[0],limits[1]])
             #ax.set_ylim([limits[2],limits[3]])
         ax.legend(loc='best')
         #ax.set_xscale('log')
         #ax.set_yscale('log')
-    ax2.set_xlabel(r'$U_{M83}$ [$U_{M83,0}]$')
+    ax4.set_xlabel(r'$U_{M83}$ [$U_{M83,0}]$')
     ax1.set_ylabel(r'$\phi_{\rm CNM}$')
     ax2.set_ylabel(r'$\alpha G$')
+    ax3.set_ylabel(r'$chi_{\rm K+09}$')
+    ax4.set_ylabel(r'$chi_{\rm S+14}$')
 
     if filename is not None:
         plt.savefig(filename, dpi=600)
