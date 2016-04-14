@@ -149,7 +149,7 @@ def plot_multicloud_results(results):
                                         'BIC': [],
                                         },
                   }
-    for i, cloud_name in enumerate(results):
+    for i, cloud_name in enumerate(('california', 'perseus', 'taurus')):
         results_dict = results[cloud_name]
         figure_dir = results_dict['filenames']['figure_dir']
         results_dir = results_dict['filenames']['results_dir']
@@ -222,7 +222,8 @@ def plot_multicloud_results(results):
             data_list = [hisd, hisd_error, hsd, hsd_error, rh2, rh2_error]
 
 
-            print('number of neg rh2 points:', np.sum(rh2 < 0))
+            if 0:
+                print('number of neg rh2 points:', np.sum(rh2 < 0))
 
             hisd_core_list.append(hisd)
             hsd_core_list.append(hsd)
@@ -269,12 +270,14 @@ def plot_multicloud_results(results):
                 if core in ('G160.53-19.73','G172.93-16.73','G164.70-7.63'):
                     rh2 = rh2_core_list[j]
                     rh2_error = rh2_error_core_list[j]
-                    print('core', core)
-                    print('rh2 median:',scipy.stats.nanmedian(rh2))
-                    print('rh2 error median:',scipy.stats.nanmedian(rh2_error))
-                    print('model fits')
-                    print(np.sum((rh2 - \
-                        model_fits_list[j]['krumholz_results']['rh2_ind'])**2))
+
+                    if 0:
+                        print('core', core)
+                        print('rh2 median:',scipy.stats.nanmedian(rh2))
+                        print('rh2 error median:',scipy.stats.nanmedian(rh2_error))
+                        print('model fits')
+                        print(np.sum((rh2 - \
+                            model_fits_list[j]['krumholz_results']['rh2_ind'])**2))
 
                 stats_list[model]['sum_of_resid'].append(\
                         fits[model]['sum_of_resid'])
@@ -381,6 +384,21 @@ def plot_multicloud_results(results):
                                                   cloud_name_list,
                                                   filename=filename,)
 
+    filename = results_dir + 'tables/multicloud_vel_ranges.tex'
+    write_hi_vel_range_table(cloud_name_list,
+                             hi_range_kwargs_list,
+                             filename,
+                             dgr_list=dgr_list,
+                             dgr_error_list=dgr_error_list)
+
+    # write dust properties table
+    filename = results_dir + 'tables/dust_properties.tex'
+    write_dust_props(cloud_name_list,
+                     filename,
+                     dgr_list=dgr_list,
+                     dgr_error_list=dgr_error_list)
+
+
     # Plot the results
     # =========================================================================
 
@@ -388,6 +406,7 @@ def plot_multicloud_results(results):
     # -------------------------------------------------------------------------
     hi_vel_axis = results_dict['data']['hi_vel_axis']
     co_vel_axis = results_dict['data']['co_vel_axis']
+
 
 
     filetypes = ['png', 'pdf']
@@ -403,13 +422,6 @@ def plot_multicloud_results(results):
                      filename=filename,
                      limits=[-30, 30, -10, 59],
                      )
-
-        filename = results_dir + 'tables/multicloud_vel_ranges.tex'
-        write_hi_vel_range_table(cloud_name_list,
-                                 hi_range_kwargs_list,
-                                 filename,
-                                 dgr_list=dgr_list,
-                                 dgr_error_list=dgr_error_list)
 
         # Plot N(HI) vs. Av
         # ---------------------------------------------------------------------
@@ -1171,6 +1183,69 @@ def write_hi_vel_range_table(names_list, hi_range_kwargs_list, filename,
         row_text = r'[\kms, \kms] & & & '
         row_text += ' \\\\[0.1cm] \n'
         f.write(row_text)
+
+    f.close()
+
+def write_dust_props(names_list, filename,
+        dgr_list=None, dgr_error_list=None,):
+
+    # Open file to be appended
+    f = open(filename, 'wb')
+
+    row_text = ''
+
+    for cloud in names_list:
+        row_text = add_row_element(row_text, cloud.capitalize())
+    row_text += ' \\\\[0.1cm] \n'
+    f.write(row_text)
+
+    text_format = r'{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$'
+
+    # DGR
+    # -----------------------------------------------------------------------
+    row_text = r'DGR'
+    for i in xrange(len(names_list)):
+        dgr = dgr_list[i]
+        dgr_error = dgr_error_list[i]
+
+        row_text = \
+            add_row_element(row_text,
+                      (dgr*100, dgr_error[1]*100, dgr_error[0]*100),
+                      text_format=text_format)
+    row_text += ' \\\\[0.1cm] \n'
+    f.write(row_text)
+
+    # phi_g
+    # -----------------------------------------------------------------------
+    row_text = r'$\phi_g$'
+    for i in xrange(len(names_list)):
+        dgr = dgr_list[i]
+        dgr_error = dgr_error_list[i]
+
+        row_text = \
+            add_row_element(row_text,
+                      (dgr*100/5.3,
+                       dgr_error[1]*100/5.3,
+                       dgr_error[0]*100/5.3),
+                      text_format=r'{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$')
+    row_text += ' \\\\[0.1cm] \n'
+    f.write(row_text)
+
+    # sigma_g
+    # -----------------------------------------------------------------------
+    row_text = r'$\sigma_g$'
+    for i in xrange(len(names_list)):
+        dgr = dgr_list[i]
+        dgr_error = dgr_error_list[i]
+
+        row_text = \
+            add_row_element(row_text,
+                      (dgr*100/5.3 * 1.9,
+                       dgr_error[1]*100/5.3 * 1.9,
+                       dgr_error[0]*100/5.3 * 1.9),
+                      text_format=r'{0:.1f}$^{{+{1:.1f}}}_{{-{2:.1f}}}$')
+    row_text += ' \\\\[0.1cm] \n'
+    f.write(row_text)
 
     f.close()
 
@@ -2051,11 +2126,12 @@ def fit_av_model(av, nhi, av_error=None, nhi_error=None, algebraic=False,
     else:
         return results
 
-def add_hi_transition_calc(ss_model_result):
+def add_hi_transition_calc(ss_model_result, model_kwargs):
 
     h_sd_fit = np.linspace(0, 100, 1000)
 
     # To get HI transition, calculate model fits, then find where RH2 = 1
+    radiation_type = model_kwargs['sternberg_params']['radiation_type']
     for model_name in ss_model_result:
         model = ss_model_result[model_name]
 
@@ -2068,6 +2144,7 @@ def add_hi_transition_calc(ss_model_result):
             model_fits = calc_sternberg(params,
                                       h_sd=h_sd_fit,
                                       return_fractions=False,
+                                      radiation_type=radiation_type,
                                       return_hisd=False,
                                       )
         elif 'krumholz' in model_name:
@@ -2324,6 +2401,7 @@ def create_filename_base(global_args):
     else:
         fit_name = ''
 
+    dust_cross_section_name = global_args['dust_cross_section_type']
     bootstrap_name = '{0:.0f}mcsim'.format(global_args['num_bootstraps'])
 
     filename_extension = global_args['cloud_name'] + '_' + global_args['data_type'] + \
@@ -2333,7 +2411,7 @@ def create_filename_base(global_args):
             intercept_name + error_name + compsub_name + backdgr_name + \
             '_' + hi_range_name + '_' + global_args['radiation_type'] + \
             rotate_cores_name + vary_phi_g_name + '_' + \
-            bootstrap_name + odr_name + fit_name
+            bootstrap_name + odr_name + fit_name + '_' + dust_cross_section_name
 
     return filename_extension, global_args
 
@@ -2606,7 +2684,8 @@ def bootstrap_worker(global_args, i):
     # our DGR in units of 10^-20 cm^2 mag
     # Galactic DGR in our units = 5.3 x 10^-22 / 10^-20 = 5.3 x 10^-2 = 0.053
     DGR = av_model_results['dgr_cloud']
-    new_model_kwargs = lm_science.scale_dust_areas(DGR, model_kwargs)
+    new_model_kwargs = lm_science.scale_dust_areas(DGR, model_kwargs,
+            dust_cross_section_type=global_args['dust_cross_section_type'])
 
     # cycle through each core, bootstrapping the pixels
     # ---------------------------------------------------------------------------
@@ -2683,7 +2762,7 @@ def bootstrap_worker(global_args, i):
                                      filename=filename)
 
         # get HI transition result
-        add_hi_transition_calc(ss_model_result)
+        add_hi_transition_calc(ss_model_result, new_model_kwargs)
         ss_model_results[core] = ss_model_result
 
     # Write results
@@ -2720,7 +2799,8 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
         av_reference=None, nhi_image_background=None, num_bootstraps=100,
         plot_kwargs=None, scale_kwargs=None, use_intercept=True,
         sim_hi_error=False, ss_model_kwargs=None, multiprocess=True,
-        rotate_cores=False, calc_median_error=False, odr_fitting=False,):
+        rotate_cores=False, calc_median_error=False, odr_fitting=False,
+        dust_cross_section_type='sternberg',):
 
     import multiprocessing as mp
     import sys
@@ -2774,6 +2854,7 @@ def bootstrap_fits(av_data, nhi_image=None, hi_data=None,
     global_args['ss_model_kwargs'] = ss_model_kwargs
     global_args['calculate_median_error'] = calc_median_error
     global_args['odr_fitting'] = odr_fitting
+    global_args['dust_cross_section_type'] = dust_cross_section_type
 
     # initialize errors on av and nhi
     error_dict = {}
@@ -2895,7 +2976,7 @@ def residual_worker(global_args, core):
 
 
     # get HI transition result
-    add_hi_transition_calc(ss_model_result)
+    add_hi_transition_calc(ss_model_result, model_kwargs)
 
     return ss_model_result, core
 
@@ -4285,6 +4366,8 @@ def run_cloud_analysis(global_args,):
                        rotate_cores=global_args['rotate_cores'],
                        calc_median_error=global_args['calculate_median_error'],
                        odr_fitting=global_args['odr_fitting'],
+                       dust_cross_section_type=\
+                               global_args['dust_cross_section_type'],
                        )
     np.save(bootstrap_filename, boot_result)
 
@@ -4312,9 +4395,9 @@ def main():
     results = {}
 
     clouds = (
+              'california',
               'perseus',
               'taurus',
-              'california',
               )
 
     data_types = (
@@ -4371,8 +4454,8 @@ def main():
                       False,
                       )
 
-    radiation_type = (#'beamed',
-                      'isotropic',
+    radiation_type = ('beamed',
+                      #'isotropic',
                       )
 
     rotate_cores = (
@@ -4387,14 +4470,29 @@ def main():
 
     # fit for (phi_cnm, Z, sigma_d) in K+09 model
     #         (alphaG,  Z, phi_g)   in S+14 model
-    param_vary = (#(True, True, False),
+    param_vary = (
+                  #(True, True, False),
                   (True, False, False),
                  )
+
+    num_bootstraps = (
+                      #20000,
+                      #20001,
+                      #20002,
+                      100,
+                      )
+
+    dust_cross_section = (
+                          'sternberg',
+                          #'krumholz',
+                          )
 
     elements = (clouds, data_types, recalculate_likelihoods, bin_image,
             init_vel_width, fixed_width, use_intercept, av_mask_threshold,
             regions, subtract_comps, use_background, hi_range_calc,
-            radiation_type, rotate_cores, vary_phi_g, param_vary)
+            radiation_type, rotate_cores, vary_phi_g, param_vary,
+            num_bootstraps,
+            dust_cross_section,)
 
     permutations = list(itertools.product(*elements))
 
@@ -4407,10 +4505,8 @@ def main():
     #for cloud in clouds:
     for permutation in permutations:
         global_args = {
-                'cloud_name':permutation[0],
                 'load': 1,
-                #'num_bootstraps': 101, # 100 metal vary, 101 both vary
-                'num_bootstraps': 10000,# 1000 for metallicity
+                'cloud_name':permutation[0],
                 'odr_fitting': False,
                 'load_props': 0,
                 'data_type' : permutation[1],
@@ -4443,6 +4539,8 @@ def main():
                 'vary_phi_g': permutation[14],
                 'filename_hi_props': FILENAME_HI_DICT,
                 'param_vary': permutation[15],
+                'num_bootstraps': permutation[16],
+                'dust_cross_section_type': permutation[17],
                 }
         run_analysis = False
         if global_args['data_type'] in ('planck_lee12mask', 'lee12'):
