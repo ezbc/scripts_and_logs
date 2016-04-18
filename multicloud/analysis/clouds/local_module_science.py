@@ -17,9 +17,9 @@ def scale_dust_areas(DGR, model_kwargs, dust_cross_section_type='sternberg',):
 
     if dust_cross_section_type == 'sternberg':
         phi_g = DGR / 0.053
-        sigma_d = DGR / 0.053 * 1.9
+        sigma_d = DGR / 0.053 * 2.0
     elif dust_cross_section_type == 'krumholz':
-        phi_g = DGR / 0.053  / 1.9
+        phi_g = DGR / 0.053  / 2.0
         sigma_d = DGR / 0.053
 
     new_model_kwargs = dict(model_kwargs)
@@ -358,7 +358,7 @@ def calc_coldens_products(nhi, av, dgr, nhi_error=0.0, av_error=0.0,
     comp_av_error = av_error / dgr
     comp_dgr_error = - av / dgr**2 * dgr_error
     comp_nhi_error = nhi_error
-    nh2_error = 0.5 * (comp_av_error**2 + comp_dgr_error**2 + \
+    nh2_error = 0.5 * (comp_av_error**2 + \ #comp_dgr_error**2 + \
                       comp_nhi_error**2)**0.5
 
     # Convert to column density to surface density
