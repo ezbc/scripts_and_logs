@@ -700,14 +700,20 @@ def write_cloud_stats(cloud_name_list,
         h2sd_neg_frac = \
             float(np.nansum(h2sd < 0.0)) / np.size(h2sd)
 
+        if any(hsd < h2sd):
+            raise ValueError('HSD cannot be less than H2SD')
+
         # goldsmith et al. (2008) found half of mass of H2 below N(H2) < 2.1 x
         # 10^21 cm^-2.
         threshold = 2.1*10.0 # cm^-2
         nh2_diffuse_frac = \
             float(np.nansum(nh2 < threshold)) / np.size(nh2)
         hsd_diffuse_sum = np.nansum(hsd[nh2 < threshold])
-        hsd_diffuse_frac = np.nansum(hsd[nh2 < threshold]) / np.nansum(hsd)
+        hsd_diffuse_frac = np.nansum(h2sd[nh2 < threshold]) / np.nansum(hsd)
+        h2sd_diffuse_frac = np.nansum(h2sd[nh2 < threshold]) / np.nansum(h2sd)
 
+
+        # calculate median errors
         h2sd_error_median = scipy.stats.nanmedian(np.ravel(h2sd_error_list[i]))
         hisd_error_median = scipy.stats.nanmedian(np.ravel(hisd_error_list[i]))
         nhi_error_median = scipy.stats.nanmedian(np.ravel(nhi_error_list[i]))
@@ -730,6 +736,10 @@ def write_cloud_stats(cloud_name_list,
         f.write('Fraction of total mass where N(H2) below 2.1*10^21 cm^-2 ' + \
                 ': ' + \
                 '{0:.2f}'.format(hsd_diffuse_frac))
+        f.write("\r")
+        f.write('Fraction of H2 mass where N(H2) below 2.1*10^21 cm^-2 ' + \
+                ': ' + \
+                '{0:.2f}'.format(h2sd_diffuse_frac))
         f.write("\r")
         f.write('fraction negative H2: {0:.2f}'.format(h2sd_neg_frac))
         f.write("\r")
@@ -1547,12 +1557,16 @@ def write_final_maps(results_dict, global_args):
     FILENAME_AV_ERROR = FILENAME_BASE + '_av_error.fits'
     FILENAME_HI = FILENAME_BASE + '_hisurfdens.fits'
     FILENAME_H2 = FILENAME_BASE + '_h2surfdens.fits'
+    FILENAME_H = FILENAME_BASE + '_hsurfdens.fits'
     FILENAME_NHI = FILENAME_BASE + '_hicoldens.fits'
     FILENAME_NH2 = FILENAME_BASE + '_h2coldens.fits'
+    FILENAME_NH = FILENAME_BASE + '_hcoldens.fits'
     FILENAME_RH2 = FILENAME_BASE + '_rh2.fits'
     FILENAME_HI_ERROR = FILENAME_BASE + '_hisurfdens_error.fits'
+    FILENAME_H_ERROR = FILENAME_BASE + '_hsurfdens_error.fits'
     FILENAME_H2_ERROR = FILENAME_BASE + '_h2surfdens_error.fits'
     FILENAME_NHI_ERROR = FILENAME_BASE + '_hicoldens_error.fits'
+    FILENAME_NH_ERROR = FILENAME_BASE + '_hcoldens_error.fits'
     FILENAME_NH2_ERROR = FILENAME_BASE + '_h2coldens_error.fits'
     FILENAME_RH2_ERROR = FILENAME_BASE + '_rh2_error.fits'
 
@@ -1561,13 +1575,17 @@ def write_final_maps(results_dict, global_args):
     av_image = results_dict['data_products']['av']
     av_error_image = results_dict['data_products']['av_error']
     hi_sd_image = results_dict['data_products']['hi_sd']
+    h_sd_image = results_dict['data_products']['h_sd']
     h2_sd_image = results_dict['data_products']['h2_sd']
     nhi_image = results_dict['data_products']['nhi']
+    nh_image = results_dict['data_products']['nh']
     nh2_image = results_dict['data_products']['nh2']
     rh2_image = results_dict['data_products']['rh2']
     hi_sd_error_image = results_dict['data_products']['hi_sd_error']
+    h_sd_error_image = results_dict['data_products']['h_sd_error']
     h2_sd_error_image = results_dict['data_products']['h2_sd_error']
     nhi_error_image = results_dict['data_products']['nhi_error']
+    nh_error_image = results_dict['data_products']['nh_error']
     nh2_error_image = results_dict['data_products']['nh2_error']
     rh2_error_image = results_dict['data_products']['rh2_error']
 
@@ -1581,6 +1599,8 @@ def write_final_maps(results_dict, global_args):
     fits.writeto(FILENAME_HI_ERROR, hi_sd_error_image, header=header, clobber=True)
     fits.writeto(FILENAME_H2, h2_sd_image, header=header, clobber=True)
     fits.writeto(FILENAME_H2_ERROR, h2_sd_error_image, header=header, clobber=True)
+    fits.writeto(FILENAME_H, h_sd_image, header=header, clobber=True)
+    fits.writeto(FILENAME_H_ERROR, h_sd_error_image, header=header, clobber=True)
 
     # column density maps
     header['BUNIT'] = '10e20/cm2'
@@ -1588,6 +1608,8 @@ def write_final_maps(results_dict, global_args):
     fits.writeto(FILENAME_NHI_ERROR, nhi_error_image, header=header, clobber=True)
     fits.writeto(FILENAME_NH2, nh2_image, header=header, clobber=True)
     fits.writeto(FILENAME_NH2_ERROR, nh2_error_image, header=header, clobber=True)
+    fits.writeto(FILENAME_NH, nh_image, header=header, clobber=True)
+    fits.writeto(FILENAME_NH_ERROR, nh_error_image, header=header, clobber=True)
 
     # ratio map
     header['BUNIT'] = ''
@@ -3770,12 +3792,14 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
     # ---------------------------------------------------------------------------
     ((nhi,
       nh2,
+      nh,
       hi_sd,
       h2_sd,
       h_sd,
       rh2),
      (nhi_error,
       nh2_error,
+      nh_error,
       hi_sd_error,
       h2_sd_error,
       h_sd_error,
@@ -3786,11 +3810,13 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
     # Write products to dictionary
     # ---------------------------------------------------------------------------
     data_products['nh2'] = nh2
+    data_products['nh'] = nh
     data_products['h2_sd'] = h2_sd
     data_products['hi_sd'] = hi_sd
     data_products['h_sd'] = h_sd
     data_products['rh2'] = rh2
     data_products['nh2_error'] = np.abs(nh2_error)
+    data_products['nh_error'] = np.abs(nh_error)
     data_products['h2_sd_error'] = np.abs(h2_sd_error)
     data_products['hi_sd_error'] = np.abs(hi_sd_error)
     data_products['h_sd_error'] = np.abs(h_sd_error)
