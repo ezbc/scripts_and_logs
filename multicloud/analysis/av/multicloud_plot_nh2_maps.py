@@ -173,7 +173,8 @@ def plot_h2_sd(plot_dict, contour_image=None, limits=None,
 
 def plot_hi_h2_sd(plot_dict, contour_image=None, limits=None, filename=None,
         show=True, hi_vlimits=None, h2_vlimits=None, av_vlimits=None,
-        cloud_names=('california', 'perseus', 'taurus'),):
+        cloud_names=('california', 'perseus', 'taurus'), hi_contours=None,
+        h2_contours=None,):
 
     # Import external modules
     import matplotlib.pyplot as plt
@@ -297,11 +298,18 @@ def plot_hi_h2_sd(plot_dict, contour_image=None, limits=None, filename=None,
             ax2.set_xlim(limits_pix[0],limits_pix[1])
             ax2.set_ylim(limits_pix[2],limits_pix[3])
 
-        # Plot Av contours
+        # Plot contours
         # -----------------------------------------------------------------------
-        if contour_image is not None:
-            ax1.contour(contour_image, levels=contours, colors='w')
-            ax2.contour(contour_image, levels=contours, colors='w')
+        if hi_contours is not None:
+            hi_colors = myplt.get_color_cycle(num_colors=len(hi_contours),
+                                              cmap=plt.cm.binary,
+                                              )
+            ax1.contour(hi_sd, levels=hi_contours, colors=hi_colors)
+        if h2_contours is not None:
+            h2_colors = myplt.get_color_cycle(num_colors=len(h2_contours),
+                                              cmap=plt.cm.binary,
+                                              )
+            ax2.contour(h2_sd, levels=h2_contours, colors=h2_colors)
 
         # Cloud names
         # -----------------------------------------------------------------------
@@ -409,6 +417,8 @@ def main():
                       filename=FILENAME_PLOT_BASE + '.' + filetype,
                       hi_vlimits=[3, 13],
                       h2_vlimits=[-7, 50],
+                      hi_contours=[5, 10],
+                      h2_contours=[0, 10, 20],
                       )
         plot_h2_sd(plot_dict,
                    filename=FILENAME_PLOT_BASE_H2 + '.' + filetype,

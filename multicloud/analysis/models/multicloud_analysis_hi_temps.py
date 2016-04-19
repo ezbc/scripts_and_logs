@@ -109,6 +109,14 @@ def main():
     weights_list = []
     temp_dict = {}
 
+
+    sources_taurus = ['4C+27.14',
+                      '3C133',
+                      '3C132',
+                      '4C+25.14',
+                      '3C108',
+                      'B20400+25',]
+
     for i, cloud in enumerate(clouds):
         temp_dict[cloud] = {}
 
@@ -222,6 +230,8 @@ def main():
                         t_cnm_error_list.append(tspin_error)
                         t_int_list.append(Tk)
 
+                    if source in sources_taurus:
+                        print source, tspin
 
                 if VLSR < 15 and VLSR > -5:
                     tk_list.append(Tk)
@@ -230,7 +240,7 @@ def main():
         # convert TB and tau to average spin temperatue
         #avg_tspin_list = calc_avg_Ts(TB_dict, tau_dict, velocities)
 
-        print 'avg t spins:', avg_tspin_list
+        #print 'avg t spins:', avg_tspin_list
 
         temp_dict[cloud]['Ts_list'] = t_cnm_list
         temp_dict[cloud]['Ts_error_list'] = t_cnm_error_list
