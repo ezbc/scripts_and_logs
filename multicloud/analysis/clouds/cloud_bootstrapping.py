@@ -114,11 +114,13 @@ def plot_multicloud_results(results):
     nh2_list = []
     rh2_list = []
     hsd_list = []
+    h2sd_list = []
     hisd_list = []
     nhi_error_list = []
     nh2_error_list = []
     rh2_error_list = []
     hsd_error_list = []
+    h2sd_error_list = []
     hisd_error_list = []
     hsd_median_error_list = []
     hisd_median_error_list = []
@@ -168,11 +170,13 @@ def plot_multicloud_results(results):
         nh2_list.append(data_products['nh2'])
         rh2_list.append(data_products['rh2'])
         hsd_list.append(data_products['h_sd'])
+        h2sd_list.append(data_products['h2_sd'])
         hisd_list.append(data_products['hi_sd'])
         nhi_error_list.append(data_products['nhi_error'])
         nh2_error_list.append(data_products['nh2_error'])
         rh2_error_list.append(data_products['rh2_error'])
         hsd_error_list.append(data_products['h_sd_error'])
+        h2sd_error_list.append(data_products['h2_sd_error'])
         hisd_error_list.append(data_products['hi_sd_error'])
         hsd_median_error_list.append(data_products['h_sd_median_error'])
         hisd_median_error_list.append(data_products['hi_sd_median_error'])
@@ -342,6 +346,20 @@ def plot_multicloud_results(results):
 
     #print_BIC_results(stats_list, core_names_list)
     #print_RSS_results(stats_list, core_names_list)
+    filename = results_dir + 'tables/cloud_obs_stats.csv'
+    write_cloud_stats(cloud_name_list,
+                      filename,
+                      rh2_list=rh2_list,
+                      hisd_list=hisd_list,
+                      hisd_error_list=hisd_error_list,
+                      hsd_list=hsd_list,
+                      h2sd_error_list=h2sd_error_list,
+                      h2sd_list=h2sd_list,
+                      nhi_list=nhi_list,
+                      nh2_list=nh2_list,
+                      nhi_error_list=nhi_error_list,
+                      nh2_error_list=nh2_error_list,
+                      )
 
     filename = results_dir + 'tables/multicloud_model_params.tex'
     write_model_params_table(model_analysis_dict,
@@ -653,6 +671,90 @@ def plot_multicloud_results(results):
 '''
 Data Prep functions
 '''
+
+def write_cloud_stats(cloud_name_list,
+                      filename,
+                      rh2_list=None,
+                      hisd_list=None,
+                      hsd_list=None,
+                      hisd_error_list=None,
+                      h2sd_error_list=None,
+                      h2sd_list=None,
+                      nhi_list=None,
+                      nh2_list=None,
+                      nhi_error_list=None,
+                      nh2_error_list=None,
+                      ):
+
+    f = open(filename, 'w')
+
+    for i, cloud in enumerate(cloud_name_list):
+
+        h2sd = h2sd_list[i]
+        nh2 = nh2_list[i]
+        h2sd_error = h2sd_error_list[i]
+        hsd = hsd_list[i]
+
+        (h2sd, nh2, h2sd_error, hsd) = mask_nans((h2sd, nh2, h2sd_error, hsd))
+
+        h2sd_neg_frac = \
+            float(np.nansum(h2sd < 0.0)) / np.size(h2sd)
+
+        # goldsmith et al. (2008) found half of mass of H2 below N(H2) < 2.1 x
+        # 10^21 cm^-2.
+        threshold = 2.1*10.0 # cm^-2
+        nh2_diffuse_frac = \
+            float(np.nansum(nh2 < threshold)) / np.size(nh2)
+        hsd_diffuse_sum = np.nansum(hsd[nh2 < threshold])
+        hsd_diffuse_frac = np.nansum(hsd[nh2 < threshold]) / np.nansum(hsd)
+
+        h2sd_error_median = scipy.stats.nanmedian(np.ravel(h2sd_error_list[i]))
+        hisd_error_median = scipy.stats.nanmedian(np.ravel(hisd_error_list[i]))
+        nhi_error_median = scipy.stats.nanmedian(np.ravel(nhi_error_list[i]))
+        nh2_error_median = scipy.stats.nanmedian(np.ravel(nh2_error_list[i]))
+
+        h2sd_negerror_frac = \
+            float(np.nansum(h2sd < -h2sd_error)) / np.size(h2sd)
+        h2sd_negerror_3sig_frac = \
+            float(np.nansum(h2sd < -3*h2sd_error)) / np.size(h2sd)
+
+        f.write('cloud: ' + cloud)
+        f.write("\r")
+        f.write('fraction N(H2) below 2.1*10^21 cm^-2: ' + \
+                '{0:.2f}'.format(nh2_diffuse_frac))
+        f.write("\r")
+        f.write('Total surf dense for N(H2) below 2.1*10^21 cm^-2 ' + \
+                '[Msun /pc^2]: ' + \
+                '{0:.2f}'.format(hsd_diffuse_sum))
+        f.write("\r")
+        f.write('Fraction of total mass where N(H2) below 2.1*10^21 cm^-2 ' + \
+                ': ' + \
+                '{0:.2f}'.format(hsd_diffuse_frac))
+        f.write("\r")
+        f.write('fraction negative H2: {0:.2f}'.format(h2sd_neg_frac))
+        f.write("\r")
+        f.write('fraction H2 below 1 sigma: {0:.2f}'.format(h2sd_negerror_frac))
+        f.write("\r")
+        f.write('fraction H2 below 3 sigma: ' + \
+                '{0:.2f}'.format(h2sd_negerror_3sig_frac))
+        f.write("\r")
+        f.write('median random uncertainty of HI SD [msun / pc^2]: ' + \
+                '{0:.2g} '.format(hisd_error_median))
+        f.write("\r")
+        f.write('median random uncertainty of H2 SD [msun / pc^2]: ' + \
+                '{0:.2g} '.format(h2sd_error_median))
+        f.write("\r")
+        f.write('median random uncertainty of N(HI) [10^20 cm^-2]: ' + \
+                '{0:.2g} '.format(nhi_error_median))
+        f.write("\r")
+        f.write('median random uncertainty of N(H2) [10^20 cm^-2]: ' + \
+                '{0:.2g} '.format(nh2_error_median))
+        f.write("\r")
+        f.write("\r")
+
+    f.close()
+
+
 
 def collect_results(results_dict):
 
@@ -1437,20 +1539,6 @@ def write_final_maps(results_dict, global_args):
     '''
 
     from astropy.io import fits
-
-
-    FILENAME_HI = '/d/bip3/ezbc/multicloud/data/nhi/' + \
-                  global_args['cloud_name'] + '_hisurfdens.fits'
-    FILENAME_H2 = '/d/bip3/ezbc/multicloud/data/nh2/' + \
-                  global_args['cloud_name'] + '_h2surfdens.fits'
-    FILENAME_RH2 = '/d/bip3/ezbc/multicloud/data/rh2/' + \
-                  global_args['cloud_name'] + '_rh2.fits'
-    FILENAME_HI_ERROR = '/d/bip3/ezbc/multicloud/data/nhi/' + \
-                  global_args['cloud_name'] + '_hisurfdens_error.fits'
-    FILENAME_H2_ERROR = '/d/bip3/ezbc/multicloud/data/nh2/' + \
-                  global_args['cloud_name'] + '_h2surfdens_error.fits'
-    FILENAME_RH2_ERROR = '/d/bip3/ezbc/multicloud/data/rh2/' + \
-                  global_args['cloud_name'] + '_rh2_error.fits'
 
     DIR_FIGURES = '/d/bip3/ezbc/multicloud/data/final_products/'
     FILENAME_BASE = DIR_FIGURES + global_args['cloud_name']
@@ -3760,6 +3848,7 @@ def add_coldens_images(data_products, mc_analysis, mc_results):
             data_products['h_sd_error'] = np.abs(h_sd_error)
             data_products['rh2_error'] = np.abs(rh2_error)
             print('hi_sd_error', scipy.stats.nanmedian(hi_sd_error.ravel()))
+            print('h2_sd_error', scipy.stats.nanmedian(h2_sd_error.ravel()))
 
 
     else:
@@ -4476,10 +4565,11 @@ def main():
                  )
 
     num_bootstraps = (
-                      #20000,
+                      20000,
                       #20001,
                       #20002,
-                      100,
+                      #100,
+                      #10,
                       )
 
     dust_cross_section = (
