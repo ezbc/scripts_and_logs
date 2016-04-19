@@ -15,7 +15,8 @@ def main():
 
     DIR_DATA = '/d/bip2/lee/perseus_cloud/paper1/'
     FILENAME_RH2 = DIR_DATA + 'R_H2.fits'
-
+    FILENAME_RH2 = \
+        '/d/leffe2/lee/perseus_cloud/Min/R_H2/R_H2_102311/R_H2_102311.fits'
     # load the data
     rh2 = fits.getdata(FILENAME_RH2)
 
