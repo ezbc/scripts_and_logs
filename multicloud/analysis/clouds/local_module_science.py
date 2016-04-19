@@ -361,6 +361,9 @@ def calc_coldens_products(nhi, av, dgr, nhi_error=0.0, av_error=0.0,
     nh2_error = 0.5 * (comp_av_error**2 + \
                       comp_nhi_error**2)**0.5
 
+    nh = nhi + nh2
+    nh_error = (nh2_error**2 + nhi_error**2)**0.5
+
     # Convert to column density to surface density
     # ---------------------------------------------------------------------------
     hi_sd = calculate_sd(nhi,
@@ -383,8 +386,8 @@ def calc_coldens_products(nhi, av, dgr, nhi_error=0.0, av_error=0.0,
     comp_h2_error = h2_sd_error / hi_sd
     rh2_error = (comp_hi_error**2 + comp_h2_error**2)**0.5
 
-    return ((nhi, nh2, hi_sd, h2_sd, h_sd, rh2),
-            (nhi_error, nh2_error, hi_sd_error, h2_sd_error, h_sd_error,
+    return ((nhi, nh2, nh, hi_sd, h2_sd, h_sd, rh2),
+            (nhi_error, nh2_error, nh_error, hi_sd_error, h2_sd_error, h_sd_error,
                 rh2_error))
 
 
