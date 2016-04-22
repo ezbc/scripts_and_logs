@@ -686,16 +686,25 @@ def write_cloud_stats(cloud_name_list,
                       nh2_error_list=None,
                       ):
 
+    from myscience import calc_physical_scale
+
     f = open(filename, 'w')
+    distances = {'california': 410.0,
+                 'perseus': 360.0,
+                 'taurus': 135.0,
+                 }
 
     for i, cloud in enumerate(cloud_name_list):
 
+        # prep data
         h2sd = h2sd_list[i]
         nh2 = nh2_list[i]
         h2sd_error = h2sd_error_list[i]
         hsd = hsd_list[i]
-
-        (h2sd, nh2, h2sd_error, hsd) = mask_nans((h2sd, nh2, h2sd_error, hsd))
+        hisd = hisd_list[i]
+        (h2sd, nh2, h2sd_error, hsd, hisd,) =\
+            mask_nans((h2sd, nh2, h2sd_error, hsd,
+                       hisd,))
 
         h2sd_neg_frac = \
             float(np.nansum(h2sd < 0.0)) / np.size(h2sd)
@@ -712,6 +721,13 @@ def write_cloud_stats(cloud_name_list,
         hsd_diffuse_frac = np.nansum(h2sd[nh2 < threshold]) / np.nansum(hsd)
         h2sd_diffuse_frac = np.nansum(h2sd[nh2 < threshold]) / np.nansum(h2sd)
 
+        # calculate mass of cloud
+        D = distances[cloud]
+        physical_scale = calc_physical_scale(5.0 / 60.0, D)
+        N_LOS = np.size(hsd)
+        region_size = physical_scale**2 * N_LOS # pc^2
+        h2_mass = region_size * np.sum(h2sd)
+        hi_mass = region_size * np.sum(hisd)
 
         # calculate median errors
         h2sd_error_median = scipy.stats.nanmedian(np.ravel(h2sd_error_list[i]))
@@ -740,6 +756,10 @@ def write_cloud_stats(cloud_name_list,
         f.write('Fraction of H2 mass where N(H2) below 2.1*10^21 cm^-2 ' + \
                 ': ' + \
                 '{0:.2f}'.format(h2sd_diffuse_frac))
+        f.write("\r")
+        f.write('H2 mass [Msun]: {0:.2f}'.format(h2_mass))
+        f.write("\r")
+        f.write('HI mass [Msun]: {0:.2f}'.format(hi_mass))
         f.write("\r")
         f.write('fraction negative H2: {0:.2f}'.format(h2sd_neg_frac))
         f.write("\r")
@@ -4586,8 +4606,8 @@ def main():
     # fit for (phi_cnm, Z, sigma_d) in K+09 model
     #         (alphaG,  Z, phi_g)   in S+14 model
     param_vary = (
-                  #(True, True, False),
-                  (True, False, False),
+                  (True, True, False),
+                  #(True, False, False),
                  )
 
     num_bootstraps = (
