@@ -1122,6 +1122,175 @@ def plot_av_vs_nhi_grid(av_list, nhi_list, names_list=None,
         plt.draw()
         plt.savefig(filename, bbox_inches='tight', dpi=100)
 
+def plot_rh2_vs_hsd_cloud(hsd_list, rh2_list, names_list=None,
+        hsd_error_list=None, fit_params_list=None, filename=None, levels=7,
+        limits=None, poly_fit=False, plot_median=False, contour=True,
+        scale=['linear','linear']):
+
+    ''' Plots a heat map of likelihoodelation values as a function of velocity
+    width and velocity center.
+
+    Parameters
+    ----------
+    cloud : cloudpy.Cloud
+        If provided, properties taken from cloud.props.
+
+
+    '''
+
+    # Import external modules
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import myplotting as myplt
+    from mpl_toolkits.axes_grid1.axes_grid import AxesGrid
+
+    # Set up plot aesthetics
+    # ----------------------
+    plt.close;plt.clf()
+
+    font_scale = 9
+    params = {
+              'figure.figsize': (3.6, 8),
+              #'figure.titlesize': font_scale,
+             }
+    plt.rcParams.update(params)
+
+    # Create figure instance
+    fig = plt.figure()
+
+    axes = AxesGrid(fig, (1,1,1),
+                    nrows_ncols=(3, 1),
+                    ngrids=3,
+                    axes_pad=0.1,
+                    aspect=False,
+                    label_mode='L',
+                    share_all=True)
+
+    for i in xrange(0, len(names_list)):
+        cloud_name = names_list[i]
+        x = hsd_list[i]
+        y = rh2_list[i]
+        ax = axes[i]
+
+        if 'log' not in scale:
+            ax.locator_params(nbins = 6)
+
+        # Drop the NaNs from the images
+        indices = np.where((x == x) &\
+                           (y == y)
+                           )
+
+        x_nonans = x[indices]
+        y_nonans = y[indices]
+
+        ax = axes[i]
+
+        if contour:
+            if i == 0:
+                if limits is None:
+                    xmin = np.min(x_nonans)
+                    ymin = np.min(y_nonans)
+                    xmax = np.max(x_nonans)
+                    ymax = np.max(y_nonans)
+                    xscalar = 0.15 * xmax
+                    yscalar = 0.15 * ymax
+                    limits = [xmin - xscalar, xmax + xscalar,
+                              ymin - yscalar, ymax + yscalar]
+
+            contour_range = ((limits[0], limits[1]),
+                             (limits[2], limits[3]))
+
+            cmap = myplt.truncate_colormap(plt.cm.binary, 0.2, 1, 1000)
+
+            if scale[1] == 'log':
+                bins = [40,
+                        np.logspace(np.log10(limits[2]),
+                                    np.log10(limits[3]),
+                                    40,),
+                        ]
+            else:
+                bins = 40
+
+            print bins
+
+            bins = 70
+
+            l1 = myplt.scatter_contour(x_nonans.ravel(),
+                                 y_nonans.ravel(),
+                                 threshold=2,
+                                 log_counts=1,
+                                 levels=levels,
+                                 ax=ax,
+                                 histogram2d_args=dict(bins=bins,
+                                                       range=contour_range),
+                                 plot_args=dict(marker='o',
+                                                linestyle='none',
+                                                color='black',
+                                                alpha=0.3,
+                                                markersize=2),
+                                 contour_args=dict(
+                                                   #cmap=plt.cm.binary,
+                                                   cmap=cmap,
+                                                   #cmap=cmap,
+                                                   ),
+                                 )
+        else:
+            image = ax.errorbar(
+                                x_nonans.rhsdel()[::100],
+                                y_nonans.rhsdel()[::100],
+                                yerr=(x_error_nonans.ravel()[::100]),
+                                alpha=0.2,
+                                color='k',
+                                marker='^',
+                                ecolor='k',
+                                linestyle='None',
+                                markersize=3
+                                )
+
+        c_cycle = myplt.set_color_cycle(num_colors=2, cmap_limits=[0.5, 0.7])
+
+        # Annotations
+        #anno_xpos = 0.95
+
+        ax.set_xscale(scale[0], nonposx = 'clip')
+        ax.set_yscale(scale[1], nonposy = 'clip')
+
+        if limits is not None:
+            ax.set_xlim(limits[0],limits[1])
+            ax.set_ylim(limits[2],limits[3])
+
+        if 1:
+            loc = 'lower right'
+        elif i == 0:
+            loc = 'upper left'
+        else:
+            loc = 'lower left'
+
+        ax.legend(loc=loc)
+
+        # Adjust asthetics
+        ax.set_xlabel(r'$\Sigma_{\rm H\,I}$ + $\Sigma_{\rm H_2}$ ' + \
+                       '[M$_\odot$ pc$^{-2}$]',)
+        ax.set_ylabel(r'$R_{\rm H_2}$',)
+
+        ax.annotate(cloud_name.capitalize(),
+                    #xytext=(0.96, 0.9),
+                    xy=(0.96, 0.96),
+                    textcoords='axes fraction',
+                    xycoords='axes fraction',
+                    size=10,
+                    color='k',
+                    bbox=dict(boxstyle='square',
+                              facecolor='w',
+                              alpha=1),
+                    horizontalalignment='right',
+                    verticalalignment='top',
+                    )
+
+    if filename is not None:
+        plt.draw()
+        plt.savefig(filename, bbox_inches='tight', dpi=500)
+
 def plot_pdf_grid(av_list=None, nhi_list=None, nh2_list=None, dgr_list=None,
         names_list=None, limits=None, savedir='./', filename=None, show=True,
         scale=(0,0), n_bins=200, fit_gaussian=False, returnimage=False,
