@@ -349,6 +349,7 @@ def plot_multicloud_results(results):
     filename = results_dir + 'tables/cloud_obs_stats.csv'
     write_cloud_stats(cloud_name_list,
                       filename,
+                      av_list=av_list,
                       rh2_list=rh2_list,
                       hisd_list=hisd_list,
                       hisd_error_list=hisd_error_list,
@@ -454,6 +455,20 @@ def plot_multicloud_results(results):
                             levels=(0.99, 0.98, 0.95, 0.86, 0.59),
                             poly_fit=False,
                             limits=[-2, 19, 0, 20]
+                            )
+
+        # Plot RH2 vs. HSD
+        # ---------------------------------------------------------------------
+        filename = plot_kwargs['figure_dir'] + \
+                   'av_nhi/multicloud_rh2_vs_hsd.' + filetype
+        lm_plt.plot_rh2_vs_hsd_cloud(hsd_list,
+                            rh2_list,
+                            names_list=cloud_name_list,
+                            filename=filename,
+                            levels=(0.999, 0.99, 0.95, 0.87, 0.61,),
+                            #levels=7,
+                            #limits=[-5, 100, -1.5, 20],
+                            scale=['linear', 'linear'],
                             )
 
         # Plot Av PDF
@@ -674,6 +689,7 @@ Data Prep functions
 
 def write_cloud_stats(cloud_name_list,
                       filename,
+                      av_list=None,
                       rh2_list=None,
                       hisd_list=None,
                       hsd_list=None,
@@ -689,9 +705,9 @@ def write_cloud_stats(cloud_name_list,
     from myscience import calc_physical_scale
 
     f = open(filename, 'w')
-    distances = {'california': 410.0,
-                 'perseus': 360.0,
-                 'taurus': 135.0,
+    distances = {'california': 450.0,
+                 'perseus': 240.0,
+                 'taurus': 150.0,
                  }
 
     for i, cloud in enumerate(cloud_name_list):
@@ -702,9 +718,10 @@ def write_cloud_stats(cloud_name_list,
         h2sd_error = h2sd_error_list[i]
         hsd = hsd_list[i]
         hisd = hisd_list[i]
-        (h2sd, nh2, h2sd_error, hsd, hisd,) =\
+        av = av_list[i]
+        (h2sd, nh2, h2sd_error, hsd, hisd, av) =\
             mask_nans((h2sd, nh2, h2sd_error, hsd,
-                       hisd,))
+                       hisd, av))
 
         h2sd_neg_frac = \
             float(np.nansum(h2sd < 0.0)) / np.size(h2sd)
@@ -723,11 +740,19 @@ def write_cloud_stats(cloud_name_list,
 
         # calculate mass of cloud
         D = distances[cloud]
-        physical_scale = calc_physical_scale(5.0 / 60.0, D)
-        N_LOS = np.size(hsd)
-        region_size = physical_scale**2 * N_LOS # pc^2
-        h2_mass = region_size * np.sum(h2sd)
-        hi_mass = region_size * np.sum(hisd)
+        physical_scale = calc_physical_scale(5.0 * 60.0, D)
+        threshold_aks = [0.1, 0.2, -1e10, 0.8]
+        hi_masses = []
+        h2_masses = []
+        region_sizes = []
+        for threshold_ak in threshold_aks:
+            # convert from A_K to A_V:
+            # scalar reference: http://adsabs.harvard.edu/abs/2005ApJ...619..931I
+            mask = av < 8.8 * threshold_ak
+            pixel_size = physical_scale**2 # pc^2
+            region_sizes.append(physical_scale**2 * np.size(hisd[~mask]))# pc^2
+            h2_masses.append(pixel_size * np.sum(h2sd[~mask]) / 10**3)
+            hi_masses.append(pixel_size * np.sum(hisd[~mask]) / 10**3)
 
         # calculate median errors
         h2sd_error_median = scipy.stats.nanmedian(np.ravel(h2sd_error_list[i]))
@@ -742,6 +767,8 @@ def write_cloud_stats(cloud_name_list,
 
         f.write('cloud: ' + cloud)
         f.write("\r")
+        # Fractions
+        # -----------------------------------------------------------------------
         f.write('fraction N(H2) below 2.1*10^21 cm^-2: ' + \
                 '{0:.2f}'.format(nh2_diffuse_frac))
         f.write("\r")
@@ -757,17 +784,51 @@ def write_cloud_stats(cloud_name_list,
                 ': ' + \
                 '{0:.2f}'.format(h2sd_diffuse_frac))
         f.write("\r")
-        f.write('H2 mass [Msun]: {0:.2f}'.format(h2_mass))
-        f.write("\r")
-        f.write('HI mass [Msun]: {0:.2f}'.format(hi_mass))
-        f.write("\r")
-        f.write('fraction negative H2: {0:.2f}'.format(h2sd_neg_frac))
-        f.write("\r")
         f.write('fraction H2 below 1 sigma: {0:.2f}'.format(h2sd_negerror_frac))
         f.write("\r")
         f.write('fraction H2 below 3 sigma: ' + \
                 '{0:.2f}'.format(h2sd_negerror_3sig_frac))
         f.write("\r")
+        f.write('fraction negative H2: {0:.2f}'.format(h2sd_neg_frac))
+        f.write("\r")
+
+        # Masses
+        # -----------------------------------------------------------------------
+        for i, threshold_ak in enumerate(threshold_aks):
+            if threshold_ak > 0:
+                f.write('H2 mass for Ak > {0:.1f}'.format(threshold_ak) + \
+                        'mag [10^3 Msun]: ' + \
+                        '{0:.2f}'.format(h2_masses[i]))
+                f.write("\r")
+                f.write('HI mass for Ak > {0:.1f}'.format(threshold_ak) + \
+                        'mag [10^3 Msun]: ' + \
+                        '{0:.2f}'.format(hi_masses[i]))
+                f.write("\r")
+                f.write('Total mass for Ak > {0:.1f}'.format(threshold_ak) + \
+                        'mag [10^3 Msun]: ' + \
+                        '{0:.2f}'.format(h2_masses[i] + hi_masses[i]))
+                f.write("\r")
+                f.write('Region size for Ak > {0:.1f} '.format(threshold_ak) + \
+                        '[pc^2]: ' + \
+                        '{0:.2f}'.format(region_sizes[i]))
+                f.write("\r")
+            else:
+                f.write('H2 mass of whole region [10^3 Msun]: ' + \
+                        '{0:.2f}'.format(h2_masses[i]))
+                f.write("\r")
+                f.write('HI mass of whole region [10^3 Msun]: ' + \
+                        '{0:.2f}'.format(hi_masses[i]))
+                f.write("\r")
+                f.write('Total H mass of whole region [10^3 Msun]: ' + \
+                        '{0:.2f}'.format(h2_masses[i] + hi_masses[i]))
+                f.write("\r")
+                f.write('Region size for whole region' + \
+                        '[pc^2]: ' + \
+                        '{0:.2f}'.format(region_sizes[i]))
+                f.write("\r")
+
+        # Uncertainties
+        # -----------------------------------------------------------------------
         f.write('median random uncertainty of HI SD [msun / pc^2]: ' + \
                 '{0:.2g} '.format(hisd_error_median))
         f.write("\r")
@@ -783,7 +844,6 @@ def write_cloud_stats(cloud_name_list,
         f.write("\r")
 
     f.close()
-
 
 
 def collect_results(results_dict):
